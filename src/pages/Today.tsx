@@ -5,6 +5,7 @@ import { courseStats, dueCards, examLabel, relativeDate } from '../lib/format'
 import { createDemoSet } from '../lib/demo'
 import { Welcome } from '../components/Welcome'
 import { daysUntil } from '../lib/srs'
+import { firstName } from '../lib/auth'
 import { useStore } from '../lib/store'
 
 export function Today() {
@@ -54,7 +55,7 @@ export function Today() {
           <p className="subtle" style={{ textTransform: 'capitalize' }}>
             {dateText}
           </p>
-          <h1>Bugün</h1>
+          <h1>{firstName(store.session?.user) ? `Merhaba ${firstName(store.session?.user)}` : 'Bugün'}</h1>
         </div>
       </div>
 
