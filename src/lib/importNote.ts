@@ -5,8 +5,11 @@ export const MAX_PDF_PAGES = 150
 export const MAX_TEXT_CHARACTERS = 400_000
 export const MAX_IMAGE_EDGE = 1600
 export const JPEG_QUALITY = 0.8
-/** Keep each request well below Vercel's ~4.5 MB body limit. */
-export const MAX_BATCH_BASE64_CHARS = 2_400_000
+/**
+ * Image data per request. The shared AI endpoint rejects bodies over 1.5M characters
+ * (MAX_BODY_CHARS in api/generate.ts), so leave room for the JSON around the images.
+ */
+export const MAX_BATCH_BASE64_CHARS = 1_300_000
 
 export const ACCEPTED_NOTE_EXTENSIONS = '.pdf,.docx,.pptx,.txt,.md,.jpg,.jpeg,.png,.webp'
 

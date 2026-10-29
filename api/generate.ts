@@ -5,7 +5,7 @@ import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL, SUPABASE_PUBLISHABLE_KE
 import { callGeminiWithFallback, GeminiError } from '../src/lib/ai/gemini.js'
 import { isTaskName, jsonModeSystem, parseTaskOutput, userPrompt } from '../src/lib/ai/tasks.js'
 
-const MAX_BODY_CHARS = 1_500_000
+export const MAX_BODY_CHARS = 1_500_000
 
 /** Gives Vercel Hobby functions the full 60s ceiling while our internal deadline finishes well before it. */
 export const maxDuration = 60

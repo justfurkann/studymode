@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampDailyGoal, computeStreakSummary, localDayKey, recordStudyActivity } from './streak'
+import { clampDailyGoal, computeStreakSummary, localDayKey, mergeStudyDays, recordStudyActivity } from './streak'
 import type { StudyDay } from './types'
 
 const makeDay = (day: string, reviews: number, quizzes = 0): StudyDay => ({
@@ -87,5 +87,14 @@ describe('streak and daily goal', () => {
     expect(clampDailyGoal(9999)).toBe(500)
     expect(clampDailyGoal('35')).toBe(35)
     expect(clampDailyGoal('abc', 20)).toBe(20)
+  })
+
+  it('adds up rows that two devices created for the same day', () => {
+    const row = (id: string, reviews: number, quizzes: number) =>
+      ({ id, day: '2026-10-29', reviews, quizzes, createdAt: '2026-10-29T08:00:00Z', updatedAt: `2026-10-29T0${id}:00:00Z` }) as StudyDay
+    const [merged] = mergeStudyDays([row('1', 10, 0), row('2', 8, 1)])
+    expect(merged).toMatchObject({ reviews: 18, quizzes: 1, updatedAt: '2026-10-29T02:00:00Z' })
+    const summary = computeStreakSummary([row('1', 10, 0), row('2', 8, 1)], 20, new Date(2026, 9, 29, 15))
+    expect(summary.todayReviews).toBe(18)
   })
 })
