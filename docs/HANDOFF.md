@@ -1,0 +1,134 @@
+# StudyMode — Devir Notu (Claude Code oturumu, 30 Ekim 2026)
+
+Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yeni bir oturuma (Claude Code veya Google AI Studio) bağlam vermek için yazıldı.
+
+---
+
+## 1. Ürün
+
+**StudyMode**: Türk üniversite öğrencileri için ders çalışma uygulaması. Ders notunu (PDF, Word, PowerPoint, TXT, MD, fotoğraf, taranmış PDF) yükle; özet, kart, test, açık uçlu soru ve sınav provası oluşsun; aralıklı tekrar ve sınav tarihine göre plan yapılsın.
+
+- **Ürün vaadi:** "Ders notlarını yükle, sınavına gerçekten hazır olup olmadığını öğren."
+- **Hedef kitle şimdilik:** Kurucunun arkadaş çevresi (küçük ölçek).
+- **Canlı adres:** https://studymode.fun (Vercel). Eski adres https://studymode-five.vercel.app hâlâ çalışıyor, ama bazı Türk internet sağlayıcıları `*.vercel.app`'i engelliyor; kendi alan adı bu yüzden alındı.
+
+## 2. Altyapı ve hesaplar
+
+| Parça | Durum |
+|---|---|
+| **GitHub** | `justfurkann/studymode`. Claude'un çalışma dalı: `claude/dreamy-sagan-5di1al`. `main` canlıya çıkar. |
+| **Vercel** | `main`e gelen her birleştirme otomatik yayınlanır. Ortam değişkenleri: `GEMINI_API_KEY` (var), isteğe bağlı `GEMINI_MODEL`, `GEMINI_FALLBACK_MODELS`. |
+| **Alan adı** | `studymode.fun`, Hostinger'den alındı; DNS Hostinger'de, Vercel'e bağlı. |
+| **Supabase** | Proje kimliği `jpcatyopkpnudgdyncas`. Adres ve **publishable** anahtar `src/lib/config.ts` içinde (tarayıcıya açık olması normal; güvenliği RLS sağlar). Auth: e-posta + şifre, e-posta onayı açık. Site URL / Redirect URLs: `https://studymode.fun`. |
+| **E-posta** | Resend üzerinden özel SMTP (`smtp.resend.com`, gönderen `noreply@studymode.fun`, ad "studymode"). Onay ve şifre sıfırlama şablonları Türkçe. |
+| **Yapay zekâ** | Varsayılan: sunucudaki ortak **ücretsiz Gemini** (`/api/generate`, giriş zorunlu). Kullanıcı isterse kendi Claude / ChatGPT / Gemini anahtarını bağlar (anahtar yalnızca tarayıcıda, `localStorage`). Gemini model sırası: `gemini-3.5-flash-lite` → `gemini-flash-lite-latest` → `gemini-3.1-flash-lite` (yoğunlukta tekrar deneme ve yedek modele geçme var). |
+
+**Güvenlik notları**
+- Google AI Studio projesine **asla faturalandırma bağlanmayacak**. "Kota dolarsa yalnızca hata, para çıkmaz" güvencesi buna dayanıyor.
+- Sohbette bir kez Supabase **secret** anahtarı (`sb_secret_…`) paylaşıldı. Kullanıcıya iptal etmesi söylendi; iptal edildiği **teyit edilmedi**. Kontrol edilmeli: Supabase → Project Settings → API Keys.
+- Secret / service_role anahtarları koda, `.env`'e ya da sohbete asla konmaz.
+
+## 3. Teknoloji ve kod yapısı
+
+React 19 + TypeScript + Vite 7, React Router 7, Supabase JS, Anthropic SDK, zod 4, pdf.js, fflate (Office dosyaları), lucide-react ikonları, DM Sans fontu. Sürümler `package.json`'da sabit (`^` yok). Google AI Studio `package-lock.json`'ı sürekli siliyor; sürümler sabit olduğu için sorun değil, lockfile commit'lenmiyor.
+
+```
+api/generate.ts          Vercel fonksiyonu: oturum doğrulama, sabit görevler (study, exam, grade, transcribe, explain), Gemini çağrısı
+src/lib/ai/              tasks.ts (talimatlar + zod şemaları, sunucuyla ortak), index.ts (sağlayıcılar, uzun not bölümleme), gemini.ts
+src/lib/store.tsx        Tüm veri işlemleri (yerel/Supabase), seri sayımı
+src/lib/backend.ts       Yerel depolama + Supabase; OPTIONAL_TABLES ve OPTIONAL_COLUMNS (tablo/sütun yokken çökmez)
+src/lib/                 srs.ts (aralıklı tekrar), streak.ts, learningPath.ts (5 adım, hâkimiyet), studyPlan.ts, exam.ts,
+                         examSession.ts, practice.ts, importNote.ts, officeText.ts, auth.ts, settings.ts, courseExams.ts (YARIM)
+src/pages/               Today, Courses, CourseDetail, NoteDetail, AddNote, Review, Exam, ExamHistory, Settings, Login, ResetPassword
+src/components/          Layout, ui, CourseForm, ExamReview, AiSignupPrompt, Welcome, NoteEditor, note/{Summary,Cards,Quiz,Practice}Tab
+supabase/schema.sql      Tüm tablolar; tekrar çalıştırılabilir ("if not exists")
+tests/app.spec.ts        Playwright uçtan uca testleri
+```
+
+**Her değişiklikten önce çalıştırılacaklar** (hepsi geçmeden gönderilmez):
+```
+npm test
+npm run build
+npx tsc -p tsconfig.api.json
+PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
+```
+Son yeşil durum (#18 sonrası): 100 birim testi, 32 tarayıcı testi.
+
+## 4. Veritabanı
+
+Tablolar: `courses`, `notes`, `cards`, `quiz_attempts`, `exam_results`, `study_days` (hepsi `user_id` + RLS "own rows").
+
+**Çalıştırıldı:** ilk şema, `exam_results`, `study_days` (+ kısıtlar ve "own rows" adlı kural).
+
+**⚠️ HENÜZ ÇALIŞTIRILMADI (#18 ile geldi, kullanıcıya iletilmedi):**
+```sql
+alter table public.quiz_attempts add column if not exists answers jsonb;
+alter table public.study_days add column if not exists actions integer not null default 0;
+```
+Çalıştırılmasa da uygulama bozulmaz (eksik sütun çıkarılıp kaydediliyor), ama test cevapları ve "diğer çalışma" sayımı buluta yazılmaz.
+
+## 5. Alınan kararlar
+
+- **Yapay zekâ:** Ücretsiz ortak Gemini varsayılan, giriş zorunlu (kötüye kullanımı sınırlıyor). Misafirlere "Yapay zekâ ücretsiz, sadece hesap aç" daveti gösteriliyor. Kendi anahtarını getirme seçeneği duruyor.
+- **Basit mod** (kural tabanlı, yapay zekâsız) geliştirilmeyecek; insanları hesap açmaya yönlendirmek daha verimli.
+- **Kullanıcı başına yapay zekâ kotası:** Konuşuldu, ama son hedefte kapsam dışı bırakıldı. Arkadaşlara açılınca adalet için gerekli olabilir (tasarım önerisi: sunucuda `ai_usage` tablosu, kullanıcı silemez/güncelleyemez, `AI_DAILY_LIMIT` ortam değişkeni, uzun notun bölümlerini ayrı ayrı say).
+- **Seri (Duolingo mantığı):** Her çalışma seriyi sürdürür (kart, test/sınav, yazılı cevap, gerçek yapay zekâ açıklaması → `study_days.actions`). Günlük **kart hedefi** yalnızca kart tekrarlarını sayar.
+- **Tasarım/marka yenilemesi** (logo, renk, illüstrasyon) ertelendi; önce temel işlevler. Yeni ekranlar mevcut stile uymalı.
+- **Çalışma düzeni:** Claude PR açıp kendisi birleştirebilir (kullanıcı izin verdi). Google AI Studio da `main`e doğrudan gönderiyor; AI Studio bir şey yapınca kullanıcı Claude'a "güncelledim" der, Claude çekip test eder. İkisi aynı anda aynı dosyalara dokunmaz.
+- AI Studio'ya verilen kurallar: commit'ten önce testler; sürümler sabit; şema değişikliği `schema.sql`'e "if not exists" ile ve kullanıcıya ayrı SQL; tablo yokken uygulama çökmemeli; `api/generate.ts`, `backend.ts`, `store.tsx` senkron kısmı, `schema.sql`, auth dosyaları Claude'da.
+- Arayüz dili sade Türkçe; sayıya ek gerektiren ifadelerden kaçınılır ("%40'ına" değil, "Pekiştirilen kartlar: %40").
+
+## 6. Birleştirilmiş PR'lar (özet)
+
+#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · **#18 Aşama 1 (aşağıda)**
+
+## 7. Şu anki hedef (kullanıcının "goal"u) ve durum
+
+**Aşama 1 — Doğrulama ve hatalar: ✅ TAMAM (#18)**
+- Uzun not: bölüm başına bir yeniden deneme, kısmi sonuç + uyarı, not eklemede bölüm ilerlemesi.
+- Uygula: cevap ve değerlendirme kalıcı (otomatik kayıt), anlamlı cevap olmadan 5. adım tamamlanamaz; sekme her kayıtta sıfırlanıyordu, düzeltildi.
+- Kartlar: "Hatırladım / Tekrar bakacağım" gerçek tekrar olarak kaydediliyor (hâkimiyet, günlük hedef, seri).
+- Test: son sonuç ve yanlışlar geri dönünce görünüyor, "Tekrar çöz"; seçilen şıklar saklanıyor.
+- Örnek ders: 7 gün sonrasına sınav tarihi.
+- Sınav oturumu: bozuk kayıt temizleniyor, süresi dolan sınav otomatik teslim ediliyor, ders değişince karışmıyor.
+- "Anlamadım": kavramın geçtiği bölüm gönderiliyor; yerel yedek açıkça belirtiliyor.
+- `.aistudio/` depodan çıkarıldı.
+
+**Aşama 2 — Vize/final/bütünleme: 🟡 BAŞLADI (yarım, `claude/dreamy-sagan-5di1al` dalında WIP commit; tip denetimi şu an GEÇMİYOR)**
+- Yapılan: `src/lib/types.ts`'e `CourseExam`, `CourseExamKind`, `StudyData.courseExams` eklendi; `src/lib/courseExams.ts` yazıldı (EXAM_KINDS, examName, examCountdown "Vizeye 8 gün", legacyExam, examsForCourse, examCovers, upcomingExams, nearestExamFor, examDateForCard, nextExamDate).
+- **Uyumluluk kararı:** `courses.exam_date` silinmez, dönüştürülmez. Dersin sınav kaydı yoksa eski tarih sanal "Sınav" olarak gösterilir (`legacyExam`). Sınavlar düzenlenince gerçek kayıtlar oluşur ve `exam_date` "en yakın sınav" olarak güncel tutulur.
+- Kalan:
+  - `store.tsx`: `courseExams` ekleme (`deleteCourse`, `replaceAll`, `migrateLocalToCloud`, `deleteNote` → kapsamdan çıkar), `saveCourseExams(courseId, exams)` (+ `examDate` senkronu), `reviewCard` içinde `examDateForCard`.
+  - `backend.ts`: Table `courseExams` → `course_exams`, OPTIONAL_TABLES, `parseData` isteğe bağlı liste.
+  - `schema.sql` + kullanıcıya SQL: `course_exams` (id, user_id, course_id fk cascade, kind check, title, exam_date date, weight real 0–100, note_ids jsonb, created_at, updated_at, RLS "own rows").
+  - `CourseForm`: sınav listesi düzenleyici (tür, tarih, ağırlık, kapsam için not seçimi). `useDemo` örneğine "Vize" kaydı.
+  - `Review.tsx` (satır ~143) ve `srs` sınırı en yakın kapsayan sınava göre.
+  - `Exam.tsx`: "Hangi sınava hazırlanıyorsun?" seçimi kapsamdaki notları otomatik seçsin. `ExamReview.tsx`: `q.source` için ilgili nota "Kaynağında gör" bağlantısı (`ExamQuestion`'a `noteId`; yapay zekâ sorularında kaynağı içeren notu bul; NoteDetail'e URL'den alıntı vurgulama desteği).
+  - `Today.tsx` / `studyPlan.ts`: gerçek sınav türü ve kapsamı. **Bilinen hata:** plan başlığı en yakın sınavın dersini söylüyor ama önerilen konular başka dersten olabilir.
+  - `Courses.tsx`, `CourseDetail.tsx`: yaklaşan sınavlar ve ağırlıklar; 3'ten az not ve hiç etiket yoksa arama/etiket satırını gizle.
+  - Testler: en yakın kapsayan sınav, SRS sınırı, eski `exam_date`; uçtan uca vize+final, kapsam, provada otomatik seçim, yenilemede kalıcılık.
+
+**Aşama 3 — Çalışma ekranı UI/UX (kullanıcı için EN ÖNEMLİSİ): ⬜ BAŞLAMADI**
+Kullanıcının şikâyeti: Not sayfası çok kalabalık ve çok yazılı; Roadmap + 5 sekme + araç butonları + sekme içi adım butonları aynı navigasyonu tekrarlıyor; kartlar sayfanın altında topluca listeleniyor; test kartlardan sonra geliyor (mantıksız); kartta çevirmeden önce ipucu yok. İstenen:
+- Tek, net çalışma akışı; gereksiz metin/kutu/buton/tekrar yok; ekrana girer girmez çalışmaya başlanabilsin (mobil öncelikli).
+- Pedagojik sıra: önce seviyeyi ölçen test (öneri: Özet → Test → Kartlar → Uygula; Kaynak ikincil).
+- Tek kart akışı: soru → isteğe bağlı **İpucu** (çevirmeden önce) → çevir → "Bildim / Tekrar" → sonraki kart. Tüm kartlar listesi kapalı bir "Kartları yönet (X)" çekmecesinde.
+- Kopyala / Markdown / Yazdır / Düzenle kompakt bir menüde.
+- Küçük başarı/ilerleme hissi. Tema/CSS dili korunur, mevcut işlevler kaybolmaz.
+
+**Teslimde istenenler:** (1) 7 AI Studio maddesi + 6 hata için durum raporu ve elle denenecekler, (2) SQL ve Vercel adımları, (3) AI Studio'ya devir mesajı, (4) "arkadaşlarla teste hazır mı" değerlendirmesi.
+
+## 8. Kullanıcının elle denemesi gerekenler (henüz teyit edilmedi)
+
+- Yukarıdaki iki SQL satırını çalıştırmak.
+- Fotoğraf ve taranmış PDF'ten not okuma, gerçek Gemini ile (hiç denenmedi).
+- Yapay zekâ çıktı kalitesi, gerçek bir ders notuyla (sorular, Türkçe, uydurma bilgi var mı).
+- Seri ve günlük hedefin iki cihazda doğru sayılması.
+- "Şifremi unuttum" akışının gerçek e-postayla uçtan uca çalışması.
+- Secret anahtarın iptal edildiğinin teyidi.
+
+## 9. Kullanıcıyla çalışma tarzı
+
+- Türkçe, uzun ve analizli cevaplar ister; "üçüncü göz" gibi dürüst değerlendirme bekler, her zaman haklıymış gibi davranılmasını istemez.
+- Teknik değil; adımlar tıklama tıklama, ekran görüntüsü istenerek anlatılmalı. Gizli anahtarları sohbete yapıştırabilir; anahtar türleri net ayrılmalı.
+- Asıl önerilen yol: yeni özellik yığmadan önce 2-3 arkadaşla bir hafta gerçek kullanım ve geri bildirim.
