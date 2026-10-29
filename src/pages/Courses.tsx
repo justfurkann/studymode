@@ -81,8 +81,9 @@ export function Courses() {
       {creating && (
         <CourseForm
           onClose={close}
-          onSave={(input) => {
+          onSave={({ exams, examsChanged: _changed, ...input }) => {
             const course = store.addCourse(input)
+            if (exams.length) store.saveCourseExams(course.id, exams)
             navigate(`/ders/${course.id}`, { replace: true })
           }}
         />

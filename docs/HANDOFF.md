@@ -94,19 +94,44 @@ alter table public.study_days add column if not exists actions integer not null 
 - "Anlamadım": kavramın geçtiği bölüm gönderiliyor; yerel yedek açıkça belirtiliyor.
 - `.aistudio/` depodan çıkarıldı.
 
-**Aşama 2 — Vize/final/bütünleme: 🟡 BAŞLADI (yarım, `claude/dreamy-sagan-5di1al` dalında WIP commit; tip denetimi şu an GEÇMİYOR)**
-- Yapılan: `src/lib/types.ts`'e `CourseExam`, `CourseExamKind`, `StudyData.courseExams` eklendi; `src/lib/courseExams.ts` yazıldı (EXAM_KINDS, examName, examCountdown "Vizeye 8 gün", legacyExam, examsForCourse, examCovers, upcomingExams, nearestExamFor, examDateForCard, nextExamDate).
-- **Uyumluluk kararı:** `courses.exam_date` silinmez, dönüştürülmez. Dersin sınav kaydı yoksa eski tarih sanal "Sınav" olarak gösterilir (`legacyExam`). Sınavlar düzenlenince gerçek kayıtlar oluşur ve `exam_date` "en yakın sınav" olarak güncel tutulur.
-- Kalan:
-  - `store.tsx`: `courseExams` ekleme (`deleteCourse`, `replaceAll`, `migrateLocalToCloud`, `deleteNote` → kapsamdan çıkar), `saveCourseExams(courseId, exams)` (+ `examDate` senkronu), `reviewCard` içinde `examDateForCard`.
-  - `backend.ts`: Table `courseExams` → `course_exams`, OPTIONAL_TABLES, `parseData` isteğe bağlı liste.
-  - `schema.sql` + kullanıcıya SQL: `course_exams` (id, user_id, course_id fk cascade, kind check, title, exam_date date, weight real 0–100, note_ids jsonb, created_at, updated_at, RLS "own rows").
-  - `CourseForm`: sınav listesi düzenleyici (tür, tarih, ağırlık, kapsam için not seçimi). `useDemo` örneğine "Vize" kaydı.
-  - `Review.tsx` (satır ~143) ve `srs` sınırı en yakın kapsayan sınava göre.
-  - `Exam.tsx`: "Hangi sınava hazırlanıyorsun?" seçimi kapsamdaki notları otomatik seçsin. `ExamReview.tsx`: `q.source` için ilgili nota "Kaynağında gör" bağlantısı (`ExamQuestion`'a `noteId`; yapay zekâ sorularında kaynağı içeren notu bul; NoteDetail'e URL'den alıntı vurgulama desteği).
-  - `Today.tsx` / `studyPlan.ts`: gerçek sınav türü ve kapsamı. **Bilinen hata:** plan başlığı en yakın sınavın dersini söylüyor ama önerilen konular başka dersten olabilir.
-  - `Courses.tsx`, `CourseDetail.tsx`: yaklaşan sınavlar ve ağırlıklar; 3'ten az not ve hiç etiket yoksa arama/etiket satırını gizle.
-  - Testler: en yakın kapsayan sınav, SRS sınırı, eski `exam_date`; uçtan uca vize+final, kapsam, provada otomatik seçim, yenilemede kalıcılık.
+**Aşama 2 — Vize/final/bütünleme: 🟡 YARIM (yalnızca `claude/dreamy-sagan-5di1al` dalında, main'e birleştirilmedi)**
+Durum: tip denetimi GEÇİYOR, 106 birim testi geçiyor; uçtan uca testler bu aşama için henüz yazılmadı/çalıştırılmadı.
+- ✅ Veri modeli: `CourseExam`, `CourseExamKind`, `StudyData.courseExams` (`src/lib/types.ts`).
+- ✅ `src/lib/courseExams.ts` + testleri: EXAM_KINDS, examName, examCountdown ("Vizeye 8 gün", "Finale 8 gün", "Vize yarın", özel ad için "Proje sunumu: 8 gün kaldı"), legacyExam, examsForCourse, examCovers, upcomingExams, nearestExamFor, examDateForCard, nextExamDate.
+- ✅ `store.tsx`: `saveCourseExams(courseId, drafts)` (eklenen/değişen upsert, silinen delete, `course.examDate` en yakın sınava eşitlenir), `deleteCourse`/`deleteNote`/`replaceAll`/`migrateLocalToCloud` courseExams'i biliyor, `reviewCard` aralığı `examDateForCard` ile (notu kapsayan en yakın sınav).
+- ✅ `backend.ts`: `courseExams` → `course_exams`, OPTIONAL_TABLES'ta, `parseData` isteğe bağlı liste.
+- ✅ `supabase/schema.sql`: `course_exams` tablosu (kolon adı `"date"`), index, RLS. Kullanıcıya verilecek SQL aşağıda.
+- ✅ `CourseForm`: sınav listesi (tür, tarih, ağırlık %, "diğer" için ad, kapsam için not seçimi), eski tarih düzenlenebilir satır olarak gelir; sınavlar değişmediyse hiçbir şey yazılmaz (`examsChanged`). `Courses.tsx` (oluştur) ve `CourseDetail.tsx` (düzenle) bağlandı.
+- **Uyumluluk kararı:** `courses.exam_date` silinmez/dönüştürülmez; sınav kaydı yoksa `legacyExam` ile sanal "Sınav" gösterilir; sınavlar kaydedilince `exam_date` en yakın sınavı tutar (tablosu olmayan hesaplar ve eski kod yolları için).
+- ⬜ Kalan:
+  - `CourseDetail.tsx`: başlıktaki tek `examLabel(course.examDate)` yerine yaklaşan sınavlar listesi (examsForCourse + examCountdown + ağırlık + kapsam sayısı; `.exam-list` CSS'i hazır); "Sınav tarihi ekle" → "Sınav ekle"; 3'ten az not ve hiç etiket yoksa "Notlarda ara / Etiket" satırını gizle.
+  - `Courses.tsx` kart chip'i ve `Today.tsx` "Yaklaşan sınavlar" → `upcomingExams` + `examCountdown`.
+  - `studyPlan.ts`: not başına `nearestExamFor` (gün sayısı ve "Vizeye 8 gün"), başlık önerilen konuların sınavından bahsetsin (bilinen hata: başka dersin sınavını söyleyebiliyor).
+  - `Review.tsx` (~satır 143): aralık önizlemesi `examDateForCard` kullanmalı.
+  - `useDemo.ts`: örnek derse `saveCourseExams` ile bir "Vize" kaydı (şu an sadece `examDate`).
+  - `Exam.tsx`: kurulumda "Hangi sınava hazırlanıyorsun?" seçimi; seçilince kapsamdaki notlar (boşsa tümü) otomatik seçilsin.
+  - `ExamReview.tsx`: `q.source` için "Kaynağında gör" bağlantısı. `ExamQuestion`'a `noteId` ekle (yerel sorularda `examFromNotes` doldurur; yapay zekâ sorularında alıntıyı içeren notu bul). NoteDetail'in kaynak vurgulamasını URL'den (ör. `?sekme=kaynak&alinti=…`) tetiklenebilir yap.
+  - Uçtan uca testler: vize+final ekle, kapsam seç, provada otomatik seçim, yenilemede kalıcılık; tüm testler + build sonra PR.
+- Kullanıcıya verilecek SQL (henüz verilmedi):
+```sql
+create table if not exists public.course_exams (
+  id uuid primary key,
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  course_id uuid not null references public.courses (id) on delete cascade,
+  kind text not null check (kind in ('vize', 'final', 'butunleme', 'quiz', 'diger')),
+  title text check (title is null or char_length(title) <= 80),
+  "date" date not null,
+  weight real check (weight is null or (weight >= 0 and weight <= 100)),
+  note_ids jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists course_exams_user_idx on public.course_exams (user_id, course_id);
+alter table public.course_exams enable row level security;
+drop policy if exists "own rows" on public.course_exams;
+create policy "own rows" on public.course_exams for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+```
 
 **Aşama 3 — Çalışma ekranı UI/UX (kullanıcı için EN ÖNEMLİSİ): ⬜ BAŞLAMADI**
 Kullanıcının şikâyeti: Not sayfası çok kalabalık ve çok yazılı; Roadmap + 5 sekme + araç butonları + sekme içi adım butonları aynı navigasyonu tekrarlıyor; kartlar sayfanın altında topluca listeleniyor; test kartlardan sonra geliyor (mantıksız); kartta çevirmeden önce ipucu yok. İstenen:

@@ -2077,3 +2077,57 @@ a.list-item:hover {
 }
 
 
+
+/* ============ Course exams form ============ */
+
+.exam-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.exam-row-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 64px 36px;
+  gap: 8px;
+  align-items: center;
+}
+
+.exam-weight {
+  text-align: center;
+}
+
+.exam-scope summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-2);
+}
+
+.exam-scope-note {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.9375rem;
+}
+
+.exam-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.exam-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.exam-list-item:last-child {
+  border-bottom: 0;
+}

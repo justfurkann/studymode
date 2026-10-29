@@ -151,8 +151,9 @@ export function CourseDetail() {
         <CourseForm
           course={course}
           onClose={() => setEditing(false)}
-          onSave={(input) => {
+          onSave={({ exams, examsChanged, ...input }) => {
             store.updateCourse(course.id, input)
+            if (examsChanged) store.saveCourseExams(course.id, exams)
             setEditing(false)
             toast('Ders güncellendi')
           }}

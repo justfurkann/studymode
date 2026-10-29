@@ -50,6 +50,7 @@ describe('buildSmartStudyPlan', () => {
       ],
       exams: [],
       studyDays: [],
+      courseExams: [],
     }
 
     const plan = buildSmartStudyPlan(data, now, 2)
