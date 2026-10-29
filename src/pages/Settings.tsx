@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Spinner, useToast } from '../components/ui'
 import { hasLocalData, parseData } from '../lib/backend'
-import { AI_MODELS, updateSettings, useSettings, type AiModel, type Theme } from '../lib/settings'
+import { PROVIDERS, updateSettings, useSettings, type AiProvider, type KeyProvider, type Theme } from '../lib/settings'
 import { migrateLocalToCloud, useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { emptyData } from '../lib/types'
@@ -78,72 +78,128 @@ function AccountSection() {
 
 function AiSection() {
   const settings = useSettings()
-  const [key, setKey] = useState(settings.apiKey)
+  const store = useStore()
   const [visible, setVisible] = useState(false)
+  const [drafts, setDrafts] = useState(settings.keys)
   const [state, setState] = useState<{ kind: 'idle' | 'testing' | 'ok' | 'error'; message?: string }>({ kind: 'idle' })
+  const provider = settings.provider
 
-  async function save() {
-    const trimmed = key.trim()
+  function choose(next: AiProvider) {
+    updateSettings({ provider: next })
+    setState({ kind: 'idle' })
+  }
+
+  async function save(target: KeyProvider) {
+    const trimmed = drafts[target].trim()
     if (!trimmed) {
-      updateSettings({ apiKey: '' })
+      updateSettings({ keys: { ...settings.keys, [target]: '' } })
       setState({ kind: 'idle' })
       return
     }
     setState({ kind: 'testing' })
     try {
-      await (await import('../lib/ai')).testApiKey(trimmed, settings.model)
-      updateSettings({ apiKey: trimmed })
+      await (await import('../lib/ai')).testApiKey(target, trimmed, settings.models[target])
+      updateSettings({ keys: { ...settings.keys, [target]: trimmed } })
       setState({ kind: 'ok', message: 'Anahtar çalışıyor ve kaydedildi.' })
     } catch (e) {
       setState({ kind: 'error', message: e instanceof Error ? e.message : 'Anahtar doğrulanamadı.' })
     }
   }
 
+  const options: Array<{ id: AiProvider; label: string }> = [
+    { id: 'shared', label: 'Ücretsiz' },
+    { id: 'anthropic', label: 'Claude' },
+    { id: 'openai', label: 'ChatGPT' },
+    { id: 'google', label: 'Gemini' },
+  ]
+
   return (
     <div className="form">
-      <p className="muted">
-        Yapay zekâ modu isteğe bağlıdır. Kendi Anthropic API anahtarını eklersen notların Claude ile işlenir; ücreti doğrudan senin Anthropic hesabından düşer
-        (orta uzunlukta bir not genellikle birkaç sent tutar). Anahtar eklemezsen uygulama ücretsiz basit modla çalışır.
-      </p>
-      <label className="field">
-        <span>Anthropic API anahtarı</span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            className="input"
-            type={visible ? 'text' : 'password'}
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            placeholder="sk-ant-…"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          <button type="button" className="btn btn-icon" style={{ minHeight: 42, width: 42 }} aria-label={visible ? 'Anahtarı gizle' : 'Anahtarı göster'} onClick={() => setVisible(!visible)}>
-            {visible ? <EyeOff size={17} /> : <Eye size={17} />}
+      <p className="muted">Yapay zekâ notlarından özet, kart, test ve sınav provası hazırlar. Hangi servisin kullanılacağını seç:</p>
+      <div className="segmented" role="group" aria-label="Yapay zekâ servisi">
+        {options.map((o) => (
+          <button key={o.id} aria-pressed={provider === o.id} onClick={() => choose(o.id)}>
+            {o.label}
           </button>
-        </div>
-      </label>
-      <label className="field">
-        <span>Model</span>
-        <select className="select" value={settings.model} onChange={(e) => updateSettings({ model: e.target.value as AiModel })}>
-          {AI_MODELS.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label} — {m.hint}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="btn-row">
-        <button className="btn btn-primary" onClick={save} disabled={state.kind === 'testing' || key.trim() === settings.apiKey}>
-          {state.kind === 'testing' ? <Spinner size={16} /> : <KeyRound size={17} />} {!key.trim() && settings.apiKey ? 'Anahtarı kaldır' : 'Doğrula ve kaydet'}
-        </button>
-        {settings.apiKey && <span className="chip chip-success">Yapay zekâ açık</span>}
+        ))}
       </div>
+
+      {provider === 'shared' ? (
+        <>
+          <p>
+            <strong>Ücretsiz yapay zekâ</strong> <span className="muted">— hiçbir şey ayarlamana gerek yok, sadece giriş yapman yeterli.</span>
+          </p>
+          {!store.session && (
+            <Alert tone="info" action={<Link to="/giris" className="btn btn-sm">Giriş yap</Link>}>
+              Ücretsiz yapay zekâ yalnızca giriş yapmış kullanıcılara açık.
+            </Alert>
+          )}
+          <p className="subtle">
+            Google Gemini’nin ücretsiz katmanını kullanır. Google ücretsiz kullanımdaki içerikleri ürünlerini geliştirmek için kullanabilir; kişisel ya da gizli bilgi içeren notları
+            yükleme. Çok kullanıldığı saatlerde kota dolabilir; o zaman biraz bekle ya da kendi anahtarını bağla.
+          </p>
+        </>
+      ) : (
+        (() => {
+          const info = PROVIDERS[provider]
+          const saved = settings.keys[provider]
+          const draft = drafts[provider]
+          return (
+            <>
+              <label className="field">
+                <span>{info.label} API anahtarı</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    className="input"
+                    type={visible ? 'text' : 'password'}
+                    value={draft}
+                    onChange={(e) => setDrafts({ ...drafts, [provider]: e.target.value })}
+                    placeholder={info.keyHint}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button type="button" className="btn btn-icon" style={{ minHeight: 42, width: 42 }} aria-label={visible ? 'Anahtarı gizle' : 'Anahtarı göster'} onClick={() => setVisible(!visible)}>
+                    {visible ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
+              </label>
+              <label className="field">
+                <span>Model</span>
+                <input
+                  className="input"
+                  list={`models-${provider}`}
+                  value={settings.models[provider]}
+                  onChange={(e) => updateSettings({ models: { ...settings.models, [provider]: e.target.value.trim() } })}
+                  spellCheck={false}
+                />
+                <datalist id={`models-${provider}`}>
+                  {info.models.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+                </datalist>
+              </label>
+              <div className="btn-row">
+                <button className="btn btn-primary" onClick={() => save(provider)} disabled={state.kind === 'testing' || draft.trim() === saved}>
+                  {state.kind === 'testing' ? <Spinner size={16} /> : <KeyRound size={17} />} {!draft.trim() && saved ? 'Anahtarı kaldır' : 'Doğrula ve kaydet'}
+                </button>
+                {saved && <span className="chip chip-success">{info.label} bağlı</span>}
+              </div>
+              <p className="subtle">
+                Anahtarı{' '}
+                <a href={info.keyUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-text)' }}>
+                  buradan
+                </a>{' '}
+                alabilirsin; ücreti doğrudan senin hesabından düşer. Anahtar yalnızca bu tarayıcıda saklanır, hesabına senkronize edilmez; notun işlenirken doğrudan servise
+                gönderilir. Ortak kullanılan bir bilgisayarda anahtar kaydetme.
+              </p>
+            </>
+          )
+        })()
+      )}
       {state.kind === 'ok' && <Alert tone="info">{state.message}</Alert>}
       {state.kind === 'error' && <Alert tone="danger">{state.message}</Alert>}
-      <p className="subtle">
-        Anahtarı <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-text)' }}>console.anthropic.com</a> adresinden
-        alabilirsin. Anahtar yalnızca bu tarayıcıda saklanır, hesabına senkronize edilmez; notun işlenirken doğrudan Anthropic’e gönderilir. Ortak kullanılan bir bilgisayarda anahtar kaydetme.
-      </p>
     </div>
   )
 }

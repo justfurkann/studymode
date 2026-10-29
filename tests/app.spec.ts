@@ -162,6 +162,7 @@ test('AI mode: key check and generation through the Claude API', async ({ page }
   })
 
   await page.goto('/ayarlar')
+  await page.getByRole('group', { name: 'Yapay zekâ servisi' }).getByRole('button', { name: 'Claude' }).click()
   await page.getByPlaceholder('sk-ant-…').fill('sk-ant-test-key')
   await page.getByRole('button', { name: 'Doğrula ve kaydet' }).click()
   await expect(page.getByText('Anahtar çalışıyor ve kaydedildi.')).toBeVisible()
@@ -192,6 +193,51 @@ test('AI mode: key check and generation through the Claude API', async ({ page }
   await page.getByRole('button', { name: 'Örnek cevabı göster' }).click()
   await expect(page.getByText('Mitokondri enerji, ribozom protein üretir.')).toBeVisible()
   expect(errors).toEqual([])
+})
+
+test('AI mode with an own Gemini key uses JSON mode and validates the reply', async ({ page }) => {
+  const errors = watchErrors(page)
+  const bodies: unknown[] = []
+  const set = {
+    summary: { overview: 'Gemini özeti.', points: ['Ribozom protein sentezler.'], keyTerms: [] },
+    cards: [{ front: 'Ribozom ne yapar?', back: 'Protein sentezler.', source: '' }],
+    questions: [{ prompt: 'Enerji hangi organelde üretilir?', options: ['Mitokondri', 'Ribozom', 'Lizozom', 'Zar'], answerIndex: 0, explanation: 'Notta yazıyor.', source: '' }],
+    practice: [],
+  }
+  await page.route('https://generativelanguage.googleapis.com/**', async (route) => {
+    const request = route.request()
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' }
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
+    if (request.method() === 'GET') return route.fulfill({ status: 200, headers: cors, json: { name: 'models/gemini-3.8-flash' } })
+    bodies.push(request.postDataJSON())
+    // First reply has the wrong shape; the app should retry once.
+    const text = bodies.length === 1 ? '{"nope":1}' : '```json\n' + JSON.stringify(set) + '\n```'
+    return route.fulfill({ status: 200, headers: cors, json: { candidates: [{ content: { parts: [{ text }] }, finishReason: 'STOP' }] } })
+  })
+
+  await page.goto('/ayarlar')
+  await page.getByRole('group', { name: 'Yapay zekâ servisi' }).getByRole('button', { name: 'Gemini' }).click()
+  await page.getByPlaceholder('AIza…').fill('AIza-test')
+  await page.getByRole('button', { name: 'Doğrula ve kaydet' }).click()
+  await expect(page.getByText('Gemini (Google) bağlı')).toBeVisible()
+
+  await createCourse(page, 'Biyoloji 105')
+  await pasteNote(page, 'Organeller (Gemini)')
+  await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
+  await expect(page.getByText('Gemini özeti.')).toBeVisible()
+  expect(bodies).toHaveLength(2)
+  const body = bodies[0] as { generationConfig: { responseMimeType: string }; systemInstruction: { parts: Array<{ text: string }> } }
+  expect(body.generationConfig.responseMimeType).toBe('application/json')
+  expect(body.systemInstruction.parts[0].text).toContain('JSON Schema')
+  expect(errors).toEqual([])
+})
+
+test('free AI asks for sign-in when logged out', async ({ page }) => {
+  await createCourse(page, 'Biyoloji 106')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  await expect(page.getByRole('button', { name: /Yapay zekâ/ })).toBeDisabled()
+  await expect(page.getByText('Ücretsiz yapay zekâ için giriş yapman gerekiyor.')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Basit mod/ })).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('theme switch and mobile navigation', async ({ page }) => {

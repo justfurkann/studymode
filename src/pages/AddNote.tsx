@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Alert, Spinner, useToast } from '../components/ui'
 import { ACCEPTED_NOTE_EXTENSIONS, extractNoteText } from '../lib/importNote'
 import { generateLocally } from '../lib/localGenerator'
-import { useSettings } from '../lib/settings'
+import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import type { GeneratedSet, Generator } from '../lib/types'
 
@@ -34,7 +34,7 @@ export function AddNote() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const courses = store.data.courses
-  const hasKey = !!settings.apiKey
+  const ai = aiAvailability(settings, !!store.session)
 
   const [courseId, setCourseId] = useState(params.get('ders') ?? courses[0]?.id ?? NEW_COURSE)
   const [newCourse, setNewCourse] = useState('')
@@ -44,7 +44,7 @@ export function AddNote() {
   const [fileName, setFileName] = useState('')
   const [reading, setReading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
-  const [mode, setMode] = useState<Generator>(hasKey ? 'ai' : 'local')
+  const [mode, setMode] = useState<Generator>(ai.ok ? 'ai' : 'local')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [savedNoteId, setSavedNoteId] = useState<string | null>(null)
@@ -109,8 +109,8 @@ export function AddNote() {
 
   async function buildSet(text: string, noteTitle: string, generator: Generator): Promise<GeneratedSet> {
     if (generator === 'local') return generateLocally(text)
-    const { generateWithAi } = await import('../lib/ai')
-    return generateWithAi(text, noteTitle, settings.apiKey, settings.model)
+    const { generateStudySet } = await import('../lib/ai')
+    return generateStudySet(text, noteTitle, settings)
   }
 
   async function generate(noteId: string, generator: Generator) {
@@ -361,13 +361,13 @@ export function AddNote() {
         <div className="field">
           <span>Nasıl hazırlansın?</span>
           <div className="choice-grid">
-            <button type="button" className="choice" aria-pressed={mode === 'ai'} onClick={() => setMode('ai')} disabled={!hasKey || busy}>
+            <button type="button" className="choice" aria-pressed={mode === 'ai'} onClick={() => setMode('ai')} disabled={!ai.ok || busy}>
               <strong>
                 <Sparkles size={17} /> Yapay zekâ
               </strong>
               <span className="subtle">
-                Her türlü notta çalışır; anlamaya yönelik sorular ve açıklamalar yazar.
-                {!hasKey && ' Ayarlardan API anahtarı eklemen gerekiyor.'}
+                {ai.label} · Her türlü notta çalışır; anlamaya yönelik sorular ve açıklamalar yazar.
+                {!ai.ok && ` ${ai.reason}`}
               </span>
             </button>
             <button type="button" className="choice" aria-pressed={mode === 'local'} onClick={() => setMode('local')} disabled={busy}>
@@ -377,12 +377,15 @@ export function AddNote() {
               <span className="subtle">Ücretsiz, notun cihazından çıkmaz. En iyi “Kavram: açıklama” biçimindeki notlarda çalışır.</span>
             </button>
           </div>
-          {!hasKey && (
+          {!ai.ok && (
             <p className="subtle">
-              <Link to="/ayarlar" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>
-                Yapay zekâyı ayarlardan açabilirsin
+              <Link to={settings.provider === 'shared' ? '/giris' : '/ayarlar'} style={{ color: 'var(--accent-text)', fontWeight: 600 }}>
+                {settings.provider === 'shared' ? 'Giriş yap' : 'Ayarlara git'}
               </Link>
             </p>
+          )}
+          {ai.ok && mode === 'ai' && settings.provider === 'shared' && (
+            <p className="subtle">Ücretsiz modda notun Google Gemini ile işlenir; Google ücretsiz kullanımdaki içerikleri ürünlerini geliştirmek için kullanabilir. Kişisel bilgi içeren notları yükleme.</p>
           )}
         </div>
 
