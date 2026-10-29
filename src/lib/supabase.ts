@@ -9,5 +9,11 @@ const DEFAULT_KEY = 'sb_publishable_un15T1jZ2JXF4Cygq-JSUQ_stzVNyYz'
 const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || DEFAULT_URL
 const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || DEFAULT_KEY
 
+/**
+ * True when the page was opened from the sign-up confirmation email.
+ * Read before the client starts, because it removes the token from the URL.
+ */
+export const openedFromConfirmationEmail = typeof window !== 'undefined' && /(^|[#&])type=signup(&|$)/.test(window.location.hash)
+
 /** Null when the app runs without a Supabase project (local-only mode). */
 export const supabase: SupabaseClient | null = url === 'off' ? null : createClient(url, key)

@@ -1,12 +1,21 @@
 import { BookOpen, Brain, House, Plus, Settings, Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { dueCards } from '../lib/format'
 import { useStore } from '../lib/store'
+import { openedFromConfirmationEmail } from '../lib/supabase'
 import { Alert } from './ui'
 
 export function Layout() {
   const { data, mode, session, saveError, clearSaveError } = useStore()
   const due = dueCards(data.cards).length
+  const [confirmed, setConfirmed] = useState(openedFromConfirmationEmail)
+
+  useEffect(() => {
+    if (!confirmed) return
+    const timer = window.setTimeout(() => setConfirmed(false), 8000)
+    return () => window.clearTimeout(timer)
+  }, [confirmed])
 
   const links = [
     { to: '/', label: 'Bugün', icon: House, end: true },
@@ -41,6 +50,11 @@ export function Layout() {
       </aside>
 
       <main className="main">
+        {confirmed && mode === 'cloud' && (
+          <div className="page" style={{ marginBottom: 20 }}>
+            <Alert tone="info">E-postan doğrulandı ve giriş yaptın. Notların artık tüm cihazlarında senkronize olacak.</Alert>
+          </div>
+        )}
         {saveError && (
           <div className="page" style={{ marginBottom: 20 }}>
             <Alert
