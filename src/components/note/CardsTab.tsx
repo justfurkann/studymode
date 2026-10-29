@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Brain, Check, Eye, Layers, ListChecks, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Brain, Check, Eye, Layers, ListChecks, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { toggleCompletedStep } from '../../lib/learningPath'
@@ -42,9 +42,11 @@ function CardEditor({ card, onSave, onClose }: { card?: Card; onSave: (front: st
 export function CardsTab({
   note,
   onGoToStep,
+  onShowSource,
 }: {
   note: Note
   onGoToStep?: (step: LearningStepId) => void
+  onShowSource?: (source: string) => void
 }) {
   const store = useStore()
   const toast = useToast()
@@ -108,7 +110,16 @@ export function CardsTab({
                 <div className="mini-card-answer">
                   <span className="guided-kicker">CEVAP</span>
                   <p className="prewrap">{currentCard.back}</p>
-                  {currentCard.source && <p className="source">“{currentCard.source}”</p>}
+                  {currentCard.source && (
+                    <div className="source-row">
+                      <p className="source">“{currentCard.source}”</p>
+                      {onShowSource && (
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => onShowSource(currentCard.source!)}>
+                          <BookOpen size={14} /> Kaynağında gör
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>

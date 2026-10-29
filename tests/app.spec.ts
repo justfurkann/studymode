@@ -780,3 +780,43 @@ test('daily card goal and study streak update on Today page after reviewing card
   expect(errors).toEqual([])
 })
 
+test('interactive explainer, source jump, dual mastery metrics, smart study plan, and mid-exam reload persistence work', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+
+  // 1. Dual metrics on NoteDetail: Çalışma ilerlemesi vs Konu hâkimiyeti
+  const metrics = page.getByRole('region', { name: 'İlerleme ve konu hâkimiyeti' }).or(page.locator('.dual-metrics'))
+  await expect(metrics).toContainText('ÇALIŞMA İLERLEMESİ')
+  await expect(metrics).toContainText('KONU HÂKİMİYETİ')
+  await expect(metrics).toContainText('Ölçülmedi')
+
+  // 2. "Bu konuyu anlamadım" interactive explainer
+  await page.getByRole('button', { name: 'Bu konuyu anlamadım' }).first().click()
+  const helper = page.getByRole('region', { name: 'Konu açıklama seçenekleri' })
+  await expect(helper).toBeVisible()
+  await helper.getByRole('button', { name: 'Daha basit anlat' }).click()
+  await expect(helper.getByRole('status')).toContainText('Kısaca ifade etmek gerekirse')
+
+  // 3. "Kaynağında gör" jumps to Kaynak tab and highlights the quote
+  await page.getByRole('tab', { name: /Test/ }).click()
+  await page.getByRole('radio').first().click()
+  await page.getByRole('button', { name: 'Kontrol et' }).click()
+  await page.getByRole('button', { name: 'Kaynağında gör' }).click()
+  await expect(page.getByRole('tab', { name: 'Kaynak' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('#kaynak-vurgu')).toBeVisible()
+
+  // 4. Navigate to course via back-link, test mid-exam sessionStorage persistence across page reload
+  await page.getByRole('link', { name: /Psikolojiye Giriş/ }).first().click()
+  await page.getByRole('link', { name: 'Sınav provası' }).click()
+  await page.getByLabel('Soru sayısı').selectOption('5')
+  await page.getByRole('button', { name: 'Sınavı başlat' }).click()
+  await page.getByRole('radiogroup', { name: 'Soru 1 seçenekleri' }).getByRole('radio').first().click()
+  await expect(page.getByText('1/5 cevaplandı')).toBeVisible()
+
+  await page.reload()
+  await expect(page.getByText('1/5 cevaplandı')).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+

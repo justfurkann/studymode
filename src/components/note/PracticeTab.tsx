@@ -96,7 +96,7 @@ function PracticeCard({ item, index, onInteracted }: { item: PracticeItem; index
             className="btn"
             onClick={() => {
               setRevealed(true)
-              onInteracted()
+              if (draft.trim().length > 0) onInteracted()
             }}
           >
             <Lightbulb size={16} /> {item.answer ? 'Örnek cevabı göster' : 'Değerlendir'}

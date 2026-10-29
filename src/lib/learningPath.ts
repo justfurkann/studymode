@@ -202,3 +202,79 @@ export function toggleCheckedTerm(summary: Summary, term: string): Summary {
     completedSteps: [...completed],
   }
 }
+
+export interface TopicMastery {
+  /** 0-100 score based on actual quiz attempts and SRS card reviews. */
+  percent: number
+  /** True once the student has completed at least 1 quiz or reviewed at least 1 card on this note. */
+  assessed: boolean
+  quizPercent: number | null
+  cardPercent: number | null
+  detail: string
+}
+
+/**
+ * Computes real topic mastery from quiz accuracy and spaced-repetition card retention,
+ * independent from whether the student clicked through the 5 study steps.
+ */
+export function computeTopicMastery(
+  note: Note,
+  allCards: Card[],
+  allAttempts: QuizAttempt[],
+): TopicMastery {
+  const noteCards = allCards.filter((c) => c.noteId === note.id)
+  const studiedCards = noteCards.filter((c) => c.reps > 0 || c.lapses > 0)
+
+  const noteAttempts = allAttempts
+    .filter((a) => a.noteId === note.id && a.total > 0)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+
+  const hasQuiz = noteAttempts.length > 0
+  const hasCardReview = studiedCards.length > 0
+
+  if (!hasQuiz && !hasCardReview) {
+    return {
+      percent: 0,
+      assessed: false,
+      quizPercent: null,
+      cardPercent: null,
+      detail: 'Test ve tekrar performansı',
+    }
+  }
+
+  let quizRatio: number | null = null
+  if (hasQuiz) {
+    const latest = noteAttempts[0]
+    const best = noteAttempts.reduce((acc, cur) => (cur.score / cur.total > acc.score / acc.total ? cur : acc), latest)
+    const latestRatio = latest.score / latest.total
+    const bestRatio = best.score / best.total
+    quizRatio = latestRatio * 0.7 + bestRatio * 0.3
+  }
+
+  let cardRatio: number | null = null
+  if (hasCardReview && noteCards.length > 0) {
+    const totalScore = noteCards.reduce((sum, card) => {
+      if (card.reps === 0 && card.lapses === 0) return sum
+      if (card.reps === 0 && card.lapses > 0) return sum + 0.2
+      if (card.interval >= 7) return sum + 1
+      return sum + 0.7
+    }, 0)
+    cardRatio = totalScore / noteCards.length
+  }
+
+  const combined =
+    quizRatio !== null && cardRatio !== null
+      ? quizRatio * 0.6 + cardRatio * 0.4
+      : quizRatio !== null
+        ? quizRatio
+        : (cardRatio ?? 0)
+
+  return {
+    percent: Math.round(combined * 100),
+    assessed: true,
+    quizPercent: quizRatio !== null ? Math.round(quizRatio * 100) : null,
+    cardPercent: cardRatio !== null ? Math.round(cardRatio * 100) : null,
+    detail: 'Test ve tekrar performansı',
+  }
+}
+

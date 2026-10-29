@@ -132,9 +132,31 @@ Rules:
 - Do NOT summarize, explain, or invent content. Only transcribe what is written in the images.
 - If an image contains no readable text at all, return {"text": ""}.`
 
+// ---------- Interactive concept explainer ("Bu konuyu anlamadım") ----------
+
+export const ExplainSchema = z.object({
+  explanation: z.string(),
+})
+
+export type ExplainMode = 'simple' | 'example' | 'step_by_step'
+
+export interface ExplainInput {
+  title: string
+  topic: string
+  context: string
+  mode: ExplainMode
+}
+
+const EXPLAIN_PROMPT = `You are a patient university tutor helping a student who clicked "I didn't understand this" on a concept or key point from their lecture notes.
+
+Write in the language of the notes (usually Turkish). Ground your explanation in the provided note context, and make it genuinely easy to grasp:
+- If mode is "simple": Explain it in plain, everyday words as if to a first-year student seeing it for the first time (3-5 short sentences, no jargon without immediate definition).
+- If mode is "example": Give a concrete, relatable real-life or practical example/analogy that illustrates how this concept works in practice.
+- If mode is "step_by_step": Break the idea down into 3-5 numbered, logical mini-steps from the most basic premise to the conclusion.`
+
 // ---------- Registry ----------
 
-const MAX_PROMPT_NOTE_CHARS = 24_000
+export const MAX_PROMPT_NOTE_CHARS = 24_000
 
 /** Keeps huge PDFs within free-tier token-per-minute limits and under serverless timeouts by sampling beginning, middle, and end. */
 function trimNoteText(text: string, budget = MAX_PROMPT_NOTE_CHARS): string {
@@ -142,6 +164,54 @@ function trimNoteText(text: string, budget = MAX_PROMPT_NOTE_CHARS): string {
   const third = Math.floor(budget / 3)
   const midStart = Math.floor((text.length - third) / 2)
   return `${text.slice(0, third).trim()}\n\n[…]\n\n${text.slice(midStart, midStart + third).trim()}\n\n[…]\n\n${text.slice(text.length - third).trim()}`
+}
+
+/**
+ * Splits a long lecture note into meaningful chunks on paragraph/section boundaries
+ * so every part of a long note is analyzed without losing middle sections.
+ */
+export function splitNoteIntoChunks(text: string, maxChars = 20_000): string[] {
+  const cleaned = text.trim()
+  if (!cleaned) return []
+  if (cleaned.length <= maxChars) return [cleaned]
+
+  const paragraphs = cleaned.split(/\n{2,}/)
+  const chunks: string[] = []
+  let current = ''
+
+  const pushPart = (part: string) => {
+    const trimmed = part.trim()
+    if (!trimmed) return
+    if (!current) {
+      current = trimmed
+      return
+    }
+    if (current.length + 2 + trimmed.length <= maxChars) {
+      current = `${current}\n\n${trimmed}`
+    } else {
+      chunks.push(current)
+      current = trimmed
+    }
+  }
+
+  for (const para of paragraphs) {
+    if (para.length <= maxChars) {
+      pushPart(para)
+    } else {
+      const lines = para.split('\n')
+      for (const line of lines) {
+        if (line.length <= maxChars) {
+          pushPart(line)
+        } else {
+          for (let i = 0; i < line.length; i += maxChars) {
+            pushPart(line.slice(i, i + maxChars))
+          }
+        }
+      }
+    }
+  }
+  if (current) chunks.push(current)
+  return chunks
 }
 
 export const TASKS = {
@@ -186,6 +256,17 @@ export const TASKS = {
         ...images.map((img, i) => `<image index="${i + 1}" mime="${img.mimeType}">${img.data}</image>`),
       ].join('\n')
     },
+  },
+  explain: {
+    schema: ExplainSchema,
+    system: EXPLAIN_PROMPT,
+    user: (input: ExplainInput) =>
+      [
+        `<note_title>${input.title}</note_title>`,
+        `<mode>${input.mode}</mode>`,
+        `<target_concept>${input.topic}</target_concept>`,
+        `<note_context>\n${trimNoteText(input.context, 8_000)}\n</note_context>`,
+      ].join('\n'),
   },
 }
 

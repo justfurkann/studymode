@@ -1,10 +1,119 @@
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, ChevronUp, Compass, Copy, Download, Layers, Pencil, Printer, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, ChevronUp, Compass, Copy, Download, HelpCircle, Layers, Pencil, Printer, Sparkles } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { type ExplainMode } from '../../lib/ai'
 import { toggleCheckedTerm, toggleCompletedStep } from '../../lib/learningPath'
 import { downloadText, summaryMarkdown } from '../../lib/noteTools'
+import { aiAvailability, useSettings } from '../../lib/settings'
 import { useStore } from '../../lib/store'
 import type { LearningStepId, Note } from '../../lib/types'
-import { Alert, Modal, useToast } from '../ui'
+import { Alert, Modal, Spinner, useToast } from '../ui'
+
+const EXPLAIN_MODES: Array<{ mode: ExplainMode; label: string }> = [
+  { mode: 'simple', label: 'Daha basit anlat' },
+  { mode: 'example', label: 'Günlük hayattan örnek ver' },
+  { mode: 'step_by_step', label: 'Bana adım adım öğret' },
+]
+
+function ConceptExplainer({
+  note,
+  topic,
+  compact = false,
+}: {
+  note: Note
+  topic: string
+  compact?: boolean
+}) {
+  const store = useStore()
+  const settings = useSettings()
+  const ai = aiAvailability(settings, !!store.session)
+  const [open, setOpen] = useState(false)
+  const [activeMode, setActiveMode] = useState<ExplainMode | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [reply, setReply] = useState('')
+
+  async function ask(mode: ExplainMode) {
+    setActiveMode(mode)
+    setBusy(true)
+    try {
+      const { explainConcept, localExplainConcept } = await import('../../lib/ai')
+      if (ai.ok) {
+        try {
+          const text = await explainConcept(
+            { title: note.title, topic, context: note.content, mode },
+            settings,
+          )
+          setReply(text)
+          return
+        } catch {
+          // Fall back to local explanation if network/quota fails
+        }
+      }
+      setReply(localExplainConcept({ title: note.title, topic, context: note.content, mode }))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className={`btn btn-ghost btn-sm ${compact ? 'explain-trigger-compact' : ''}`}
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen(true)
+        }}
+      >
+        <HelpCircle size={14} /> Bu konuyu anlamadım
+      </button>
+    )
+  }
+
+  return (
+    <div
+      className="explain-helper"
+      onClick={(e) => e.stopPropagation()}
+      role="region"
+      aria-label="Konu açıklama seçenekleri"
+    >
+      <div className="explain-helper-head">
+        <span className="subtle" style={{ fontWeight: 600 }}>
+          Nasıl açıklamamı istersin?
+        </span>
+        <div className="btn-row" style={{ gap: 6 }}>
+          {EXPLAIN_MODES.map((opt) => (
+            <button
+              key={opt.mode}
+              type="button"
+              className={`btn btn-sm ${activeMode === opt.mode ? 'btn-primary' : ''}`}
+              disabled={busy}
+              onClick={() => ask(opt.mode)}
+            >
+              {busy && activeMode === opt.mode ? <Spinner size={13} /> : null}
+              {opt.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setOpen(false)
+              setReply('')
+              setActiveMode(null)
+            }}
+          >
+            Kapat
+          </button>
+        </div>
+      </div>
+      {reply && (
+        <div className="explain-helper-reply prewrap" role="status">
+          {reply}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function SummaryEditor({ note, onClose }: { note: Note; onClose: () => void }) {
   const store = useStore()
@@ -197,27 +306,29 @@ export function SummaryTab({
                   {summary.keyTerms.map((term, i) => {
                     const isChecked = checkedTerms.has(term.term)
                     return (
-                      <button
-                        key={i}
-                        type="button"
-                        className={`term-check-card ${isChecked ? 'checked' : ''}`}
-                        onClick={() => handleCheckTerm(term.term)}
-                        aria-pressed={isChecked}
-                      >
-                        <div className="term-check-top">
-                          <strong>{term.term}</strong>
-                          <span className="term-check-badge">
-                            {isChecked ? (
-                              <>
-                                <Check size={13} /> Anladım
-                              </>
-                            ) : (
-                              'Anladım işaretle'
-                            )}
-                          </span>
-                        </div>
-                        <p>{term.definition}</p>
-                      </button>
+                      <div key={i} className={`term-check-card ${isChecked ? 'checked' : ''}`}>
+                        <button
+                          type="button"
+                          className="term-check-hit"
+                          onClick={() => handleCheckTerm(term.term)}
+                          aria-pressed={isChecked}
+                        >
+                          <div className="term-check-top">
+                            <strong>{term.term}</strong>
+                            <span className="term-check-badge">
+                              {isChecked ? (
+                                <>
+                                  <Check size={13} /> Anladım
+                                </>
+                              ) : (
+                                'Anladım işaretle'
+                              )}
+                            </span>
+                          </div>
+                          <p>{term.definition}</p>
+                        </button>
+                        <ConceptExplainer note={note} topic={`${term.term}: ${term.definition}`} compact />
+                      </div>
                     )
                   })}
                 </div>
@@ -266,9 +377,12 @@ export function SummaryTab({
                   <div style={{ width: `${((safePointIndex + 1) / totalPoints) * 100}%` }} />
                 </div>
 
-                <div className="point-focus-card">
-                  <span className="point-focus-num">{safePointIndex + 1}</span>
-                  <p className="point-focus-text">{summary.points[safePointIndex]}</p>
+                <div className="point-focus-card" style={{ flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                    <span className="point-focus-num">{safePointIndex + 1}</span>
+                    <p className="point-focus-text">{summary.points[safePointIndex]}</p>
+                  </div>
+                  <ConceptExplainer key={safePointIndex} note={note} topic={summary.points[safePointIndex]} />
                 </div>
 
                 <div className="btn-row" style={{ justifyContent: 'space-between' }}>

@@ -1,4 +1,4 @@
-import { ArrowRight, Brain, CalendarClock, Compass, FileText, Target } from 'lucide-react'
+import { ArrowRight, Brain, CalendarClock, Compass, FileText, Sparkles, Target } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Welcome } from '../components/Welcome'
 import { firstName } from '../lib/auth'
@@ -9,6 +9,7 @@ import { daysUntil } from '../lib/srs'
 import { useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import { computeStreakSummary } from '../lib/streak'
+import { buildSmartStudyPlan } from '../lib/studyPlan'
 import type { LearningStepId, Note } from '../lib/types'
 
 function stepUrl(note: Note, stepId: LearningStepId): string {
@@ -31,6 +32,7 @@ export function Today() {
   if (!data.courses.length) return <Welcome onDemo={loadDemo} />
 
   const streakSummary = computeStreakSummary(data.studyDays, settings.dailyGoal, now)
+  const smartPlan = buildSmartStudyPlan(data, now, 2)
 
   const exams = data.courses
     .map((course) => ({ course, days: daysUntil(course.examDate, now), stats: courseStats(data, course, now) }))
@@ -142,6 +144,33 @@ export function Today() {
         </div>
       </section>
 
+      {(exams.length > 0 || data.attempts.length > 0 || data.notes.length > 1) && smartPlan.items.length > 0 && (
+        <section className="section" aria-label="Akıllı çalışma planı">
+          <div className="section-head">
+            <div>
+              <h2>{smartPlan.headline}</h2>
+              <span className="subtle">{smartPlan.subheadline}</span>
+            </div>
+          </div>
+          <div className="panel panel-tight list">
+            {smartPlan.items.map((item, idx) => (
+              <Link key={item.note.id} to={item.targetUrl} className="list-item" aria-label={`${idx + 1}. ${item.note.title} — ${item.actionLabel}`}>
+                <Sparkles size={18} style={{ color: item.course?.color ?? 'var(--accent)' }} />
+                <div className="grow">
+                  <div className="title">
+                    {idx + 1}. {item.note.title}
+                  </div>
+                  <div className="subtle">
+                    {item.course?.name} · {item.reason}
+                  </div>
+                </div>
+                <span className="chip chip-accent">{item.actionLabel}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {inProgressNotes.length > 0 && (
         <section className="section">
           <div className="section-head">
@@ -153,7 +182,7 @@ export function Today() {
               const course = courseOf(note.courseId)
               const target = stepUrl(note, progress.currentStep.id)
               return (
-                <Link key={note.id} to={target} className="list-item">
+                <Link key={note.id} to={target} className="list-item" aria-label={`${note.title} — ${progress.currentStep.stepNumber}. Adım`}>
                   <Compass size={18} style={{ color: course?.color ?? 'var(--accent)' }} />
                   <div className="grow">
                     <div className="title">{note.title}</div>
@@ -199,7 +228,7 @@ export function Today() {
           <h2>Tekrar çalışman gereken konular</h2>
           <div className="panel panel-tight list">
             {weak.map(({ attempt, note }) => (
-              <Link key={attempt.id} to={`/not/${note!.id}?sekme=test`} className="list-item">
+              <Link key={attempt.id} to={`/not/${note!.id}?sekme=test`} className="list-item" aria-label={note!.title}>
                 <Target size={18} style={{ color: 'var(--warning)' }} />
                 <div className="grow">
                   <div className="title">{note!.title}</div>
@@ -227,7 +256,7 @@ export function Today() {
               const course = courseOf(note.courseId)
               const progress = note.generator ? computeNoteProgress(note, data.cards, data.attempts) : null
               return (
-                <Link key={note.id} to={`/not/${note.id}`} className="list-item">
+                <Link key={note.id} to={`/not/${note.id}`} className="list-item" aria-label={note.title}>
                   <FileText size={18} style={{ color: course?.color }} />
                   <div className="grow">
                     <div className="title">{note.title}</div>

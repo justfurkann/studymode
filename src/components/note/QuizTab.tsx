@@ -1,4 +1,4 @@
-import { ArrowRight, Check, ListChecks, PenLine, RotateCcw, X } from 'lucide-react'
+import { ArrowRight, BookOpen, Check, ListChecks, PenLine, RotateCcw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toggleCompletedStep } from '../../lib/learningPath'
 import { useStore } from '../../lib/store'
@@ -11,10 +11,12 @@ export function QuizTab({
   note,
   active = true,
   onGoToStep,
+  onShowSource,
 }: {
   note: Note
   active?: boolean
   onGoToStep?: (step: LearningStepId) => void
+  onShowSource?: (source: string) => void
 }) {
   const store = useStore()
   const toast = useToast()
@@ -156,6 +158,16 @@ export function QuizTab({
                   <Check size={18} /> {q.options[q.answerIndex]}
                 </p>
                 {q.explanation && <p className="muted">{q.explanation}</p>}
+                {q.source && (
+                  <div className="source-row">
+                    <p className="source">“{q.source}”</p>
+                    {onShowSource && (
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => onShowSource(q.source!)}>
+                        <BookOpen size={14} /> Kaynağında gör
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </section>
@@ -209,7 +221,16 @@ export function QuizTab({
             {selected === correct ? 'Doğru!' : `Yanlış — doğru cevap ${LETTERS[correct]}.`}
           </strong>
           {question.explanation && <p>{question.explanation}</p>}
-          {question.source && <p className="source">“{question.source}”</p>}
+          {question.source && (
+            <div className="source-row">
+              <p className="source">“{question.source}”</p>
+              {onShowSource && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => onShowSource(question.source!)}>
+                  <BookOpen size={14} /> Kaynağında gör
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

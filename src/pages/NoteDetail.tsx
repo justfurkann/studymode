@@ -1,5 +1,5 @@
-import { ArrowLeft, ArrowRight, BookText, Check, FileText, Layers, ListChecks, PenLine, RefreshCw, Sparkles, Trash2, Wand2 } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft, ArrowRight, BookText, Check, FileText, Layers, ListChecks, PenLine, RefreshCw, Sparkles, Trash2, Wand2, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { NoteEditor } from '../components/NoteEditor'
 import { AiSignupPrompt } from '../components/AiSignupPrompt'
@@ -9,7 +9,7 @@ import { QuizTab } from '../components/note/QuizTab'
 import { SummaryTab } from '../components/note/SummaryTab'
 import { Alert, Empty, Modal, Spinner, useConfirm, useToast } from '../components/ui'
 import { readingMinutes, relativeDate, wordCount } from '../lib/format'
-import { computeNoteProgress } from '../lib/learningPath'
+import { computeNoteProgress, computeTopicMastery } from '../lib/learningPath'
 import { generateLocally } from '../lib/localGenerator'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
@@ -25,24 +25,61 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id']
 
+function findSourceMatch(content: string, excerpt: string): { start: number; end: number; sectionLabel: string | null } | null {
+  const cleanExcerpt = excerpt.trim()
+  if (!cleanExcerpt) return null
+
+  const lowerContent = content.toLocaleLowerCase('tr-TR')
+  const lowerExcerpt = cleanExcerpt.toLocaleLowerCase('tr-TR')
+  let start = lowerContent.indexOf(lowerExcerpt)
+  let end = start >= 0 ? start + cleanExcerpt.length : -1
+
+  if (start < 0) {
+    // Try matching a shorter prefix/core slice if the quote was slightly trimmed
+    const probe = lowerExcerpt.slice(0, Math.min(48, lowerExcerpt.length)).trim()
+    if (probe.length >= 12) {
+      start = lowerContent.indexOf(probe)
+      if (start >= 0) {
+        end = Math.min(content.length, start + cleanExcerpt.length)
+      }
+    }
+  }
+
+  if (start < 0) return null
+
+  const before = content.slice(0, start)
+  const matches = [...before.matchAll(/(?:^|\n)\s*((?:Slayt|Sayfa|Bölüm|Hafta)\s+\d+[^\n]*)/gi)]
+  const sectionLabel = matches.length > 0 ? matches[matches.length - 1][1].trim() : null
+
+  return { start, end, sectionLabel }
+}
+
 function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => void; onClose?: () => void }) {
   const store = useStore()
   const settings = useSettings()
   const ai = aiAvailability(settings, !!store.session)
   const [busy, setBusy] = useState<Generator | null>(null)
+  const [chunkStatus, setChunkStatus] = useState('')
   const [error, setError] = useState('')
 
   async function run(generator: Generator) {
     setBusy(generator)
+    setChunkStatus('')
     setError('')
     try {
-      const set = generator === 'ai' ? await (await import('../lib/ai')).generateStudySet(note.content, note.title, settings) : generateLocally(note.content)
+      const set =
+        generator === 'ai'
+          ? await (await import('../lib/ai')).generateStudySet(note.content, note.title, settings, (done, total) => {
+              if (total > 1) setChunkStatus(`Uzun not bölümlere ayrıldı: ${done}/${total} bölüm işlendi…`)
+            })
+          : generateLocally(note.content)
       store.applyGenerated(note.id, set, generator)
       onDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Çalışma seti oluşturulamadı.')
     } finally {
       setBusy(null)
+      setChunkStatus('')
     }
   }
 
@@ -54,7 +91,13 @@ function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => v
       <div className="choice-grid">
         <button className="choice" onClick={() => run('ai')} disabled={!ai.ok || !!busy}>
           <strong>{busy === 'ai' ? <Spinner size={17} /> : <Sparkles size={17} />} Yapay zekâ</strong>
-          <span className="subtle">{ai.ok ? (busy === 'ai' ? 'Notun okunuyor, 1 dk kadar sürebilir…' : `${ai.label} · Daha iyi özet ve sorular.`) : ai.reason}</span>
+          <span className="subtle">
+            {ai.ok
+              ? busy === 'ai'
+                ? chunkStatus || 'Notun okunuyor, 1 dk kadar sürebilir…'
+                : `${ai.label} · Daha iyi özet ve sorular.`
+              : ai.reason}
+          </span>
         </button>
         <button className="choice" onClick={() => run('local')} disabled={!!busy}>
           <strong>
@@ -85,9 +128,17 @@ export function NoteDetail() {
   const [editing, setEditing] = useState(false)
   const [confirm, confirmation] = useConfirm()
   const [regenerating, setRegenerating] = useState(false)
+  const [highlightedSource, setHighlightedSource] = useState<string | null>(null)
+  const highlightRef = useRef<HTMLElement | null>(null)
   const note = store.data.notes.find((n) => n.id === id)
   const requested = params.get('sekme') as TabId | null
   const tab: TabId = TABS.some((t) => t.id === requested) ? requested! : 'ozet'
+
+  useEffect(() => {
+    if (tab === 'kaynak' && highlightedSource && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [tab, highlightedSource])
 
   if (!note) {
     return (
@@ -105,6 +156,7 @@ export function NoteDetail() {
   const cardCount = store.data.cards.filter((c) => c.noteId === note.id).length
   const counts: Partial<Record<TabId, number>> = { kartlar: cardCount, test: note.questions.length, uygula: note.practice.length }
   const progress = computeNoteProgress(note, store.data.cards, store.data.attempts)
+  const mastery = computeTopicMastery(note, store.data.cards, store.data.attempts)
 
   const requestedStep = params.get('adim') as LearningStepId | null
   const summaryStep: 'tanis' | 'anla' =
@@ -140,12 +192,19 @@ export function NoteDetail() {
     window.scrollTo(0, 0)
   }
 
+  function showSourceInNote(excerpt: string) {
+    setHighlightedSource(excerpt)
+    setParams({ sekme: 'kaynak' }, { replace: true })
+  }
+
   async function remove() {
     if (!note || !await confirm(`“${note.title}” notu ve kartları silinsin mi?`)) return
     store.deleteNote(note.id)
     toast('Not silindi')
     navigate(course ? `/ders/${course.id}` : '/dersler')
   }
+
+  const sourceMatch = tab === 'kaynak' && highlightedSource ? findSourceMatch(note.content, highlightedSource) : null
 
   return (
     <div className="page">
@@ -226,6 +285,27 @@ export function NoteDetail() {
               )}
             </div>
 
+            <div className="dual-metrics" aria-label="İlerleme ve konu hâkimiyeti">
+              <div className="metric-card">
+                <div className="metric-card-top">
+                  <span className="guided-kicker">ÇALIŞMA İLERLEMESİ</span>
+                  <strong>%{progress.percent}</strong>
+                </div>
+                <span className="subtle">
+                  {progress.completedCount}/{progress.totalSteps} adım tamamlandı
+                </span>
+              </div>
+              <div className="metric-card">
+                <div className="metric-card-top">
+                  <span className="guided-kicker">KONU HÂKİMİYETİ</span>
+                  <strong style={{ color: mastery.assessed ? (mastery.percent >= 70 ? 'var(--success)' : 'var(--warning)') : 'var(--text-2)' }}>
+                    {mastery.assessed ? `%${mastery.percent}` : 'Ölçülmedi'}
+                  </strong>
+                </div>
+                <span className="subtle">{mastery.detail}</span>
+              </div>
+            </div>
+
             <div className="roadmap-steps" role="group" aria-label="Öğrenme adımları">
               {progress.steps.map((step) => {
                 const isCurrentView = activeStepId === step.id
@@ -265,17 +345,39 @@ export function NoteDetail() {
 
           <div role="tabpanel">
             {tab === 'ozet' && <SummaryTab note={note} activeStep={summaryStep} onGoToStep={goToStep} />}
-            {tab === 'kartlar' && <CardsTab note={note} onGoToStep={goToStep} />}
+            {tab === 'kartlar' && <CardsTab note={note} onGoToStep={goToStep} onShowSource={showSourceInNote} />}
             <div hidden={tab !== 'test'}>
-              <QuizTab key={JSON.stringify(note.questions)} note={note} active={tab === 'test'} onGoToStep={goToStep} />
+              <QuizTab key={JSON.stringify(note.questions)} note={note} active={tab === 'test'} onGoToStep={goToStep} onShowSource={showSourceInNote} />
             </div>
             <div hidden={tab !== 'uygula'}>
               <PracticeTab key={JSON.stringify(note.practice)} note={note} />
             </div>
             {tab === 'kaynak' && (
-              <div className="panel">
+              <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {highlightedSource && (
+                  <div className="source-banner" role="status">
+                    <div className="btn-row">
+                      <strong>Sorunun geçtiği bölüm</strong>
+                      {sourceMatch?.sectionLabel && <span className="chip chip-accent">{sourceMatch.sectionLabel}</span>}
+                      {!sourceMatch && <span className="subtle">Alıntı metinde tam eşleşmedi: “{highlightedSource}”</span>}
+                    </div>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setHighlightedSource(null)}>
+                      <X size={14} /> Vurguyu kaldır
+                    </button>
+                  </div>
+                )}
                 <p className="prewrap" style={{ lineHeight: 1.7 }}>
-                  {note.content}
+                  {sourceMatch ? (
+                    <>
+                      {note.content.slice(0, sourceMatch.start)}
+                      <mark id="kaynak-vurgu" ref={highlightRef} className="source-highlight">
+                        {note.content.slice(sourceMatch.start, sourceMatch.end)}
+                      </mark>
+                      {note.content.slice(sourceMatch.end)}
+                    </>
+                  ) : (
+                    note.content
+                  )}
                 </p>
               </div>
             )}
@@ -309,3 +411,4 @@ export function NoteDetail() {
     </div>
   )
 }
+

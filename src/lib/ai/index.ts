@@ -7,10 +7,14 @@ import type { GeneratedSet } from '../types'
 import { callGeminiWithFallback, GeminiError } from './gemini'
 import {
   jsonModeSystem,
+  MAX_PROMPT_NOTE_CHARS,
   parseTaskOutput,
+  splitNoteIntoChunks,
   TASKS,
   TRANSCRIBE_USER_TEXT,
   userPrompt,
+  type ExplainInput,
+  type ExplainMode,
   type ExamInput,
   type GradeInput,
   type TaskInput,
@@ -20,7 +24,18 @@ import {
   type TranscribeInput,
 } from './tasks'
 
-export type { ExamDifficulty, ExamFormat, ExamInput, GradeInput, ImageMimeType, TranscribeImage, TranscribeInput } from './tasks'
+export { MAX_PROMPT_NOTE_CHARS, splitNoteIntoChunks } from './tasks'
+export type {
+  ExamDifficulty,
+  ExamFormat,
+  ExamInput,
+  ExplainInput,
+  ExplainMode,
+  GradeInput,
+  ImageMimeType,
+  TranscribeImage,
+  TranscribeInput,
+} from './tasks'
 export type RawStudySet = TaskOutput<'study'>
 export type RawExam = TaskOutput<'exam'>
 
@@ -201,8 +216,110 @@ export async function runTask<T extends TaskName>(task: T, input: TaskInput<T>, 
 
 // ---------- Public helpers ----------
 
-export async function generateStudySet(text: string, title: string, settings: Settings): Promise<GeneratedSet> {
-  return normalizeStudySet(await runTask('study', { text, title }, settings))
+export async function generateStudySet(
+  text: string,
+  title: string,
+  settings: Settings,
+  onProgress?: (done: number, total: number) => void,
+): Promise<GeneratedSet> {
+  const chunks = splitNoteIntoChunks(text)
+  if (chunks.length <= 1) {
+    onProgress?.(0, 1)
+    const result = normalizeStudySet(await runTask('study', { text, title }, settings))
+    onProgress?.(1, 1)
+    return result
+  }
+
+  const sets: GeneratedSet[] = []
+  for (let i = 0; i < chunks.length; i += 1) {
+    onProgress?.(i, chunks.length)
+    const chunkTitle = `${title} (Bölüm ${i + 1}/${chunks.length})`
+    const raw = await runTask('study', { text: chunks[i], title: chunkTitle }, settings)
+    try {
+      sets.push(normalizeStudySet(raw))
+    } catch {
+      // Skip an individual thin chunk if other chunks succeeded
+    }
+  }
+  onProgress?.(chunks.length, chunks.length)
+  if (!sets.length) {
+    throw new AiError('Bu nottan çalışma seti çıkarılamadı. Notun yeterince açıklayıcı metin içerdiğinden emin ol.')
+  }
+  return mergeStudySets(sets)
+}
+
+export function mergeStudySets(sets: GeneratedSet[]): GeneratedSet {
+  if (sets.length === 1) return sets[0]
+
+  const overviews = sets.map((s) => s.summary.overview.trim()).filter(Boolean)
+  const overview = overviews.join(' ')
+
+  const seenPoints = new Set<string>()
+  const points: string[] = []
+  for (const s of sets) {
+    for (const p of s.summary.points) {
+      const key = p.toLocaleLowerCase('tr-TR')
+      if (!seenPoints.has(key)) {
+        seenPoints.add(key)
+        points.push(p)
+      }
+    }
+  }
+
+  const seenTerms = new Set<string>()
+  const keyTerms: GeneratedSet['summary']['keyTerms'] = []
+  for (const s of sets) {
+    for (const t of s.summary.keyTerms) {
+      const key = t.term.toLocaleLowerCase('tr-TR')
+      if (!seenTerms.has(key)) {
+        seenTerms.add(key)
+        keyTerms.push(t)
+      }
+    }
+  }
+
+  const seenCards = new Set<string>()
+  const cards: GeneratedSet['cards'] = []
+  for (const s of sets) {
+    for (const c of s.cards) {
+      const key = c.front.toLocaleLowerCase('tr-TR')
+      if (!seenCards.has(key)) {
+        seenCards.add(key)
+        cards.push(c)
+      }
+    }
+  }
+
+  const seenQuestions = new Set<string>()
+  const questions: GeneratedSet['questions'] = []
+  for (const s of sets) {
+    for (const q of s.questions) {
+      const key = q.prompt.toLocaleLowerCase('tr-TR')
+      if (!seenQuestions.has(key)) {
+        seenQuestions.add(key)
+        questions.push(q)
+      }
+    }
+  }
+
+  const seenPractice = new Set<string>()
+  const practice: GeneratedSet['practice'] = []
+  for (const s of sets) {
+    for (const p of s.practice) {
+      const key = p.question.toLocaleLowerCase('tr-TR')
+      if (!seenPractice.has(key)) {
+        seenPractice.add(key)
+        practice.push(p)
+      }
+    }
+  }
+
+  return {
+    summary: { overview, points, keyTerms },
+    cards,
+    questions,
+    practice,
+  }
 }
 
 export async function generateExam(input: ExamInput, settings: Settings): Promise<RawExam> {
@@ -219,6 +336,43 @@ export async function transcribeImages(images: TranscribeImage[], settings: Sett
   if (!images.length) return ''
   const { text } = await runTask('transcribe', { images }, settings)
   return text.trim()
+}
+
+export async function explainConcept(input: ExplainInput, settings: Settings): Promise<string> {
+  const { explanation } = await runTask('explain', input, settings)
+  return explanation.trim()
+}
+
+/** Local fallback explanation when AI is not configured or unavailable. */
+export function localExplainConcept(input: ExplainInput): string {
+  const cleanTopic = input.topic.replace(/\s+/g, ' ').trim()
+  const sentences = input.context
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 20)
+
+  const topicWords = cleanTopic
+    .toLocaleLowerCase('tr-TR')
+    .split(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ]+/)
+    .filter((w) => w.length >= 4)
+
+  const related = sentences
+    .filter((s) => {
+      const lower = s.toLocaleLowerCase('tr-TR')
+      return topicWords.some((w) => lower.includes(w))
+    })
+    .slice(0, 3)
+
+  const supporting = related.length ? related.join(' ') : sentences.slice(0, 2).join(' ')
+
+  if (input.mode === 'simple') {
+    return `Kısaca ifade etmek gerekirse: ${cleanTopic}\n\nNotundaki karşılığı: ${supporting || cleanTopic}`
+  }
+  if (input.mode === 'example') {
+    return `Bu kavramı somutlaştırmak için notundaki şu bağlama dikkat et: ${supporting || cleanTopic}\n\nSınavda karşına çıktığında bu maddenin temel amacını ve hangi sorunu çözdüğünü düşünerek örnekleyebilirsin.`
+  }
+  const steps = (related.length ? related : [cleanTopic, ...sentences.slice(0, 2)]).slice(0, 3)
+  return steps.map((s, idx) => `${idx + 1}. Adım: ${s}`).join('\n')
 }
 
 /** Checks a student's own key with the cheapest call each provider offers. */

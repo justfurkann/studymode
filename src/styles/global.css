@@ -1964,3 +1964,116 @@ a.list-item:hover {
   }
 }
 
+/* ============ Dual Progress & Mastery Metrics ============ */
+
+.dual-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.metric-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.metric-card-top strong {
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .dual-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============ Interactive Concept Explainer & Source Highlight ============ */
+
+.term-check-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.explain-trigger-compact {
+  align-self: flex-start;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  padding: 4px 8px;
+}
+
+.explain-helper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.explain-helper-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.explain-helper-reply {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.source-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  flex-wrap: wrap;
+}
+
+.source-highlight {
+  background: color-mix(in srgb, var(--warning) 35%, transparent);
+  color: var(--text);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+

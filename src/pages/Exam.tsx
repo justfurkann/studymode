@@ -34,6 +34,49 @@ function formatTime(seconds: number) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+interface ActiveExamDraft {
+  questions: ExamQuestion[]
+  answers: Answer[]
+  endsAt: number | null
+  minutes: number
+  startedAt: number
+  examSource: 'ai' | 'local'
+  format: ExamFormat
+  difficulty: ExamDifficulty
+  useAi: boolean
+  noteIds: string[]
+}
+
+function examStorageKey(courseId: string) {
+  return `studymode.exam.active.${courseId}`
+}
+
+function loadActiveExam(courseId?: string): ActiveExamDraft | null {
+  if (!courseId) return null
+  try {
+    const raw = sessionStorage.getItem(examStorageKey(courseId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as ActiveExamDraft
+    if (!Array.isArray(parsed.questions) || !parsed.questions.length || !Array.isArray(parsed.answers)) return null
+    if (parsed.endsAt && parsed.endsAt <= Date.now()) {
+      sessionStorage.removeItem(examStorageKey(courseId))
+      return null
+    }
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function clearActiveExam(courseId?: string) {
+  if (!courseId) return
+  try {
+    sessionStorage.removeItem(examStorageKey(courseId))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export function Exam() {
   const { id } = useParams()
   const store = useStore()
@@ -44,29 +87,58 @@ export function Exam() {
   const course = store.data.courses.find((c) => c.id === id)
   const notes = useMemo(() => store.data.notes.filter((n) => n.courseId === id), [store.data.notes, id])
 
-  const [phase, setPhase] = useState<Phase>('setup')
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(notes.map((n) => n.id)))
-  const [useAi, setUseAi] = useState(ai.ok)
-  const [format, setFormat] = useState<ExamFormat>('test')
+  const initialDraft = useMemo(() => loadActiveExam(id), [id])
+
+  const [phase, setPhase] = useState<Phase>(() => (initialDraft ? 'running' : 'setup'))
+  const [selected, setSelected] = useState<Set<string>>(() =>
+    new Set(initialDraft?.noteIds?.length ? initialDraft.noteIds : notes.map((n) => n.id)),
+  )
+  const [useAi, setUseAi] = useState(() => initialDraft?.useAi ?? ai.ok)
+  const [format, setFormat] = useState<ExamFormat>(() => initialDraft?.format ?? 'test')
   const [count, setCount] = useState(10)
-  const [minutes, setMinutes] = useState(30)
-  const [difficulty, setDifficulty] = useState<ExamDifficulty>('medium')
+  const [minutes, setMinutes] = useState(() => initialDraft?.minutes ?? 30)
+  const [difficulty, setDifficulty] = useState<ExamDifficulty>(() => initialDraft?.difficulty ?? 'medium')
   const [pastQuestions, setPastQuestions] = useState('')
   const [error, setError] = useState('')
 
-  const [questions, setQuestions] = useState<ExamQuestion[]>([])
-  const [answers, setAnswers] = useState<Answer[]>([])
-  const [secondsLeft, setSecondsLeft] = useState(0)
+  const [questions, setQuestions] = useState<ExamQuestion[]>(() => initialDraft?.questions ?? [])
+  const [answers, setAnswers] = useState<Answer[]>(() => initialDraft?.answers ?? [])
+  const [endsAt, setEndsAt] = useState<number | null>(() => initialDraft?.endsAt ?? null)
+  const [secondsLeft, setSecondsLeft] = useState(() =>
+    initialDraft?.endsAt ? Math.max(0, Math.ceil((initialDraft.endsAt - Date.now()) / 1000)) : 0,
+  )
   const [result, setResult] = useState<ExamResult | null>(null)
   const [converted, setConverted] = useState(false)
   const [savedId, setSavedId] = useState<string | null>(null)
   const submitted = useRef(false)
-  const startedAt = useRef(0)
-  const examSource = useRef<'ai' | 'local'>('local')
+  const startedAt = useRef(initialDraft?.startedAt ?? 0)
+  const examSource = useRef<'ai' | 'local'>(initialDraft?.examSource ?? 'local')
 
   const chosen = notes.filter((n) => selected.has(n.id))
   const chosenChars = chosen.reduce((sum, n) => sum + n.content.length, 0)
   const effectiveFormat: ExamFormat = useAi ? format : 'test'
+
+  // Persist running exam state in sessionStorage so accidental page reload does not lose answers.
+  useEffect(() => {
+    if (!id || phase !== 'running' || !questions.length) return
+    try {
+      const draft: ActiveExamDraft = {
+        questions,
+        answers,
+        endsAt,
+        minutes,
+        startedAt: startedAt.current,
+        examSource: examSource.current,
+        format,
+        difficulty,
+        useAi,
+        noteIds: [...selected],
+      }
+      sessionStorage.setItem(examStorageKey(id), JSON.stringify(draft))
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [id, phase, questions, answers, endsAt, minutes, format, difficulty, useAi, selected])
 
   // Warn before leaving a running exam.
   useEffect(() => {
@@ -76,19 +148,31 @@ export function Exam() {
     return () => window.removeEventListener('beforeunload', onUnload)
   }, [phase])
 
+  // Wall-clock Date.now() timer so background tab throttling never drifts the countdown.
   useEffect(() => {
-    if (phase !== 'running' || !minutes) return
-    const timer = window.setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000)
-    return () => window.clearInterval(timer)
-  }, [phase, minutes])
+    if (phase !== 'running' || !minutes || !endsAt) return
+    const syncClock = () => {
+      const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
+      setSecondsLeft(remaining)
+    }
+    syncClock()
+    const timer = window.setInterval(syncClock, 500)
+    window.addEventListener('visibilitychange', syncClock)
+    window.addEventListener('focus', syncClock)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('visibilitychange', syncClock)
+      window.removeEventListener('focus', syncClock)
+    }
+  }, [phase, minutes, endsAt])
 
   useEffect(() => {
-    if (phase === 'running' && minutes && secondsLeft === 0) {
+    if (phase === 'running' && minutes && endsAt && secondsLeft === 0) {
       toast('Süre doldu')
       void finish()
     }
-    // Runs only when the clock changes; finish() from this render already sees the latest answers.
-  }, [secondsLeft])
+    // Runs only when the clock reaches 0; finish() from this render already sees the latest answers.
+  }, [secondsLeft, phase, minutes, endsAt])
 
   if (!course) {
     return (
@@ -129,14 +213,17 @@ export function Exam() {
       if (!list.length) return setError('Seçtiğin notlarda hazır test sorusu yok. Notları yapay zekâ ile hazırla ya da yapay zekâ ile sınav oluştur.')
       if (list.length < count) toast(`Seçtiğin notlarda ${list.length} hazır soru vardı; sınav ${list.length} sorudan oluşuyor.`)
     }
+    const nowMs = Date.now()
+    const nextEndsAt = minutes > 0 ? nowMs + minutes * 60 * 1000 : null
     setQuestions(list)
     setAnswers(list.map(() => null))
+    setEndsAt(nextEndsAt)
     setSecondsLeft(minutes * 60)
     setResult(null)
     setConverted(false)
     setSavedId(null)
     submitted.current = false
-    startedAt.current = Date.now()
+    startedAt.current = nowMs
     examSource.current = useAi ? 'ai' : 'local'
     setPhase('running')
     window.scrollTo({ top: 0 })
@@ -145,6 +232,7 @@ export function Exam() {
   async function finish() {
     if (submitted.current) return
     submitted.current = true
+    clearActiveExam(course?.id)
     const openToGrade = questions
       .map((q, i) => ({ q, i, answer: answers[i] }))
       .filter(({ q, answer }) => q.type === 'open' && typeof answer === 'string' && answer.trim())
