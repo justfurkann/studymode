@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { callGeminiWithFallback } from '../src/lib/ai/gemini'
-import { geminiModels, handleGenerate, handleStatus } from './generate'
+import { MAX_BATCH_BASE64_CHARS } from '../src/lib/importNote'
+import { geminiModels, handleGenerate, handleStatus, MAX_BODY_CHARS } from './generate'
 
 const studySet = {
   summary: { overview: 'Özet', points: ['Nokta'], keyTerms: [] },
@@ -141,5 +142,12 @@ describe('callGeminiWithFallback', () => {
 
   it('uses the configured main model first', () => {
     expect(geminiModels({ GEMINI_MODEL: 'gemini-flash-lite-latest' })).toEqual(['gemini-flash-lite-latest', 'gemini-3.1-flash-lite'])
+  })
+})
+
+describe('request size limits', () => {
+  it('lets a full batch of scanned pages through the shared endpoint', () => {
+    // The browser batches page images up to MAX_BATCH_BASE64_CHARS; the JSON around them must still fit.
+    expect(MAX_BATCH_BASE64_CHARS + 50_000).toBeLessThanOrEqual(MAX_BODY_CHARS)
   })
 })

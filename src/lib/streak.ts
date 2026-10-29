@@ -32,8 +32,8 @@ export function isDayStudied(day: Pick<StudyDay, 'reviews' | 'quizzes'> | undefi
 }
 
 /**
- * Merges duplicate entries for the same `day` (e.g. when local data is migrated into a cloud account
- * or two devices created rows for the same day) by summing their reviews/quizzes or taking the max.
+ * Combines rows for the same `day`. Each row has its own id and records activity from one device
+ * (or from guest use before signing in), so the counts add up.
  */
 export function mergeStudyDays(days: StudyDay[]): StudyDay[] {
   const byDay = new Map<string, StudyDay>()
@@ -44,8 +44,8 @@ export function mergeStudyDays(days: StudyDay[]): StudyDay[] {
     } else {
       byDay.set(item.day, {
         ...existing,
-        reviews: Math.max(existing.reviews, item.reviews),
-        quizzes: Math.max(existing.quizzes, item.quizzes),
+        reviews: existing.reviews + item.reviews,
+        quizzes: existing.quizzes + item.quizzes,
         updatedAt: existing.updatedAt >= item.updatedAt ? existing.updatedAt : item.updatedAt,
       })
     }
