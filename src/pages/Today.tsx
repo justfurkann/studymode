@@ -1,8 +1,8 @@
 import { ArrowRight, Brain, CalendarClock, Compass, FileText, Target } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Welcome } from '../components/Welcome'
 import { firstName } from '../lib/auth'
-import { createDemoSet, DEMO_COURSE_NAME, DEMO_NOTE_CONTENT, DEMO_NOTE_TITLE } from '../lib/demo'
+import { useLoadDemo } from '../lib/useDemo'
 import { courseStats, dueCards, examLabel, relativeDate } from '../lib/format'
 import { computeNoteProgress } from '../lib/learningPath'
 import { daysUntil } from '../lib/srs'
@@ -19,17 +19,11 @@ function stepUrl(note: Note, stepId: LearningStepId): string {
 export function Today() {
   const store = useStore()
   const { data } = store
-  const navigate = useNavigate()
   const now = new Date()
   const due = dueCards(data.cards, now)
   const dateText = now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' })
 
-  function loadDemo() {
-    const course = store.addCourse({ name: DEMO_COURSE_NAME })
-    const note = store.addNote({ courseId: course.id, title: DEMO_NOTE_TITLE, content: DEMO_NOTE_CONTENT })
-    store.applyGenerated(note.id, createDemoSet(), 'local')
-    navigate(`/not/${note.id}`)
-  }
+  const loadDemo = useLoadDemo()
 
   if (!data.courses.length) return <Welcome onDemo={loadDemo} />
 

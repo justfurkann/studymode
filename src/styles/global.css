@@ -1770,3 +1770,133 @@ a.list-item:hover {
   border-top: 1px dashed var(--border-strong);
 }
 
+
+/* ============ Course progress ============ */
+
+.progress-panel {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mastery-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+  gap: 2px;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.exam-trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 96px;
+  padding-top: 18px;
+}
+
+.exam-bar-item {
+  position: relative;
+  flex: 1;
+  max-width: 48px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.exam-bar-fill {
+  width: 100%;
+  border-radius: 8px;
+  background: var(--accent);
+}
+
+.exam-bar-item:hover .exam-bar-fill {
+  background: var(--accent-hover);
+}
+
+.exam-bar-label {
+  position: absolute;
+  top: -18px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+/* ============ Summary reference ============ */
+
+.summary-reference,
+.summary-reference-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.summary-reference.collapsed .summary-reference-body {
+  display: none;
+}
+
+@media print {
+  .summary-reference.collapsed .summary-reference-body {
+    display: flex;
+  }
+}
+
+/* ============ Sign-up prompt ============ */
+
+.signup-prompt {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: var(--accent-soft);
+  flex-wrap: wrap;
+}
+
+.signup-prompt p {
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: 0.9375rem;
+}
+
+.signup-prompt-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+@media (max-width: 600px) {
+  .signup-prompt .btn-row {
+    width: 100%;
+  }
+}
+
+.signup-prompt > .grow {
+  flex: 1 1 260px;
+  min-width: 0;
+}

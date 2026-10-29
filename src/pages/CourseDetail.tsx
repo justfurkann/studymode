@@ -2,8 +2,9 @@ import { ArrowLeft, Brain, ClipboardList, FileText, Pencil, Plus, Trash2 } from 
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CourseForm } from '../components/CourseForm'
+import { examFormatLabel, examPercent } from '../components/ExamReview'
 import { Empty, useConfirm, useToast } from '../components/ui'
-import { courseStats, examLabel, relativeDate } from '../lib/format'
+import { cardMastery, courseStats, examLabel, relativeDate } from '../lib/format'
 import { computeNoteProgress } from '../lib/learningPath'
 import { matchesNote } from '../lib/noteTools'
 import { useStore } from '../lib/store'
@@ -95,6 +96,8 @@ export function CourseDetail() {
       </div>
 
       {confirmation}
+      <CourseProgress courseId={course.id} />
+
       <section className="section">
         <h2>Notlar</h2>
         <div className="form-row">
@@ -156,5 +159,79 @@ export function CourseDetail() {
         />
       )}
     </div>
+  )
+}
+
+function CourseProgress({ courseId }: { courseId: string }) {
+  const store = useStore()
+  const cards = store.data.cards.filter((c) => c.courseId === courseId)
+  const exams = store.data.exams.filter((e) => e.courseId === courseId).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  if (!cards.length && !exams.length) return null
+
+  const mastery = cardMastery(cards)
+  const recent = exams.slice(0, 5).reverse()
+  const segments = [
+    { value: mastery.mastered, color: 'var(--success)', label: 'Pekiştirildi' },
+    { value: mastery.learning, color: 'var(--warning)', label: 'Öğreniliyor' },
+    { value: mastery.fresh, color: 'var(--border-strong)', label: 'Yeni' },
+  ]
+
+  return (
+    <section className="section">
+      <h2>Hazırlık durumu</h2>
+      <div className="panel progress-panel">
+        {cards.length > 0 && (
+          <div className="progress-block">
+            <div className="section-head">
+              <strong>Pekiştirilen kartlar: %{mastery.percent}</strong>
+              <span className="subtle">{mastery.total} kart</span>
+            </div>
+            <div className="mastery-bar" role="img" aria-label={segments.map((s) => `${s.label}: ${s.value}`).join(', ')}>
+              {segments.map((s) => s.value > 0 && <span key={s.label} style={{ flexGrow: s.value, background: s.color }} />)}
+            </div>
+            <div className="stat-row">
+              {segments.map((s) => (
+                <span key={s.label}>
+                  <i className="legend-dot" style={{ background: s.color }} /> {s.label}: {s.value}
+                </span>
+              ))}
+            </div>
+            <p className="subtle">Bir kart 3 hafta sonraya planlanınca “pekiştirildi” sayılır.</p>
+          </div>
+        )}
+        {exams.length > 0 && (
+          <div className="progress-block">
+            <div className="section-head">
+              <strong>Sınav provaları</strong>
+              <span className="subtle">Son {recent.length} prova</span>
+            </div>
+            <div className="exam-trend" aria-label="Son sınav puanları">
+              {recent.map((e) => {
+                const percent = examPercent(e.score, e.total)
+                return (
+                  <Link key={e.id} to={`/ders/${courseId}/sinav/${e.id}`} className="exam-bar-item" title={`${percent} puan`}>
+                    <span className="exam-bar-fill" style={{ height: `${Math.max(6, percent)}%` }} />
+                    <span className="exam-bar-label">{percent}</span>
+                  </Link>
+                )
+              })}
+            </div>
+            <div className="list">
+              {exams.slice(0, 10).map((e) => (
+                <Link key={e.id} to={`/ders/${courseId}/sinav/${e.id}`} className="list-item" style={{ paddingInline: 0 }}>
+                  <div className="grow">
+                    <div className="title">{examPercent(e.score, e.total)} puan</div>
+                    <div className="subtle">
+                      {relativeDate(e.createdAt)} · {e.total} soru · {examFormatLabel(e.format, e.difficulty)}
+                    </div>
+                  </div>
+                  <span className="subtle">Görüntüle</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }

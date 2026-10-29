@@ -38,3 +38,19 @@ export function courseStats(data: StudyData, course: Course, now = new Date()) {
 export const wordCount = (text: string) => text.trim().split(/\s+/u).filter(Boolean).length
 export const readingMinutes = (text: string) => Math.max(1, Math.ceil(wordCount(text) / 180))
 
+
+/** Cards reviewed into an interval of three weeks or more count as mastered. */
+export const MASTERED_DAYS = 21
+
+export function cardMastery(cards: Card[]) {
+  let fresh = 0
+  let learning = 0
+  let mastered = 0
+  for (const card of cards) {
+    if (card.reps === 0 && card.lapses === 0) fresh += 1
+    else if (card.interval >= MASTERED_DAYS) mastered += 1
+    else learning += 1
+  }
+  const total = cards.length
+  return { fresh, learning, mastered, total, percent: total ? Math.round((mastered / total) * 100) : 0 }
+}

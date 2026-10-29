@@ -1,3 +1,4 @@
+import { strToU8, zipSync } from 'fflate'
 import { expect, test, type Page } from '@playwright/test'
 
 const biologyNotes = `Hücre Biyolojisi
@@ -48,6 +49,9 @@ test('demo note: summary, quiz, converting mistakes to cards', async ({ page }) 
   await page.getByRole('button', { name: 'Örnek notla dene' }).click()
 
   await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+  // The full summary repeats the guide, so it starts collapsed.
+  await expect(page.getByRole('heading', { name: 'Ana noktalar' })).toBeHidden()
+  await page.getByRole('button', { name: 'Tam özeti tek sayfada gör' }).click()
   await expect(page.getByRole('heading', { name: 'Ana noktalar' })).toBeVisible()
   await expect(page.getByText('Aktif hatırlama').first()).toBeVisible()
 
@@ -618,3 +622,78 @@ test('step-by-step zero-to-mastery learning path guides the user through all 5 s
   expect(errors).toEqual([])
 })
 
+
+test('finished mock exams are saved and can be reopened from the course page', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).first().click()
+  await page.getByRole('link', { name: /Psikolojiye Giriş/ }).first().click()
+  const courseUrl = page.url()
+  await page.getByRole('link', { name: 'Sınav provası' }).click()
+  await page.getByLabel('Soru sayısı').selectOption('5')
+  await page.getByRole('button', { name: 'Sınavı başlat' }).click()
+  for (let i = 1; i <= 5; i += 1) {
+    await page.getByRole('radiogroup', { name: `Soru ${i} seçenekleri` }).getByRole('radio').first().click()
+  }
+  await page.getByRole('button', { name: 'Sınavı bitir' }).click()
+  await expect(page.getByText('Sonuç kaydedildi')).toBeVisible()
+  const score = await page.locator('.score').textContent()
+
+  // Leaving the page used to lose the result; it must survive a reload.
+  await page.goto(courseUrl)
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Hazırlık durumu' })).toBeVisible()
+  await expect(page.getByText('Sınav provaları')).toBeVisible()
+  await expect(page.getByText(/Pekiştirilen kartlar: %\d+/)).toBeVisible()
+  await page.getByRole('link', { name: new RegExp(`^${score}`) }).first().click()
+  await expect(page.getByText(/Sınav provası · /)).toBeVisible()
+  await expect(page.locator('.score')).toHaveText(score!)
+  await expect(page.getByText('Test · ', { exact: false }).or(page.getByText(/Hazır sorular/))).toBeVisible()
+
+  page.once('dialog', () => undefined)
+  await page.getByRole('button', { name: 'Sil' }).click()
+  await page.getByRole('button', { name: 'Evet, devam et' }).click()
+  await expect(page.getByText('Sınav provaları')).toHaveCount(0)
+  expect(errors).toEqual([])
+})
+
+test('empty sections guide a new visitor instead of showing blank screens', async ({ page }) => {
+  await page.goto('/dersler')
+  await expect(page.getByText('Henüz ders yok')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'İlk dersimi oluştur' })).toBeVisible()
+  await page.goto('/tekrar')
+  await expect(page.getByText('Henüz tekrar kartın yok')).toBeVisible()
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+})
+
+test('guests see an invitation to the free AI where it would help', async ({ page }) => {
+  await createCourse(page, 'Biyoloji 109')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  const prompt = page.getByRole('note').filter({ hasText: 'Yapay zekâ ücretsiz, sadece hesap aç' })
+  await expect(prompt).toBeVisible()
+  await prompt.getByRole('link', { name: 'Ücretsiz hesap aç' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Hesap oluştur' })).toBeVisible()
+})
+
+test('PowerPoint and Word files can be uploaded as notes', async ({ page }) => {
+  const errors = watchErrors(page)
+  const slide = (lines: string[]) => strToU8(`<p:sld>${lines.map((l) => `<a:p><a:r><a:t>${l}</a:t></a:r></a:p>`).join('')}</p:sld>`)
+  const pptx = zipSync({
+    'ppt/slides/slide1.xml': slide(['Hücre Biyolojisi', 'Mitokondri: Hücresel solunum yoluyla enerji üreten organeldir.']),
+    'ppt/slides/slide2.xml': slide(['Ribozom: Amino asitleri birleştirerek protein sentezini gerçekleştiren yapıdır.']),
+  })
+  const docx = zipSync({
+    'word/document.xml': strToU8(`<w:document><w:body>${biologyNotes.split('\n').filter(Boolean).map((l) => `<w:p><w:r><w:t>${l}</w:t></w:r></w:p>`).join('')}</w:body></w:document>`),
+  })
+  await createCourse(page, 'Biyoloji 110')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'hafta_3.pptx', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', buffer: Buffer.from(pptx) })
+  await expect(page.getByLabel('Ders notun')).toHaveValue(/Slayt 1\nHücre Biyolojisi[\s\S]*Slayt 2\nRibozom/)
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'hafta_4.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: Buffer.from(docx) })
+  await expect(page.getByText('2 dosya')).toBeVisible()
+  await expect(page.getByLabel('hafta_4.docx başlığı')).toHaveValue('hafta 4')
+  await page.getByRole('button', { name: '2 notu kaydet ve hazırla' }).click()
+  await expect(page.getByText('2 not')).toBeVisible()
+  expect(errors).toEqual([])
+})

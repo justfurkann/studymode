@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { clearLocalData, localBackend, readLocalData, supabaseBackend, type Backend, type Change } from './backend'
 import { newCardState, schedule, type Grade } from './srs'
 import { supabase } from './supabase'
-import { emptyData, type Card, type Course, type GeneratedSet, type Note, type QuizAttempt, type StudyData } from './types'
+import { emptyData, type Card, type Course, type ExamRecord, type GeneratedSet, type Note, type QuizAttempt, type StudyData } from './types'
 
 export const COURSE_COLORS = ['#5b5bd6', '#0d9488', '#e5484d', '#f76b15', '#d6409f', '#3e9b4f', '#0090ff', '#8e4ec6']
 
@@ -37,6 +37,8 @@ interface StoreValue {
   restoreCard(card: Card): void
 
   addAttempt(input: Omit<QuizAttempt, 'id' | 'createdAt'>): void
+  addExam(input: Omit<ExamRecord, 'id' | 'createdAt'>): ExamRecord
+  deleteExam(id: string): void
 
   /** Replaces everything (backup import, moving local data to an account). Rejects if saving fails. */
   replaceAll(data: StudyData): Promise<void>
@@ -171,6 +173,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             notes: d.notes.filter((n) => n.courseId !== id),
             cards: d.cards.filter((c) => c.courseId !== id),
             attempts: d.attempts.filter((a) => a.courseId !== id),
+            exams: d.exams.filter((e) => e.courseId !== id),
           },
           [{ type: 'delete', table: 'courses', ids: [id] }],
         )
@@ -308,6 +311,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         commit({ ...d, attempts: [...d.attempts, attempt] }, [{ type: 'upsert', table: 'attempts', rows: [attempt] }])
       },
 
+      addExam(input) {
+        const d = current()
+        const exam: ExamRecord = { ...input, id: uuid(), createdAt: nowIso() }
+        commit({ ...d, exams: [...d.exams, exam] }, [{ type: 'upsert', table: 'exams', rows: [exam] }])
+        return exam
+      },
+
+      deleteExam(id) {
+        const d = current()
+        commit({ ...d, exams: d.exams.filter((e) => e.id !== id) }, [{ type: 'delete', table: 'exams', ids: [id] }])
+      },
+
       async replaceAll(next) {
         const d = current()
         const gone = (old: Array<{ id: string }>, fresh: Array<{ id: string }>) => {
@@ -320,6 +335,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { type: 'upsert', table: 'notes', rows: next.notes },
           { type: 'upsert', table: 'cards', rows: next.cards },
           { type: 'upsert', table: 'attempts', rows: next.attempts },
+          { type: 'upsert', table: 'exams', rows: next.exams },
+          { type: 'delete', table: 'exams', ids: gone(d.exams, next.exams) },
           { type: 'delete', table: 'attempts', ids: gone(d.attempts, next.attempts) },
           { type: 'delete', table: 'cards', ids: gone(d.cards, next.cards) },
           { type: 'delete', table: 'notes', ids: gone(d.notes, next.notes) },
@@ -352,6 +369,7 @@ export async function migrateLocalToCloud(store: StoreValue) {
     notes: [...d.notes, ...local.notes.filter((n) => !d.notes.some((x) => x.id === n.id))],
     cards: [...d.cards, ...local.cards.filter((c) => !d.cards.some((x) => x.id === c.id))],
     attempts: [...d.attempts, ...local.attempts.filter((a) => !d.attempts.some((x) => x.id === a.id))],
+    exams: [...d.exams, ...local.exams.filter((e) => !d.exams.some((x) => x.id === e.id))],
   })
   clearLocalData()
 }

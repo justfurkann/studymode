@@ -9,10 +9,10 @@ Kurulum gerekmez: **https://studymode.fun** adresine gir, hesap aç ve kullanmay
 ## Özellikler
 
 - **Dersler ve sınav tarihleri:** Her dersin notları, kartları ve sıradaki sınavı. Sınav yaklaştıkça tekrar aralıkları sıkışır.
-- **Not yükleme:** PDF, TXT, Markdown ya da metin yapıştırma; birden fazla dosyayı tek seferde ekleme.
+- **Not yükleme:** PDF, Word (.docx), PowerPoint (.pptx), TXT, Markdown ya da metin yapıştırma; birden fazla dosyayı tek seferde ekleme. Dosyalar tarayıcıda okunur.
 - **Yapay zekâ:** Özet, çalışma kartları, açıklamalı test soruları ve örnek cevaplı açık uçlu sorular. Giriş yapan herkes için ücretsiz; isteyen kendi Claude, ChatGPT veya Gemini anahtarını bağlayabilir.
 - **Basit mod:** Yapay zekâsız, tamamen cihazda çalışan seçenek.
-- **Sınav provası:** Konular, test/klasik, zorluk, süre ve hocanın eski sorularına göre deneme sınavı; klasik cevaplar yapay zekâ ile puanlanır.
+- **Sınav provası:** Konular, test/klasik, zorluk, süre ve hocanın eski sorularına göre deneme sınavı; klasik cevaplar yapay zekâ ile puanlanır. Sonuçlar kaydedilir; ders sayfasında hazırlık durumu ve puan gidişatı görünür.
 - **Aralıklı tekrar:** "Bugün" ekranı tekrar bekleyen kartları, yaklaşan sınavları ve düşük puanlı konuları gösterir. Yanlışlar tek tıkla karta çevrilir.
 - **Hesap:** E-posta ile giriş; notlar telefon ve bilgisayar arasında senkronize olur.
 - Karanlık mod, mobil uyumlu arayüz, JSON yedek alma ve geri yükleme.

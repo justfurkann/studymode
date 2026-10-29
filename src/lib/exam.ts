@@ -1,17 +1,7 @@
 import type { ExamFormat } from './ai/tasks'
-import type { Note } from './types'
+import type { ExamQuestion, Note } from './types'
 
-export interface ExamQuestion {
-  id: string
-  type: 'mcq' | 'open'
-  prompt: string
-  options: string[]
-  answerIndex: number
-  explanation: string
-  modelAnswer: string
-  source: string | null
-  noteTitle: string | null
-}
+export type { ExamQuestion }
 
 export interface ExamResult {
   /** 0..1 for each question. */

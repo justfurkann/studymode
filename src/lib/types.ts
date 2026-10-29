@@ -87,14 +87,48 @@ export interface QuizAttempt {
   createdAt: string
 }
 
+export interface ExamQuestion {
+  id: string
+  type: 'mcq' | 'open'
+  prompt: string
+  options: string[]
+  answerIndex: number
+  explanation: string
+  modelAnswer: string
+  source: string | null
+  noteTitle: string | null
+}
+
+/** A finished mock exam, kept so students can review it and track their scores over time. */
+export interface ExamRecord {
+  id: string
+  courseId: string
+  format: 'test' | 'classic' | 'mixed'
+  difficulty: 'easy' | 'medium' | 'hard' | null
+  source: 'ai' | 'local'
+  noteIds: string[]
+  questions: ExamQuestion[]
+  answers: Array<number | string | null>
+  /** 0..1 per question. */
+  scores: number[]
+  feedback: string[]
+  /** Sum of `scores`. */
+  score: number
+  total: number
+  /** Time spent, when the exam had a timer. */
+  durationSeconds: number | null
+  createdAt: string
+}
+
 export interface StudyData {
   courses: Course[]
   notes: Note[]
   cards: Card[]
   attempts: QuizAttempt[]
+  exams: ExamRecord[]
 }
 
-export const emptyData = (): StudyData => ({ courses: [], notes: [], cards: [], attempts: [] })
+export const emptyData = (): StudyData => ({ courses: [], notes: [], cards: [], attempts: [], exams: [] })
 
 /** What a generator (AI or local rules) produces for one note. */
 export interface GeneratedSet {

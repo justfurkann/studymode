@@ -1,6 +1,8 @@
-import { ArrowLeft, Check, ClipboardList, Clock, RotateCcw, Sparkles, Wand2, X } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Clock, RotateCcw, Sparkles, Wand2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { AiSignupPrompt } from '../components/AiSignupPrompt'
+import { ExamReview } from '../components/ExamReview'
 import { Alert, Empty, Spinner, useToast, useConfirm } from '../components/ui'
 import type { ExamDifficulty, ExamFormat } from '../lib/ai/tasks'
 import { examFromNotes, normalizeExam, scoreExam, type ExamQuestion, type ExamResult } from '../lib/exam'
@@ -57,7 +59,10 @@ export function Exam() {
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [result, setResult] = useState<ExamResult | null>(null)
   const [converted, setConverted] = useState(false)
+  const [savedId, setSavedId] = useState<string | null>(null)
   const submitted = useRef(false)
+  const startedAt = useRef(0)
+  const examSource = useRef<'ai' | 'local'>('local')
 
   const chosen = notes.filter((n) => selected.has(n.id))
   const chosenChars = chosen.reduce((sum, n) => sum + n.content.length, 0)
@@ -129,7 +134,10 @@ export function Exam() {
     setSecondsLeft(minutes * 60)
     setResult(null)
     setConverted(false)
+    setSavedId(null)
     submitted.current = false
+    startedAt.current = Date.now()
+    examSource.current = useAi ? 'ai' : 'local'
     setPhase('running')
     window.scrollTo({ top: 0 })
   }
@@ -155,7 +163,24 @@ export function Exam() {
         openToGrade.forEach(({ i }) => graded.set(i, { score: 0, feedback: 'Puanlanamadı — örnek cevapla karşılaştır.' }))
       }
     }
-    setResult(scoreExam(questions, answers, graded))
+    const scored = scoreExam(questions, answers, graded)
+    setResult(scored)
+    // Keep the exam so it can be reviewed later and progress can be tracked per course.
+    const record = store.addExam({
+      courseId: course!.id,
+      format: effectiveFormat,
+      difficulty: examSource.current === 'ai' ? difficulty : null,
+      source: examSource.current,
+      noteIds: chosen.map((n) => n.id),
+      questions,
+      answers,
+      scores: scored.scores,
+      feedback: scored.feedback,
+      score: scored.total,
+      total: questions.length,
+      durationSeconds: minutes ? Math.round((Date.now() - startedAt.current) / 1000) : null,
+    })
+    setSavedId(record.id)
     setPhase('result')
     window.scrollTo({ top: 0 })
   }
@@ -250,6 +275,7 @@ export function Exam() {
                   <span className="subtle">Notlarının test sorularından karışık bir deneme. Yalnızca test; yapay zekâ gerekmez.</span>
                 </button>
               </div>
+              <AiSignupPrompt reason="Yapay zekâ hocanın tarzına benzer test ve klasik sorular yazsın, cevaplarını puanlasın." />
             </div>
 
             {useAi && (
@@ -403,76 +429,31 @@ export function Exam() {
   }
 
   // ---------- Result ----------
-  const total = questions.length
-  const percent = result ? Math.round((result.total / total) * 100) : 0
   return (
     <div className="page page-narrow">
       {header}
-      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
-        <span className="subtle">Sınav sonucu</span>
-        <div className="score">{percent} puan</div>
-        <p className="muted">
-          {total} sorudan {Number(result?.total.toFixed(1))} doğru karşılık.{' '}
-          {percent >= 85 ? 'Bu konulara hazırsın gibi görünüyor.' : percent >= 60 ? 'Fena değil; aşağıdaki eksiklerine odaklan.' : 'Bu konuları biraz daha çalışmalısın. Eksiklerini karta çevirip tekrar et.'}
-        </p>
-        <div className="btn-row">
-          <button className="btn" onClick={() => setPhase('setup')}>
-            <RotateCcw size={16} /> Yeni prova
-          </button>
-          {result && result.scores.some((s) => s < 0.7) && (
-            <button className="btn btn-primary" onClick={toCards} disabled={converted}>
-              {converted ? 'Kartlara eklendi' : 'Eksiklerimi karta çevir'}
-            </button>
-          )}
-        </div>
-      </div>
-
       {error && <Alert tone="warning">{error}</Alert>}
-
-      <section className="section">
-        <h2>Cevapların</h2>
-        {questions.map((q, i) => {
-          const score = result?.scores[i] ?? 0
-          const good = score >= 0.7
-          return (
-            <div className="panel" key={q.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div className="section-head">
-                <span className="subtle">Soru {i + 1}</span>
-                <span className={`chip ${good ? 'chip-success' : score > 0 ? 'chip-warning' : 'chip-danger'}`}>
-                  {q.type === 'mcq' ? (good ? 'Doğru' : 'Yanlış') : `${Math.round(score * 100)}/100`}
-                </span>
-              </div>
-              <p style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}>{q.prompt}</p>
-              {q.type === 'mcq' ? (
-                <>
-                  {!good && (
-                    <p style={{ color: 'var(--danger)', display: 'flex', gap: 8 }}>
-                      <X size={18} /> {answers[i] === null ? 'Boş bıraktın' : q.options[answers[i] as number]}
-                    </p>
-                  )}
-                  <p style={{ color: 'var(--success)', display: 'flex', gap: 8 }}>
-                    <Check size={18} /> {q.options[q.answerIndex]}
-                  </p>
-                  {q.explanation && <p className="muted">{q.explanation}</p>}
-                </>
-              ) : (
-                <>
-                  <div className="explain">
-                    <strong>Senin cevabın</strong>
-                    <p className="prewrap">{(answers[i] as string | null)?.trim() || '—'}</p>
-                  </div>
-                  {result?.feedback[i] && <p>{result.feedback[i]}</p>}
-                  <div className="explain">
-                    <strong>Örnek cevap</strong>
-                    <p className="prewrap">{q.modelAnswer}</p>
-                  </div>
-                </>
-              )}
-              {q.source && <p className="source">“{q.source}”</p>}
-            </div>
-          )
-        })}
-      </section>
+      <ExamReview
+        title="Sınav sonucu"
+        questions={questions}
+        answers={answers}
+        scores={result?.scores ?? []}
+        feedback={result?.feedback ?? []}
+        score={result?.total ?? 0}
+        meta={savedId ? 'Sonuç kaydedildi; ders sayfasındaki sınav geçmişinden tekrar açabilirsin.' : undefined}
+        actions={
+          <>
+            <button className="btn" onClick={() => setPhase('setup')}>
+              <RotateCcw size={16} /> Yeni prova
+            </button>
+            {result && result.scores.some((s) => s < 0.7) && (
+              <button className="btn btn-primary" onClick={toCards} disabled={converted}>
+                {converted ? 'Kartlara eklendi' : 'Eksiklerimi karta çevir'}
+              </button>
+            )}
+          </>
+        }
+      />
     </div>
   )
 }

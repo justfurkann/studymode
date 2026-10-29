@@ -6,6 +6,7 @@ import { Empty } from '../components/ui'
 import { dueCards } from '../lib/format'
 import { intervalLabel, schedule, type Grade } from '../lib/srs'
 import { useStore } from '../lib/store'
+import { useLoadDemo } from '../lib/useDemo'
 
 const GRADES: Array<{ grade: Grade; label: string; key: string }> = [
   { grade: 'again', label: 'Bilemedim', key: '1' },
@@ -16,6 +17,7 @@ const GRADES: Array<{ grade: Grade; label: string; key: string }> = [
 
 export function Review() {
   const store = useStore()
+  const loadDemo = useLoadDemo()
   const [params] = useSearchParams()
   const noteId = params.get('not')
   const courseId = params.get('ders')
@@ -110,9 +112,23 @@ export function Review() {
                 Bugün sayfasına dön
               </Link>
             </Empty>
+          ) : !store.data.cards.length ? (
+            <Empty icon={<Brain size={36} />} title="Henüz tekrar kartın yok">
+              <p>Kartlar notlarından oluşur. Bir not ekle; uygulama hangi kartı ne zaman tekrar edeceğini senin için planlasın.</p>
+              <div className="btn-row" style={{ justifyContent: 'center' }}>
+                <Link to="/not-ekle" className="btn btn-primary">
+                  Not ekle
+                </Link>
+                {!store.data.courses.length && (
+                  <button className="btn" onClick={loadDemo}>
+                    Örnek notla dene
+                  </button>
+                )}
+              </div>
+            </Empty>
           ) : (
             <Empty icon={<Brain size={36} />} title="Şu an tekrar edilecek kart yok">
-              <p>Yeni notlar ekledikçe ve zaman geçtikçe kartlar burada görünür.</p>
+              <p>Bugünlük tekrarların bitti. Kartlar, verdiğin cevaplara göre doğru zamanda burada yeniden görünecek.</p>
               <Link to="/" className="btn">
                 Bugün sayfasına dön
               </Link>
