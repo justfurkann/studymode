@@ -2,7 +2,8 @@ import { ArrowRight, Brain, CalendarClock, FileText, Target } from 'lucide-react
 import { Link, useNavigate } from 'react-router-dom'
 import { DEMO_COURSE_NAME, DEMO_NOTE_CONTENT, DEMO_NOTE_TITLE } from '../lib/demo'
 import { courseStats, dueCards, examLabel, relativeDate } from '../lib/format'
-import { generateLocally } from '../lib/localGenerator'
+import { createDemoSet } from '../lib/demo'
+import { Welcome } from '../components/Welcome'
 import { daysUntil } from '../lib/srs'
 import { useStore } from '../lib/store'
 
@@ -17,47 +18,11 @@ export function Today() {
   function loadDemo() {
     const course = store.addCourse({ name: DEMO_COURSE_NAME })
     const note = store.addNote({ courseId: course.id, title: DEMO_NOTE_TITLE, content: DEMO_NOTE_CONTENT })
-    store.applyGenerated(note.id, generateLocally(DEMO_NOTE_CONTENT), 'local')
+    store.applyGenerated(note.id, createDemoSet(), 'local')
     navigate(`/not/${note.id}`)
   }
 
-  if (!data.courses.length) {
-    return (
-      <div className="page page-narrow">
-        <div className="page-header">
-          <div>
-            <h1>Hoş geldin 👋</h1>
-            <p className="muted">Notlarını yükle; özet, test ve tekrar kartlarıyla sınava kadar düzenli çalış.</p>
-          </div>
-        </div>
-        <div className="panel steps">
-          <div className="step">
-            <span className="step-num">1</span>
-            <h3>Dersini oluştur</h3>
-            <p className="subtle">Dönemdeki derslerini ve sınav tarihlerini ekle.</p>
-          </div>
-          <div className="step">
-            <span className="step-num">2</span>
-            <h3>Notunu yükle</h3>
-            <p className="subtle">PDF, TXT veya Markdown yükle ya da metni yapıştır.</p>
-          </div>
-          <div className="step">
-            <span className="step-num">3</span>
-            <h3>Her gün biraz tekrar et</h3>
-            <p className="subtle">Uygulama hangi kartı ne zaman tekrar edeceğini hesaplar.</p>
-          </div>
-        </div>
-        <div className="btn-row">
-          <Link to="/dersler?yeni=1" className="btn btn-primary btn-lg">
-            İlk dersimi oluştur <ArrowRight size={18} />
-          </Link>
-          <button className="btn btn-lg" onClick={loadDemo}>
-            Örnek notla dene
-          </button>
-        </div>
-      </div>
-    )
-  }
+  if (!data.courses.length) return <Welcome onDemo={loadDemo} />
 
   const exams = data.courses
     .map((course) => ({ course, days: daysUntil(course.examDate, now), stats: courseStats(data, course, now) }))

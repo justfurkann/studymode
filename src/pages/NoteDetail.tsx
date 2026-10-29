@@ -128,7 +128,7 @@ export function NoteDetail() {
               {wordCount(note.content).toLocaleString('tr-TR')} kelime · {readingMinutes(note.content)} dk okuma · {relativeDate(note.createdAt)}
             </span>
             {note.generator === 'ai' && <span className="chip chip-accent">Yapay zekâ ile hazırlandı</span>}
-            {note.generator === 'local' && <span className="chip">Basit mod</span>}
+            {note.generator === 'local' && <span className="chip">{note.summary?.origin === 'demo' ? 'Hazır örnek set' : 'Basit mod'}</span>}
           </div>
         </div>
         <div className="btn-row header-actions">

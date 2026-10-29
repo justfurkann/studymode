@@ -42,7 +42,7 @@ export function SummaryTab({ note }: { note: Note }) {
         </section>
       )}
 
-      {note.generator === 'local' && (
+      {note.generator === 'local' && summary.origin !== 'demo' && (
         <p className="subtle">
           Basit mod bu cümleleri notundan seçti; yeni bilgi eklemez. Daha iyi bir özet için yapay zekâ ile yeniden hazırlayabilirsin.
         </p>

@@ -50,6 +50,7 @@ export function Layout() {
       </aside>
 
       <main className="main">
+        <div className="mobile-account"><NavLink to={session ? '/ayarlar' : '/giris'}><span className={`status-dot ${mode === 'cloud' ? 'cloud' : ''}`} />{session?.user.email ?? 'Misafir · Bu cihazda kayıtlı'}</NavLink><span>{saveError ? 'Kayıt hatası' : mode === 'cloud' ? 'Bulut hesabı' : 'Giriş yap'}</span></div>
         {confirmed && mode === 'cloud' && (
           <div className="page" style={{ marginBottom: 20 }}>
             <Alert tone="info">E-postan doğrulandı ve giriş yaptın. Notların artık tüm cihazlarında senkronize olacak.</Alert>

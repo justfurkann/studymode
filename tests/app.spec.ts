@@ -44,7 +44,7 @@ async function pasteNote(page: Page, title: string) {
 test('demo note: summary, quiz, converting mistakes to cards', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /Hoş geldin/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Notların biriksin/ })).toBeVisible()
   await page.getByRole('button', { name: 'Örnek notla dene' }).click()
 
   await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
@@ -57,7 +57,7 @@ test('demo note: summary, quiz, converting mistakes to cards', async ({ page }) 
     // Always pick the last option so at least some answers are wrong.
     await page.getByRole('radio').last().click()
     await page.getByRole('button', { name: 'Kontrol et' }).click()
-    await expect(page.getByText(/Doğru!|Yanlış/)).toBeVisible()
+    await expect(page.locator('.explain strong').filter({ hasText: /Doğru!|Yanlış/ })).toBeVisible()
     await page.getByRole('button', { name: /Sonraki soru|Sonucu gör/ }).click()
   }
   await expect(page.getByText('Sonuç')).toBeVisible()

@@ -16,6 +16,7 @@ export interface KeyTerm {
 }
 
 export interface Summary {
+  origin?: 'demo'
   overview: string
   points: string[]
   keyTerms: KeyTerm[]
