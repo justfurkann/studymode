@@ -48,6 +48,9 @@ test('demo note: summary, quiz, converting mistakes to cards', async ({ page }) 
   await page.getByRole('button', { name: 'Örnek notla dene' }).click()
 
   await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+  // The full summary repeats the guide, so it starts collapsed.
+  await expect(page.getByRole('heading', { name: 'Ana noktalar' })).toBeHidden()
+  await page.getByRole('button', { name: 'Tam özeti tek sayfada gör' }).click()
   await expect(page.getByRole('heading', { name: 'Ana noktalar' })).toBeVisible()
   await expect(page.getByText('Aktif hatırlama').first()).toBeVisible()
 
@@ -640,7 +643,7 @@ test('finished mock exams are saved and can be reopened from the course page', a
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Hazırlık durumu' })).toBeVisible()
   await expect(page.getByText('Sınav provaları')).toBeVisible()
-  await expect(page.getByText(/Kartların %\d+’ine hâkimsin/)).toBeVisible()
+  await expect(page.getByText(/Pekiştirilen kartlar: %\d+/)).toBeVisible()
   await page.getByRole('link', { name: new RegExp(`^${score}`) }).first().click()
   await expect(page.getByText(/Sınav provası · /)).toBeVisible()
   await expect(page.locator('.score')).toHaveText(score!)
@@ -651,4 +654,23 @@ test('finished mock exams are saved and can be reopened from the course page', a
   await page.getByRole('button', { name: 'Evet, devam et' }).click()
   await expect(page.getByText('Sınav provaları')).toHaveCount(0)
   expect(errors).toEqual([])
+})
+
+test('empty sections guide a new visitor instead of showing blank screens', async ({ page }) => {
+  await page.goto('/dersler')
+  await expect(page.getByText('Henüz ders yok')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'İlk dersimi oluştur' })).toBeVisible()
+  await page.goto('/tekrar')
+  await expect(page.getByText('Henüz tekrar kartın yok')).toBeVisible()
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+})
+
+test('guests see an invitation to the free AI where it would help', async ({ page }) => {
+  await createCourse(page, 'Biyoloji 109')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  const prompt = page.getByRole('note').filter({ hasText: 'Yapay zekâ ücretsiz, sadece hesap aç' })
+  await expect(prompt).toBeVisible()
+  await prompt.getByRole('link', { name: 'Ücretsiz hesap aç' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Hesap oluştur' })).toBeVisible()
 })

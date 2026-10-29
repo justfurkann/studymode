@@ -183,7 +183,7 @@ function CourseProgress({ courseId }: { courseId: string }) {
         {cards.length > 0 && (
           <div className="progress-block">
             <div className="section-head">
-              <strong>Kartların %{mastery.percent}’ine hâkimsin</strong>
+              <strong>Pekiştirilen kartlar: %{mastery.percent}</strong>
               <span className="subtle">{mastery.total} kart</span>
             </div>
             <div className="mastery-bar" role="img" aria-label={segments.map((s) => `${s.label}: ${s.value}`).join(', ')}>

@@ -1,6 +1,7 @@
 import { ArrowLeft, ClipboardList, Clock, RotateCcw, Sparkles, Wand2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { ExamReview } from '../components/ExamReview'
 import { Alert, Empty, Spinner, useToast, useConfirm } from '../components/ui'
 import type { ExamDifficulty, ExamFormat } from '../lib/ai/tasks'
@@ -274,6 +275,7 @@ export function Exam() {
                   <span className="subtle">Notlarının test sorularından karışık bir deneme. Yalnızca test; yapay zekâ gerekmez.</span>
                 </button>
               </div>
+              <AiSignupPrompt reason="Yapay zekâ hocanın tarzına benzer test ve klasik sorular yazsın, cevaplarını puanlasın." />
             </div>
 
             {useAi && (

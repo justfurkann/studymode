@@ -1840,3 +1840,63 @@ a.list-item:hover {
   font-weight: 600;
   color: var(--text-2);
 }
+
+/* ============ Summary reference ============ */
+
+.summary-reference,
+.summary-reference-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.summary-reference.collapsed .summary-reference-body {
+  display: none;
+}
+
+@media print {
+  .summary-reference.collapsed .summary-reference-body {
+    display: flex;
+  }
+}
+
+/* ============ Sign-up prompt ============ */
+
+.signup-prompt {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: var(--accent-soft);
+  flex-wrap: wrap;
+}
+
+.signup-prompt p {
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: 0.9375rem;
+}
+
+.signup-prompt-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+@media (max-width: 600px) {
+  .signup-prompt .btn-row {
+    width: 100%;
+  }
+}
+
+.signup-prompt > .grow {
+  flex: 1 1 260px;
+  min-width: 0;
+}

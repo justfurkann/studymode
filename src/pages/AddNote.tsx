@@ -1,6 +1,7 @@
 import { ArrowLeft, Check, CircleAlert, FileText, FileUp, Plus, Sparkles, Wand2, X } from 'lucide-react'
 import { useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../components/ui'
 import { ACCEPTED_NOTE_EXTENSIONS, extractNoteText } from '../lib/importNote'
 import { generateLocally } from '../lib/localGenerator'
@@ -393,10 +394,11 @@ export function AddNote() {
               <span className="subtle">Ücretsiz, notun cihazından çıkmaz. En iyi “Kavram: açıklama” biçimindeki notlarda çalışır.</span>
             </button>
           </div>
-          {!ai.ok && (
+          <AiSignupPrompt />
+          {!ai.ok && settings.provider !== 'shared' && (
             <p className="subtle">
-              <Link to={settings.provider === 'shared' ? '/giris' : '/ayarlar'} style={{ color: 'var(--accent-text)', fontWeight: 600 }}>
-                {settings.provider === 'shared' ? 'Giriş yap' : 'Ayarlara git'}
+              <Link to="/ayarlar" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>
+                Ayarlara git
               </Link>
             </p>
           )}

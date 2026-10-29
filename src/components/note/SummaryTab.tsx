@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Compass, Copy, Download, Layers, Pencil, Printer, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, ChevronUp, Compass, Copy, Download, Layers, Pencil, Printer, Sparkles } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { toggleCheckedTerm, toggleCompletedStep } from '../../lib/learningPath'
 import { downloadText, summaryMarkdown } from '../../lib/noteTools'
@@ -60,6 +60,7 @@ export function SummaryTab({
 }) {
   const store = useStore()
   const [editing, setEditing] = useState(false)
+  const [showFull, setShowFull] = useState(false)
   const [error, setError] = useState('')
   const [pointIndex, setPointIndex] = useState(0)
   const toast = useToast()
@@ -307,42 +308,56 @@ export function SummaryTab({
         )}
       </div>
 
-      {/* Complete Reference Summary (also used for print/export & quick scanning) */}
-      {summary.overview && (
-        <div className="panel">
-          <p className="prose">{summary.overview}</p>
-        </div>
-      )}
+      {/* The guide above already walks through this content; the full summary stays one click away
+          and is always included when printing. */}
+      <div className={`summary-reference ${showFull ? '' : 'collapsed'}`}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm no-print"
+          aria-expanded={showFull}
+          onClick={() => setShowFull(!showFull)}
+          style={{ alignSelf: 'flex-start' }}
+        >
+          {showFull ? <ChevronUp size={16} /> : <ChevronDown size={16} />} {showFull ? 'Tam özeti gizle' : 'Tam özeti tek sayfada gör'}
+        </button>
+        <div className="summary-reference-body">
+        {summary.overview && (
+          <div className="panel">
+            <p className="prose">{summary.overview}</p>
+          </div>
+        )}
 
-      {summary.points.length > 0 && (
-        <section className="section">
-          <h2>Ana noktalar</h2>
-          <div className="panel" style={{ paddingBlock: 6 }}>
-            <ol className="points">
-              {summary.points.map((point, i) => (
-                <li key={i}>
-                  <span className="n">{i + 1}</span>
-                  <span>{point}</span>
-                </li>
+        {summary.points.length > 0 && (
+          <section className="section">
+            <h2>Ana noktalar</h2>
+            <div className="panel" style={{ paddingBlock: 6 }}>
+              <ol className="points">
+                {summary.points.map((point, i) => (
+                  <li key={i}>
+                    <span className="n">{i + 1}</span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </section>
+        )}
+
+        {summary.keyTerms.length > 0 && (
+          <section className="section">
+            <h2>Kavramlar</h2>
+            <div className="terms">
+              {summary.keyTerms.map((term, i) => (
+                <div className="term" key={i}>
+                  <strong>{term.term}</strong>
+                  <p>{term.definition}</p>
+                </div>
               ))}
-            </ol>
-          </div>
-        </section>
-      )}
-
-      {summary.keyTerms.length > 0 && (
-        <section className="section">
-          <h2>Kavramlar</h2>
-          <div className="terms">
-            {summary.keyTerms.map((term, i) => (
-              <div className="term" key={i}>
-                <strong>{term.term}</strong>
-                <p>{term.definition}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+            </div>
+          </section>
+        )}
+        </div>
+      </div>
 
       {note.generator === 'local' && summary.origin !== 'demo' && (
         <p className="subtle">

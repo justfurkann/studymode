@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, BookText, Check, FileText, Layers, ListChecks, P
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { NoteEditor } from '../components/NoteEditor'
+import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { CardsTab } from '../components/note/CardsTab'
 import { PracticeTab } from '../components/note/PracticeTab'
 import { QuizTab } from '../components/note/QuizTab'
@@ -62,6 +63,7 @@ function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => v
           <span className="subtle">Ücretsiz, cihazında çalışır.</span>
         </button>
       </div>
+      <AiSignupPrompt />
       {error && <Alert tone="danger">{error}</Alert>}
       {onClose && (
         <div className="btn-row" style={{ justifyContent: 'flex-end' }}>

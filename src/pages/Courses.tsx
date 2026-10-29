@@ -6,6 +6,7 @@ import { CourseForm } from '../components/CourseForm'
 import { Empty } from '../components/ui'
 import { courseStats, examLabel } from '../lib/format'
 import { useStore } from '../lib/store'
+import { useLoadDemo } from '../lib/useDemo'
 
 export function Courses() {
   const store = useStore()
@@ -14,6 +15,7 @@ export function Courses() {
   const navigate = useNavigate()
   const creating = params.get('yeni') === '1'
   const close = () => setParams({}, { replace: true })
+  const loadDemo = useLoadDemo()
 
   return (
     <div className="page">
@@ -63,7 +65,15 @@ export function Courses() {
       ) : (
         <div className="panel">
           <Empty icon={<BookOpen size={32} />} title="Henüz ders yok">
-            <p>Başlamak için dönemdeki ilk dersini ekle.</p>
+            <p>Dönemdeki derslerini ekle; her dersin notları, kartları ve sınav tarihi bir arada durur.</p>
+            <div className="btn-row" style={{ justifyContent: 'center' }}>
+              <button className="btn btn-primary" onClick={() => setParams({ yeni: '1' })}>
+                <Plus size={18} /> İlk dersimi oluştur
+              </button>
+              <button className="btn" onClick={loadDemo}>
+                Örnek notla dene
+              </button>
+            </div>
           </Empty>
         </div>
       )}
