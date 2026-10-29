@@ -2,7 +2,7 @@ import { ArrowRight, BookOpen, Check, ListChecks, PenLine, RotateCcw, X } from '
 import { useEffect, useState } from 'react'
 import { toggleCompletedStep } from '../../lib/learningPath'
 import { useStore } from '../../lib/store'
-import type { LearningStepId, Note, Question } from '../../lib/types'
+import type { LearningStepId, Note, Question, QuizAttempt } from '../../lib/types'
 import { Empty, useToast } from '../ui'
 
 const LETTERS = 'ABCDEF'
@@ -26,12 +26,18 @@ export function QuizTab({
   const [checked, setChecked] = useState(false)
   const [answers, setAnswers] = useState<number[]>([])
   const [converted, setConverted] = useState(false)
+  const [retaking, setRetaking] = useState(false)
 
   const finished = answers.length === questions.length && questions.length > 0
+  // A finished test stays visible when the student comes back to the note, until they choose to retake it.
+  const lastAttempt = store.data.attempts
+    .filter((a) => a.noteId === note.id)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+  const showingPast = !finished && !retaking && answers.length === 0 && !!lastAttempt
   const question = questions[index]
 
   useEffect(() => {
-    if (finished || !active) return
+    if (finished || showingPast || !active) return
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea')) return
       const n = LETTERS.indexOf(event.key.toUpperCase())
@@ -71,6 +77,7 @@ export function QuizTab({
         score,
         total: questions.length,
         wrongIds: wrong.map((q) => q.id),
+        answers: all,
       })
       if (score / questions.length >= 0.7 && note.summary) {
         store.updateNote(note.id, { summary: toggleCompletedStep(note.summary, 'sina', true) })
@@ -81,6 +88,7 @@ export function QuizTab({
   }
 
   function restart() {
+    setRetaking(true)
     setIndex(0)
     setSelected(null)
     setChecked(false)
@@ -88,10 +96,12 @@ export function QuizTab({
     setConverted(false)
   }
 
-  if (finished) {
-    const wrong = questions.map((q, i) => ({ q, given: answers[i] })).filter(({ q, given }) => given !== q.answerIndex)
-    const score = questions.length - wrong.length
-    const ratio = score / questions.length
+  if (finished || showingPast) {
+    const past = showingPast ? pastResult(questions, lastAttempt!) : null
+    const wrong = past ? past.wrong : questions.map((q, i) => ({ q, given: answers[i] as number | undefined })).filter(({ q, given }) => given !== q.answerIndex)
+    const total = past ? lastAttempt!.total : questions.length
+    const score = past ? lastAttempt!.score : questions.length - wrong.length
+    const ratio = score / total
 
     function toCards() {
       store.addCards(
@@ -117,9 +127,11 @@ export function QuizTab({
     return (
       <div className="section" style={{ gap: 20 }}>
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
-          <span className="subtle">Sonuç</span>
+          <span className="subtle">
+            {past ? `Son sonucun · ${new Date(lastAttempt!.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}` : 'Sonuç'}
+          </span>
           <div className="score">
-            {score}/{questions.length}
+            {score}/{total}
           </div>
           <p className="muted">
             {ratio === 1
@@ -145,15 +157,18 @@ export function QuizTab({
           </div>
         </div>
 
+        {past?.outdated && <p className="subtle">Sorular bu testten sonra yeniden hazırlandığı için yanlışların ayrıntısı gösterilemiyor.</p>}
         {wrong.length > 0 && (
           <section className="section">
             <h2>Yanlışların</h2>
             {wrong.map(({ q, given }) => (
               <div className="panel" key={q.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <p style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}>{q.prompt}</p>
-                <p style={{ color: 'var(--danger)', display: 'flex', gap: 8 }}>
-                  <X size={18} /> {q.options[given]}
-                </p>
+                {given !== undefined && (
+                  <p style={{ color: 'var(--danger)', display: 'flex', gap: 8 }}>
+                    <X size={18} /> {q.options[given]}
+                  </p>
+                )}
                 <p style={{ color: 'var(--success)', display: 'flex', gap: 8 }}>
                   <Check size={18} /> {q.options[q.answerIndex]}
                 </p>
@@ -247,6 +262,23 @@ export function QuizTab({
       </div>
     </div>
   )
+}
+
+/**
+ * Rebuilds the wrong answers of a saved attempt. Older attempts have no chosen options, and a note
+ * regenerated since the attempt has different questions; both still show the score.
+ */
+export function pastResult(questions: Question[], attempt: QuizAttempt): { wrong: Array<{ q: Question; given: number | undefined }>; outdated: boolean } {
+  const wrongIds = new Set(attempt.wrongIds)
+  const sameQuestions = questions.length === attempt.total && attempt.wrongIds.every((id) => questions.some((q) => q.id === id))
+  if (!sameQuestions) return { wrong: [], outdated: attempt.score < attempt.total }
+  const answersMatch = attempt.answers?.length === questions.length
+  return {
+    wrong: questions
+      .map((q, i) => ({ q, given: answersMatch ? attempt.answers![i] : undefined }))
+      .filter(({ q }) => wrongIds.has(q.id)),
+    outdated: false,
+  }
 }
 
 /** Local-mode prompts start with an instruction line; keep only the part a card needs. */

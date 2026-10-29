@@ -4,7 +4,7 @@ import { clearLocalData, localBackend, readLocalData, supabaseBackend, type Back
 import { newCardState, schedule, type Grade } from './srs'
 import { mergeStudyDays, recordStudyActivity } from './streak'
 import { supabase } from './supabase'
-import { emptyData, type Card, type Course, type ExamRecord, type GeneratedSet, type Note, type QuizAttempt, type StudyData } from './types'
+import { emptyData, type Card, type Course, type ExamRecord, type GeneratedSet, type Note, type PracticeItem, type QuizAttempt, type StudyData } from './types'
 
 export const COURSE_COLORS = ['#5b5bd6', '#0d9488', '#e5484d', '#f76b15', '#d6409f', '#3e9b4f', '#0090ff', '#8e4ec6']
 
@@ -38,6 +38,10 @@ interface StoreValue {
   restoreCard(card: Card): void
 
   addAttempt(input: Omit<QuizAttempt, 'id' | 'createdAt'>): void
+  /** Counts other study work (a written answer, an explanation) toward today's streak. */
+  recordActivity(): void
+  /** Saves the student's written answer and its latest grading for one open question. */
+  updatePractice(noteId: string, itemId: string, patch: Partial<Pick<PracticeItem, 'draft' | 'evaluation'>>, countsAsActivity?: boolean): void
   addExam(input: Omit<ExamRecord, 'id' | 'createdAt'>): ExamRecord
   deleteExam(id: string): void
 
@@ -332,6 +336,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           [
             { type: 'upsert', table: 'attempts', rows: [attempt] },
             { type: 'upsert', table: 'studyDays', rows: [activity.updated] },
+          ],
+        )
+      },
+
+      recordActivity() {
+        const d = current()
+        const activity = recordStudyActivity(d.studyDays, { actions: 1 })
+        commit({ ...d, studyDays: activity.studyDays }, [{ type: 'upsert', table: 'studyDays', rows: [activity.updated] }])
+      },
+
+      updatePractice(noteId, itemId, patch, countsAsActivity = false) {
+        const d = current()
+        const note = d.notes.find((n) => n.id === noteId)
+        if (!note || !note.practice.some((p) => p.id === itemId)) return
+        const updated: Note = { ...note, practice: note.practice.map((p) => (p.id === itemId ? { ...p, ...patch } : p)), updatedAt: nowIso() }
+        const activity = countsAsActivity ? recordStudyActivity(d.studyDays, { actions: 1 }) : null
+        commit(
+          { ...d, notes: d.notes.map((n) => (n.id === noteId ? updated : n)), studyDays: activity ? activity.studyDays : d.studyDays },
+          [
+            { type: 'upsert', table: 'notes', rows: [updated] },
+            ...(activity ? [{ type: 'upsert' as const, table: 'studyDays' as const, rows: [activity.updated] }] : []),
           ],
         )
       },

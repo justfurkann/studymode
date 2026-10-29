@@ -4,6 +4,7 @@ import { type ExplainMode } from '../../lib/ai'
 import { toggleCheckedTerm, toggleCompletedStep } from '../../lib/learningPath'
 import { downloadText, summaryMarkdown } from '../../lib/noteTools'
 import { aiAvailability, useSettings } from '../../lib/settings'
+import { AiSignupPrompt } from '../AiSignupPrompt'
 import { useStore } from '../../lib/store'
 import type { LearningStepId, Note } from '../../lib/types'
 import { Alert, Modal, Spinner, useToast } from '../ui'
@@ -30,25 +31,30 @@ function ConceptExplainer({
   const [activeMode, setActiveMode] = useState<ExplainMode | null>(null)
   const [busy, setBusy] = useState(false)
   const [reply, setReply] = useState('')
+  /** Why the reply is the offline fallback (only related sentences from the note), or '' for a real AI answer. */
+  const [fallbackReason, setFallbackReason] = useState('')
 
   async function ask(mode: ExplainMode) {
     setActiveMode(mode)
     setBusy(true)
     try {
-      const { explainConcept, localExplainConcept } = await import('../../lib/ai')
+      const { explainConcept, localExplainConcept, contextAround } = await import('../../lib/ai')
+      // Only the passage around the concept is sent: it is what the explanation needs, and it keeps
+      // requests small for long notes.
+      const context = contextAround(note.content, topic, 8_000)
       if (ai.ok) {
         try {
-          const text = await explainConcept(
-            { title: note.title, topic, context: note.content, mode },
-            settings,
-          )
-          setReply(text)
+          setReply(await explainConcept({ title: note.title, topic, context, mode }, settings))
+          setFallbackReason('')
+          store.recordActivity()
           return
-        } catch {
-          // Fall back to local explanation if network/quota fails
+        } catch (e) {
+          setFallbackReason(`Yapay zekâya ulaşılamadı (${e instanceof Error ? e.message : 'bilinmeyen hata'}). Notundaki ilgili cümleler gösteriliyor.`)
         }
+      } else {
+        setFallbackReason('Yapay zekâ kapalı olduğu için notundaki ilgili cümleler gösteriliyor; bu bir açıklama değil.')
       }
-      setReply(localExplainConcept({ title: note.title, topic, context: note.content, mode }))
+      setReply(localExplainConcept({ title: note.title, topic, context, mode }))
     } finally {
       setBusy(false)
     }
@@ -106,6 +112,8 @@ function ConceptExplainer({
           </button>
         </div>
       </div>
+      {reply && fallbackReason && <p className="subtle">{fallbackReason}</p>}
+      {reply && fallbackReason && !ai.ok && <AiSignupPrompt reason="Yapay zekâ kavramı daha basit anlatsın, örnek versin ya da adım adım öğretsin." />}
       {reply && (
         <div className="explain-helper-reply prewrap" role="status">
           {reply}

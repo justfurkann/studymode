@@ -56,6 +56,7 @@ function findSourceMatch(content: string, excerpt: string): { start: number; end
 
 function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => void; onClose?: () => void }) {
   const store = useStore()
+  const toast = useToast()
   const settings = useSettings()
   const ai = aiAvailability(settings, !!store.session)
   const [busy, setBusy] = useState<Generator | null>(null)
@@ -67,13 +68,20 @@ function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => v
     setChunkStatus('')
     setError('')
     try {
-      const set =
-        generator === 'ai'
-          ? await (await import('../lib/ai')).generateStudySet(note.content, note.title, settings, (done, total) => {
-              if (total > 1) setChunkStatus(`Uzun not bölümlere ayrıldı: ${done}/${total} bölüm işlendi…`)
-            })
-          : generateLocally(note.content)
+      let warning = ''
+      let set
+      if (generator === 'ai') {
+        const { generateStudySet, partialChunkMessage } = await import('../lib/ai')
+        const result = await generateStudySet(note.content, note.title, settings, (done, total) => {
+          if (total > 1) setChunkStatus(`Uzun not ${total} bölüme ayrıldı · ${done}/${total} bölüm işlendi`)
+        })
+        set = result
+        warning = partialChunkMessage(result)
+      } else {
+        set = generateLocally(note.content)
+      }
       store.applyGenerated(note.id, set, generator)
+      if (warning) toast(warning)
       onDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Çalışma seti oluşturulamadı.')
@@ -350,7 +358,7 @@ export function NoteDetail() {
               <QuizTab key={JSON.stringify(note.questions)} note={note} active={tab === 'test'} onGoToStep={goToStep} onShowSource={showSourceInNote} />
             </div>
             <div hidden={tab !== 'uygula'}>
-              <PracticeTab key={JSON.stringify(note.practice)} note={note} />
+              <PracticeTab key={note.practice.map((p) => p.id).join()} note={note} />
             </div>
             {tab === 'kaynak' && (
               <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

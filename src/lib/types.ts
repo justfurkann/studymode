@@ -44,6 +44,10 @@ export interface PracticeItem {
   /** Model answer. Local mode cannot write one, so it may be null. */
   answer: string | null
   hint: string | null
+  /** The student's own written answer, kept so it survives reloads and syncs across devices. */
+  draft?: string
+  /** Latest AI grading of `draft` (0..1 score). */
+  evaluation?: { score: number; feedback: string; gradedAt: string } | null
 }
 
 export interface Note {
@@ -84,6 +88,8 @@ export interface QuizAttempt {
   score: number
   total: number
   wrongIds: string[]
+  /** Option chosen for each question, in order. Missing in older attempts. */
+  answers?: number[]
   createdAt: string
 }
 
@@ -125,8 +131,12 @@ export interface StudyDay {
   id: string
   /** YYYY-MM-DD in the user's local timezone. */
   day: string
+  /** Cards reviewed; this is what the daily card goal counts. */
   reviews: number
+  /** Tests and mock exams finished. */
   quizzes: number
+  /** Other study work (written answers, explanations asked for). Counts toward the streak only. Missing in older rows. */
+  actions?: number
   createdAt: string
   updatedAt: string
 }

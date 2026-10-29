@@ -84,6 +84,12 @@ create table if not exists public.study_days (
   updated_at timestamptz not null default now()
 );
 
+-- Options chosen in a note's test, so the last result can be shown again later.
+alter table public.quiz_attempts add column if not exists answers jsonb;
+
+-- Other study work (written answers, explanations) that keeps the streak alive.
+alter table public.study_days add column if not exists actions integer not null default 0;
+
 create index if not exists notes_user_idx on public.notes (user_id);
 create index if not exists cards_user_due_idx on public.cards (user_id, due);
 create index if not exists attempts_user_idx on public.quiz_attempts (user_id);

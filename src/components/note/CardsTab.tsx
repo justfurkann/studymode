@@ -53,22 +53,23 @@ export function CardsTab({
   const [editing, setEditing] = useState<Card | 'new' | null>(null)
   const [trainerIndex, setTrainerIndex] = useState(0)
   const [showAnswer, setShowAnswer] = useState(false)
-  const [seenIds, setSeenIds] = useState<string[]>([])
+  const [reviewed, setReviewed] = useState(0)
 
   const cards = store.data.cards.filter((c) => c.noteId === note.id)
   const safeIndex = cards.length > 0 ? Math.min(trainerIndex, cards.length - 1) : 0
   const currentCard = cards[safeIndex]
   const stepDone = note.summary?.completedSteps?.includes('pekistir') ?? false
 
-  function markCardSeenAndNext() {
+  /**
+   * The student's own verdict is recorded as a real review: it schedules the card (spaced repetition),
+   * feeds topic mastery, and counts toward today's card goal and streak.
+   */
+  function grade(remembered: boolean) {
     if (!currentCard) return
-    if (!seenIds.includes(currentCard.id)) {
-      setSeenIds([...seenIds, currentCard.id])
-    }
+    store.reviewCard(currentCard.id, remembered ? 'good' : 'again')
+    setReviewed((n) => n + 1)
     setShowAnswer(false)
-    if (safeIndex + 1 < cards.length) {
-      setTrainerIndex(safeIndex + 1)
-    }
+    if (safeIndex + 1 < cards.length) setTrainerIndex(safeIndex + 1)
   }
 
   function completeStep3() {
@@ -156,11 +157,17 @@ export function CardsTab({
               </div>
 
               <div className="btn-row">
-                {safeIndex + 1 < cards.length ? (
-                  <button type="button" className="btn btn-primary" onClick={markCardSeenAndNext}>
-                    Sıradaki kart ({safeIndex + 2}/{cards.length}) <ArrowRight size={16} />
-                  </button>
-                ) : (
+                {showAnswer && (
+                  <>
+                    <button type="button" className="btn" onClick={() => grade(false)}>
+                      <RotateCcw size={15} /> Tekrar bakacağım
+                    </button>
+                    <button type="button" className="btn btn-primary" onClick={() => grade(true)}>
+                      <Check size={16} /> Hatırladım
+                    </button>
+                  </>
+                )}
+                {!showAnswer && safeIndex + 1 === cards.length && reviewed > 0 && (
                   <button type="button" className="btn btn-primary" onClick={completeStep3}>
                     <ListChecks size={16} /> 3. Adımı Tamamla → 4. Adım: Test
                   </button>

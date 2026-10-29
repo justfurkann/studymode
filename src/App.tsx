@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Alert, Spinner, ToastProvider } from './components/ui'
 import { StoreProvider, useStore } from './lib/store'
@@ -13,6 +13,12 @@ import { ResetPassword } from './pages/ResetPassword'
 import { Review } from './pages/Review'
 import { Settings } from './pages/Settings'
 import { Today } from './pages/Today'
+
+/** Each course gets a fresh exam page, so a running exam never carries over to another course. */
+function ExamForCourse() {
+  const { id } = useParams()
+  return <Exam key={id} />
+}
 
 function Routed() {
   const store = useStore()
@@ -44,7 +50,7 @@ function Routed() {
         <Route index element={<Today />} />
         <Route path="dersler" element={<Courses />} />
         <Route path="ders/:id" element={<CourseDetail />} />
-        <Route path="ders/:id/sinav" element={<Exam />} />
+        <Route path="ders/:id/sinav" element={<ExamForCourse />} />
         <Route path="ders/:id/sinav/:examId" element={<ExamHistory />} />
         <Route path="not/:id" element={<NoteDetail />} />
         <Route path="not-ekle" element={<AddNote />} />
