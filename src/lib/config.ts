@@ -7,3 +7,10 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_un15T1jZ2JXF4Cygq-JSUQ_s
 
 /** Model behind the shared free AI. The server can override it with GEMINI_MODEL. */
 export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash'
+
+/**
+ * Tried in order when the main model is overloaded, out of free quota or unknown.
+ * Free-tier quotas are per model, so falling back also helps when one model's quota is used up.
+ * The server can override the list with GEMINI_FALLBACK_MODELS (comma separated).
+ */
+export const DEFAULT_GEMINI_FALLBACKS = ['gemini-3.6-flash', 'gemini-3.5-flash-lite']

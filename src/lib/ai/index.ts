@@ -3,7 +3,7 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import type { Settings } from '../settings'
 import { supabase } from '../supabase'
 import type { GeneratedSet } from '../types'
-import { callGemini, GeminiError } from './gemini'
+import { callGeminiWithFallback, GeminiError } from './gemini'
 import { jsonModeSystem, parseTaskOutput, TASKS, userPrompt, type ExamInput, type GradeInput, type TaskInput, type TaskName, type TaskOutput } from './tasks'
 
 export type { ExamDifficulty, ExamFormat, ExamInput, GradeInput } from './tasks'
@@ -104,7 +104,7 @@ async function viaGoogle<T extends TaskName>(task: T, input: TaskInput<T>, apiKe
   const user = userPrompt(task, input)
   return withJsonRetry(task, async () => {
     try {
-      return await callGemini({ apiKey, model, system: jsonModeSystem(task), user })
+      return (await callGeminiWithFallback({ apiKey, models: [model], system: jsonModeSystem(task), user })).text
     } catch (error) {
       if (error instanceof GeminiError) throw statusError('Gemini', error.status)
       throw new AiError('Google’a bağlanılamadı. İnternet bağlantını kontrol et.')
@@ -137,10 +137,12 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>): Prom
       not_configured: 'Ücretsiz yapay zekâ henüz kurulmadı. Ayarlardan kendi anahtarını bağlayabilir ya da basit modu kullanabilirsin.',
       unauthorized: 'Oturumun sona ermiş. Çıkış yapıp tekrar giriş yap.',
       quota: 'Ücretsiz yapay zekânın kotası şu an dolu. Biraz sonra tekrar dene ya da ayarlardan kendi anahtarını bağla.',
+      busy: 'Google’ın ücretsiz modelleri şu an çok yoğun. Birkaç dakika sonra tekrar dene ya da ayarlardan kendi anahtarını bağla.',
       too_large: 'İçerik çok uzun. Daha az not seçerek ya da notu bölerek dene.',
       bad_output: FORMAT_ERROR,
     }
-    const upstream = body.error === 'upstream' && 'status' in body ? ` Gemini kodu: ${(body as { status?: number }).status}.` : ''
+    const extra = body as { status?: number; detail?: string }
+    const upstream = body.error === 'upstream' ? ` Gemini kodu: ${extra.status}${extra.detail ? ` (${extra.detail})` : ''}.` : ''
     throw new AiError(messages[body.error ?? ''] ?? `Sunucu hata verdi (${response.status}${body.error ? `, ${body.error}` : ''}).${upstream} Biraz sonra tekrar dene.`)
   }
   const parsed = TASKS[task].schema.safeParse(body.result)
