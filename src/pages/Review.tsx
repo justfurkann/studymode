@@ -1,6 +1,7 @@
-import { ArrowLeft, Brain, PartyPopper } from 'lucide-react'
+import { ArrowLeft, Brain, PartyPopper, RotateCcw, Shuffle, Volume2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import type { Card } from '../lib/types'
 import { Empty } from '../components/ui'
 import { dueCards } from '../lib/format'
 import { intervalLabel, schedule, type Grade } from '../lib/srs'
@@ -26,6 +27,9 @@ export function Review() {
       : dueCards(store.data.cards).filter((c) => !courseId || c.courseId === courseId)
     return cards.map((c) => c.id)
   })
+  const [hardOnly, setHardOnly] = useState(false)
+  const [last, setLast] = useState<{ card: Card; queue: string[]; done: number } | null>(null)
+  const [speechError, setSpeechError] = useState('')
   const [revealed, setRevealed] = useState(false)
   const [done, setDone] = useState(0)
 
@@ -39,15 +43,40 @@ export function Review() {
 
   function answer(grade: Grade) {
     if (!card) return
+    setLast({ card: { ...card }, queue: [...queue], done })
     store.reviewCard(card.id, grade)
     setRevealed(false)
     setDone((n) => n + 1)
     setQueue(([first, ...rest]) => (grade === 'again' ? [...rest, first] : rest))
   }
 
+  function undo() {
+    if (!last) return
+    store.restoreCard(last.card)
+    setQueue(last.queue); setDone(last.done); setRevealed(true); setLast(null)
+  }
+  function shuffle() {
+    setQueue(current => { const next = [...current]; for (let i = next.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [next[i], next[j]] = [next[j], next[i]] } return next })
+    setRevealed(false); setLast(null)
+  }
+  function filterHard(value: boolean) {
+    const scope = store.data.cards.filter(c => (!noteId || c.noteId === noteId) && (!courseId || c.courseId === courseId))
+    setQueue((value ? scope.filter(c => c.lapses > 0) : noteId ? scope : dueCards(scope)).map(c => c.id))
+    setHardOnly(value); setRevealed(false); setLast(null); setDone(0)
+  }
+  function speak() {
+    if (!card || !('speechSynthesis' in window)) return
+    speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(revealed ? card.back : card.front)
+    utterance.lang = 'tr-TR'
+    utterance.onerror = () => setSpeechError('Tarayıcı bu metni seslendiremedi. Ses veya dil ayarlarını kontrol et.')
+    setSpeechError(''); speechSynthesis.speak(utterance)
+  }
+  useEffect(() => () => { if ('speechSynthesis' in window) speechSynthesis.cancel() }, [])
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (!card) return
+      if (!card || (event.target instanceof HTMLElement && event.target.closest('input,textarea,select'))) return
       if (event.key === ' ' || event.key === 'Enter') {
         event.preventDefault()
         setRevealed(true)
@@ -72,6 +101,7 @@ export function Review() {
         <Link to={back} className="back-link">
           <ArrowLeft size={16} /> Geri
         </Link>
+        <div className="btn-row">{last && <button className="btn" onClick={undo}><RotateCcw size={16} /> Son cevabı geri al</button>}{hardOnly && <button className="btn" onClick={() => filterHard(false)}>Tüm kartlara dön</button>}</div>
         <div className="panel">
           {done > 0 ? (
             <Empty icon={<PartyPopper size={36} />} title="Oturum bitti!">
@@ -112,7 +142,9 @@ export function Review() {
           <div style={{ width: `${(done / (done + queue.length)) * 100}%` }} />
         </div>
 
-        <article className="flashcard" aria-live="polite">
+        <div className="btn-row review-tools"><button className="btn btn-sm" onClick={shuffle}><Shuffle size={15} /> Karıştır</button><label className="chip"><input type="checkbox" checked={hardOnly} onChange={e => filterHard(e.target.checked)} /> Yalnızca zorlandıklarım</label><button className="btn btn-sm" onClick={speak} disabled={!('speechSynthesis' in window)}><Volume2 size={15} /> Sesli oku</button><button className="btn btn-sm" onClick={undo} disabled={!last}><RotateCcw size={15} /> Geri al</button></div>
+        {speechError && <p role="status" className="subtle">{speechError}</p>}
+        <article key={card.id + String(revealed)} className={`flashcard flip-reveal ${revealed ? 'is-revealed' : ''}`} aria-live="polite">
           {course && (
             <span className="chip" style={{ width: 'fit-content' }}>
               <span className="course-swatch" style={{ background: course.color, width: 8, height: 8 }} />

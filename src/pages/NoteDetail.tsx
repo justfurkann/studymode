@@ -171,8 +171,8 @@ export function NoteDetail() {
           <div role="tabpanel">
             {tab === 'ozet' && <SummaryTab note={note} />}
             {tab === 'kartlar' && <CardsTab note={note} />}
-            {tab === 'test' && <QuizTab key={note.updatedAt} note={note} />}
-            {tab === 'uygula' && <PracticeTab key={note.updatedAt} note={note} />}
+            <div hidden={tab !== 'test'}><QuizTab key={JSON.stringify(note.questions)} note={note} active={tab === 'test'} /></div>
+            <div hidden={tab !== 'uygula'}><PracticeTab key={JSON.stringify(note.practice)} note={note} /></div>
             {tab === 'kaynak' && (
               <div className="panel">
                 <p className="prewrap" style={{ lineHeight: 1.7 }}>

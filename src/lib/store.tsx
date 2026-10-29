@@ -34,6 +34,7 @@ interface StoreValue {
   updateCard(id: string, patch: Partial<Pick<Card, 'front' | 'back'>>): void
   deleteCard(id: string): void
   reviewCard(id: string, grade: Grade): void
+  restoreCard(card: Card): void
 
   addAttempt(input: Omit<QuizAttempt, 'id' | 'createdAt'>): void
 
@@ -283,6 +284,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteCard(id) {
         const d = current()
         commit({ ...d, cards: d.cards.filter((c) => c.id !== id) }, [{ type: 'delete', table: 'cards', ids: [id] }])
+      },
+
+      restoreCard(card) {
+        const d = current()
+        if (!d.cards.some(c => c.id === card.id)) return
+        const restored = { ...card, updatedAt: nowIso() }
+        commit({ ...d, cards: d.cards.map(c => c.id === card.id ? restored : c) }, [{ type: 'upsert', table: 'cards', rows: [restored] }])
       },
 
       reviewCard(id, grade) {

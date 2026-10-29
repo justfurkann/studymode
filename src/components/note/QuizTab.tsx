@@ -6,7 +6,7 @@ import { Empty, useToast } from '../ui'
 
 const LETTERS = 'ABCDEF'
 
-export function QuizTab({ note }: { note: Note }) {
+export function QuizTab({ note, active = true }: { note: Note; active?: boolean }) {
   const store = useStore()
   const toast = useToast()
   const questions = note.questions
@@ -20,7 +20,7 @@ export function QuizTab({ note }: { note: Note }) {
   const question = questions[index]
 
   useEffect(() => {
-    if (finished) return
+    if (finished || !active) return
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && event.target.closest('input, textarea')) return
       const n = LETTERS.indexOf(event.key.toUpperCase())
