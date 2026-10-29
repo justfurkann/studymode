@@ -1340,7 +1340,10 @@ a.list-item:hover {
 
 /* ============ Small-screen refinements ============ */
 
+.page-header > .header-actions,
 .header-actions {
+  flex-direction: row;
+  align-items: center;
   flex-wrap: nowrap;
 }
 
@@ -1390,3 +1393,380 @@ a.list-item:hover {
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 @media print{body *{visibility:hidden}.summary-print,.summary-print *{visibility:visible}.summary-print{position:absolute;left:0;top:0;width:100%;color:#111;background:white;padding:20px}.summary-print .no-print,.summary-print .no-print *{display:none!important}.summary-print .panel,.summary-print .term{break-inside:avoid;box-shadow:none;background:white;color:#111}}
 .flip-reveal{animation:card-in .24s ease-out;transform-origin:center}.flip-reveal.is-revealed{border-color:var(--accent);background:linear-gradient(135deg,var(--surface),var(--accent-soft))}@keyframes card-in{from{opacity:.5;transform:perspective(900px) rotateY(-9deg)}to{opacity:1;transform:perspective(900px) rotateY(0)}}.review-tools{gap:8px}.review-tools .chip{gap:7px;cursor:pointer}.review-tools input{accent-color:var(--accent)}
+
+/* ============ 5-Step Guided Learning Roadmap ============ */
+
+.roadmap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.roadmap-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.roadmap-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.roadmap-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.roadmap-steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.roadmap-step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.roadmap-step:hover {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.roadmap-step.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.roadmap-step.done {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+  background: var(--surface);
+}
+
+.roadmap-step.done.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.roadmap-step-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roadmap-num {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.roadmap-step.active .roadmap-num {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.roadmap-step.done .roadmap-num {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+.roadmap-step-name {
+  font-weight: 650;
+  font-size: 0.9375rem;
+}
+
+.roadmap-step-meta {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  line-height: 1.3;
+}
+
+@media (max-width: 720px) {
+  .roadmap-steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ============ Guided Step Coach Boxes ============ */
+
+.guided-box {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  border: 1.5px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.guided-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.guided-stage-tabs {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.guided-stage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.guided-stage-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.step-dot {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.step-dot.done {
+  background: var(--success);
+  color: #fff;
+}
+
+.guided-stage-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+}
+
+.guided-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.guided-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.guided-intro strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.guided-overview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--text);
+  line-height: 1.65;
+}
+
+.guided-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent-text);
+  text-transform: uppercase;
+}
+
+.term-check-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.term-check-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.term-check-card:hover {
+  border-color: var(--border-strong);
+}
+
+.term-check-card.checked {
+  border-color: color-mix(in srgb, var(--success) 55%, var(--border));
+  background: var(--success-soft);
+}
+
+.term-check-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.term-check-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.term-check-card.checked .term-check-badge {
+  color: var(--success);
+}
+
+.term-check-card p {
+  font-size: 0.875rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.guided-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.point-stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.point-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.point-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.point-dot.active {
+  width: 20px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.point-focus-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.point-focus-num {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.point-focus-text {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+
+.mini-card-trainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.mini-card-question {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mini-card-question p {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.mini-card-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border-strong);
+}
+

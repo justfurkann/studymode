@@ -1,9 +1,10 @@
-import { Brain, Layers, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Brain, Check, Eye, Layers, ListChecks, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { toggleCompletedStep } from '../../lib/learningPath'
 import { useStore } from '../../lib/store'
-import type { Card, Note } from '../../lib/types'
-import { Empty, Modal } from '../ui'
+import type { Card, LearningStepId, Note } from '../../lib/types'
+import { Empty, Modal, useToast } from '../ui'
 
 function CardEditor({ card, onSave, onClose }: { card?: Card; onSave: (front: string, back: string) => void; onClose: () => void }) {
   const [front, setFront] = useState(card?.front ?? '')
@@ -38,13 +39,127 @@ function CardEditor({ card, onSave, onClose }: { card?: Card; onSave: (front: st
   )
 }
 
-export function CardsTab({ note }: { note: Note }) {
+export function CardsTab({
+  note,
+  onGoToStep,
+}: {
+  note: Note
+  onGoToStep?: (step: LearningStepId) => void
+}) {
   const store = useStore()
+  const toast = useToast()
   const [editing, setEditing] = useState<Card | 'new' | null>(null)
+  const [trainerIndex, setTrainerIndex] = useState(0)
+  const [showAnswer, setShowAnswer] = useState(false)
+  const [seenIds, setSeenIds] = useState<string[]>([])
+
   const cards = store.data.cards.filter((c) => c.noteId === note.id)
+  const safeIndex = cards.length > 0 ? Math.min(trainerIndex, cards.length - 1) : 0
+  const currentCard = cards[safeIndex]
+  const stepDone = note.summary?.completedSteps?.includes('pekistir') ?? false
+
+  function markCardSeenAndNext() {
+    if (!currentCard) return
+    if (!seenIds.includes(currentCard.id)) {
+      setSeenIds([...seenIds, currentCard.id])
+    }
+    setShowAnswer(false)
+    if (safeIndex + 1 < cards.length) {
+      setTrainerIndex(safeIndex + 1)
+    }
+  }
+
+  function completeStep3() {
+    if (note.summary) {
+      const next = toggleCompletedStep(note.summary, 'pekistir', true)
+      store.updateNote(note.id, { summary: next })
+    }
+    toast('3. Adım tamamlandı! Şimdi mini test ile kendini sına.')
+    onGoToStep?.('sina')
+  }
 
   return (
     <div className="section">
+      {/* Guided Step 3 Inline Active Recall Trainer */}
+      {cards.length > 0 && (
+        <div className="guided-box" aria-label="3. Adım hızlı kart turu">
+          <div className="guided-box-head">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className={`step-dot ${stepDone ? 'done' : ''}`}>{stepDone ? <Check size={12} /> : '3'}</span>
+              <strong>3. Adım: Kartlarla Hafızaya Yerleştir ({safeIndex + 1} / {cards.length})</strong>
+            </div>
+            <span className="subtle">
+              Teste geçmeden önce kavramları zihninde geri çağır
+            </span>
+          </div>
+
+          <div className="guided-stage-body">
+            <div className="progress" aria-hidden>
+              <div style={{ width: `${((safeIndex + 1) / cards.length) * 100}%` }} />
+            </div>
+
+            <div className="mini-card-trainer">
+              <div className="mini-card-question">
+                <span className="guided-kicker">SORU {safeIndex + 1} — ÖNCE KENDİN HATIRLAMAYA ÇALIŞ</span>
+                <p className="prewrap">{currentCard.front}</p>
+              </div>
+
+              {showAnswer ? (
+                <div className="mini-card-answer">
+                  <span className="guided-kicker">CEVAP</span>
+                  <p className="prewrap">{currentCard.back}</p>
+                  {currentCard.source && <p className="source">“{currentCard.source}”</p>}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <button type="button" className="btn btn-primary" onClick={() => setShowAnswer(true)}>
+                    <Eye size={16} /> Cevabı kontrol et
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="btn-row" style={{ justifyContent: 'space-between' }}>
+              <div className="btn-row">
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  disabled={safeIndex === 0}
+                  onClick={() => {
+                    setShowAnswer(false)
+                    setTrainerIndex(Math.max(0, safeIndex - 1))
+                  }}
+                >
+                  <ArrowLeft size={15} /> Önceki kart
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    setShowAnswer(false)
+                    setTrainerIndex(0)
+                  }}
+                >
+                  <RotateCcw size={14} /> Baştan al
+                </button>
+              </div>
+
+              <div className="btn-row">
+                {safeIndex + 1 < cards.length ? (
+                  <button type="button" className="btn btn-primary" onClick={markCardSeenAndNext}>
+                    Sıradaki kart ({safeIndex + 2}/{cards.length}) <ArrowRight size={16} />
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-primary" onClick={completeStep3}>
+                    <ListChecks size={16} /> 3. Adımı Tamamla → 4. Adım: Test
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="section-head">
         <p className="muted">Kartlar aralıklı tekrar ile sana doğru zamanda geri gelir.</p>
         <div className="btn-row">

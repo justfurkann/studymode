@@ -15,10 +15,14 @@ export interface KeyTerm {
   definition: string
 }
 
+export type LearningStepId = 'tanis' | 'anla' | 'pekistir' | 'sina' | 'anlat'
+
 export interface Summary {
   origin?: 'demo'
   tags?: string[]
   sourceChanged?: boolean
+  completedSteps?: LearningStepId[]
+  checkedTerms?: string[]
   overview: string
   points: string[]
   keyTerms: KeyTerm[]

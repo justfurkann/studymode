@@ -1,12 +1,20 @@
-import { ArrowRight, Brain, CalendarClock, FileText, Target } from 'lucide-react'
+import { ArrowRight, Brain, CalendarClock, Compass, FileText, Target } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { DEMO_COURSE_NAME, DEMO_NOTE_CONTENT, DEMO_NOTE_TITLE } from '../lib/demo'
-import { courseStats, dueCards, examLabel, relativeDate } from '../lib/format'
-import { createDemoSet } from '../lib/demo'
 import { Welcome } from '../components/Welcome'
-import { daysUntil } from '../lib/srs'
 import { firstName } from '../lib/auth'
+import { createDemoSet, DEMO_COURSE_NAME, DEMO_NOTE_CONTENT, DEMO_NOTE_TITLE } from '../lib/demo'
+import { courseStats, dueCards, examLabel, relativeDate } from '../lib/format'
+import { computeNoteProgress } from '../lib/learningPath'
+import { daysUntil } from '../lib/srs'
 import { useStore } from '../lib/store'
+import type { LearningStepId, Note } from '../lib/types'
+
+function stepUrl(note: Note, stepId: LearningStepId): string {
+  if (stepId === 'tanis' || stepId === 'anla') return `/not/${note.id}?adim=${stepId}`
+  if (stepId === 'pekistir') return `/not/${note.id}?sekme=kartlar`
+  if (stepId === 'sina') return `/not/${note.id}?sekme=test`
+  return `/not/${note.id}?sekme=uygula`
+}
 
 export function Today() {
   const store = useStore()
@@ -43,6 +51,13 @@ export function Today() {
 
   const recent = [...data.notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5)
   const courseOf = (id: string) => data.courses.find((c) => c.id === id)
+
+  const inProgressNotes = [...data.notes]
+    .filter((n) => n.generator !== null)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .map((note) => ({ note, progress: computeNoteProgress(note, data.cards, data.attempts) }))
+    .filter(({ progress }) => !progress.isCompleted)
+    .slice(0, 3)
 
   const nextDue = data.cards
     .filter((c) => Date.parse(c.due) > now.getTime())
@@ -84,6 +99,35 @@ export function Today() {
           <Link to="/not-ekle" className="btn">
             Not ekle
           </Link>
+        </section>
+      )}
+
+      {inProgressNotes.length > 0 && (
+        <section className="section">
+          <div className="section-head">
+            <h2>Adım adım öğrenmeye devam et</h2>
+            <span className="subtle">Sıfırdan 5 adımda konuyu tamamla</span>
+          </div>
+          <div className="panel panel-tight list">
+            {inProgressNotes.map(({ note, progress }) => {
+              const course = courseOf(note.courseId)
+              const target = stepUrl(note, progress.currentStep.id)
+              return (
+                <Link key={note.id} to={target} className="list-item">
+                  <Compass size={18} style={{ color: course?.color ?? 'var(--accent)' }} />
+                  <div className="grow">
+                    <div className="title">{note.title}</div>
+                    <div className="subtle">
+                      {course?.name} · Sıradaki: {progress.currentStep.stepNumber}. Adım ({progress.currentStep.title})
+                    </div>
+                  </div>
+                  <span className="chip chip-accent">
+                    {progress.completedCount}/{progress.totalSteps} adım
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
         </section>
       )}
 
@@ -141,6 +185,7 @@ export function Today() {
           <div className="panel panel-tight list">
             {recent.map((note) => {
               const course = courseOf(note.courseId)
+              const progress = note.generator ? computeNoteProgress(note, data.cards, data.attempts) : null
               return (
                 <Link key={note.id} to={`/not/${note.id}`} className="list-item">
                   <FileText size={18} style={{ color: course?.color }} />
@@ -148,6 +193,7 @@ export function Today() {
                     <div className="title">{note.title}</div>
                     <div className="subtle">
                       {course?.name} · {relativeDate(note.updatedAt, now)}
+                      {progress ? ` · %${progress.percent} tamamlandı` : ''}
                     </div>
                   </div>
                   <ArrowRight size={16} className="muted" />

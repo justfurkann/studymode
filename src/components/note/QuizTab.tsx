@@ -1,12 +1,21 @@
-import { Check, ListChecks, RotateCcw, X } from 'lucide-react'
+import { ArrowRight, Check, ListChecks, PenLine, RotateCcw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toggleCompletedStep } from '../../lib/learningPath'
 import { useStore } from '../../lib/store'
-import type { Note, Question } from '../../lib/types'
+import type { LearningStepId, Note, Question } from '../../lib/types'
 import { Empty, useToast } from '../ui'
 
 const LETTERS = 'ABCDEF'
 
-export function QuizTab({ note, active = true }: { note: Note; active?: boolean }) {
+export function QuizTab({
+  note,
+  active = true,
+  onGoToStep,
+}: {
+  note: Note
+  active?: boolean
+  onGoToStep?: (step: LearningStepId) => void
+}) {
   const store = useStore()
   const toast = useToast()
   const questions = note.questions
@@ -53,13 +62,17 @@ export function QuizTab({ note, active = true }: { note: Note; active?: boolean 
     setChecked(false)
     if (all.length === questions.length) {
       const wrong = questions.filter((q, i) => all[i] !== q.answerIndex)
+      const score = questions.length - wrong.length
       store.addAttempt({
         courseId: note.courseId,
         noteId: note.id,
-        score: questions.length - wrong.length,
+        score,
         total: questions.length,
         wrongIds: wrong.map((q) => q.id),
       })
+      if (score / questions.length >= 0.7 && note.summary) {
+        store.updateNote(note.id, { summary: toggleCompletedStep(note.summary, 'sina', true) })
+      }
     } else {
       setIndex(index + 1)
     }
@@ -92,6 +105,13 @@ export function QuizTab({ note, active = true }: { note: Note; active?: boolean 
       toast(`${wrong.length} kart eklendi`)
     }
 
+    function advanceToStep5() {
+      if (note.summary) {
+        store.updateNote(note.id, { summary: toggleCompletedStep(note.summary, 'sina', true) })
+      }
+      onGoToStep?.('anlat')
+    }
+
     return (
       <div className="section" style={{ gap: 20 }}>
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
@@ -100,7 +120,11 @@ export function QuizTab({ note, active = true }: { note: Note; active?: boolean 
             {score}/{questions.length}
           </div>
           <p className="muted">
-            {ratio === 1 ? 'Hepsi doğru, harika!' : ratio >= 0.7 ? 'İyi gidiyorsun. Yanlışlarına bir göz at.' : 'Bu konuyu biraz daha çalışmalısın. Yanlışlarını karta çevirip tekrar et.'}
+            {ratio === 1
+              ? 'Hepsi doğru, harika! Şimdi son adımda konuyu kendi cümlelerinle anlatarak ustalığını pekiştir.'
+              : ratio >= 0.7
+                ? 'İyi gidiyorsun. Yanlışlarına göz atıp 5. adıma geçebilirsin.'
+                : 'Bu konuyu biraz daha çalışmalısın. Yanlışlarını karta çevirip tekrar et.'}
           </p>
           <div className="btn-row">
             <button className="btn" onClick={restart}>
@@ -109,6 +133,11 @@ export function QuizTab({ note, active = true }: { note: Note; active?: boolean 
             {wrong.length > 0 && (
               <button className="btn btn-primary" onClick={toCards} disabled={converted}>
                 {converted ? 'Kartlara eklendi' : 'Yanlışlarımı karta çevir'}
+              </button>
+            )}
+            {onGoToStep && (
+              <button className="btn btn-primary" onClick={advanceToStep5}>
+                <PenLine size={16} /> 5. Adıma Geç: Kendi Cümlelerinle Anlat <ArrowRight size={15} />
               </button>
             )}
           </div>

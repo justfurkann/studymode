@@ -2,8 +2,9 @@ import { ArrowLeft, Brain, ClipboardList, FileText, Pencil, Plus, Trash2 } from 
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CourseForm } from '../components/CourseForm'
-import { Empty, useToast, useConfirm } from '../components/ui'
+import { Empty, useConfirm, useToast } from '../components/ui'
 import { courseStats, examLabel, relativeDate } from '../lib/format'
+import { computeNoteProgress } from '../lib/learningPath'
 import { matchesNote } from '../lib/noteTools'
 import { useStore } from '../lib/store'
 
@@ -96,22 +97,43 @@ export function CourseDetail() {
       {confirmation}
       <section className="section">
         <h2>Notlar</h2>
-        <div className="form-row"><label className="field">Notlarda ara<input className="input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Başlık, içerik veya etiket" /></label><label className="field">Etiket<select className="select" value={tag} onChange={e => setTag(e.target.value)}><option value="">Tüm etiketler</option>{[...new Set(notes.flatMap(n => n.summary?.tags ?? []))].map(t => <option key={t}>{t}</option>)}</select></label></div>
-        {notes.length > 0 && !notes.some(n => matchesNote(n, query, tag)) && <p className="muted">Aramana uygun not bulunamadı.</p>}
+        <div className="form-row">
+          <label className="field">
+            Notlarda ara
+            <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Başlık, içerik veya etiket" />
+          </label>
+          <label className="field">
+            Etiket
+            <select className="select" value={tag} onChange={(e) => setTag(e.target.value)}>
+              <option value="">Tüm etiketler</option>
+              {[...new Set(notes.flatMap((n) => n.summary?.tags ?? []))].map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {notes.length > 0 && !notes.some((n) => matchesNote(n, query, tag)) && <p className="muted">Aramana uygun not bulunamadı.</p>}
         {notes.length ? (
           <div className="panel panel-tight list">
-            {notes.filter(n => matchesNote(n, query, tag)).map((note) => (
-              <Link key={note.id} to={`/not/${note.id}`} className="list-item">
-                <FileText size={18} style={{ color: course.color }} />
-                <div className="grow">
-                  <div className="title">{note.title}</div>
-                  <div className="subtle">
-                    {relativeDate(note.createdAt)} · {cardCount(note.id)} kart · {note.questions.length} soru
-                  </div>
-                </div>
-                {note.generator === 'ai' && <span className="chip chip-accent">Yapay zekâ</span>}
-              </Link>
-            ))}
+            {notes
+              .filter((n) => matchesNote(n, query, tag))
+              .map((note) => {
+                const progress = note.generator ? computeNoteProgress(note, store.data.cards, store.data.attempts) : null
+                return (
+                  <Link key={note.id} to={`/not/${note.id}`} className="list-item">
+                    <FileText size={18} style={{ color: course.color }} />
+                    <div className="grow">
+                      <div className="title">{note.title}</div>
+                      <div className="subtle">
+                        {relativeDate(note.createdAt)} · {cardCount(note.id)} kart · {note.questions.length} soru
+                        {progress ? ` · ${progress.completedCount}/${progress.totalSteps} adım` : ''}
+                      </div>
+                    </div>
+                    {progress?.isCompleted && <span className="chip chip-success">Tamamlandı</span>}
+                    {note.generator === 'ai' && <span className="chip chip-accent">Yapay zekâ</span>}
+                  </Link>
+                )
+              })}
           </div>
         ) : (
           <div className="panel">

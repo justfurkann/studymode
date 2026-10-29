@@ -1,12 +1,13 @@
-import { Lightbulb, PenLine, Sparkles } from 'lucide-react'
+import { Brain, Check, CheckCircle2, Lightbulb, PenLine, Sparkles } from 'lucide-react'
 import { useState } from 'react'
-import type { Note, PracticeItem } from '../../lib/types'
-import { useStore } from '../../lib/store'
-import { aiAvailability, useSettings } from '../../lib/settings'
 import { Link } from 'react-router-dom'
-import { Empty, Alert, Spinner } from '../ui'
+import { toggleCompletedStep } from '../../lib/learningPath'
+import { aiAvailability, useSettings } from '../../lib/settings'
+import { useStore } from '../../lib/store'
+import type { Note, PracticeItem } from '../../lib/types'
+import { Alert, Empty, Spinner, useToast } from '../ui'
 
-function PracticeCard({ item, index }: { item: PracticeItem; index: number }) {
+function PracticeCard({ item, index, onInteracted }: { item: PracticeItem; index: number; onInteracted: () => void }) {
   const store = useStore()
   const settings = useSettings()
   const ai = aiAvailability(settings, !!store.session)
@@ -18,11 +19,24 @@ function PracticeCard({ item, index }: { item: PracticeItem; index: number }) {
 
   async function evaluate() {
     if (!draft.trim() || !item.answer || !ai.ok) return
-    setBusy(true); setError(''); setEvaluation(null)
-    try { const { gradeAnswers } = await import('../../lib/ai'); const [result] = await gradeAnswers({ items: [{ question: item.question, modelAnswer: item.answer, criteria: item.hint ?? '', answer: draft }] }, settings); setEvaluation(result) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Cevabın değerlendirilemedi. Tekrar deneyebilirsin.') }
-    finally { setBusy(false) }
+    setBusy(true)
+    setError('')
+    setEvaluation(null)
+    try {
+      const { gradeAnswers } = await import('../../lib/ai')
+      const [result] = await gradeAnswers(
+        { items: [{ question: item.question, modelAnswer: item.answer, criteria: item.hint ?? '', answer: draft }] },
+        settings,
+      )
+      setEvaluation(result)
+      onInteracted()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Cevabın değerlendirilemedi. Tekrar deneyebilirsin.')
+    } finally {
+      setBusy(false)
+    }
   }
+
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <span className="subtle">Soru {index + 1}</span>
@@ -31,15 +45,35 @@ function PracticeCard({ item, index }: { item: PracticeItem; index: number }) {
         className="textarea"
         style={{ minHeight: 120 }}
         value={draft}
-        onChange={(e) => { setDraft(e.target.value); setEvaluation(null) }}
+        onChange={(e) => {
+          setDraft(e.target.value)
+          setEvaluation(null)
+        }}
         maxLength={10000}
         disabled={busy}
         placeholder="Önce notuna bakmadan kendi cümlelerinle cevapla…"
         aria-label={`Soru ${index + 1} için cevabın`}
       />
-      {item.answer && <div className="btn-row"><button className="btn btn-primary" disabled={busy || !draft.trim() || !ai.ok} onClick={evaluate}>{busy ? <Spinner size={16} /> : <Sparkles size={16} />} Cevabımı değerlendir</button>{!ai.ok && <Link className="btn btn-sm" to={store.session ? '/ayarlar' : '/giris'}>{store.session ? 'Yapay zekâyı ayarla' : 'Ücretsiz giriş yap'}</Link>}</div>}
+      {item.answer && (
+        <div className="btn-row">
+          <button className="btn btn-primary" disabled={busy || !draft.trim() || !ai.ok} onClick={evaluate}>
+            {busy ? <Spinner size={16} /> : <Sparkles size={16} />} Cevabımı değerlendir
+          </button>
+          {!ai.ok && (
+            <Link className="btn btn-sm" to={store.session ? '/ayarlar' : '/giris'}>
+              {store.session ? 'Yapay zekâyı ayarla' : 'Ücretsiz giriş yap'}
+            </Link>
+          )}
+        </div>
+      )}
       {error && <Alert tone="danger">{error}</Alert>}
-      {evaluation && <div className="explain" role="status"><strong>Geri bildirim · {Math.round(evaluation.score * 100)}/100</strong><p>{evaluation.feedback}</p><small className="subtle">Bu bir çalışma önerisidir; resmi sınav puanı değildir.</small></div>}
+      {evaluation && (
+        <div className="explain" role="status">
+          <strong>Geri bildirim · {Math.round(evaluation.score * 100)}/100</strong>
+          <p>{evaluation.feedback}</p>
+          <small className="subtle">Bu bir çalışma önerisidir; resmi sınav puanı değildir.</small>
+        </div>
+      )}
       {revealed ? (
         <div className="explain">
           {item.answer ? (
@@ -58,7 +92,13 @@ function PracticeCard({ item, index }: { item: PracticeItem; index: number }) {
         </div>
       ) : (
         <div className="btn-row">
-          <button className="btn" onClick={() => setRevealed(true)}>
+          <button
+            className="btn"
+            onClick={() => {
+              setRevealed(true)
+              onInteracted()
+            }}
+          >
             <Lightbulb size={16} /> {item.answer ? 'Örnek cevabı göster' : 'Değerlendir'}
           </button>
           {item.hint && item.answer && <span className="subtle">İpucu: {item.hint}</span>}
@@ -69,6 +109,17 @@ function PracticeCard({ item, index }: { item: PracticeItem; index: number }) {
 }
 
 export function PracticeTab({ note }: { note: Note }) {
+  const store = useStore()
+  const toast = useToast()
+  const stepDone = note.summary?.completedSteps?.includes('anlat') ?? false
+
+  function markStep5Done(showToast = true) {
+    if (!note.summary) return
+    let next = toggleCompletedStep(note.summary, 'anlat', true)
+    store.updateNote(note.id, { summary: next })
+    if (showToast) toast('Tebrikler! 5. Adımı ve bu notun öğrenme turunu tamamladın 🎉')
+  }
+
   if (!note.practice.length) {
     return (
       <div className="panel">
@@ -76,12 +127,61 @@ export function PracticeTab({ note }: { note: Note }) {
       </div>
     )
   }
+
   return (
     <div className="section">
-      <p className="muted">Konuyu kendi cümlelerinle anlatmak, sadece okumaktan çok daha kalıcıdır.</p>
+      <div className="guided-box" aria-label="5. Adım kendi cümlelerinle anlat">
+        <div className="guided-box-head">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className={`step-dot ${stepDone ? 'done' : ''}`}>{stepDone ? <Check size={12} /> : '5'}</span>
+            <strong>5. Adım: Kendi Cümlelerinle Anlat (Feynman Tekniği)</strong>
+          </div>
+          <span className="subtle">Son adım · Ustalık kontrolü</span>
+        </div>
+        <div className="guided-stage-body" style={{ paddingTop: 12 }}>
+          <p className="muted">
+            Bir konuyu gerçekten öğrenip öğrenmediğini anlamanın en iyi yolu, o konuyu hiç bilmeyen birine kendi cümlelerinle anlatmaktır. Aşağıdaki soruları notuna bakmadan yanıtla.
+          </p>
+        </div>
+      </div>
+
       {note.practice.map((item, i) => (
-        <PracticeCard key={item.id} item={item} index={i} />
+        <PracticeCard
+          key={item.id}
+          item={item}
+          index={i}
+          onInteracted={() => {
+            if (!stepDone) markStep5Done(false)
+          }}
+        />
       ))}
+
+      <div className="panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        {stepDone ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <CheckCircle2 size={22} style={{ color: 'var(--success)', flexShrink: 0 }} />
+              <div>
+                <strong>Bu notun 5 adımını da tamamladın!</strong>
+                <p className="subtle">Öğrendiklerini unutmamak için aralıklı tekrar kartlarını çözmeye devam edebilirsin.</p>
+              </div>
+            </div>
+            <Link to={`/tekrar?not=${note.id}`} className="btn btn-primary btn-sm">
+              <Brain size={16} /> Kartları tekrar et
+            </Link>
+          </>
+        ) : (
+          <>
+            <div>
+              <strong>Cevaplarını yazıp karşılaştırdın mı?</strong>
+              <p className="subtle">Konuyu kendi cümlelerinle ifade edebildiysen 5. adımı tamamlayabilirsin.</p>
+            </div>
+            <button type="button" className="btn btn-primary" onClick={() => markStep5Done(true)}>
+              <Check size={16} /> 5. Adımı Tamamla: Konuyu Öğrendim
+            </button>
+          </>
+        )}
+      </div>
     </div>
   )
 }

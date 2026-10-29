@@ -581,3 +581,40 @@ test.describe('accounts', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Şifremi unuttum' })).toBeVisible()
   })
 })
+
+test('step-by-step zero-to-mastery learning path guides the user through all 5 steps', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+
+  await expect(page.getByText('Adım Adım Öğrenme Yolu')).toBeVisible()
+  await expect(page.getByText('0/5 adım · %0')).toBeVisible()
+
+  // Step 1: Tanış & Kavramlar -> Step 2: Madde Madde Anla
+  await page.getByRole('button', { name: /2\. Adıma Geç: Madde Madde Anla/ }).click()
+  await expect(page.getByText('1/5 adım · %20')).toBeVisible()
+  await expect(page.getByText('Ana Nokta 1 / 5')).toBeVisible()
+
+  // Step through all 5 points in Step 2
+  for (let i = 1; i < 5; i += 1) {
+    await page.getByRole('button', { name: /Anladım, sıradaki madde/ }).click()
+  }
+  await page.getByRole('button', { name: /2\. Adımı Tamamla → Kartlarla Pekiştir/ }).click()
+  await expect(page.getByText('2/5 adım · %40')).toBeVisible()
+
+  // Step 3: Inline flashcard trainer in Kartlar tab
+  await expect(page.getByText(/3\. Adım: Kartlarla Hafızaya Yerleştir/)).toBeVisible()
+  await page.getByRole('button', { name: 'Cevabı kontrol et' }).click()
+  for (let i = 1; i < 6; i += 1) {
+    await page.getByRole('button', { name: /Sıradaki kart/ }).click()
+  }
+  await page.getByRole('button', { name: /3\. Adımı Tamamla → 4\. Adım: Test/ }).click()
+  await expect(page.getByText('3/5 adım · %60')).toBeVisible()
+
+  // Step 5: Complete open-ended practice
+  await page.getByRole('group', { name: 'Öğrenme adımları' }).getByRole('button', { name: /Anlat/ }).click()
+  await page.getByRole('button', { name: /5\. Adımı Tamamla: Konuyu Öğrendim/ }).click()
+  await expect(page.getByText('Bu notun 5 adımını da tamamladın!')).toBeVisible()
+  expect(errors).toEqual([])
+})
+

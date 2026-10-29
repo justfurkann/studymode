@@ -1,4 +1,4 @@
-import { ArrowLeft, BookText, FileText, Layers, ListChecks, PenLine, RefreshCw, Sparkles, Trash2, Wand2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookText, Check, FileText, Layers, ListChecks, PenLine, RefreshCw, Sparkles, Trash2, Wand2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { NoteEditor } from '../components/NoteEditor'
@@ -6,12 +6,13 @@ import { CardsTab } from '../components/note/CardsTab'
 import { PracticeTab } from '../components/note/PracticeTab'
 import { QuizTab } from '../components/note/QuizTab'
 import { SummaryTab } from '../components/note/SummaryTab'
-import { Alert, Empty, Modal, Spinner, useToast, useConfirm } from '../components/ui'
+import { Alert, Empty, Modal, Spinner, useConfirm, useToast } from '../components/ui'
 import { readingMinutes, relativeDate, wordCount } from '../lib/format'
+import { computeNoteProgress } from '../lib/learningPath'
 import { generateLocally } from '../lib/localGenerator'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
-import type { Generator, Note } from '../lib/types'
+import type { Generator, LearningStepId, Note } from '../lib/types'
 
 const TABS = [
   { id: 'ozet', label: 'Özet', icon: BookText },
@@ -101,6 +102,41 @@ export function NoteDetail() {
   const course = store.data.courses.find((c) => c.id === note.courseId)
   const cardCount = store.data.cards.filter((c) => c.noteId === note.id).length
   const counts: Partial<Record<TabId, number>> = { kartlar: cardCount, test: note.questions.length, uygula: note.practice.length }
+  const progress = computeNoteProgress(note, store.data.cards, store.data.attempts)
+
+  const requestedStep = params.get('adim') as LearningStepId | null
+  const summaryStep: 'tanis' | 'anla' =
+    requestedStep === 'anla'
+      ? 'anla'
+      : requestedStep === 'tanis'
+        ? 'tanis'
+        : progress.steps[0].done && !progress.steps[1].done
+          ? 'anla'
+          : 'tanis'
+
+  const activeStepId: LearningStepId =
+    tab === 'ozet'
+      ? summaryStep
+      : tab === 'kartlar'
+        ? 'pekistir'
+        : tab === 'test'
+          ? 'sina'
+          : tab === 'uygula'
+            ? 'anlat'
+            : progress.currentStep.id
+
+  function goToStep(stepId: LearningStepId) {
+    if (stepId === 'tanis' || stepId === 'anla') {
+      setParams({ adim: stepId }, { replace: true })
+    } else if (stepId === 'pekistir') {
+      setParams({ sekme: 'kartlar' }, { replace: true })
+    } else if (stepId === 'sina') {
+      setParams({ sekme: 'test' }, { replace: true })
+    } else if (stepId === 'anlat') {
+      setParams({ sekme: 'uygula' }, { replace: true })
+    }
+    window.scrollTo(0, 0)
+  }
 
   async function remove() {
     if (!note || !await confirm(`“${note.title}” notu ve kartları silinsin mi?`)) return
@@ -108,7 +144,6 @@ export function NoteDetail() {
     toast('Not silindi')
     navigate(course ? `/ders/${course.id}` : '/dersler')
   }
-
 
   return (
     <div className="page">
@@ -118,9 +153,7 @@ export function NoteDetail() {
 
       <div className="page-header">
         <div>
-          <h1>
-            {note.title}
-          </h1>
+          <h1>{note.title}</h1>
           <div className="btn-row">
             <span className="subtle">
               {wordCount(note.content).toLocaleString('tr-TR')} kelime · {readingMinutes(note.content)} dk okuma · {relativeDate(note.createdAt)}
@@ -129,7 +162,10 @@ export function NoteDetail() {
             {note.generator === 'local' && <span className="chip">{note.summary?.origin === 'demo' ? 'Hazır örnek set' : 'Basit mod'}</span>}
           </div>
         </div>
-        <div className="btn-row header-actions"><button className="btn btn-sm" onClick={() => setEditing(true)}><PenLine size={15} /> Düzenle</button>
+        <div className="btn-row header-actions">
+          <button className="btn btn-sm" onClick={() => setEditing(true)}>
+            <PenLine size={15} /> Düzenle
+          </button>
           {note.generator && (
             <button className="btn btn-sm" onClick={() => setRegenerating(true)}>
               <RefreshCw size={15} /> Yeniden hazırla
@@ -143,8 +179,19 @@ export function NoteDetail() {
 
       {confirmation}
       {editing && <NoteEditor note={note} onClose={() => setEditing(false)} />}
-      {note.summary?.sourceChanged && <Alert tone="warning">Kaynak metin değişti. Özet, kartlar ve sorular önceki metne ait; güncellemek için Yeniden hazırla’yı seç.</Alert>}
-      {!!note.summary?.tags?.length && <div className="btn-row">{note.summary.tags.map(t => <span key={t} className="chip">#{t}</span>)}</div>}
+      {note.summary?.sourceChanged && (
+        <Alert tone="warning">Kaynak metin değişti. Özet, kartlar ve sorular önceki metne ait; güncellemek için Yeniden hazırla’yı seç.</Alert>
+      )}
+      {!!note.summary?.tags?.length && (
+        <div className="btn-row">
+          {note.summary.tags.map((t) => (
+            <span key={t} className="chip">
+              #{t}
+            </span>
+          ))}
+        </div>
+      )}
+
       {!note.generator ? (
         <div className="panel">
           <div className="form">
@@ -154,6 +201,52 @@ export function NoteDetail() {
         </div>
       ) : (
         <>
+          {/* 5-Step Guided Learning Roadmap for Zero-Knowledge Students */}
+          <section className="roadmap no-print" aria-label="Adım adım öğrenme yolu">
+            <div className="roadmap-head">
+              <div>
+                <div className="roadmap-title-row">
+                  <strong>Adım Adım Öğrenme Yolu</strong>
+                  <span className={`chip ${progress.isCompleted ? 'chip-success' : 'chip-accent'}`}>
+                    {progress.isCompleted ? 'Tamamlandı (%100)' : `${progress.completedCount}/${progress.totalSteps} adım · %${progress.percent}`}
+                  </span>
+                </div>
+                <p className="subtle">
+                  {progress.isCompleted
+                    ? 'Bu konunun 5 adımını da tamamladın! İstediğin adıma tekrar göz atabilirsin.'
+                    : `Sıradaki önerilen adım: ${progress.currentStep.stepNumber}. ${progress.currentStep.title} — ${progress.currentStep.description}`}
+                </p>
+              </div>
+              {!progress.isCompleted && activeStepId !== progress.currentStep.id && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => goToStep(progress.currentStep.id)}>
+                  Sıradaki adıma geç <ArrowRight size={15} />
+                </button>
+              )}
+            </div>
+
+            <div className="roadmap-steps" role="group" aria-label="Öğrenme adımları">
+              {progress.steps.map((step) => {
+                const isCurrentView = activeStepId === step.id
+                const isNextRecommended = !progress.isCompleted && progress.currentStep.id === step.id
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    aria-current={isCurrentView ? 'step' : undefined}
+                    className={`roadmap-step ${step.done ? 'done' : ''} ${isCurrentView ? 'active' : ''} ${isNextRecommended ? 'recommended' : ''}`}
+                    onClick={() => goToStep(step.id)}
+                  >
+                    <div className="roadmap-step-top">
+                      <span className="roadmap-num">{step.done ? <Check size={13} /> : step.stepNumber}</span>
+                      <span className="roadmap-step-name">{step.shortTitle}</span>
+                    </div>
+                    <span className="roadmap-step-meta">{step.statusText}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
           <div className="tabs" role="tablist" aria-label="Not bölümleri">
             {TABS.map(({ id: tabId, label, icon: Icon }) => (
               <button
@@ -169,10 +262,14 @@ export function NoteDetail() {
           </div>
 
           <div role="tabpanel">
-            {tab === 'ozet' && <SummaryTab note={note} />}
-            {tab === 'kartlar' && <CardsTab note={note} />}
-            <div hidden={tab !== 'test'}><QuizTab key={JSON.stringify(note.questions)} note={note} active={tab === 'test'} /></div>
-            <div hidden={tab !== 'uygula'}><PracticeTab key={JSON.stringify(note.practice)} note={note} /></div>
+            {tab === 'ozet' && <SummaryTab note={note} activeStep={summaryStep} onGoToStep={goToStep} />}
+            {tab === 'kartlar' && <CardsTab note={note} onGoToStep={goToStep} />}
+            <div hidden={tab !== 'test'}>
+              <QuizTab key={JSON.stringify(note.questions)} note={note} active={tab === 'test'} onGoToStep={goToStep} />
+            </div>
+            <div hidden={tab !== 'uygula'}>
+              <PracticeTab key={JSON.stringify(note.practice)} note={note} />
+            </div>
             {tab === 'kaynak' && (
               <div className="panel">
                 <p className="prewrap" style={{ lineHeight: 1.7 }}>
