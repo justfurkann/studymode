@@ -167,6 +167,29 @@ function trimNoteText(text: string, budget = MAX_PROMPT_NOTE_CHARS): string {
 }
 
 /**
+ * The part of a long note around where `topic` is discussed, so an explanation request sees the
+ * relevant passage instead of a fixed sample of the beginning, middle and end.
+ */
+export function contextAround(text: string, topic: string, budget = 8_000): string {
+  if (text.length <= budget) return text
+  const lower = text.toLocaleLowerCase('tr-TR')
+  const words = topic
+    .toLocaleLowerCase('tr-TR')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 4)
+    .sort((a, b) => b.length - a.length)
+  const phrase = topic.toLocaleLowerCase('tr-TR').trim().slice(0, 60)
+  let at = phrase ? lower.indexOf(phrase) : -1
+  for (const word of words) {
+    if (at >= 0) break
+    at = lower.indexOf(word)
+  }
+  if (at < 0) return trimNoteText(text, budget)
+  const start = Math.max(0, Math.min(at - Math.floor(budget / 3), text.length - budget))
+  return `${start > 0 ? '[…] ' : ''}${text.slice(start, start + budget).trim()}${start + budget < text.length ? ' […]' : ''}`
+}
+
+/**
  * Splits a long lecture note into meaningful chunks on paragraph/section boundaries
  * so every part of a long note is analyzed without losing middle sections.
  */
@@ -265,7 +288,7 @@ export const TASKS = {
         `<note_title>${input.title}</note_title>`,
         `<mode>${input.mode}</mode>`,
         `<target_concept>${input.topic}</target_concept>`,
-        `<note_context>\n${trimNoteText(input.context, 8_000)}\n</note_context>`,
+        `<note_context>\n${contextAround(input.context, input.topic, 8_000)}\n</note_context>`,
       ].join('\n'),
   },
 }

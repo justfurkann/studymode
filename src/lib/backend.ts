@@ -103,6 +103,15 @@ const PAGE = 1000
 /** PostgREST / Postgres codes for "this table does not exist". */
 const isMissingTable = (error: { code?: string }) => error.code === 'PGRST205' || error.code === '42P01'
 
+/** Columns added after their table; saving works (without them) before the migration is run. */
+const OPTIONAL_COLUMNS = new Set(['actions', 'answers'])
+
+/** Name of the column PostgREST reports as unknown (code PGRST204), if any. */
+export function missingColumn(error: { code?: string; message?: string }): string | null {
+  if (error.code !== 'PGRST204') return null
+  return error.message?.match(/'([^']+)' column/)?.[1] ?? null
+}
+
 /** Tables added after the first schema; an account whose database lacks them still loads. */
 const OPTIONAL_TABLES = new Set<Table>(['exams', 'studyDays'])
 
@@ -133,7 +142,16 @@ export function supabaseBackend(client: SupabaseClient): Backend {
         const name = TABLE_NAMES[change.table]
         if (change.type === 'upsert') {
           for (const rows of chunks(change.rows, 500)) {
-            const { error } = await client.from(name).upsert(rows.map((row) => mapKeys(row, toSnake)))
+            let payload = rows.map((row) => mapKeys(row, toSnake))
+            let { error } = await client.from(name).upsert(payload)
+            // A column added in a later schema version (e.g. study_days.actions) may not exist yet in
+            // this database; drop it and save the rest instead of failing every save until the owner
+            // runs the migration.
+            for (let tries = 0; error && OPTIONAL_COLUMNS.has(missingColumn(error) ?? '') && tries < 3; tries += 1) {
+              const column = missingColumn(error)!
+              payload = payload.map(({ [column]: _dropped, ...rest }) => rest)
+              ;({ error } = await client.from(name).upsert(payload))
+            }
             if (error && isMissingTable(error)) {
               if (change.table === 'studyDays') continue
               throw new Error(`Kaydedilemedi: veritabanında "${name}" tablosu yok. Site sahibinin supabase/schema.sql dosyasını yeniden çalıştırması gerekiyor.`)

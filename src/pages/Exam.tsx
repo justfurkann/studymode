@@ -7,10 +7,11 @@ import { Alert, Empty, Spinner, useToast, useConfirm } from '../components/ui'
 import type { ExamDifficulty, ExamFormat } from '../lib/ai/tasks'
 import { examFromNotes, normalizeExam, scoreExam, type ExamQuestion, type ExamResult } from '../lib/exam'
 import { aiAvailability, useSettings } from '../lib/settings'
+import { clearActiveExam, loadActiveExam, saveActiveExam, secondsRemaining, type ActiveExamDraft, type ExamAnswer } from '../lib/examSession'
 import { useStore } from '../lib/store'
 
 type Phase = 'setup' | 'preparing' | 'running' | 'grading' | 'result'
-type Answer = number | string | null
+type Answer = ExamAnswer
 
 const LETTERS = 'ABCDEF'
 const COUNTS = [5, 10, 15, 20, 30]
@@ -34,48 +35,14 @@ function formatTime(seconds: number) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-interface ActiveExamDraft {
-  questions: ExamQuestion[]
-  answers: Answer[]
-  endsAt: number | null
-  minutes: number
-  startedAt: number
-  examSource: 'ai' | 'local'
-  format: ExamFormat
-  difficulty: ExamDifficulty
-  useAi: boolean
-  noteIds: string[]
-}
-
-function examStorageKey(courseId: string) {
-  return `studymode.exam.active.${courseId}`
-}
-
-function loadActiveExam(courseId?: string): ActiveExamDraft | null {
-  if (!courseId) return null
+/** sessionStorage can throw when the browser blocks site data; the exam then just isn't kept on reload. */
+const session = (() => {
   try {
-    const raw = sessionStorage.getItem(examStorageKey(courseId))
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as ActiveExamDraft
-    if (!Array.isArray(parsed.questions) || !parsed.questions.length || !Array.isArray(parsed.answers)) return null
-    if (parsed.endsAt && parsed.endsAt <= Date.now()) {
-      sessionStorage.removeItem(examStorageKey(courseId))
-      return null
-    }
-    return parsed
+    return typeof window === 'undefined' ? undefined : window.sessionStorage
   } catch {
-    return null
+    return undefined
   }
-}
-
-function clearActiveExam(courseId?: string) {
-  if (!courseId) return
-  try {
-    sessionStorage.removeItem(examStorageKey(courseId))
-  } catch {
-    // Ignore storage errors
-  }
-}
+})()
 
 export function Exam() {
   const { id } = useParams()
@@ -87,7 +54,7 @@ export function Exam() {
   const course = store.data.courses.find((c) => c.id === id)
   const notes = useMemo(() => store.data.notes.filter((n) => n.courseId === id), [store.data.notes, id])
 
-  const initialDraft = useMemo(() => loadActiveExam(id), [id])
+  const initialDraft = useMemo(() => loadActiveExam(session, id), [id])
 
   const [phase, setPhase] = useState<Phase>(() => (initialDraft ? 'running' : 'setup'))
   const [selected, setSelected] = useState<Set<string>>(() =>
@@ -105,7 +72,7 @@ export function Exam() {
   const [answers, setAnswers] = useState<Answer[]>(() => initialDraft?.answers ?? [])
   const [endsAt, setEndsAt] = useState<number | null>(() => initialDraft?.endsAt ?? null)
   const [secondsLeft, setSecondsLeft] = useState(() =>
-    initialDraft?.endsAt ? Math.max(0, Math.ceil((initialDraft.endsAt - Date.now()) / 1000)) : 0,
+    secondsRemaining(initialDraft?.endsAt ?? null) ?? 0,
   )
   const [result, setResult] = useState<ExamResult | null>(null)
   const [converted, setConverted] = useState(false)
@@ -120,8 +87,9 @@ export function Exam() {
 
   // Persist running exam state in sessionStorage so accidental page reload does not lose answers.
   useEffect(() => {
-    if (!id || phase !== 'running' || !questions.length) return
-    try {
+    // Never write back an exam that has been submitted (effects can re-run after finish() cleared it).
+    if (!id || phase !== 'running' || !questions.length || submitted.current) return
+    {
       const draft: ActiveExamDraft = {
         questions,
         answers,
@@ -134,9 +102,7 @@ export function Exam() {
         useAi,
         noteIds: [...selected],
       }
-      sessionStorage.setItem(examStorageKey(id), JSON.stringify(draft))
-    } catch {
-      // Ignore storage quota errors
+      saveActiveExam(session, id, draft)
     }
   }, [id, phase, questions, answers, endsAt, minutes, format, difficulty, useAi, selected])
 
@@ -232,7 +198,7 @@ export function Exam() {
   async function finish() {
     if (submitted.current) return
     submitted.current = true
-    clearActiveExam(course?.id)
+    clearActiveExam(session, course?.id)
     const openToGrade = questions
       .map((q, i) => ({ q, i, answer: answers[i] }))
       .filter(({ q, answer }) => q.type === 'open' && typeof answer === 'string' && answer.trim())

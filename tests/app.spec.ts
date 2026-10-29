@@ -608,15 +608,19 @@ test('step-by-step zero-to-mastery learning path guides the user through all 5 s
 
   // Step 3: Inline flashcard trainer in Kartlar tab
   await expect(page.getByText(/3\. Adım: Kartlarla Hafızaya Yerleştir/)).toBeVisible()
-  await page.getByRole('button', { name: 'Cevabı kontrol et' }).click()
-  for (let i = 1; i < 6; i += 1) {
-    await page.getByRole('button', { name: /Sıradaki kart/ }).click()
+  // Each card is graded by the student, which records a real review.
+  for (let i = 0; i < 6; i += 1) {
+    await page.getByRole('button', { name: 'Cevabı kontrol et' }).click()
+    await page.getByRole('button', { name: 'Hatırladım' }).click()
   }
   await page.getByRole('button', { name: /3\. Adımı Tamamla → 4\. Adım: Test/ }).click()
   await expect(page.getByText('3/5 adım · %60')).toBeVisible()
 
   // Step 5: Complete open-ended practice
   await page.getByRole('group', { name: 'Öğrenme adımları' }).getByRole('button', { name: /Anlat/ }).click()
+  // Step 5 can only be finished after writing a real answer.
+  await expect(page.getByRole('button', { name: /5\. Adımı Tamamla: Konuyu Öğrendim/ })).toBeDisabled()
+  await page.getByLabel('Soru 1 için cevabın').fill('Her gün kısa tekrar yapar, notu kapatıp hatırlamayı dener, yanlışlarımı incelerim.')
   await page.getByRole('button', { name: /5\. Adımı Tamamla: Konuyu Öğrendim/ }).click()
   await expect(page.getByText('Bu notun 5 adımını da tamamladın!')).toBeVisible()
   expect(errors).toEqual([])
@@ -820,3 +824,87 @@ test('interactive explainer, source jump, dual mastery metrics, smart study plan
 })
 
 
+
+test.describe('study progress is kept', () => {
+  async function openDemo(page: Page) {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Örnek notla dene' }).first().click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+  }
+
+  test('written answers survive a reload and step 5 needs a real answer', async ({ page }) => {
+    await openDemo(page)
+    await page.getByRole('tab', { name: /Uygula/ }).click()
+    const finish = page.getByRole('button', { name: /5\. Adımı Tamamla/ })
+    await expect(finish).toBeDisabled()
+    await page.getByLabel('Soru 1 için cevabın').fill('Önce konuyu okur, sonra notu kapatıp kendi cümlelerimle anlatırım.')
+    await expect(finish).toBeEnabled()
+    await page.waitForTimeout(900) // autosave delay
+    await page.reload()
+    await page.getByRole('tab', { name: /Uygula/ }).click()
+    await expect(page.getByLabel('Soru 1 için cevabın')).toHaveValue(/kendi cümlelerimle anlatırım/)
+    // A written answer alone keeps today's streak alive.
+    await page.goto('/')
+    await expect(page.getByText('🔥 1 gündür çalışıyorsun')).toBeVisible()
+  })
+
+  test('card self-assessment counts as a review for the daily goal', async ({ page }) => {
+    await openDemo(page)
+    await page.getByRole('tab', { name: /Kartlar/ }).click()
+    await page.getByRole('button', { name: 'Cevabı kontrol et' }).click()
+    await page.getByRole('button', { name: 'Hatırladım' }).click()
+    await page.goto('/')
+    await expect(page.getByRole('progressbar', { name: 'Günlük kart ilerlemesi' })).toHaveAttribute('aria-valuenow', '1')
+  })
+
+  test('the last test result is shown when coming back, with a retake option', async ({ page }) => {
+    await openDemo(page)
+    const noteUrl = page.url()
+    await page.getByRole('tab', { name: /Test/ }).click()
+    const total = Number(await page.getByRole('tab', { name: /Test/ }).locator('.tab-count').textContent())
+    for (let i = 0; i < total; i += 1) {
+      await page.getByRole('radio').first().click()
+      await page.getByRole('button', { name: 'Kontrol et' }).click()
+      await page.getByRole('button', { name: /Sonraki soru|Sonucu gör/ }).click()
+    }
+    await page.goto('/')
+    await page.goto(noteUrl)
+    await page.getByRole('tab', { name: /Test/ }).click()
+    await expect(page.getByText(/Son sonucun ·/)).toBeVisible()
+    await page.getByRole('button', { name: 'Tekrar çöz' }).click()
+    await expect(page.getByText(`Soru 1 / ${total}`)).toBeVisible()
+  })
+
+  test('the example course has an exam a week away', async ({ page }) => {
+    await openDemo(page)
+    await page.goto('/')
+    await expect(page.getByText('Sınava 7 gün').first()).toBeVisible()
+  })
+
+  test('an exam whose time ran out while away is submitted with the answers given', async ({ page }) => {
+    await openDemo(page)
+    await page.getByRole('link', { name: /Psikolojiye Giriş/ }).first().click()
+    const courseId = page.url().split('/ders/')[1]
+    await page.evaluate((id) => {
+      sessionStorage.setItem(
+        `studymode.exam.active.${id}`,
+        JSON.stringify({
+          questions: [{ id: 'q1', type: 'mcq', prompt: 'Süresi dolan soru?', options: ['Doğru', 'Yanlış'], answerIndex: 0, explanation: '', modelAnswer: '', source: null, noteTitle: null }],
+          answers: [0],
+          endsAt: Date.now() - 60_000,
+          minutes: 15,
+          startedAt: Date.now() - 16 * 60_000,
+          examSource: 'local',
+          format: 'test',
+          difficulty: 'medium',
+          useAi: false,
+          noteIds: [],
+        }),
+      )
+    }, courseId)
+    await page.goto(`/ders/${courseId}/sinav`)
+    await expect(page.getByText('Sınav sonucu')).toBeVisible()
+    await expect(page.locator('.score')).toHaveText('100 puan')
+    expect(await page.evaluate((id) => sessionStorage.getItem(`studymode.exam.active.${id}`), courseId)).toBeNull()
+  })
+})

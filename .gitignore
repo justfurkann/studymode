@@ -7,3 +7,6 @@ dist/
 test-results/
 playwright-report/
 *.tsbuildinfo
+
+# Google AI Studio working files
+.aistudio/

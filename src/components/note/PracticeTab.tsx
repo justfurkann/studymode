@@ -1,34 +1,56 @@
 import { Brain, Check, CheckCircle2, Lightbulb, PenLine, Sparkles } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toggleCompletedStep } from '../../lib/learningPath'
+import { canCompletePractice, isMeaningfulAnswer } from '../../lib/practice'
 import { aiAvailability, useSettings } from '../../lib/settings'
 import { useStore } from '../../lib/store'
 import type { Note, PracticeItem } from '../../lib/types'
 import { Alert, Empty, Spinner, useToast } from '../ui'
 
-function PracticeCard({ item, index, onInteracted }: { item: PracticeItem; index: number; onInteracted: () => void }) {
+/** How long to wait after the last keystroke before saving a written answer. */
+const SAVE_DELAY_MS = 700
+
+function PracticeCard({ noteId, item, index, onInteracted }: { noteId: string; item: PracticeItem; index: number; onInteracted: () => void }) {
   const store = useStore()
   const settings = useSettings()
   const ai = aiAvailability(settings, !!store.session)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [evaluation, setEvaluation] = useState<{ score: number; feedback: string } | null>(null)
-  const [draft, setDraft] = useState('')
+  const evaluation = item.evaluation ?? null
+  const [draft, setDraft] = useState(item.draft ?? '')
   const [revealed, setRevealed] = useState(false)
+  const saved = useRef(item.draft ?? '')
+
+  // Written answers are saved to the note (and synced) so a reload or tab switch never loses them.
+  // The first real answer to a question also counts toward today's streak.
+  const save = useCallback(
+    (text: string) => {
+      if (text === saved.current) return
+      const firstRealAnswer = !isMeaningfulAnswer(saved.current) && isMeaningfulAnswer(text)
+      saved.current = text
+      store.updatePractice(noteId, item.id, { draft: text }, firstRealAnswer)
+    },
+    [store, noteId, item.id],
+  )
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => save(draft), SAVE_DELAY_MS)
+    return () => window.clearTimeout(timer)
+  }, [draft, save])
 
   async function evaluate() {
     if (!draft.trim() || !item.answer || !ai.ok) return
     setBusy(true)
     setError('')
-    setEvaluation(null)
     try {
       const { gradeAnswers } = await import('../../lib/ai')
       const [result] = await gradeAnswers(
         { items: [{ question: item.question, modelAnswer: item.answer, criteria: item.hint ?? '', answer: draft }] },
         settings,
       )
-      setEvaluation(result)
+      saved.current = draft
+      store.updatePractice(noteId, item.id, { draft, evaluation: { ...result, gradedAt: new Date().toISOString() } }, true)
       onInteracted()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Cevabın değerlendirilemedi. Tekrar deneyebilirsin.')
@@ -45,10 +67,8 @@ function PracticeCard({ item, index, onInteracted }: { item: PracticeItem; index
         className="textarea"
         style={{ minHeight: 120 }}
         value={draft}
-        onChange={(e) => {
-          setDraft(e.target.value)
-          setEvaluation(null)
-        }}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => save(draft)}
         maxLength={10000}
         disabled={busy}
         placeholder="Önce notuna bakmadan kendi cümlelerinle cevapla…"
@@ -112,6 +132,7 @@ export function PracticeTab({ note }: { note: Note }) {
   const store = useStore()
   const toast = useToast()
   const stepDone = note.summary?.completedSteps?.includes('anlat') ?? false
+  const canFinish = canCompletePractice(note)
 
   function markStep5Done(showToast = true) {
     if (!note.summary) return
@@ -148,6 +169,7 @@ export function PracticeTab({ note }: { note: Note }) {
       {note.practice.map((item, i) => (
         <PracticeCard
           key={item.id}
+          noteId={note.id}
           item={item}
           index={i}
           onInteracted={() => {
@@ -176,9 +198,10 @@ export function PracticeTab({ note }: { note: Note }) {
               <strong>Cevaplarını yazıp karşılaştırdın mı?</strong>
               <p className="subtle">Konuyu kendi cümlelerinle ifade edebildiysen 5. adımı tamamlayabilirsin.</p>
             </div>
-            <button type="button" className="btn btn-primary" onClick={() => markStep5Done(true)}>
+            <button type="button" className="btn btn-primary" onClick={() => markStep5Done(true)} disabled={!canFinish}>
               <Check size={16} /> 5. Adımı Tamamla: Konuyu Öğrendim
             </button>
+            {!canFinish && <p className="subtle" style={{ width: '100%' }}>Bitirmek için en az bir soruya kendi cümlelerinle cevap yaz.</p>}
           </>
         )}
       </div>

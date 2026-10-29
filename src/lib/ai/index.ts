@@ -24,7 +24,7 @@ import {
   type TranscribeInput,
 } from './tasks'
 
-export { MAX_PROMPT_NOTE_CHARS, splitNoteIntoChunks } from './tasks'
+export { contextAround, MAX_PROMPT_NOTE_CHARS, splitNoteIntoChunks } from './tasks'
 export type {
   ExamDifficulty,
   ExamFormat,
@@ -216,36 +216,68 @@ export async function runTask<T extends TaskName>(task: T, input: TaskInput<T>, 
 
 // ---------- Public helpers ----------
 
+/** A study set built from a long note where some chunks could not be processed. */
+export type ChunkedStudySet = GeneratedSet & { failedChunks: number; totalChunks: number }
+
+const CHUNK_RETRY_DELAY_MS = 1500
+
+/**
+ * Long notes are split into chunks, each sent as its own request so none hits the server's time or
+ * size limits. A chunk that fails is retried once; if it still fails the others are kept, and the
+ * caller learns how many were skipped instead of losing minutes of finished work to one error.
+ */
 export async function generateStudySet(
   text: string,
   title: string,
   settings: Settings,
   onProgress?: (done: number, total: number) => void,
-): Promise<GeneratedSet> {
+  sleep: (ms: number) => Promise<unknown> = (ms) => new Promise((r) => setTimeout(r, ms)),
+): Promise<ChunkedStudySet> {
   const chunks = splitNoteIntoChunks(text)
   if (chunks.length <= 1) {
     onProgress?.(0, 1)
     const result = normalizeStudySet(await runTask('study', { text, title }, settings))
     onProgress?.(1, 1)
-    return result
+    return { ...result, failedChunks: 0, totalChunks: 1 }
   }
 
   const sets: GeneratedSet[] = []
+  let failedChunks = 0
+  let lastError: unknown = null
   for (let i = 0; i < chunks.length; i += 1) {
     onProgress?.(i, chunks.length)
-    const chunkTitle = `${title} (Bölüm ${i + 1}/${chunks.length})`
-    const raw = await runTask('study', { text: chunks[i], title: chunkTitle }, settings)
+    const input = { text: chunks[i], title: `${title} (Bölüm ${i + 1}/${chunks.length})` }
+    let raw: RawStudySet | null = null
+    for (let attempt = 0; attempt < 2 && !raw; attempt += 1) {
+      try {
+        raw = await runTask('study', input, settings)
+      } catch (error) {
+        lastError = error
+        if (attempt === 0) await sleep(CHUNK_RETRY_DELAY_MS)
+      }
+    }
+    if (!raw) {
+      failedChunks += 1
+      continue
+    }
     try {
       sets.push(normalizeStudySet(raw))
     } catch {
-      // Skip an individual thin chunk if other chunks succeeded
+      // A chunk with only headings or figures yields nothing useful; the rest still count.
     }
   }
   onProgress?.(chunks.length, chunks.length)
   if (!sets.length) {
+    if (lastError instanceof Error) throw lastError
     throw new AiError('Bu nottan çalışma seti çıkarılamadı. Notun yeterince açıklayıcı metin içerdiğinden emin ol.')
   }
-  return mergeStudySets(sets)
+  return { ...mergeStudySets(sets), failedChunks, totalChunks: chunks.length }
+}
+
+/** Short Turkish note for a partly processed long note, or '' when every chunk worked. */
+export function partialChunkMessage(set: { failedChunks: number; totalChunks: number }): string {
+  if (!set.failedChunks) return ''
+  return `Uzun notun ${set.totalChunks} bölümünden ${set.failedChunks} tanesi işlenemedi; çalışma seti kalan bölümlerden hazırlandı. Eksik kısımlar için daha sonra “Yeniden hazırla”yı deneyebilirsin.`
 }
 
 export function mergeStudySets(sets: GeneratedSet[]): GeneratedSet {

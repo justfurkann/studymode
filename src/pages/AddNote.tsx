@@ -48,6 +48,7 @@ export function AddNote() {
   const [dragOver, setDragOver] = useState(false)
   const [mode, setMode] = useState<Generator>(ai.ok ? 'ai' : 'local')
   const [busy, setBusy] = useState(false)
+  const [chunkStatus, setChunkStatus] = useState('')
   const [error, setError] = useState('')
   const [savedNoteId, setSavedNoteId] = useState<string | null>(null)
   const [batch, setBatch] = useState<BatchItem[] | null>(null)
@@ -136,21 +137,30 @@ export function AddNote() {
     void addFiles(event.dataTransfer.files)
   }
 
-  async function buildSet(text: string, noteTitle: string, generator: Generator): Promise<GeneratedSet> {
-    if (generator === 'local') return generateLocally(text)
-    const { generateStudySet } = await import('../lib/ai')
-    return generateStudySet(text, noteTitle, settings)
+  /** Builds a study set; `onChunk` reports progress for long notes that are processed in parts. */
+  async function buildSet(text: string, noteTitle: string, generator: Generator, onChunk?: (status: string) => void): Promise<{ set: GeneratedSet; warning: string }> {
+    if (generator === 'local') return { set: generateLocally(text), warning: '' }
+    const { generateStudySet, partialChunkMessage } = await import('../lib/ai')
+    const set = await generateStudySet(text, noteTitle, settings, (done, total) => {
+      if (total > 1) onChunk?.(`Uzun not ${total} bölüme ayrıldı · ${done}/${total} bölüm işlendi`)
+    })
+    return { set, warning: partialChunkMessage(set) }
   }
 
   async function generate(noteId: string, generator: Generator) {
     setBusy(true)
     setError('')
+    setChunkStatus('')
     try {
-      store.applyGenerated(noteId, await buildSet(content, title, generator), generator)
+      const { set, warning } = await buildSet(content, title, generator, setChunkStatus)
+      store.applyGenerated(noteId, set, generator)
+      if (warning) toast(warning)
       navigate(`/not/${noteId}`, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Çalışma seti oluşturulamadı.')
       setBusy(false)
+    } finally {
+      setChunkStatus('')
     }
   }
 
@@ -176,8 +186,9 @@ export function AddNote() {
       updateItem(item.key, { status: 'working', message: '' })
       const noteId = item.noteId ?? store.addNote({ courseId: target, title: item.title.trim() || titleFromFile(item.fileName), content: item.content.trim() }).id
       try {
-        store.applyGenerated(noteId, await buildSet(item.content, item.title, mode), mode)
-        updateItem(item.key, { status: 'done', noteId })
+        const { set, warning } = await buildSet(item.content, item.title, mode, (status) => updateItem(item.key, { message: status }))
+        store.applyGenerated(noteId, set, mode)
+        updateItem(item.key, { status: 'done', noteId, message: warning })
       } catch (e) {
         failed += 1
         updateItem(item.key, { status: 'failed', noteId, message: e instanceof Error ? e.message : 'Hazırlanamadı' })
@@ -284,11 +295,14 @@ export function AddNote() {
                     <div className="subtle">
                       {item.status === 'reading' && (item.message ? `${item.message}…` : 'Okunuyor…')}
                       {item.status === 'ready' && `${item.content.length.toLocaleString('tr-TR')} karakter`}
-                      {item.status === 'working' && (mode === 'ai' ? 'Yapay zekâ okuyor…' : 'Hazırlanıyor…')}
+                      {item.status === 'working' && (item.message || (mode === 'ai' ? 'Yapay zekâ okuyor…' : 'Hazırlanıyor…'))}
                       {item.status === 'done' && item.noteId && (
-                        <Link to={`/not/${item.noteId}`} style={{ color: 'var(--accent-text)' }}>
-                          Hazır — nota git
-                        </Link>
+                        <>
+                          <Link to={`/not/${item.noteId}`} style={{ color: 'var(--accent-text)' }}>
+                            Hazır — nota git
+                          </Link>
+                          {item.message && <span style={{ color: 'var(--warning)', display: 'block' }}>{item.message}</span>}
+                        </>
                       )}
                       {(item.status === 'unreadable' || item.status === 'failed') && <span style={{ color: 'var(--danger)' }}>{item.message}</span>}
                     </div>
@@ -463,7 +477,7 @@ export function AddNote() {
                 {batch
                   ? `Hazırlanıyor… ${doneCount}/${batch.filter((i) => i.status !== 'unreadable').length}`
                   : mode === 'ai'
-                    ? 'Yapay zekâ notunu okuyor… (1 dk kadar sürebilir)'
+                    ? chunkStatus || 'Yapay zekâ notunu okuyor… (1 dk kadar sürebilir)'
                     : 'Hazırlanıyor…'}
               </>
             ) : batch ? (

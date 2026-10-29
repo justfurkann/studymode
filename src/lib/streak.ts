@@ -25,10 +25,13 @@ export function shiftLocalDay(dayKey: string, offsetDays: number): string {
   return localDayKey(date)
 }
 
-/** A day counts as studied if at least 1 card was reviewed or at least 1 quiz/exam was completed. */
-export function isDayStudied(day: Pick<StudyDay, 'reviews' | 'quizzes'> | undefined): boolean {
+/**
+ * Any study work keeps the streak alive: a reviewed card, a finished test or exam, or other work such
+ * as a written answer. The daily card goal is measured separately (reviews only).
+ */
+export function isDayStudied(day: Pick<StudyDay, 'reviews' | 'quizzes' | 'actions'> | undefined): boolean {
   if (!day) return false
-  return day.reviews >= 1 || day.quizzes >= 1
+  return day.reviews >= 1 || day.quizzes >= 1 || (day.actions ?? 0) >= 1
 }
 
 /**
@@ -46,6 +49,7 @@ export function mergeStudyDays(days: StudyDay[]): StudyDay[] {
         ...existing,
         reviews: existing.reviews + item.reviews,
         quizzes: existing.quizzes + item.quizzes,
+        actions: (existing.actions ?? 0) + (item.actions ?? 0),
         updatedAt: existing.updatedAt >= item.updatedAt ? existing.updatedAt : item.updatedAt,
       })
     }
@@ -59,7 +63,7 @@ export function mergeStudyDays(days: StudyDay[]): StudyDay[] {
  */
 export function recordStudyActivity(
   studyDays: StudyDay[],
-  delta: { reviews?: number; quizzes?: number },
+  delta: { reviews?: number; quizzes?: number; actions?: number },
   now: Date = new Date(),
   makeId: () => string = () => crypto.randomUUID(),
 ): { studyDays: StudyDay[]; updated: StudyDay } {
@@ -71,6 +75,7 @@ export function recordStudyActivity(
         ...existing,
         reviews: Math.max(0, existing.reviews + (delta.reviews ?? 0)),
         quizzes: Math.max(0, existing.quizzes + (delta.quizzes ?? 0)),
+        actions: Math.max(0, (existing.actions ?? 0) + (delta.actions ?? 0)),
         updatedAt: iso,
       }
     : {
@@ -78,6 +83,7 @@ export function recordStudyActivity(
         day: today,
         reviews: Math.max(0, delta.reviews ?? 0),
         quizzes: Math.max(0, delta.quizzes ?? 0),
+        actions: Math.max(0, delta.actions ?? 0),
         createdAt: iso,
         updatedAt: iso,
       }
