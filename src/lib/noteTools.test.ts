@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { matchesNote, summaryMarkdown } from './noteTools'
+import { matchesNote, safeFileName, summaryMarkdown } from './noteTools'
 import type { Note } from './types'
 const note = { title: 'İktisat', content: 'Fırsat maliyeti seçimlerin sonucudur.', summary: { overview: 'Seçimler', points: ['Kaynaklar sınırlıdır.'], keyTerms: [{ term: 'Maliyet', definition: 'Vazgeçilen alternatif.' }], tags: ['vize'] } } as Note
 describe('note tools', () => {
@@ -14,5 +14,13 @@ describe('note tools', () => {
     expect(text).toContain('# İktisat')
     expect(text).toContain('- Kaynaklar sınırlıdır.')
     expect(text).toContain('**Maliyet:** Vazgeçilen alternatif.')
+  })
+})
+
+describe('safeFileName', () => {
+  it('keeps names readable while dropping characters browsers may reject', () => {
+    expect(safeFileName('Yeni hücre notu.md')).toBe('Yeni hucre notu.md')
+    expect(safeFileName('Çalışma: Ünite 1/2.md')).toBe('Calisma- Unite 1-2.md')
+    expect(safeFileName('日本.md')).toBe('.md')
   })
 })
