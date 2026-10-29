@@ -57,6 +57,14 @@ Talimatlar ve çıktı şemaları `src/lib/ai/tasks.ts` içinde; Claude yapılan
 
 Statik bir site olarak her yere konabilir. Vercel için `vercel.json`, Netlify için `public/_redirects` SPA yönlendirmelerini içerir. Ortam değişkenlerini (`VITE_SUPABASE_*`) barındırma servisinin panelinden ekle ve Supabase'deki Site URL'yi yayın adresine güncelle.
 
+## Sorun giderme
+
+- **Ücretsiz yapay zekâ "henüz kurulmadı" diyor:** Vercel'de `GEMINI_API_KEY` tanımlı değil ya da eklendikten sonra yeniden yayın yapılmadı. Ortam değişkenleri yalnızca yeni yayınlarda geçerli olur; `main`e gelen her değişiklik yeni bir yayın başlatır ya da Vercel → Deployments → ⋯ → Redeploy kullanılabilir.
+- **"Model bulunamadı":** Google model adını değiştirmiş olabilir. Vercel'de `GEMINI_MODEL` değişkenine güncel model adını yaz ve yeniden yayınla.
+- **"Kota dolu":** Gemini ücretsiz katmanının dakikalık/günlük sınırı aşıldı; biraz sonra tekrar dene ya da Ayarlar'dan kendi anahtarını bağla.
+- **Onay e-postasındaki bağlantı yanlış adrese gidiyor:** Supabase → Authentication → URL Configuration altında Site URL ve Redirect URLs sitenin adresi olmalı.
+- **Site bazı internet bağlantılarında açılmıyor (SSL hatası):** Bazı sağlayıcılar `*.vercel.app` adreslerini engelleyebiliyor; kendi alan adı (`studymode.fun`) bu sorunu çözer.
+
 ## Kod yapısı
 
 ```
