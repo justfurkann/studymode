@@ -4,7 +4,7 @@
 
 ## Kullanmak için
 
-Kurulum gerekmez: **https://studymode-five.vercel.app** adresine gir, hesap aç ve kullanmaya başla. Telefonda tarayıcının "Ana ekrana ekle" seçeneğiyle uygulama gibi açılabilir.
+Kurulum gerekmez: **https://studymode.fun** adresine gir, hesap aç ve kullanmaya başla. Telefonda tarayıcının "Ana ekrana ekle" seçeneğiyle uygulama gibi açılabilir.
 
 ## Özellikler
 
