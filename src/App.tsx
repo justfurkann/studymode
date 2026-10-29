@@ -4,6 +4,7 @@ import { Alert, Spinner, ToastProvider } from './components/ui'
 import { StoreProvider, useStore } from './lib/store'
 import { AddNote } from './pages/AddNote'
 import { CourseDetail } from './pages/CourseDetail'
+import { Exam } from './pages/Exam'
 import { Courses } from './pages/Courses'
 import { Login } from './pages/Login'
 import { NoteDetail } from './pages/NoteDetail'
@@ -41,6 +42,7 @@ function Routed() {
         <Route index element={<Today />} />
         <Route path="dersler" element={<Courses />} />
         <Route path="ders/:id" element={<CourseDetail />} />
+        <Route path="ders/:id/sinav" element={<Exam />} />
         <Route path="not/:id" element={<NoteDetail />} />
         <Route path="not-ekle" element={<AddNote />} />
         <Route path="tekrar" element={<Review />} />
