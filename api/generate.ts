@@ -66,6 +66,15 @@ export async function handleGenerate(request: Request, env: Env, fetchImpl: type
   }
 }
 
+/** Health check: open /api/generate in a browser to see whether the shared AI is set up. */
+export function handleStatus(env: Env): Response {
+  return json(200, { ok: true, configured: !!env.GEMINI_API_KEY, model: env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL })
+}
+
+export function GET(): Response {
+  return handleStatus(process.env)
+}
+
 export async function POST(request: Request): Promise<Response> {
   return handleGenerate(request, process.env)
 }

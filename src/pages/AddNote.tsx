@@ -74,9 +74,19 @@ export function AddNote() {
     const files = [...list]
     if (!files.length) return
     setError('')
-    if (files.length === 1 && !batch) return readFile(files[0])
+    if (files.length === 1 && !batch && !content) return readFile(files[0])
 
-    const existing = batch ?? []
+    // A file is already loaded on its own: it becomes the first item of the list.
+    const carried: BatchItem[] =
+      !batch && content && isLongEnough(content)
+        ? [{ key: crypto.randomUUID(), fileName: fileName || 'Yapıştırılan metin', title: title || titleFromFile(fileName) || 'Adsız not', content, status: 'ready', message: '', noteId: null }]
+        : []
+    if (!batch && content) {
+      setContent('')
+      setFileName('')
+      setTitle('')
+    }
+    const existing = batch ?? carried
     const room = MAX_BATCH - existing.length
     if (files.length > room) setError(`Tek seferde en fazla ${MAX_BATCH} dosya ekleyebilirsin. İlk ${Math.max(room, 0)} dosya alındı.`)
     const items: BatchItem[] = files.slice(0, Math.max(room, 0)).map((file) => ({
@@ -334,9 +344,15 @@ export function AddNote() {
                   <span>
                     {fileName} okundu — gerekirse düzenleyebilirsin.{' '}
                     {!savedNoteId && (
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => (setContent(''), setFileName(''))}>
-                        Başka dosya seç
-                      </button>
+                      <>
+                        <button type="button" className="btn btn-sm" onClick={() => fileInput.current?.click()}>
+                          <Plus size={15} /> Dosya ekle
+                        </button>{' '}
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => (setContent(''), setFileName(''))}>
+                          Bu dosyayı kaldır
+                        </button>
+                        {fileInputEl}
+                      </>
                     )}
                   </span>
                 )}
