@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { handleGenerate, handleStatus } from './generate'
+import { callGeminiWithFallback } from '../src/lib/ai/gemini'
+import { geminiModels, handleGenerate, handleStatus } from './generate'
 
 const studySet = {
   summary: { overview: 'Özet', points: ['Nokta'], keyTerms: [] },
@@ -33,9 +34,9 @@ const env = { GEMINI_API_KEY: 'server-key' }
 
 describe('handleStatus', () => {
   it('says whether a key is set without revealing it', async () => {
-    expect(await handleStatus({}).json()).toEqual({ ok: true, configured: false, model: 'gemini-3.8-flash' })
-    const body = await handleStatus({ GEMINI_API_KEY: 'secret', GEMINI_MODEL: 'm' }).json()
-    expect(body).toEqual({ ok: true, configured: true, model: 'm' })
+    expect(await handleStatus({}).json()).toEqual({ ok: true, configured: false, models: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'] })
+    const body = await handleStatus({ GEMINI_API_KEY: 'secret', GEMINI_MODEL: 'm', GEMINI_FALLBACK_MODELS: 'a, m ,b' }).json()
+    expect(body).toEqual({ ok: true, configured: true, models: ['m', 'a', 'b'] })
     expect(JSON.stringify(body)).not.toContain('secret')
   })
 })
@@ -76,9 +77,49 @@ describe('handleGenerate', () => {
     expect(res.status).toBe(200)
   })
 
-  it('maps quota errors', async () => {
-    const res = await handleGenerate(request({ task: 'study', input: { title: 't', text: 'x' } }), env, fakeFetch({ gemini: [gemini('', 429)] }))
+  it('maps quota errors once every model is out of quota', async () => {
+    const res = await handleGenerate(
+      request({ task: 'study', input: { title: 't', text: 'x' } }),
+      env,
+      fakeFetch({ gemini: [gemini('', 429), gemini('', 429), gemini('', 429)] }),
+      noSleep,
+    )
     expect(res.status).toBe(429)
     expect(await res.json()).toEqual({ error: 'quota' })
+  })
+
+  it('reports busy when every model stays overloaded', async () => {
+    const res = await handleGenerate(request({ task: 'study', input: { title: 't', text: 'x' } }), { ...env, GEMINI_FALLBACK_MODELS: ' ' }, fakeFetch({ gemini: [gemini('', 503), gemini('', 503), gemini('', 503)] }), noSleep)
+    expect(res.status).toBe(503)
+    expect(await res.json()).toEqual({ error: 'busy' })
+  })
+})
+
+const noSleep = async () => undefined
+
+describe('callGeminiWithFallback', () => {
+  const models = (calls: Array<[string, RequestInit]>) => calls.map(([url]) => String(url).match(/models\/([^:]+)/)![1])
+
+  it('retries an overloaded model, then succeeds on it', async () => {
+    const fetchImpl = fakeFetch({ gemini: [gemini('', 503), gemini('ok')] })
+    const result = await callGeminiWithFallback({ apiKey: 'k', models: ['a', 'b'], system: 's', user: 'u', fetchImpl, sleep: noSleep })
+    expect(result).toEqual({ text: 'ok', model: 'a' })
+  })
+
+  it('moves to the next model when one is unknown, out of quota or keeps failing', async () => {
+    const fetchImpl = fakeFetch({ gemini: [gemini('', 404), gemini('', 429), gemini('', 503), gemini('', 503), gemini('', 503), gemini('done')] })
+    const result = await callGeminiWithFallback({ apiKey: 'k', models: ['a', 'b', 'c', 'd'], system: 's', user: 'u', fetchImpl, sleep: noSleep })
+    expect(result).toEqual({ text: 'done', model: 'd' })
+    const calls = (fetchImpl as unknown as { mock: { calls: Array<[string, RequestInit]> } }).mock.calls
+    expect(models(calls)).toEqual(['a', 'b', 'c', 'c', 'c', 'd'])
+  })
+
+  it('does not retry errors another attempt cannot fix', async () => {
+    const fetchImpl = fakeFetch({ gemini: [gemini('', 400)] })
+    await expect(callGeminiWithFallback({ apiKey: 'k', models: ['a', 'b'], system: 's', user: 'u', fetchImpl, sleep: noSleep })).rejects.toMatchObject({ status: 400 })
+  })
+
+  it('uses the configured main model first', () => {
+    expect(geminiModels({ GEMINI_MODEL: 'gemini-3.6-flash' })).toEqual(['gemini-3.6-flash', 'gemini-3.5-flash-lite'])
   })
 })
