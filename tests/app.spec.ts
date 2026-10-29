@@ -443,7 +443,7 @@ test('edit source, tags, course and summary; search and export', async ({ page }
   await expect(page.getByText('Düzenlenmiş açıklama.')).toBeVisible()
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Markdown indir' }).click()
-  expect((await download).suggestedFilename()).toBe('Yeni hücre notu.md')
+  expect((await download).suggestedFilename()).toBe('Yeni hucre notu.md')
   await page.reload()
   await expect(page.getByText('Düzenlenmiş açıklama.')).toBeVisible()
   await page.getByRole('link', { name: 'Hedef ders', exact: true }).click()
