@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { clearLocalData, localBackend, readLocalData, supabaseBackend, type Backend, type Change } from './backend'
 import { newCardState, schedule, type Grade } from './srs'
+import { mergeStudyDays, recordStudyActivity } from './streak'
 import { supabase } from './supabase'
 import { emptyData, type Card, type Course, type ExamRecord, type GeneratedSet, type Note, type QuizAttempt, type StudyData } from './types'
 
@@ -174,6 +175,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             cards: d.cards.filter((c) => c.courseId !== id),
             attempts: d.attempts.filter((a) => a.courseId !== id),
             exams: d.exams.filter((e) => e.courseId !== id),
+            studyDays: d.studyDays,
           },
           [{ type: 'delete', table: 'courses', ids: [id] }],
         )
@@ -293,28 +295,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const d = current()
         if (!d.cards.some(c => c.id === card.id)) return
         const restored = { ...card, updatedAt: nowIso() }
-        commit({ ...d, cards: d.cards.map(c => c.id === card.id ? restored : c) }, [{ type: 'upsert', table: 'cards', rows: [restored] }])
+        const activity = recordStudyActivity(d.studyDays, { reviews: -1 })
+        commit(
+          { ...d, cards: d.cards.map(c => c.id === card.id ? restored : c), studyDays: activity.studyDays },
+          [
+            { type: 'upsert', table: 'cards', rows: [restored] },
+            { type: 'upsert', table: 'studyDays', rows: [activity.updated] },
+          ],
+        )
       },
 
       reviewCard(id, grade) {
         const d = current()
         const card = d.cards.find((c) => c.id === id)
         if (!card) return
+        const now = new Date()
         const exam = d.courses.find((c) => c.id === card.courseId)?.examDate ?? null
-        const updated = { ...card, ...schedule(card, grade, new Date(), exam), updatedAt: nowIso() }
-        commit({ ...d, cards: d.cards.map((c) => (c.id === id ? updated : c)) }, [{ type: 'upsert', table: 'cards', rows: [updated] }])
+        const updated = { ...card, ...schedule(card, grade, now, exam), updatedAt: now.toISOString() }
+        const activity = recordStudyActivity(d.studyDays, { reviews: 1 }, now)
+        commit(
+          { ...d, cards: d.cards.map((c) => (c.id === id ? updated : c)), studyDays: activity.studyDays },
+          [
+            { type: 'upsert', table: 'cards', rows: [updated] },
+            { type: 'upsert', table: 'studyDays', rows: [activity.updated] },
+          ],
+        )
       },
 
       addAttempt(input) {
         const d = current()
-        const attempt: QuizAttempt = { ...input, id: uuid(), createdAt: nowIso() }
-        commit({ ...d, attempts: [...d.attempts, attempt] }, [{ type: 'upsert', table: 'attempts', rows: [attempt] }])
+        const now = new Date()
+        const attempt: QuizAttempt = { ...input, id: uuid(), createdAt: now.toISOString() }
+        const activity = recordStudyActivity(d.studyDays, { quizzes: 1 }, now)
+        commit(
+          { ...d, attempts: [...d.attempts, attempt], studyDays: activity.studyDays },
+          [
+            { type: 'upsert', table: 'attempts', rows: [attempt] },
+            { type: 'upsert', table: 'studyDays', rows: [activity.updated] },
+          ],
+        )
       },
 
       addExam(input) {
         const d = current()
-        const exam: ExamRecord = { ...input, id: uuid(), createdAt: nowIso() }
-        commit({ ...d, exams: [...d.exams, exam] }, [{ type: 'upsert', table: 'exams', rows: [exam] }])
+        const now = new Date()
+        const exam: ExamRecord = { ...input, id: uuid(), createdAt: now.toISOString() }
+        const activity = recordStudyActivity(d.studyDays, { quizzes: 1 }, now)
+        commit(
+          { ...d, exams: [...d.exams, exam], studyDays: activity.studyDays },
+          [
+            { type: 'upsert', table: 'exams', rows: [exam] },
+            { type: 'upsert', table: 'studyDays', rows: [activity.updated] },
+          ],
+        )
         return exam
       },
 
@@ -336,6 +369,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { type: 'upsert', table: 'cards', rows: next.cards },
           { type: 'upsert', table: 'attempts', rows: next.attempts },
           { type: 'upsert', table: 'exams', rows: next.exams },
+          { type: 'upsert', table: 'studyDays', rows: next.studyDays },
+          { type: 'delete', table: 'studyDays', ids: gone(d.studyDays, next.studyDays) },
           { type: 'delete', table: 'exams', ids: gone(d.exams, next.exams) },
           { type: 'delete', table: 'attempts', ids: gone(d.attempts, next.attempts) },
           { type: 'delete', table: 'cards', ids: gone(d.cards, next.cards) },
@@ -370,6 +405,7 @@ export async function migrateLocalToCloud(store: StoreValue) {
     cards: [...d.cards, ...local.cards.filter((c) => !d.cards.some((x) => x.id === c.id))],
     attempts: [...d.attempts, ...local.attempts.filter((a) => !d.attempts.some((x) => x.id === a.id))],
     exams: [...d.exams, ...local.exams.filter((e) => !d.exams.some((x) => x.id === e.id))],
+    studyDays: mergeStudyDays([...d.studyDays, ...local.studyDays]),
   })
   clearLocalData()
 }

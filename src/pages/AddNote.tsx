@@ -44,6 +44,7 @@ export function AddNote() {
   const [source, setSource] = useState<'file' | 'text'>('file')
   const [fileName, setFileName] = useState('')
   const [reading, setReading] = useState(false)
+  const [readProgress, setReadProgress] = useState<{ done: number; total: number } | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [mode, setMode] = useState<Generator>(ai.ok ? 'ai' : 'local')
   const [busy, setBusy] = useState(false)
@@ -56,11 +57,23 @@ export function AddNote() {
   const updateItem = (key: string, patch: Partial<BatchItem>) =>
     setBatch((items) => items?.map((item) => (item.key === key ? { ...item, ...patch } : item)) ?? null)
 
+  const makeTranscriber = () =>
+    ai.ok
+      ? async (images: import('../lib/ai').TranscribeImage[]) => {
+          const { transcribeImages } = await import('../lib/ai')
+          return transcribeImages(images, settings)
+        }
+      : undefined
+
   async function readFile(file: File) {
     setError('')
     setReading(true)
+    setReadProgress(null)
     try {
-      const text = await extractNoteText(file)
+      const text = await extractNoteText(file, {
+        transcribe: makeTranscriber(),
+        onProgress: (done, total) => setReadProgress({ done, total }),
+      })
       setContent(text)
       setFileName(file.name)
       if (!title) setTitle(titleFromFile(file.name))
@@ -68,6 +81,7 @@ export function AddNote() {
       setError(e instanceof Error ? e.message : 'Dosya okunamadı.')
     } finally {
       setReading(false)
+      setReadProgress(null)
     }
   }
 
@@ -101,11 +115,15 @@ export function AddNote() {
     }))
     setBatch([...existing, ...items])
 
-    // PDFs are parsed one at a time to keep the page responsive.
+    // PDFs and images are parsed one at a time to keep the page responsive.
+    const transcribe = makeTranscriber()
     for (const [i, item] of items.entries()) {
       try {
-        const text = await extractNoteText(files[i])
-        updateItem(item.key, isLongEnough(text) ? { content: text, status: 'ready' } : { status: 'unreadable', message: 'Çok kısa' })
+        const text = await extractNoteText(files[i], {
+          transcribe,
+          onProgress: (done, total) => updateItem(item.key, { message: `${done}/${total} sayfa okundu` }),
+        })
+        updateItem(item.key, isLongEnough(text) ? { content: text, status: 'ready', message: '' } : { status: 'unreadable', message: 'Çok kısa' })
       } catch (e) {
         updateItem(item.key, { status: 'unreadable', message: e instanceof Error ? e.message : 'Okunamadı' })
       }
@@ -264,7 +282,7 @@ export function AddNote() {
                       <div className="title">{item.title}</div>
                     )}
                     <div className="subtle">
-                      {item.status === 'reading' && 'Okunuyor…'}
+                      {item.status === 'reading' && (item.message ? `${item.message}…` : 'Okunuyor…')}
                       {item.status === 'ready' && `${item.content.length.toLocaleString('tr-TR')} karakter`}
                       {item.status === 'working' && (mode === 'ai' ? 'Yapay zekâ okuyor…' : 'Hazırlanıyor…')}
                       {item.status === 'done' && item.noteId && (
@@ -297,7 +315,7 @@ export function AddNote() {
               </div>
             )}
             {batch.some((i) => i.status === 'unreadable') && (
-              <p className="subtle">Okunamayan dosyalar atlanır. Taranmış PDF’ler henüz desteklenmiyor.</p>
+              <p className="subtle">Okunamayan dosyalar atlanır.</p>
             )}
           </div>
         ) : (
@@ -331,9 +349,15 @@ export function AddNote() {
                 onDrop={onDrop}
               >
                 {reading ? <Spinner size={28} /> : <FileUp size={28} className="muted" />}
-                <strong>{reading ? 'Dosya okunuyor…' : 'Dosyaları buraya bırak ya da seç'}</strong>
+                <strong role={reading ? 'status' : undefined}>
+                  {reading
+                    ? readProgress
+                      ? `${readProgress.done}/${readProgress.total} sayfa okundu`
+                      : 'Dosya okunuyor…'
+                    : 'Dosyaları buraya bırak ya da seç'}
+                </strong>
                 <span className="subtle">
-                  PDF, Word, PowerPoint, TXT veya Markdown · birden fazla seçebilirsin (en fazla {MAX_BATCH}) · dosya başına 10 MB · taranmış PDF desteklenmiyor
+                  PDF (taranmış dahil), fotoğraf (.jpg, .png, .webp), Word, PowerPoint, TXT veya Markdown · birden fazla seçebilirsin (en fazla {MAX_BATCH}) · dosya başına 10 MB
                 </span>
                 {fileInputEl}
               </div>

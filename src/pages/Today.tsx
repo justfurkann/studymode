@@ -6,7 +6,9 @@ import { useLoadDemo } from '../lib/useDemo'
 import { courseStats, dueCards, examLabel, relativeDate } from '../lib/format'
 import { computeNoteProgress } from '../lib/learningPath'
 import { daysUntil } from '../lib/srs'
+import { useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
+import { computeStreakSummary } from '../lib/streak'
 import type { LearningStepId, Note } from '../lib/types'
 
 function stepUrl(note: Note, stepId: LearningStepId): string {
@@ -18,6 +20,7 @@ function stepUrl(note: Note, stepId: LearningStepId): string {
 
 export function Today() {
   const store = useStore()
+  const settings = useSettings()
   const { data } = store
   const now = new Date()
   const due = dueCards(data.cards, now)
@@ -26,6 +29,8 @@ export function Today() {
   const loadDemo = useLoadDemo()
 
   if (!data.courses.length) return <Welcome onDemo={loadDemo} />
+
+  const streakSummary = computeStreakSummary(data.studyDays, settings.dailyGoal, now)
 
   const exams = data.courses
     .map((course) => ({ course, days: daysUntil(course.examDate, now), stats: courseStats(data, course, now) }))
@@ -95,6 +100,47 @@ export function Today() {
           </Link>
         </section>
       )}
+
+      <section className="panel streak-panel" aria-label="Günlük hedef ve seri">
+        <div className="streak-goal">
+          <div className="streak-goal-head">
+            <div>
+              <strong>Günlük kart hedefi</strong>
+              <span className="subtle" style={{ display: 'block' }}>
+                {streakSummary.goalMet
+                  ? 'Bugünkü kart hedefini tamamladın.'
+                  : streakSummary.todayReviews > 0
+                    ? 'Hedefe ulaşmak için tekrarlara devam et.'
+                    : 'Bugün henüz kart tekrar etmedin.'}
+              </span>
+            </div>
+            <div className="streak-goal-numbers">
+              <strong className="streak-fraction">
+                {streakSummary.todayReviews}/{streakSummary.dailyGoal}
+              </strong>
+              <Link to="/ayarlar" className="subtle" style={{ color: 'var(--accent-text)', fontWeight: 550 }}>
+                Hedefi değiştir
+              </Link>
+            </div>
+          </div>
+          <div className="progress" role="progressbar" aria-label="Günlük kart ilerlemesi" aria-valuenow={streakSummary.todayReviews} aria-valuemin={0} aria-valuemax={streakSummary.dailyGoal}>
+            <div style={{ width: `${streakSummary.goalPercent}%`, background: streakSummary.goalMet ? 'var(--success)' : 'var(--accent)' }} />
+          </div>
+        </div>
+
+        <div className={`streak-badge ${streakSummary.streak > 0 ? 'active' : ''}`}>
+          <div className="streak-badge-title">
+            {streakSummary.streak > 0 ? `🔥 ${streakSummary.streak} gündür çalışıyorsun` : '🔥 Çalışma serisi: 0 gün'}
+          </div>
+          <div className="subtle">
+            {streakSummary.studiedToday
+              ? 'Bugünkü çalışma kaydın alındı.'
+              : streakSummary.streak > 0
+                ? 'Seriyi korumak için bugün en az 1 kart tekrar et veya 1 test çöz.'
+                : 'Seri başlatmak için bugün en az 1 kart tekrar et veya 1 test çöz.'}
+          </div>
+        </div>
+      </section>
 
       {inProgressNotes.length > 0 && (
         <section className="section">

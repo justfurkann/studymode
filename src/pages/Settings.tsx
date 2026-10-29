@@ -6,6 +6,7 @@ import { authErrorMessage, MIN_PASSWORD, nameMetadata, passwordProblem } from '.
 import { hasLocalData, parseData } from '../lib/backend'
 import { PROVIDERS, updateSettings, useSettings, type AiProvider, type KeyProvider, type Theme } from '../lib/settings'
 import { migrateLocalToCloud, useStore } from '../lib/store'
+import { clampDailyGoal } from '../lib/streak'
 import { supabase } from '../lib/supabase'
 import { emptyData } from '../lib/types'
 
@@ -398,6 +399,26 @@ export function Settings() {
         <h2>Yapay zekâ</h2>
         <div className="panel">
           <AiSection />
+        </div>
+      </section>
+
+      <section className="section">
+        <h2>Çalışma hedefi</h2>
+        <div className="panel form">
+          <label className="field" style={{ maxWidth: 240 }}>
+            <span>Günlük kart hedefi</span>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={500}
+              value={settings.dailyGoal}
+              onChange={(e) => updateSettings({ dailyGoal: clampDailyGoal(e.target.value, settings.dailyGoal) })}
+            />
+          </label>
+          <p className="subtle">
+            Bugün sayfasındaki günlük tekrar ilerlemesi bu hedefe göre gösterilir. En az 1 kart tekrarı veya 1 test tamamlamak günlük serini korur.
+          </p>
         </div>
       </section>
 

@@ -697,3 +697,86 @@ test('PowerPoint and Word files can be uploaded as notes', async ({ page }) => {
   await expect(page.getByText('2 not')).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('photo note extraction requires AI for guests and puts transcribed text into the editor first', async ({ page }) => {
+  const errors = watchErrors(page)
+  const tinyPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
+    'base64',
+  )
+
+  await createCourse(page, 'Fizik 101')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+
+  // Guest without account/key sees clear message and AiSignupPrompt
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'defter.png', mimeType: 'image/png', buffer: tinyPng })
+  await expect(page.getByRole('alert')).toContainText('Fotoğraftan metin çıkarmak için')
+  await expect(page.getByRole('note').filter({ hasText: 'Yapay zekâ ücretsiz, sadece hesap aç' })).toBeVisible()
+
+  // Configure user's Gemini key and mock transcription response
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'studymode.settings.v1',
+      JSON.stringify({
+        provider: 'google',
+        keys: { anthropic: '', openai: '', google: 'test-gemini-key' },
+        models: { anthropic: 'claude-opus-5-5', openai: 'gpt-5-mini', google: 'gemini-3.5-flash-lite' },
+        theme: 'system',
+        dailyGoal: 20,
+      }),
+    )
+  })
+  await page.reload()
+
+  const transcribedNote = `Kütle ve Enerji Eşdeğerliği: $E = mc^2$ formülü ile ifade edilir. Cisimlerin durgun kütle enerjisi ışık hızının karesiyle doğru orantılıdır.\n\n| Büyüklük | Sembol |\n| --- | --- |\n| Enerji | E |\n| Kütle | m |`
+  await page.route('https://generativelanguage.googleapis.com/**', (route) => {
+    const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' }
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers,
+      body: JSON.stringify({
+        candidates: [{ content: { parts: [{ text: JSON.stringify({ text: transcribedNote }) }] }, finishReason: 'STOP' }],
+      }),
+    })
+  })
+
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'tahta_notu.png', mimeType: 'image/png', buffer: tinyPng })
+  // Extracted text appears in the textarea first so the user can edit before saving
+  await expect(page.getByLabel('Ders notun')).toHaveValue(transcribedNote)
+  await expect(page.getByLabel('Not başlığı')).toHaveValue('tahta notu')
+  expect(errors).toEqual([])
+})
+
+test('daily card goal and study streak update on Today page after reviewing cards', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+
+  // Update daily card goal in Settings to 5
+  await page.goto('/ayarlar')
+  const goalInput = page.getByLabel('Günlük kart hedefi')
+  await expect(goalInput).toHaveValue('20')
+  await goalInput.fill('5')
+
+  await page.goto('/')
+  const streakPanel = page.getByRole('region', { name: 'Günlük hedef ve seri' })
+  await expect(streakPanel).toBeVisible()
+  await expect(streakPanel.getByText('0/5')).toBeVisible()
+  await expect(streakPanel.getByText('🔥 Çalışma serisi: 0 gün')).toBeVisible()
+
+  // Review 2 cards
+  await page.getByRole('link', { name: 'Tekrara başla' }).click()
+  for (let i = 0; i < 2; i += 1) {
+    await page.getByRole('button', { name: /Cevabı göster/ }).click()
+    await page.getByRole('button', { name: /^İyi/ }).click()
+  }
+  await page.getByRole('link', { name: 'Bitir' }).click()
+
+  // Verify progress (2/5) and active streak ("🔥 1 gündür çalışıyorsun")
+  await expect(streakPanel.getByText('2/5')).toBeVisible()
+  await expect(streakPanel.getByText('🔥 1 gündür çalışıyorsun')).toBeVisible()
+  expect(errors).toEqual([])
+})
+

@@ -120,15 +120,27 @@ export interface ExamRecord {
   createdAt: string
 }
 
+/** A daily activity record synced across devices to track streaks and daily card goals. */
+export interface StudyDay {
+  id: string
+  /** YYYY-MM-DD in the user's local timezone. */
+  day: string
+  reviews: number
+  quizzes: number
+  createdAt: string
+  updatedAt: string
+}
+
 export interface StudyData {
   courses: Course[]
   notes: Note[]
   cards: Card[]
   attempts: QuizAttempt[]
   exams: ExamRecord[]
+  studyDays: StudyDay[]
 }
 
-export const emptyData = (): StudyData => ({ courses: [], notes: [], cards: [], attempts: [], exams: [] })
+export const emptyData = (): StudyData => ({ courses: [], notes: [], cards: [], attempts: [], exams: [], studyDays: [] })
 
 /** What a generator (AI or local rules) produces for one note. */
 export interface GeneratedSet {

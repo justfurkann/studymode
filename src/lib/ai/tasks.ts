@@ -102,6 +102,36 @@ For each item, compare the student's answer with the model answer and the gradin
 - feedback: 1-3 sentences in the language of the question (usually Turkish), saying what was right and what was missing or wrong. Be direct and specific; do not be harsh.
 Judge the content, not spelling or style.`
 
+// ---------- Transcribing images & scanned PDF pages ----------
+
+export const TranscribeSchema = z.object({
+  text: z.string(),
+})
+
+export type ImageMimeType = 'image/jpeg' | 'image/png' | 'image/webp'
+
+export interface TranscribeImage {
+  mimeType: ImageMimeType
+  /** Base64-encoded image bytes without a data: URL prefix. */
+  data: string
+}
+
+export interface TranscribeInput {
+  images: TranscribeImage[]
+}
+
+export const TRANSCRIBE_USER_TEXT =
+  'Transcribe the text, mathematical expressions, and tables from the attached lecture note page(s) in order.'
+
+const TRANSCRIBE_PROMPT = `You transcribe university lecture notes, slides, and textbook pages from images into clean, accurate plain text / Markdown.
+
+Rules:
+- Keep the original language of the document (usually Turkish).
+- Transcribe all visible lecture content in reading order. If multiple pages are provided, separate pages with a blank line.
+- Preserve headings, bullet points, numbered lists, mathematical formulas (using clear notation or LaTeX such as $E = mc^2$), and tables (using Markdown tables).
+- Do NOT summarize, explain, or invent content. Only transcribe what is written in the images.
+- If an image contains no readable text at all, return {"text": ""}.`
+
 // ---------- Registry ----------
 
 const MAX_PROMPT_NOTE_CHARS = 24_000
@@ -145,6 +175,17 @@ export const TASKS = {
             `<item index="${i}">\n<question>${item.question}</question>\n<model_answer>${item.modelAnswer}</model_answer>\n<criteria>${item.criteria}</criteria>\n<student_answer>${item.answer}</student_answer>\n</item>`,
         )
         .join('\n\n'),
+  },
+  transcribe: {
+    schema: TranscribeSchema,
+    system: TRANSCRIBE_PROMPT,
+    user: (input: TranscribeInput) => {
+      const images = Array.isArray(input?.images) ? input.images : []
+      return [
+        TRANSCRIBE_USER_TEXT,
+        ...images.map((img, i) => `<image index="${i + 1}" mime="${img.mimeType}">${img.data}</image>`),
+      ].join('\n')
+    },
   },
 }
 

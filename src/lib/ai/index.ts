@@ -5,9 +5,22 @@ import type { Settings } from '../settings'
 import { supabase } from '../supabase'
 import type { GeneratedSet } from '../types'
 import { callGeminiWithFallback, GeminiError } from './gemini'
-import { jsonModeSystem, parseTaskOutput, TASKS, userPrompt, type ExamInput, type GradeInput, type TaskInput, type TaskName, type TaskOutput } from './tasks'
+import {
+  jsonModeSystem,
+  parseTaskOutput,
+  TASKS,
+  TRANSCRIBE_USER_TEXT,
+  userPrompt,
+  type ExamInput,
+  type GradeInput,
+  type TaskInput,
+  type TaskName,
+  type TaskOutput,
+  type TranscribeImage,
+  type TranscribeInput,
+} from './tasks'
 
-export type { ExamDifficulty, ExamFormat, ExamInput, GradeInput } from './tasks'
+export type { ExamDifficulty, ExamFormat, ExamInput, GradeInput, ImageMimeType, TranscribeImage, TranscribeInput } from './tasks'
 export type RawStudySet = TaskOutput<'study'>
 export type RawExam = TaskOutput<'exam'>
 
@@ -23,6 +36,16 @@ async function viaAnthropic<T extends TaskName>(task: T, input: TaskInput<T>, ap
   // Haiku has no server-side refusal fallback; Opus and Sonnet route a declined request to another model.
   const fallback = model.includes('haiku') ? {} : { fallbacks: 'default' as const, betas: ['server-side-fallback-2026-07-01'] }
   const spec = TASKS[task]
+  const content =
+    task === 'transcribe'
+      ? [
+          ...(input as TranscribeInput).images.map((img) => ({
+            type: 'image' as const,
+            source: { type: 'base64' as const, media_type: img.mimeType, data: img.data },
+          })),
+          { type: 'text' as const, text: TRANSCRIBE_USER_TEXT },
+        ]
+      : userPrompt(task, input)
   let response
   try {
     response = await client.beta.messages.parse({
@@ -30,7 +53,7 @@ async function viaAnthropic<T extends TaskName>(task: T, input: TaskInput<T>, ap
       max_tokens: 16000,
       system: spec.system,
       output_config: { effort: 'medium', format: betaZodOutputFormat(spec.schema) },
-      messages: [{ role: 'user', content: userPrompt(task, input) }],
+      messages: [{ role: 'user', content }],
       ...fallback,
     })
   } catch (error) {
@@ -75,7 +98,16 @@ async function withJsonRetry<T extends TaskName>(task: T, call: () => Promise<st
 }
 
 async function viaOpenAi<T extends TaskName>(task: T, input: TaskInput<T>, apiKey: string, model: string): Promise<TaskOutput<T>> {
-  const user = userPrompt(task, input)
+  const userContent =
+    task === 'transcribe'
+      ? [
+          { type: 'text', text: TRANSCRIBE_USER_TEXT },
+          ...(input as TranscribeInput).images.map((img) => ({
+            type: 'image_url',
+            image_url: { url: `data:${img.mimeType};base64,${img.data}` },
+          })),
+        ]
+      : userPrompt(task, input)
   return withJsonRetry(task, async () => {
     let response: Response
     try {
@@ -87,7 +119,7 @@ async function viaOpenAi<T extends TaskName>(task: T, input: TaskInput<T>, apiKe
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: jsonModeSystem(task) },
-            { role: 'user', content: user },
+            { role: 'user', content: userContent },
           ],
         }),
       })
@@ -181,6 +213,12 @@ export async function gradeAnswers(input: GradeInput, settings: Settings) {
   const { results } = await runTask('grade', input, settings)
   if (results.length !== input.items.length) throw new AiError(FORMAT_ERROR)
   return results.map((r) => ({ score: Math.min(1, Math.max(0, r.score)), feedback: r.feedback.trim() }))
+}
+
+export async function transcribeImages(images: TranscribeImage[], settings: Settings): Promise<string> {
+  if (!images.length) return ''
+  const { text } = await runTask('transcribe', { images }, settings)
+  return text.trim()
 }
 
 /** Checks a student's own key with the cheapest call each provider offers. */

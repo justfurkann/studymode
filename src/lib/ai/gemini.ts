@@ -18,6 +18,23 @@ interface GeminiResponse {
 const DEFAULT_ATTEMPT_TIMEOUT_MS = 22_000
 const DEFAULT_DEADLINE_MS = 50_000
 
+export type GeminiUserPart = { text: string } | { inlineData: { mimeType: string; data: string } }
+
+/** Turns `<image index="1" mime="image/jpeg">BASE64</image>` blocks in a task prompt into Gemini inlineData parts. */
+export function buildUserParts(user: string): GeminiUserPart[] {
+  if (!user.includes('<image ')) return [{ text: user }]
+  const parts: GeminiUserPart[] = []
+  const pattern = /<image\s+index="\d+"\s+mime="(image\/(?:jpeg|png|webp))">([A-Za-z0-9+/=\s]+)<\/image>/g
+  const textOnly = user
+    .replace(pattern, (_match, mimeType: string, data: string) => {
+      parts.push({ inlineData: { mimeType, data: data.replace(/\s+/g, '') } })
+      return ''
+    })
+    .trim()
+  if (textOnly) parts.unshift({ text: textOnly })
+  return parts.length ? parts : [{ text: user }]
+}
+
 export async function callGemini(options: {
   apiKey: string
   model: string
@@ -45,7 +62,7 @@ export async function callGemini(options: {
       headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: 'user', parts: [{ text: user }] }],
+        contents: [{ role: 'user', parts: buildUserParts(user) }],
         generationConfig,
       }),
       signal: AbortSignal.timeout(timeoutMs),

@@ -73,21 +73,34 @@ create table if not exists public.exam_results (
   created_at timestamptz not null default now()
 );
 
+-- Daily study activity for streaks and daily goals (added later; safe to run again on an existing database).
+create table if not exists public.study_days (
+  id uuid primary key,
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  day text not null check (day ~ '^\d{4}-\d{2}-\d{2}$'),
+  reviews integer not null default 0 check (reviews >= 0),
+  quizzes integer not null default 0 check (quizzes >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists notes_user_idx on public.notes (user_id);
 create index if not exists cards_user_due_idx on public.cards (user_id, due);
 create index if not exists attempts_user_idx on public.quiz_attempts (user_id);
 create index if not exists exams_user_idx on public.exam_results (user_id);
+create index if not exists study_days_user_idx on public.study_days (user_id, day);
 
 alter table public.courses enable row level security;
 alter table public.notes enable row level security;
 alter table public.cards enable row level security;
 alter table public.quiz_attempts enable row level security;
 alter table public.exam_results enable row level security;
+alter table public.study_days enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['courses', 'notes', 'cards', 'quiz_attempts', 'exam_results'] loop
+  foreach t in array array['courses', 'notes', 'cards', 'quiz_attempts', 'exam_results', 'study_days'] loop
     execute format('drop policy if exists "own rows" on public.%I', t);
     execute format(
       'create policy "own rows" on public.%I for all to authenticated

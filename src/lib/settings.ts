@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { clampDailyGoal, DEFAULT_DAILY_GOAL } from './streak'
 
 export type Theme = 'system' | 'light' | 'dark'
 
@@ -45,6 +46,7 @@ export interface Settings {
   keys: Record<KeyProvider, string>
   models: Record<KeyProvider, string>
   theme: Theme
+  dailyGoal: number
 }
 
 const KEY = 'studymode.settings.v1'
@@ -53,6 +55,7 @@ const defaults: Settings = {
   keys: { anthropic: '', openai: '', google: '' },
   models: { anthropic: 'claude-opus-5-5', openai: 'gpt-5-mini', google: 'gemini-3.5-flash-lite' },
   theme: 'system',
+  dailyGoal: DEFAULT_DAILY_GOAL,
 }
 
 const str = (value: unknown, fallback: string) => (typeof value === 'string' && value.trim() ? value : fallback)
@@ -81,6 +84,7 @@ function read(): Settings {
       keys: { anthropic: str(keys.anthropic, ''), openai: str(keys.openai, ''), google: str(keys.google, '') },
       models: { anthropic: str(models.anthropic, defaults.models.anthropic), openai: str(models.openai, defaults.models.openai), google: str(models.google, defaults.models.google) },
       theme: parsed.theme === 'light' || parsed.theme === 'dark' ? parsed.theme : 'system',
+      dailyGoal: clampDailyGoal(parsed.dailyGoal, defaults.dailyGoal),
     }
   } catch {
     return defaults

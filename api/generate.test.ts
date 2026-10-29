@@ -68,6 +68,26 @@ describe('handleGenerate', () => {
     expect(JSON.parse(init.body as string).contents[0].parts[0].text).toContain('Mitokondri')
   })
 
+  it('transcribes uploaded page images via Gemini inlineData parts', async () => {
+    const fetchImpl = fakeFetch({ gemini: [gemini(JSON.stringify({ text: 'E = mc^2\n| A | B |\n| 1 | 2 |' }))] })
+    const res = await handleGenerate(
+      request({
+        task: 'transcribe',
+        input: { images: [{ mimeType: 'image/jpeg', data: 'aGVsbG8=' }] },
+      }),
+      env,
+      fetchImpl,
+    )
+    expect(res.status).toBe(200)
+    expect((await res.json()).result).toEqual({ text: 'E = mc^2\n| A | B |\n| 1 | 2 |' })
+    const [, init] = (fetchImpl as unknown as { mock: { calls: Array<[string, RequestInit]> } }).mock.calls[1]
+    const parts = JSON.parse(init.body as string).contents[0].parts
+    expect(parts).toEqual([
+      { text: expect.stringContaining('Transcribe the text') },
+      { inlineData: { mimeType: 'image/jpeg', data: 'aGVsbG8=' } },
+    ])
+  })
+
   it('retries once when the model returns the wrong shape', async () => {
     const res = await handleGenerate(
       request({ task: 'study', input: { title: 't', text: 'x' } }),

@@ -17,10 +17,14 @@ vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({
 
 function fakePdf(options: { numPages?: number; pages?: string[]; failure?: Error } = {}) {
   const cleanup = vi.fn()
+  const render = vi.fn(() => ({ promise: Promise.resolve() }))
+  const getViewport = vi.fn(({ scale }: { scale: number }) => ({ width: 800 * scale, height: 1100 * scale }))
   const getPage = vi.fn(async (pageNumber: number) => ({
     getTextContent: async () => ({
       items: [{ str: options.pages?.[pageNumber - 1] ?? '', hasEOL: true }],
     }),
+    getViewport,
+    render,
     cleanup,
   }))
   const destroy = vi.fn(async () => undefined)
@@ -30,7 +34,7 @@ function fakePdf(options: { numPages?: number; pages?: string[]; failure?: Error
       : Promise.resolve({ numPages: options.numPages ?? 1, getPage }),
     destroy,
   }))
-  return { destroy, cleanup, getPage }
+  return { destroy, cleanup, getPage, render }
 }
 
 describe('extractNoteText', () => {
@@ -95,10 +99,51 @@ describe('extractNoteText', () => {
     expect(destroy).toHaveBeenCalledOnce()
   })
 
-  it('explains that scanned PDFs need a selectable text source', async () => {
+  it('explains that scanned PDFs need AI or a selectable text source when no transcriber is given', async () => {
     const { destroy } = fakePdf()
     await expect(extractNoteText(new File(['image pdf'], 'tarama.pdf'))).rejects.toThrow('Taranmış sayfalar')
     expect(destroy).toHaveBeenCalledOnce()
+  })
+
+  it('transcribes scanned PDF pages via AI and reports page progress', async () => {
+    const { destroy, render } = fakePdf({ numPages: 3, pages: ['', 'İkinci sayfa metinli.', ''] })
+    const progress: Array<[number, number]> = []
+    const transcribe = vi
+      .fn<() => Promise<string>>()
+      .mockResolvedValueOnce('Taranmış birinci sayfa: $F = m \\cdot a$')
+      .mockResolvedValueOnce('Taranmış üçüncü sayfa: | Hız | Zaman |')
+
+    const text = await extractNoteText(new File(['scanned pdf'], 'fizik.pdf'), {
+      transcribe,
+      onProgress: (done, total) => progress.push([done, total]),
+    })
+
+    expect(text).toBe('Taranmış birinci sayfa: $F = m \\cdot a$\n\nİkinci sayfa metinli.\n\nTaranmış üçüncü sayfa: | Hız | Zaman |')
+    expect(transcribe).toHaveBeenCalledTimes(2)
+    expect(render).toHaveBeenCalledTimes(2)
+    expect(progress).toEqual([
+      [0, 2],
+      [1, 2],
+      [2, 2],
+    ])
+    expect(destroy).toHaveBeenCalledOnce()
+  })
+
+  it('transcribes uploaded image files (.jpg, .png, .webp) and requires AI when signed out', async () => {
+    await expect(extractNoteText(new File(['img'], 'defter.jpg'))).rejects.toThrow('Fotoğraftan metin çıkarmak için')
+
+    const progress: Array<[number, number]> = []
+    const transcribe = vi.fn(async () => 'Defter notu: Mitokondri hücrenin enerji santralidir.')
+    const text = await extractNoteText(new File(['img-bytes'], 'defter.png'), {
+      transcribe,
+      onProgress: (done, total) => progress.push([done, total]),
+    })
+    expect(text).toBe('Defter notu: Mitokondri hücrenin enerji santralidir.')
+    expect(transcribe).toHaveBeenCalledOnce()
+    expect(progress).toEqual([
+      [0, 1],
+      [1, 1],
+    ])
   })
 
   it('rejects PDFs over the page limit before extracting any pages', async () => {
@@ -122,3 +167,4 @@ describe('extractNoteText', () => {
     expect(destroy).toHaveBeenCalledOnce()
   })
 })
+

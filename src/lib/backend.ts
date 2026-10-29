@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { emptyData, type StudyData } from './types'
 
-export type Table = 'courses' | 'notes' | 'cards' | 'attempts' | 'exams'
+export type Table = 'courses' | 'notes' | 'cards' | 'attempts' | 'exams' | 'studyDays'
 
 export type Change =
   | { type: 'upsert'; table: Table; rows: object[] }
@@ -66,9 +66,12 @@ export function parseData(value: unknown): StudyData {
       }
     }
   }
-  // Backups and browser data from before mock exams were saved have no `exams` list.
+  // Backups and browser data from before mock exams or study streaks were saved have no `exams` / `studyDays` list.
   const exams = Array.isArray(data.exams) ? data.exams.filter((e) => e && typeof e === 'object' && typeof (e as { id?: unknown }).id === 'string') : []
-  return { courses: data.courses, notes: data.notes, cards: data.cards, attempts: data.attempts, exams } as StudyData
+  const studyDays = Array.isArray(data.studyDays)
+    ? data.studyDays.filter((d) => d && typeof d === 'object' && typeof (d as { id?: unknown }).id === 'string' && typeof (d as { day?: unknown }).day === 'string')
+    : []
+  return { courses: data.courses, notes: data.notes, cards: data.cards, attempts: data.attempts, exams, studyDays } as StudyData
 }
 
 // ---------- Supabase (account, synced across devices) ----------
@@ -79,6 +82,7 @@ const TABLE_NAMES: Record<Table, string> = {
   cards: 'cards',
   attempts: 'quiz_attempts',
   exams: 'exam_results',
+  studyDays: 'study_days',
 }
 
 const toSnake = (key: string) => key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
@@ -100,7 +104,7 @@ const PAGE = 1000
 const isMissingTable = (error: { code?: string }) => error.code === 'PGRST205' || error.code === '42P01'
 
 /** Tables added after the first schema; an account whose database lacks them still loads. */
-const OPTIONAL_TABLES = new Set<Table>(['exams'])
+const OPTIONAL_TABLES = new Set<Table>(['exams', 'studyDays'])
 
 async function fetchAll(client: SupabaseClient, table: Table) {
   const rows: Record<string, unknown>[] = []
@@ -131,6 +135,7 @@ export function supabaseBackend(client: SupabaseClient): Backend {
           for (const rows of chunks(change.rows, 500)) {
             const { error } = await client.from(name).upsert(rows.map((row) => mapKeys(row, toSnake)))
             if (error && isMissingTable(error)) {
+              if (change.table === 'studyDays') continue
               throw new Error(`Kaydedilemedi: veritabanında "${name}" tablosu yok. Site sahibinin supabase/schema.sql dosyasını yeniden çalıştırması gerekiyor.`)
             }
             if (error) throw new Error(`Kaydedilemedi: ${error.message}`)
@@ -139,6 +144,7 @@ export function supabaseBackend(client: SupabaseClient): Backend {
           // Ids go into the URL, so keep each request short.
           for (const ids of chunks(change.ids, 100)) {
             const { error } = await client.from(name).delete().in('id', ids)
+            if (error && OPTIONAL_TABLES.has(change.table) && isMissingTable(error)) continue
             if (error) throw new Error(`Silinemedi: ${error.message}`)
           }
         }
