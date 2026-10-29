@@ -54,6 +54,7 @@ export function ExamHistory() {
         scores={exam.scores}
         feedback={exam.feedback}
         score={exam.score}
+        notes={store.data.notes.filter((n) => n.courseId === course.id)}
         meta={`${examFormatLabel(exam.format, exam.difficulty)} · ${exam.source === 'ai' ? 'Yapay zekâ soruları' : 'Hazır sorular'} · ${durationText(exam.durationSeconds)}`}
         actions={
           <>

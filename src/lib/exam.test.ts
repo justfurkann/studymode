@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { examFromNotes, normalizeExam, scoreExam } from './exam'
+import { examFromNotes, normalizeExam, noteForSource, scoreExam } from './exam'
 import type { Note } from './types'
 
 const mcq = { type: 'mcq' as const, prompt: 'Soru?', options: ['A', 'B', 'C', 'D'], answerIndex: 2, explanation: 'Çünkü', modelAnswer: '', source: ' kaynak ' }
@@ -33,5 +33,17 @@ describe('scoreExam', () => {
     expect(result.scores).toEqual([1, 0, 0.5, 0])
     expect(result.total).toBe(1.5)
     expect(result.feedback[3]).toBe('Cevap verilmedi.')
+  })
+})
+
+describe('noteForSource', () => {
+  it('finds the note that contains a quoted passage', () => {
+    const notes = [
+      { id: 'n1', content: 'Mitokondri enerji üretir.' },
+      { id: 'n2', content: 'Slayt 4\nRibozom protein sentezini gerçekleştirir.' },
+    ] as Note[]
+    expect(noteForSource(notes, 'ribozom protein sentezini')?.id).toBe('n2')
+    expect(noteForSource(notes, 'Hiç geçmeyen bir cümle')).toBeNull()
+    expect(noteForSource(notes, null)).toBeNull()
   })
 })

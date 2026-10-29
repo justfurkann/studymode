@@ -30,7 +30,10 @@ async function createCourse(page: Page, name: string, examInDays?: number) {
   await page.getByRole('button', { name: 'Yeni ders' }).click()
   const dialog = page.getByRole('dialog', { name: 'Yeni ders' })
   await dialog.getByLabel('Ders adı').fill(name)
-  if (examInDays !== undefined) await dialog.getByLabel(/sınav tarihi/i).fill(isoDaysFromNow(examInDays))
+  if (examInDays !== undefined) {
+    await dialog.getByRole('button', { name: 'Sınav ekle' }).click()
+    await dialog.getByLabel('Sınav tarihi').fill(isoDaysFromNow(examInDays))
+  }
   await dialog.getByRole('button', { name: 'Dersi oluştur' }).click()
   await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
 }
@@ -81,7 +84,7 @@ test('demo note: summary, quiz, converting mistakes to cards', async ({ page }) 
 test('course with exam, pasted note in simple mode, spaced review and persistence', async ({ page }) => {
   const errors = watchErrors(page)
   await createCourse(page, 'Biyoloji 101', 5)
-  await expect(page.getByText('Sınava 5 gün')).toBeVisible()
+  await expect(page.getByText('Vizeye 5 gün')).toBeVisible()
 
   await pasteNote(page, 'Hücre ve organeller')
   await expect(page.getByRole('button', { name: /Yapay zekâ/ })).toBeDisabled()
@@ -878,7 +881,7 @@ test.describe('study progress is kept', () => {
   test('the example course has an exam a week away', async ({ page }) => {
     await openDemo(page)
     await page.goto('/')
-    await expect(page.getByText('Sınava 7 gün').first()).toBeVisible()
+    await expect(page.getByText('Vizeye 7 gün').first()).toBeVisible()
   })
 
   test('an exam whose time ran out while away is submitted with the answers given', async ({ page }) => {
@@ -906,5 +909,74 @@ test.describe('study progress is kept', () => {
     await expect(page.getByText('Sınav sonucu')).toBeVisible()
     await expect(page.locator('.score')).toHaveText('100 puan')
     expect(await page.evaluate((id) => sessionStorage.getItem(`studymode.exam.active.${id}`), courseId)).toBeNull()
+  })
+})
+
+test.describe('midterms and finals', () => {
+  test('a course keeps a midterm and a final; the mock exam picks the notes the chosen exam covers', async ({ page }) => {
+    const errors = watchErrors(page)
+    await createCourse(page, 'Fizyoloji', 6)
+    await expect(page.getByText('Vizeye 6 gün')).toBeVisible()
+    const courseUrl = page.url()
+
+    for (const title of ['Kalp', 'Böbrek']) {
+      await pasteNote(page, title)
+      await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
+      await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
+      await page.goto(courseUrl)
+    }
+    // With only two notes and no tags the search row is just noise.
+    await expect(page.getByLabel('Notlarda ara')).toBeHidden()
+
+    // Add a final and limit the midterm to the first note.
+    await page.getByRole('button', { name: 'Dersi düzenle' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Dersi düzenle' })
+    await dialog.getByRole('button', { name: 'Sınav ekle' }).click()
+    const finalRow = dialog.getByRole('group', { name: '2. sınav' })
+    await expect(finalRow.getByLabel('Sınav türü')).toHaveValue('final')
+    await finalRow.getByLabel('Sınav tarihi').fill(isoDaysFromNow(40))
+    await finalRow.getByLabel('Ağırlık (%)').fill('60')
+    const midterm = dialog.getByRole('group', { name: '1. sınav' })
+    await midterm.getByText('Kapsam: tüm notlar').click()
+    await midterm.getByLabel('Kalp').check()
+    await dialog.getByRole('button', { name: 'Kaydet' }).click()
+
+    const exams = page.getByRole('region', { name: 'Sınavlar' })
+    await expect(exams).toContainText('Vizeye 6 gün')
+    await expect(exams).toContainText('Finale 40 gün')
+    await expect(exams).toContainText('%60')
+    await expect(exams).toContainText('1 not')
+
+    // Everything survives a reload.
+    await page.reload()
+    await expect(page.getByRole('region', { name: 'Sınavlar' })).toContainText('Finale 40 gün')
+
+    // The midterm's practice exam only selects the note it covers; switching to the final selects all.
+    await page.getByRole('link', { name: 'Vize için prova' }).click()
+    await expect(page.getByRole('checkbox', { name: 'Kalp' })).toBeChecked()
+    await expect(page.getByRole('checkbox', { name: 'Böbrek' })).not.toBeChecked()
+    await page.getByLabel('Hangi sınava hazırlanıyorsun?').selectOption({ label: 'Finale 40 gün' })
+    await expect(page.getByRole('checkbox', { name: 'Böbrek' })).toBeChecked()
+
+    // Today lists each exam separately.
+    await page.goto('/')
+    await expect(page.getByText('Fizyoloji · Vize', { exact: true })).toBeVisible()
+    await expect(page.getByText('Fizyoloji · Final', { exact: true })).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test('a reviewed exam question links to the passage in its note', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+    await page.getByRole('link', { name: /Psikolojiye Giriş/ }).first().click()
+    await page.getByRole('link', { name: 'Sınav provası' }).click()
+    await page.getByLabel('Soru sayısı').selectOption('5')
+    await page.getByLabel('Süre').selectOption('0')
+    await page.getByRole('button', { name: 'Sınavı başlat' }).click()
+    await page.getByRole('button', { name: 'Sınavı bitir' }).click()
+    await page.getByRole('button', { name: 'Evet, devam et' }).click()
+    await page.getByRole('link', { name: 'Kaynağında gör' }).first().click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+    await expect(page.locator('#kaynak-vurgu')).toBeVisible()
   })
 })

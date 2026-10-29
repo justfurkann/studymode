@@ -4,7 +4,8 @@ import { matchesNote } from '../lib/noteTools'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CourseForm } from '../components/CourseForm'
 import { Empty } from '../components/ui'
-import { courseStats, examLabel } from '../lib/format'
+import { examCountdown, upcomingExams } from '../lib/courseExams'
+import { courseStats } from '../lib/format'
 import { useStore } from '../lib/store'
 import { useLoadDemo } from '../lib/useDemo'
 
@@ -22,7 +23,7 @@ export function Courses() {
       <div className="page-header">
         <div>
           <h1>Dersler</h1>
-          <p className="muted">Her ders kendi notlarını, kartlarını ve sınav tarihini tutar.</p>
+          <p className="muted">Her ders kendi notlarını, kartlarını ve sınavlarını tutar.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setParams({ yeni: '1' })}>
           <Plus size={18} /> Yeni ders
@@ -35,7 +36,8 @@ export function Courses() {
         <div className="grid">
           {store.data.courses.filter(c => c.name.toLocaleLowerCase('tr').includes(query.trim().toLocaleLowerCase('tr'))).map((course) => {
             const stats = courseStats(store.data, course)
-            const exam = examLabel(course.examDate)
+            const next = upcomingExams(store.data).find((e) => e.course.id === course.id)
+            const exam = next ? examCountdown(next.exam) : null
             return (
               <Link key={course.id} to={`/ders/${course.id}`} className="course-card">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -65,7 +67,7 @@ export function Courses() {
       ) : (
         <div className="panel">
           <Empty icon={<BookOpen size={32} />} title="Henüz ders yok">
-            <p>Dönemdeki derslerini ekle; her dersin notları, kartları ve sınav tarihi bir arada durur.</p>
+            <p>Dönemdeki derslerini ekle; her dersin notları, kartları ve sınavları bir arada durur.</p>
             <div className="btn-row" style={{ justifyContent: 'center' }}>
               <button className="btn btn-primary" onClick={() => setParams({ yeni: '1' })}>
                 <Plus size={18} /> İlk dersimi oluştur
@@ -81,8 +83,9 @@ export function Courses() {
       {creating && (
         <CourseForm
           onClose={close}
-          onSave={(input) => {
+          onSave={({ exams, examsChanged: _changed, ...input }) => {
             const course = store.addCourse(input)
+            if (exams.length) store.saveCourseExams(course.id, exams)
             navigate(`/ders/${course.id}`, { replace: true })
           }}
         />

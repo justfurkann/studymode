@@ -11,7 +11,8 @@ export function useLoadDemo() {
   const navigate = useNavigate()
   return () => {
     // A week-away exam lets the example show the exam countdown and the smart daily plan right away.
-    const course = store.addCourse({ name: DEMO_COURSE_NAME, examDate: shiftLocalDay(localDayKey(), DEMO_EXAM_IN_DAYS) })
+    const course = store.addCourse({ name: DEMO_COURSE_NAME })
+    store.saveCourseExams(course.id, [{ kind: 'vize', date: shiftLocalDay(localDayKey(), DEMO_EXAM_IN_DAYS), weight: 40, noteIds: [] }])
     const note = store.addNote({ courseId: course.id, title: DEMO_NOTE_TITLE, content: DEMO_NOTE_CONTENT })
     store.applyGenerated(note.id, createDemoSet(), 'local')
     navigate(`/not/${note.id}`)

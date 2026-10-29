@@ -1,10 +1,33 @@
 export type Generator = 'ai' | 'local'
 
+export type CourseExamKind = 'vize' | 'final' | 'butunleme' | 'quiz' | 'diger'
+
+/** One exam of a course (midterm, final…). A course can have several. */
+export interface CourseExam {
+  id: string
+  courseId: string
+  kind: CourseExamKind
+  /** Optional name, mostly for "diğer" (e.g. "Proje sunumu"). */
+  title: string | null
+  /** YYYY-MM-DD, local calendar day. */
+  date: string
+  /** Share of the final grade in percent, if known. */
+  weight: number | null
+  /** Notes the exam covers; empty means the whole course. */
+  noteIds: string[]
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Course {
   id: string
   name: string
   color: string
-  /** YYYY-MM-DD, local calendar day of the next exam. */
+  /**
+   * YYYY-MM-DD of the next exam. Before multiple exams existed this was the only exam; it is still
+   * kept in sync with the nearest upcoming CourseExam so older data and accounts without the
+   * course_exams table keep working.
+   */
   examDate: string | null
   createdAt: string
   updatedAt: string
@@ -103,6 +126,8 @@ export interface ExamQuestion {
   modelAnswer: string
   source: string | null
   noteTitle: string | null
+  /** Note the question came from, so the review can open the passage. Missing in older exams. */
+  noteId?: string | null
 }
 
 /** A finished mock exam, kept so students can review it and track their scores over time. */
@@ -148,9 +173,10 @@ export interface StudyData {
   attempts: QuizAttempt[]
   exams: ExamRecord[]
   studyDays: StudyDay[]
+  courseExams: CourseExam[]
 }
 
-export const emptyData = (): StudyData => ({ courses: [], notes: [], cards: [], attempts: [], exams: [], studyDays: [] })
+export const emptyData = (): StudyData => ({ courses: [], notes: [], cards: [], attempts: [], exams: [], studyDays: [], courseExams: [] })
 
 /** What a generator (AI or local rules) produces for one note. */
 export interface GeneratedSet {

@@ -2,9 +2,10 @@ import type { Session } from '@supabase/supabase-js'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { clearLocalData, localBackend, readLocalData, supabaseBackend, type Backend, type Change } from './backend'
 import { newCardState, schedule, type Grade } from './srs'
+import { examDateForCard, nextExamDate } from './courseExams'
 import { mergeStudyDays, recordStudyActivity } from './streak'
 import { supabase } from './supabase'
-import { emptyData, type Card, type Course, type ExamRecord, type GeneratedSet, type Note, type PracticeItem, type QuizAttempt, type StudyData } from './types'
+import { emptyData, type Card, type Course, type CourseExam, type ExamRecord, type GeneratedSet, type Note, type PracticeItem, type QuizAttempt, type StudyData } from './types'
 
 export const COURSE_COLORS = ['#5b5bd6', '#0d9488', '#e5484d', '#f76b15', '#d6409f', '#3e9b4f', '#0090ff', '#8e4ec6']
 
@@ -39,6 +40,8 @@ interface StoreValue {
 
   addAttempt(input: Omit<QuizAttempt, 'id' | 'createdAt'>): void
   /** Counts other study work (a written answer, an explanation) toward today's streak. */
+  /** Replaces a course's exams (vize, final…) with `drafts`; drafts without an id are new. */
+  saveCourseExams(courseId: string, drafts: CourseExamDraft[]): void
   recordActivity(): void
   /** Saves the student's written answer and its latest grading for one open question. */
   updatePractice(noteId: string, itemId: string, patch: Partial<Pick<PracticeItem, 'draft' | 'evaluation'>>, countsAsActivity?: boolean): void
@@ -48,6 +51,9 @@ interface StoreValue {
   /** Replaces everything (backup import, moving local data to an account). Rejects if saving fails. */
   replaceAll(data: StudyData): Promise<void>
 }
+
+/** A course exam as edited in the form; `id` is set when editing an existing one. */
+export type CourseExamDraft = Pick<CourseExam, 'kind' | 'date' | 'noteIds'> & { id?: string; title?: string | null; weight?: number | null }
 
 const StoreContext = createContext<StoreValue | null>(null)
 
@@ -180,6 +186,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             attempts: d.attempts.filter((a) => a.courseId !== id),
             exams: d.exams.filter((e) => e.courseId !== id),
             studyDays: d.studyDays,
+            courseExams: d.courseExams.filter((e) => e.courseId !== id),
           },
           [{ type: 'delete', table: 'courses', ids: [id] }],
         )
@@ -232,14 +239,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       deleteNote(id) {
         const d = current()
+        // An exam that only covered this note would silently start covering the whole course, so it
+        // keeps its other notes and just loses this one.
+        const touched = d.courseExams
+          .filter((e) => e.noteIds.includes(id))
+          .map((e) => ({ ...e, noteIds: e.noteIds.filter((n) => n !== id), updatedAt: nowIso() }))
         commit(
           {
             ...d,
             notes: d.notes.filter((n) => n.id !== id),
             cards: d.cards.filter((c) => c.noteId !== id),
             attempts: d.attempts.filter((a) => a.noteId !== id),
+            courseExams: d.courseExams.map((e) => touched.find((t) => t.id === e.id) ?? e),
           },
-          [{ type: 'delete', table: 'notes', ids: [id] }],
+          [
+            { type: 'delete', table: 'notes', ids: [id] },
+            { type: 'upsert', table: 'courseExams', rows: touched },
+          ],
         )
       },
 
@@ -314,7 +330,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const card = d.cards.find((c) => c.id === id)
         if (!card) return
         const now = new Date()
-        const exam = d.courses.find((c) => c.id === card.courseId)?.examDate ?? null
+        const exam = examDateForCard(d, card, now)
         const updated = { ...card, ...schedule(card, grade, now, exam), updatedAt: now.toISOString() }
         const activity = recordStudyActivity(d.studyDays, { reviews: 1 }, now)
         commit(
@@ -336,6 +352,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           [
             { type: 'upsert', table: 'attempts', rows: [attempt] },
             { type: 'upsert', table: 'studyDays', rows: [activity.updated] },
+          ],
+        )
+      },
+
+      saveCourseExams(courseId, drafts) {
+        const d = current()
+        const course = d.courses.find((c) => c.id === courseId)
+        if (!course) return
+        const existing = d.courseExams.filter((e) => e.courseId === courseId)
+        const now = nowIso()
+        const next: CourseExam[] = drafts.map((draft) => {
+          const old = draft.id ? existing.find((e) => e.id === draft.id) : undefined
+          return {
+            id: old?.id ?? uuid(),
+            courseId,
+            kind: draft.kind,
+            title: draft.title?.trim() || null,
+            date: draft.date,
+            weight: draft.weight ?? null,
+            noteIds: draft.noteIds,
+            createdAt: old?.createdAt ?? now,
+            updatedAt: now,
+          }
+        })
+        const removed = existing.filter((e) => !next.some((n) => n.id === e.id)).map((e) => e.id)
+        // The old single date column follows the nearest upcoming exam, so older code paths and
+        // databases without course_exams still see the next exam.
+        const updatedCourse = { ...course, examDate: nextExamDate(next), updatedAt: now }
+        commit(
+          {
+            ...d,
+            courses: d.courses.map((c) => (c.id === courseId ? updatedCourse : c)),
+            courseExams: [...d.courseExams.filter((e) => e.courseId !== courseId), ...next],
+          },
+          [
+            { type: 'upsert', table: 'courses', rows: [updatedCourse] },
+            { type: 'upsert', table: 'courseExams', rows: next },
+            { type: 'delete', table: 'courseExams', ids: removed },
           ],
         )
       },
@@ -394,6 +448,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { type: 'upsert', table: 'cards', rows: next.cards },
           { type: 'upsert', table: 'attempts', rows: next.attempts },
           { type: 'upsert', table: 'exams', rows: next.exams },
+          { type: 'upsert', table: 'courseExams', rows: next.courseExams },
+          { type: 'delete', table: 'courseExams', ids: gone(d.courseExams, next.courseExams) },
           { type: 'upsert', table: 'studyDays', rows: next.studyDays },
           { type: 'delete', table: 'studyDays', ids: gone(d.studyDays, next.studyDays) },
           { type: 'delete', table: 'exams', ids: gone(d.exams, next.exams) },
@@ -431,6 +487,7 @@ export async function migrateLocalToCloud(store: StoreValue) {
     attempts: [...d.attempts, ...local.attempts.filter((a) => !d.attempts.some((x) => x.id === a.id))],
     exams: [...d.exams, ...local.exams.filter((e) => !d.exams.some((x) => x.id === e.id))],
     studyDays: mergeStudyDays([...d.studyDays, ...local.studyDays]),
+    courseExams: [...d.courseExams, ...local.courseExams.filter((e) => !d.courseExams.some((x) => x.id === e.id))],
   })
   clearLocalData()
 }

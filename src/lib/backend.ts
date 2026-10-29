@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { emptyData, type StudyData } from './types'
 
-export type Table = 'courses' | 'notes' | 'cards' | 'attempts' | 'exams' | 'studyDays'
+export type Table = 'courses' | 'notes' | 'cards' | 'attempts' | 'exams' | 'studyDays' | 'courseExams'
 
 export type Change =
   | { type: 'upsert'; table: Table; rows: object[] }
@@ -71,7 +71,10 @@ export function parseData(value: unknown): StudyData {
   const studyDays = Array.isArray(data.studyDays)
     ? data.studyDays.filter((d) => d && typeof d === 'object' && typeof (d as { id?: unknown }).id === 'string' && typeof (d as { day?: unknown }).day === 'string')
     : []
-  return { courses: data.courses, notes: data.notes, cards: data.cards, attempts: data.attempts, exams, studyDays } as StudyData
+  const courseExams = Array.isArray(data.courseExams)
+    ? data.courseExams.filter((e) => e && typeof e === 'object' && typeof (e as { id?: unknown }).id === 'string' && typeof (e as { date?: unknown }).date === 'string')
+    : []
+  return { courses: data.courses, notes: data.notes, cards: data.cards, attempts: data.attempts, exams, studyDays, courseExams } as StudyData
 }
 
 // ---------- Supabase (account, synced across devices) ----------
@@ -83,6 +86,7 @@ const TABLE_NAMES: Record<Table, string> = {
   attempts: 'quiz_attempts',
   exams: 'exam_results',
   studyDays: 'study_days',
+  courseExams: 'course_exams',
 }
 
 const toSnake = (key: string) => key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
@@ -113,7 +117,7 @@ export function missingColumn(error: { code?: string; message?: string }): strin
 }
 
 /** Tables added after the first schema; an account whose database lacks them still loads. */
-const OPTIONAL_TABLES = new Set<Table>(['exams', 'studyDays'])
+const OPTIONAL_TABLES = new Set<Table>(['exams', 'studyDays', 'courseExams'])
 
 async function fetchAll(client: SupabaseClient, table: Table) {
   const rows: Record<string, unknown>[] = []

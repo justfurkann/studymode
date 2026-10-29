@@ -1,14 +1,5 @@
-import { daysUntil, isDue } from './srs'
+import { isDue } from './srs'
 import type { Card, Course, StudyData } from './types'
-
-export function examLabel(examDate: string | null, now = new Date()): { text: string; tone: 'danger' | 'warning' | 'neutral' } | null {
-  const days = daysUntil(examDate, now)
-  if (days === null || days < 0) return null
-  if (days === 0) return { text: 'Sınav bugün', tone: 'danger' }
-  if (days === 1) return { text: 'Sınav yarın', tone: 'danger' }
-  if (days <= 7) return { text: `Sınava ${days} gün`, tone: 'warning' }
-  return { text: `Sınava ${days} gün`, tone: 'neutral' }
-}
 
 export function relativeDate(iso: string, now = new Date()): string {
   const diff = now.getTime() - Date.parse(iso)

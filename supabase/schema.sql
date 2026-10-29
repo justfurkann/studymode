@@ -84,6 +84,21 @@ create table if not exists public.study_days (
   updated_at timestamptz not null default now()
 );
 
+-- Several exams per course (vize, final, bütünleme…). courses.exam_date is kept and follows the
+-- nearest upcoming exam, so older data stays valid.
+create table if not exists public.course_exams (
+  id uuid primary key,
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  course_id uuid not null references public.courses (id) on delete cascade,
+  kind text not null check (kind in ('vize', 'final', 'butunleme', 'quiz', 'diger')),
+  title text check (title is null or char_length(title) <= 80),
+  "date" date not null,
+  weight real check (weight is null or (weight >= 0 and weight <= 100)),
+  note_ids jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- Options chosen in a note's test, so the last result can be shown again later.
 alter table public.quiz_attempts add column if not exists answers jsonb;
 
@@ -94,6 +109,7 @@ create index if not exists notes_user_idx on public.notes (user_id);
 create index if not exists cards_user_due_idx on public.cards (user_id, due);
 create index if not exists attempts_user_idx on public.quiz_attempts (user_id);
 create index if not exists exams_user_idx on public.exam_results (user_id);
+create index if not exists course_exams_user_idx on public.course_exams (user_id, course_id);
 create index if not exists study_days_user_idx on public.study_days (user_id, day);
 
 alter table public.courses enable row level security;
@@ -102,11 +118,12 @@ alter table public.cards enable row level security;
 alter table public.quiz_attempts enable row level security;
 alter table public.exam_results enable row level security;
 alter table public.study_days enable row level security;
+alter table public.course_exams enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['courses', 'notes', 'cards', 'quiz_attempts', 'exam_results', 'study_days'] loop
+  foreach t in array array['courses', 'notes', 'cards', 'quiz_attempts', 'exam_results', 'study_days', 'course_exams'] loop
     execute format('drop policy if exists "own rows" on public.%I', t);
     execute format(
       'create policy "own rows" on public.%I for all to authenticated
