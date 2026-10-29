@@ -17,6 +17,8 @@ export interface KeyTerm {
 
 export interface Summary {
   origin?: 'demo'
+  tags?: string[]
+  sourceChanged?: boolean
   overview: string
   points: string[]
   keyTerms: KeyTerm[]

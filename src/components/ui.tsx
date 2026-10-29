@@ -4,16 +4,25 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
 
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
     ref.current?.querySelector<HTMLElement>('input, textarea, select, button:not([aria-label="Kapat"])')?.focus()
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeRef.current()
+      if (event.key !== 'Tab') return
+      const items = Array.from(ref.current?.querySelectorAll<HTMLElement>('input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), a[href]') ?? []).filter(el => el.getClientRects().length)
+      const first = items[0], last = items.at(-1)
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+    }
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
       previous?.focus()
     }
-  }, [onClose])
+  }, [])
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -97,4 +106,15 @@ export function ColorPicker({ colors, value, onChange }: { colors: string[]; val
       ))}
     </div>
   )
+}
+
+
+export function useConfirm() {
+  const [message, setMessage] = useState<string | null>(null)
+  const resolve = useRef<((value: boolean) => void) | null>(null)
+  const finish = (value: boolean) => { resolve.current?.(value); resolve.current = null; setMessage(null) }
+  useEffect(() => () => resolve.current?.(false), [])
+  const ask = (text: string) => new Promise<boolean>(done => { resolve.current?.(false); resolve.current = done; setMessage(text) })
+  const dialog = message === null ? null : <Modal title="İşlemi onayla" onClose={() => finish(false)}><div className="form"><p>{message}</p><div className="btn-row"><button className="btn" onClick={() => finish(false)}>Vazgeç</button><button className="btn btn-primary" onClick={() => finish(true)}>Evet, devam et</button></div></div></Modal>
+  return [ask, dialog] as const
 }

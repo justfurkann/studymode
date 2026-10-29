@@ -1,7 +1,7 @@
 import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, Trash2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Alert, Spinner, useToast } from '../components/ui'
+import { Alert, Spinner, useToast, useConfirm } from '../components/ui'
 import { hasLocalData, parseData } from '../lib/backend'
 import { PROVIDERS, updateSettings, useSettings, type AiProvider, type KeyProvider, type Theme } from '../lib/settings'
 import { migrateLocalToCloud, useStore } from '../lib/store'
@@ -205,6 +205,7 @@ function AiSection() {
 }
 
 function DataSection() {
+  const [confirm, confirmation] = useConfirm()
   const store = useStore()
   const toast = useToast()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -224,7 +225,7 @@ function DataSection() {
     setError('')
     try {
       const data = parseData(JSON.parse(await file.text()))
-      if (!window.confirm(`Yedekte ${data.courses.length} ders ve ${data.notes.length} not var. Mevcut verilerin bunlarla değiştirilsin mi?`)) return
+      if (!await confirm(`Yedekte ${data.courses.length} ders ve ${data.notes.length} not var. Mevcut verilerin bunlarla değiştirilsin mi?`)) return
       await store.replaceAll(data)
       toast('Yedek geri yüklendi')
     } catch (e) {
@@ -233,7 +234,7 @@ function DataSection() {
   }
 
   async function wipe() {
-    if (!window.confirm('Tüm dersler, notlar ve kartlar silinsin mi? Bu geri alınamaz.')) return
+    if (!await confirm('Tüm dersler, notlar ve kartlar silinsin mi? Bu geri alınamaz.')) return
     try {
       await store.replaceAll(emptyData())
       toast('Tüm veriler silindi')
@@ -243,7 +244,7 @@ function DataSection() {
   }
 
   return (
-    <div className="form">
+    <div className="form">{confirmation}
       <p className="muted">
         {store.data.courses.length} ders · {store.data.notes.length} not · {store.data.cards.length} kart
       </p>

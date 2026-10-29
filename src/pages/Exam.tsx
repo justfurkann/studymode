@@ -1,7 +1,7 @@
 import { ArrowLeft, Check, ClipboardList, Clock, RotateCcw, Sparkles, Wand2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Alert, Empty, Spinner, useToast } from '../components/ui'
+import { Alert, Empty, Spinner, useToast, useConfirm } from '../components/ui'
 import type { ExamDifficulty, ExamFormat } from '../lib/ai/tasks'
 import { examFromNotes, normalizeExam, scoreExam, type ExamQuestion, type ExamResult } from '../lib/exam'
 import { aiAvailability, useSettings } from '../lib/settings'
@@ -35,6 +35,7 @@ function formatTime(seconds: number) {
 export function Exam() {
   const { id } = useParams()
   const store = useStore()
+  const [confirm, confirmation] = useConfirm()
   const settings = useSettings()
   const toast = useToast()
   const ai = aiAvailability(settings, !!store.session)
@@ -159,9 +160,9 @@ export function Exam() {
     window.scrollTo({ top: 0 })
   }
 
-  function confirmFinish() {
+  async function confirmFinish() {
     const empty = answers.filter((a) => a === null || (typeof a === 'string' && !a.trim())).length
-    if (empty && !window.confirm(`${empty} soru boş. Yine de sınavı bitirmek istiyor musun?`)) return
+    if (empty && !await confirm(`${empty} soru boş. Yine de sınavı bitirmek istiyor musun?`)) return
     void finish()
   }
 
@@ -182,9 +183,9 @@ export function Exam() {
   }
 
   const header = (
-    <Link to={`/ders/${course.id}`} className="back-link">
+    <>{confirmation}<Link to={`/ders/${course.id}`} className="back-link">
       <ArrowLeft size={16} /> {course.name}
-    </Link>
+    </Link></>
   )
 
   // ---------- Setup ----------
@@ -337,7 +338,7 @@ export function Exam() {
     const answered = answers.filter((a) => a !== null && !(typeof a === 'string' && !a.trim())).length
     const grading = phase === 'grading'
     return (
-      <div className="page page-narrow">
+      <div className="page page-narrow">{confirmation}
         <div className="exam-bar">
           <span>
             <strong>{course.name}</strong> · {answered}/{questions.length} cevaplandı

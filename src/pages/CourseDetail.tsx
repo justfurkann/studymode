@@ -2,8 +2,9 @@ import { ArrowLeft, Brain, ClipboardList, FileText, Pencil, Plus, Trash2 } from 
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CourseForm } from '../components/CourseForm'
-import { Empty, useToast } from '../components/ui'
+import { Empty, useToast, useConfirm } from '../components/ui'
 import { courseStats, examLabel, relativeDate } from '../lib/format'
+import { matchesNote } from '../lib/noteTools'
 import { useStore } from '../lib/store'
 
 export function CourseDetail() {
@@ -11,6 +12,9 @@ export function CourseDetail() {
   const store = useStore()
   const toast = useToast()
   const navigate = useNavigate()
+  const [confirm, confirmation] = useConfirm()
+  const [query, setQuery] = useState('')
+  const [tag, setTag] = useState('')
   const [editing, setEditing] = useState(false)
   const course = store.data.courses.find((c) => c.id === id)
 
@@ -31,9 +35,9 @@ export function CourseDetail() {
   const notes = store.data.notes.filter((n) => n.courseId === course.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const cardCount = (noteId: string) => store.data.cards.filter((c) => c.noteId === noteId).length
 
-  function remove() {
+  async function remove() {
     if (!course) return
-    if (!window.confirm(`“${course.name}” dersi, içindeki ${stats.notes} not ve ${stats.cards} kartla birlikte silinsin mi? Bu geri alınamaz.`)) return
+    if (!await confirm(`“${course.name}” dersi, içindeki ${stats.notes} not ve ${stats.cards} kartla birlikte silinsin mi? Bu geri alınamaz.`)) return
     store.deleteCourse(course.id)
     toast('Ders silindi')
     navigate('/dersler')
@@ -89,11 +93,14 @@ export function CourseDetail() {
         )}
       </div>
 
+      {confirmation}
       <section className="section">
         <h2>Notlar</h2>
+        <div className="form-row"><label className="field">Notlarda ara<input className="input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Başlık, içerik veya etiket" /></label><label className="field">Etiket<select className="select" value={tag} onChange={e => setTag(e.target.value)}><option value="">Tüm etiketler</option>{[...new Set(notes.flatMap(n => n.summary?.tags ?? []))].map(t => <option key={t}>{t}</option>)}</select></label></div>
+        {notes.length > 0 && !notes.some(n => matchesNote(n, query, tag)) && <p className="muted">Aramana uygun not bulunamadı.</p>}
         {notes.length ? (
           <div className="panel panel-tight list">
-            {notes.map((note) => (
+            {notes.filter(n => matchesNote(n, query, tag)).map((note) => (
               <Link key={note.id} to={`/not/${note.id}`} className="list-item">
                 <FileText size={18} style={{ color: course.color }} />
                 <div className="grow">

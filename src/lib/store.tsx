@@ -25,7 +25,7 @@ interface StoreValue {
   deleteCourse(id: string): void
 
   addNote(input: { courseId: string; title: string; content: string }): Note
-  updateNote(id: string, patch: Partial<Pick<Note, 'title' | 'courseId'>>): void
+  updateNote(id: string, patch: Partial<Pick<Note, 'title' | 'courseId' | 'content' | 'summary'>>): void
   deleteNote(id: string): void
   applyGenerated(noteId: string, set: GeneratedSet, generator: 'ai' | 'local'): void
 
@@ -202,16 +202,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           patch.courseId && patch.courseId !== note.courseId
             ? d.cards.filter((c) => c.noteId === id).map((c) => ({ ...c, courseId: patch.courseId!, updatedAt: nowIso() }))
             : []
+        const movedAttempts = patch.courseId && patch.courseId !== note.courseId
+          ? d.attempts.filter(a => a.noteId === id).map(a => ({ ...a, courseId: patch.courseId! })) : []
         const movedIds = new Set(movedCards.map((c) => c.id))
         commit(
           {
             ...d,
             notes: d.notes.map((n) => (n.id === id ? updated : n)),
             cards: d.cards.map((c) => (movedIds.has(c.id) ? movedCards.find((m) => m.id === c.id)! : c)),
+            attempts: d.attempts.map(a => movedAttempts.find(m => m.id === a.id) ?? a),
           },
           [
             { type: 'upsert', table: 'notes', rows: [updated] },
             { type: 'upsert', table: 'cards', rows: movedCards },
+            { type: 'upsert', table: 'attempts', rows: movedAttempts },
           ],
         )
       },
@@ -235,7 +239,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!note) return
         const updated: Note = {
           ...note,
-          summary: set.summary,
+          summary: { ...set.summary, tags: note.summary?.tags, sourceChanged: false },
           questions: set.questions,
           practice: set.practice,
           generator,

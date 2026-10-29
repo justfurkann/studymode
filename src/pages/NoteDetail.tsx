@@ -1,11 +1,12 @@
 import { ArrowLeft, BookText, FileText, Layers, ListChecks, PenLine, RefreshCw, Sparkles, Trash2, Wand2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { NoteEditor } from '../components/NoteEditor'
 import { CardsTab } from '../components/note/CardsTab'
 import { PracticeTab } from '../components/note/PracticeTab'
 import { QuizTab } from '../components/note/QuizTab'
 import { SummaryTab } from '../components/note/SummaryTab'
-import { Alert, Empty, Modal, Spinner, useToast } from '../components/ui'
+import { Alert, Empty, Modal, Spinner, useToast, useConfirm } from '../components/ui'
 import { readingMinutes, relativeDate, wordCount } from '../lib/format'
 import { generateLocally } from '../lib/localGenerator'
 import { aiAvailability, useSettings } from '../lib/settings'
@@ -78,6 +79,8 @@ export function NoteDetail() {
   const toast = useToast()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
+  const [editing, setEditing] = useState(false)
+  const [confirm, confirmation] = useConfirm()
   const [regenerating, setRegenerating] = useState(false)
   const note = store.data.notes.find((n) => n.id === id)
   const requested = params.get('sekme') as TabId | null
@@ -99,18 +102,13 @@ export function NoteDetail() {
   const cardCount = store.data.cards.filter((c) => c.noteId === note.id).length
   const counts: Partial<Record<TabId, number>> = { kartlar: cardCount, test: note.questions.length, uygula: note.practice.length }
 
-  function remove() {
-    if (!note || !window.confirm(`“${note.title}” notu ve kartları silinsin mi?`)) return
+  async function remove() {
+    if (!note || !await confirm(`“${note.title}” notu ve kartları silinsin mi?`)) return
     store.deleteNote(note.id)
     toast('Not silindi')
     navigate(course ? `/ders/${course.id}` : '/dersler')
   }
 
-  function rename() {
-    if (!note) return
-    const title = window.prompt('Not başlığı', note.title)?.trim()
-    if (title) store.updateNote(note.id, { title })
-  }
 
   return (
     <div className="page">
@@ -120,7 +118,7 @@ export function NoteDetail() {
 
       <div className="page-header">
         <div>
-          <h1 onDoubleClick={rename} title="Yeniden adlandırmak için çift tıkla">
+          <h1>
             {note.title}
           </h1>
           <div className="btn-row">
@@ -131,7 +129,7 @@ export function NoteDetail() {
             {note.generator === 'local' && <span className="chip">{note.summary?.origin === 'demo' ? 'Hazır örnek set' : 'Basit mod'}</span>}
           </div>
         </div>
-        <div className="btn-row header-actions">
+        <div className="btn-row header-actions"><button className="btn btn-sm" onClick={() => setEditing(true)}><PenLine size={15} /> Düzenle</button>
           {note.generator && (
             <button className="btn btn-sm" onClick={() => setRegenerating(true)}>
               <RefreshCw size={15} /> Yeniden hazırla
@@ -143,6 +141,10 @@ export function NoteDetail() {
         </div>
       </div>
 
+      {confirmation}
+      {editing && <NoteEditor note={note} onClose={() => setEditing(false)} />}
+      {note.summary?.sourceChanged && <Alert tone="warning">Kaynak metin değişti. Özet, kartlar ve sorular önceki metne ait; güncellemek için Yeniden hazırla’yı seç.</Alert>}
+      {!!note.summary?.tags?.length && <div className="btn-row">{note.summary.tags.map(t => <span key={t} className="chip">#{t}</span>)}</div>}
       {!note.generator ? (
         <div className="panel">
           <div className="form">

@@ -1,4 +1,6 @@
 import { BookOpen, Brain, FileText, Layers, Plus } from 'lucide-react'
+import { useState } from 'react'
+import { matchesNote } from '../lib/noteTools'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CourseForm } from '../components/CourseForm'
 import { Empty } from '../components/ui'
@@ -7,6 +9,7 @@ import { useStore } from '../lib/store'
 
 export function Courses() {
   const store = useStore()
+  const [query, setQuery] = useState('')
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const creating = params.get('yeni') === '1'
@@ -24,9 +27,11 @@ export function Courses() {
         </button>
       </div>
 
+      <label className="field">Ders ve notlarda ara<input className="input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Ders, not içeriği veya etiket" /></label>
+      {query.trim() && <section className="section"><h2>Not sonuçları</h2><div className="panel list">{store.data.notes.filter(n => matchesNote(n, query)).map(n => <Link className="list-item" key={n.id} to={`/not/${n.id}`}><FileText size={17} />{n.title}</Link>)}{!store.data.notes.some(n => matchesNote(n, query)) && <p className="muted">Not bulunamadı.</p>}</div></section>}
       {store.data.courses.length ? (
         <div className="grid">
-          {store.data.courses.map((course) => {
+          {store.data.courses.filter(c => c.name.toLocaleLowerCase('tr').includes(query.trim().toLocaleLowerCase('tr'))).map((course) => {
             const stats = courseStats(store.data, course)
             const exam = examLabel(course.examDate)
             return (
