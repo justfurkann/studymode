@@ -138,7 +138,7 @@ export function PracticeTab({ note }: { note: Note }) {
     if (!note.summary) return
     let next = toggleCompletedStep(note.summary, 'anlat', true)
     store.updateNote(note.id, { summary: next })
-    if (showToast) toast('Tebrikler! 5. Adımı ve bu notun öğrenme turunu tamamladın 🎉')
+    if (showToast) toast('Tebrikler, bu notu bitirdin 🎉')
   }
 
   if (!note.practice.length) {
@@ -151,20 +151,7 @@ export function PracticeTab({ note }: { note: Note }) {
 
   return (
     <div className="section">
-      <div className="guided-box" aria-label="5. Adım kendi cümlelerinle anlat">
-        <div className="guided-box-head">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className={`step-dot ${stepDone ? 'done' : ''}`}>{stepDone ? <Check size={12} /> : '5'}</span>
-            <strong>5. Adım: Kendi Cümlelerinle Anlat (Feynman Tekniği)</strong>
-          </div>
-          <span className="subtle">Son adım · Ustalık kontrolü</span>
-        </div>
-        <div className="guided-stage-body" style={{ paddingTop: 12 }}>
-          <p className="muted">
-            Bir konuyu gerçekten öğrenip öğrenmediğini anlamanın en iyi yolu, o konuyu hiç bilmeyen birine kendi cümlelerinle anlatmaktır. Aşağıdaki soruları notuna bakmadan yanıtla.
-          </p>
-        </div>
-      </div>
+      <p className="muted">Notuna bakmadan, konuyu bilmeyen birine anlatır gibi yaz. Anlatabiliyorsan öğrenmişsin demektir.</p>
 
       {note.practice.map((item, i) => (
         <PracticeCard
@@ -184,8 +171,8 @@ export function PracticeTab({ note }: { note: Note }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <CheckCircle2 size={22} style={{ color: 'var(--success)', flexShrink: 0 }} />
               <div>
-                <strong>Bu notun 5 adımını da tamamladın!</strong>
-                <p className="subtle">Öğrendiklerini unutmamak için aralıklı tekrar kartlarını çözmeye devam edebilirsin.</p>
+                <strong>Bu notu bitirdin! 🎉</strong>
+                <p className="subtle">Unutmamak için kartlar aralıklı tekrarla yine karşına gelecek.</p>
               </div>
             </div>
             <Link to={`/tekrar?not=${note.id}`} className="btn btn-primary btn-sm">
@@ -195,11 +182,10 @@ export function PracticeTab({ note }: { note: Note }) {
         ) : (
           <>
             <div>
-              <strong>Cevaplarını yazıp karşılaştırdın mı?</strong>
-              <p className="subtle">Konuyu kendi cümlelerinle ifade edebildiysen 5. adımı tamamlayabilirsin.</p>
+              <strong>Konuyu kendi cümlelerinle anlatabildin mi?</strong>
             </div>
             <button type="button" className="btn btn-primary" onClick={() => markStep5Done(true)} disabled={!canFinish}>
-              <Check size={16} /> 5. Adımı Tamamla: Konuyu Öğrendim
+              <Check size={16} /> Bitir: Konuyu öğrendim
             </button>
             {!canFinish && <p className="subtle" style={{ width: '100%' }}>Bitirmek için en az bir soruya kendi cümlelerinle cevap yaz.</p>}
           </>

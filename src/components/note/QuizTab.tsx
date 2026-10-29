@@ -1,8 +1,8 @@
-import { ArrowRight, BookOpen, Check, ListChecks, PenLine, RotateCcw, X } from 'lucide-react'
+import { ArrowRight, BookOpen, Check, ListChecks, RotateCcw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toggleCompletedStep } from '../../lib/learningPath'
 import { useStore } from '../../lib/store'
-import type { LearningStepId, Note, Question, QuizAttempt } from '../../lib/types'
+import type { Note, Question, QuizAttempt } from '../../lib/types'
 import { Empty, useToast } from '../ui'
 
 const LETTERS = 'ABCDEF'
@@ -10,12 +10,13 @@ const LETTERS = 'ABCDEF'
 export function QuizTab({
   note,
   active = true,
-  onGoToStep,
+  onNext,
   onShowSource,
 }: {
   note: Note
   active?: boolean
-  onGoToStep?: (step: LearningStepId) => void
+  /** Goes on to the cards, where mistakes turned into cards are practised. */
+  onNext?: () => void
   onShowSource?: (source: string) => void
 }) {
   const store = useStore()
@@ -79,7 +80,8 @@ export function QuizTab({
         wrongIds: wrong.map((q) => q.id),
         answers: all,
       })
-      if (score / questions.length >= 0.7 && note.summary) {
+      // The test measures where the student stands, so finishing it completes the step at any score.
+      if (note.summary && !note.summary.completedSteps?.includes('sina')) {
         store.updateNote(note.id, { summary: toggleCompletedStep(note.summary, 'sina', true) })
       }
     } else {
@@ -117,12 +119,6 @@ export function QuizTab({
       toast(`${wrong.length} kart eklendi`)
     }
 
-    function advanceToStep5() {
-      if (note.summary) {
-        store.updateNote(note.id, { summary: toggleCompletedStep(note.summary, 'sina', true) })
-      }
-      onGoToStep?.('anlat')
-    }
 
     return (
       <div className="section" style={{ gap: 20 }}>
@@ -135,23 +131,23 @@ export function QuizTab({
           </div>
           <p className="muted">
             {ratio === 1
-              ? 'Hepsi doğru, harika! Şimdi son adımda konuyu kendi cümlelerinle anlatarak ustalığını pekiştir.'
+              ? 'Hepsi doğru, harika! 🎉'
               : ratio >= 0.7
-                ? 'İyi gidiyorsun. Yanlışlarına göz atıp 5. adıma geçebilirsin.'
-                : 'Bu konuyu biraz daha çalışmalısın. Yanlışlarını karta çevirip tekrar et.'}
+                ? 'İyi gidiyorsun. Eksiklerini karta çevir, kartlarla kapat.'
+                : 'Eksiklerin belli oldu. Yanlışlarını karta çevir, kartlarla çalış.'}
           </p>
           <div className="btn-row">
             <button className="btn" onClick={restart}>
               <RotateCcw size={16} /> Tekrar çöz
             </button>
             {wrong.length > 0 && (
-              <button className="btn btn-primary" onClick={toCards} disabled={converted}>
+              <button className="btn" onClick={toCards} disabled={converted}>
                 {converted ? 'Kartlara eklendi' : 'Yanlışlarımı karta çevir'}
               </button>
             )}
-            {onGoToStep && (
-              <button className="btn btn-primary" onClick={advanceToStep5}>
-                <PenLine size={16} /> 5. Adıma Geç: Kendi Cümlelerinle Anlat <ArrowRight size={15} />
+            {onNext && (
+              <button className="btn btn-primary" onClick={onNext}>
+                Kartlarla pekiştir <ArrowRight size={15} />
               </button>
             )}
           </div>
@@ -196,6 +192,7 @@ export function QuizTab({
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {index === 0 && !checked && !lastAttempt && <p className="muted">Önce ne bildiğini görelim. Bilmediğin soruda tahmin etme; yanlışlar karta dönüşür.</p>}
         <div className="section-head">
           <span className="subtle">
             Soru {index + 1} / {questions.length}

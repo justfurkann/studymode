@@ -46,20 +46,20 @@ export const LEARNING_STEPS_META: Array<{
     tab: 'ozet',
   },
   {
-    id: 'pekistir',
+    id: 'sina',
     stepNumber: 3,
-    title: 'Kartlarla Hafızaya Yerleştir',
-    shortTitle: 'Pekiştir',
-    description: 'Teste geçmeden önce öğrendiğin kavramları soru-cevap kartlarıyla zihninde yokla.',
-    tab: 'kartlar',
+    title: 'Kendini Test Et',
+    shortTitle: 'Test',
+    description: 'Kısa bir testle ne bildiğini gör; yanlışların karta dönüşsün.',
+    tab: 'test',
   },
   {
-    id: 'sina',
+    id: 'pekistir',
     stepNumber: 4,
-    title: 'Kendini Sına (Mini Test)',
-    shortTitle: 'Sına',
-    description: 'Çoktan seçmeli sorularla bilgini ölç, yanlışlarını anında tekrar kartına dönüştür.',
-    tab: 'test',
+    title: 'Kartlarla Pekiştir',
+    shortTitle: 'Kartlar',
+    description: 'Kartları tek tek hatırlamaya çalış; bilemediklerin yine karşına gelir.',
+    tab: 'kartlar',
   },
   {
     id: 'anlat',
@@ -88,10 +88,6 @@ export function computeNoteProgress(
     .filter((a) => a.noteId === note.id && a.total > 0)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const latestAttempt = noteAttempts[0] ?? null
-  const bestAttempt = noteAttempts.reduce<QuizAttempt | null>(
-    (best, cur) => (!best || cur.score / cur.total > best.score / best.total ? cur : best),
-    null,
-  )
 
   // Step 1: Tanış
   const allTermsChecked = keyTerms.length > 0 && keyTerms.every((t) => checkedTerms.has(t.term))
@@ -110,7 +106,7 @@ export function computeNoteProgress(
       ? `${points.length} ana nokta`
       : 'Özet'
 
-  // Step 3: Pekiştir
+  // Step 4: Kartlar
   const pekistirDone =
     completedSet.has('pekistir') ||
     (noteCards.length > 0 && studiedCards.length >= Math.min(noteCards.length, Math.ceil(noteCards.length * 0.5)))
@@ -121,9 +117,9 @@ export function computeNoteProgress(
         ? `${studiedCards.length}/${noteCards.length} kart çalışıldı`
         : `${noteCards.length} kart hazır`
 
-  // Step 4: Sına
-  const bestRatio = bestAttempt ? bestAttempt.score / bestAttempt.total : 0
-  const sinaDone = completedSet.has('sina') || bestRatio >= 0.7
+  // Step 3: Test. It measures the student's level, so finishing it once completes the step whatever
+  // the score; a low score shows up in topic mastery and in the daily plan instead.
+  const sinaDone = completedSet.has('sina') || !!latestAttempt
   const sinaStatus = latestAttempt
     ? `Son test ${latestAttempt.score}/${latestAttempt.total}`
     : note.questions.length > 0

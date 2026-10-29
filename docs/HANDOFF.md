@@ -52,7 +52,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (#18 sonrası): 100 birim testi, 32 tarayıcı testi.
+Son yeşil durum (Aşama 3 sonrası): 113 birim testi, 34 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -125,13 +125,17 @@ create policy "own rows" on public.course_exams for all to authenticated
   using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 ```
 
-**Aşama 3 — Çalışma ekranı UI/UX (kullanıcı için EN ÖNEMLİSİ): ⬜ BAŞLAMADI**
-Kullanıcının şikâyeti: Not sayfası çok kalabalık ve çok yazılı; Roadmap + 5 sekme + araç butonları + sekme içi adım butonları aynı navigasyonu tekrarlıyor; kartlar sayfanın altında topluca listeleniyor; test kartlardan sonra geliyor (mantıksız); kartta çevirmeden önce ipucu yok. İstenen:
-- Tek, net çalışma akışı; gereksiz metin/kutu/buton/tekrar yok; ekrana girer girmez çalışmaya başlanabilsin (mobil öncelikli).
-- Pedagojik sıra: önce seviyeyi ölçen test (öneri: Özet → Test → Kartlar → Uygula; Kaynak ikincil).
-- Tek kart akışı: soru → isteğe bağlı **İpucu** (çevirmeden önce) → çevir → "Bildim / Tekrar" → sonraki kart. Tüm kartlar listesi kapalı bir "Kartları yönet (X)" çekmecesinde.
-- Kopyala / Markdown / Yazdır / Düzenle kompakt bir menüde.
-- Küçük başarı/ilerleme hissi. Tema/CSS dili korunur, mevcut işlevler kaybolmaz.
+**Aşama 3 — Çalışma ekranı UI/UX: ✅ TAMAM (Aşama 3 PR'ı)**
+- Not sayfası: roadmap kutusu + iki metrik kartı + 5 sekme kaldırıldı; yerine tek adım çubuğu **Özet · Test · Kartlar · Anlat** (`role=tablist`, tamamlanan adımda ✓, önerilen adımın numarası vurgulu). Kaynak metin "⋯" menüsünde (`?sekme=kaynak` hâlâ çalışır).
+- Sayfaya girince doğrudan sıradaki adım açılır; bu seçim not başına bir kez yapılır, tur ortasında adım tamamlanınca ekran zıplamaz.
+- Öğrenme yolu sırası değişti: tanis → anla → **sina (Test)** → **pekistir (Kartlar)** → anlat. Test seviyeyi ölçer; herhangi bir puanla bitirmek adımı tamamlar (düşük puan hâkimiyette ve günlük planda görünür).
+- Üst bilgi tek satır: tür · "%60 tamamlandı" · (ölçüldüyse) "Hâkimiyet %40" · etiketler. Kelime sayısı Kaynak görünümünde.
+- "⋯" menüsü: Kaynak metin, Notu düzenle, Özeti düzenle, Yeniden hazırla, Özeti kopyala, Markdown indir, PDF/Yazdır (özet görünümüne geçip yazdırır), Notu sil.
+- Özet: "Kavramlar / Ana noktalar" anahtarı, uzun açıklama paragrafları yok; son madde "Teste geç".
+- Test: ilk açılışta tek satır açıklama; sonuçta "Tekrar çöz", "Yanlışlarımı karta çevir", "Kartlarla pekiştir →".
+- Kartlar: tek kart akışı — soru → **İpucu** (cevaptan türetilir: kısa cevapta "M_________", uzun cevapta ilk kelimeler; `src/lib/cardHint.ts`) → **Çevir** → **Tekrar / Bildim** → sonraki. "Tekrar" denen kart turun sonuna döner. Tur sonunda 🎉 "6 kartın 5 tanesini ilk denemede bildin". Kart listesi, Kart ekle ve "Tekrar ekranında çalış" kapalı **"Kartları yönet (N)"** çekmecesinde. Klavye: boşluk çevirir, 1 Tekrar, 2 Bildim.
+- Anlat: tek satır yönerge, "Bitir: Konuyu öğrendim", bitişte "Bu notu bitirdin! 🎉".
+- Ölü CSS temizlendi (roadmap, metrik kartı, eski kart eğitmeni; ~336 satır).
 
 **Teslimde istenenler:** (1) 7 AI Studio maddesi + 6 hata için durum raporu ve elle denenecekler, (2) SQL ve Vercel adımları, (3) AI Studio'ya devir mesajı, (4) "arkadaşlarla teste hazır mı" değerlendirmesi.
 
