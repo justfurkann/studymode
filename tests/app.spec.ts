@@ -210,6 +210,28 @@ test('theme switch and mobile navigation', async ({ page }) => {
   expect(overflow).toBe(false)
 })
 
+test('several files at once become separate notes', async ({ page }) => {
+  const errors = watchErrors(page)
+  await createCourse(page, 'Biyoloji 104')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  await page.getByLabel('Not dosyası').setInputFiles([
+    { name: 'hafta_1.txt', mimeType: 'text/plain', buffer: Buffer.from(biologyNotes) },
+    { name: 'hafta_2.md', mimeType: 'text/markdown', buffer: Buffer.from(biologyNotes.replace('Hücre Biyolojisi', '# Organeller')) },
+    { name: 'bos.txt', mimeType: 'text/plain', buffer: Buffer.from('kısa') },
+  ])
+  await expect(page.getByText('3 dosya')).toBeVisible()
+  await expect(page.getByLabel('hafta_1.txt başlığı')).toHaveValue('hafta 1')
+  await page.getByLabel('hafta_2.md başlığı').fill('2. hafta – Organeller')
+  await expect(page.getByText('Çok kısa')).toBeVisible()
+  await page.getByRole('button', { name: '2 notu kaydet ve hazırla' }).click()
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Biyoloji 104' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /hafta 1/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: /2\. hafta – Organeller/ })).toBeVisible()
+  await expect(page.getByText('2 not')).toBeVisible()
+  expect(errors).toEqual([])
+})
+
 test('account entry point leads to the sign-in form', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/ayarlar')
