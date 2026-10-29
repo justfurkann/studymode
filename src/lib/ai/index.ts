@@ -116,14 +116,20 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>): Prom
   const token = (await supabase?.auth.getSession())?.data.session?.access_token
   if (!token) throw new AiError('Ücretsiz yapay zekâ için giriş yapman gerekiyor.')
   let response: Response
+  const started = Date.now()
   try {
     response = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify({ task, input }),
     })
-  } catch {
-    throw new AiError('Sunucuya bağlanılamadı. İnternet bağlantını kontrol et.')
+  } catch (error) {
+    // The detail and timing help tell a dropped connection from a server timeout.
+    const seconds = Math.round((Date.now() - started) / 1000)
+    const detail = error instanceof Error ? error.message : String(error)
+    throw new AiError(
+      `Sunucuya bağlanılamadı (${seconds} sn sonra: ${detail}). İşlem sürerken sayfadan ayrılma veya ekranı kapatma; bağlantını kontrol edip tekrar dene.`,
+    )
   }
   const body = (await response.json().catch(() => ({}))) as { result?: unknown; error?: string }
   if (!response.ok) {
@@ -134,7 +140,8 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>): Prom
       too_large: 'İçerik çok uzun. Daha az not seçerek ya da notu bölerek dene.',
       bad_output: FORMAT_ERROR,
     }
-    throw new AiError(messages[body.error ?? ''] ?? `Sunucu hata verdi (${response.status}). Biraz sonra tekrar dene.`)
+    const upstream = body.error === 'upstream' && 'status' in body ? ` Gemini kodu: ${(body as { status?: number }).status}.` : ''
+    throw new AiError(messages[body.error ?? ''] ?? `Sunucu hata verdi (${response.status}${body.error ? `, ${body.error}` : ''}).${upstream} Biraz sonra tekrar dene.`)
   }
   const parsed = TASKS[task].schema.safeParse(body.result)
   if (!parsed.success) throw new AiError(FORMAT_ERROR)

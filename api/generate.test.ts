@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { handleGenerate } from './generate'
+import { handleGenerate, handleStatus } from './generate'
 
 const studySet = {
   summary: { overview: 'Özet', points: ['Nokta'], keyTerms: [] },
@@ -30,6 +30,15 @@ const request = (body: unknown, token = 'user-token') =>
   })
 
 const env = { GEMINI_API_KEY: 'server-key' }
+
+describe('handleStatus', () => {
+  it('says whether a key is set without revealing it', async () => {
+    expect(await handleStatus({}).json()).toEqual({ ok: true, configured: false, model: 'gemini-3.8-flash' })
+    const body = await handleStatus({ GEMINI_API_KEY: 'secret', GEMINI_MODEL: 'm' }).json()
+    expect(body).toEqual({ ok: true, configured: true, model: 'm' })
+    expect(JSON.stringify(body)).not.toContain('secret')
+  })
+})
 
 describe('handleGenerate', () => {
   it('reports when the shared AI is not set up', async () => {

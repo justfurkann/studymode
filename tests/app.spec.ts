@@ -278,6 +278,20 @@ test('several files at once become separate notes', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test('adding a second file after the first switches to the list', async ({ page }) => {
+  await createCourse(page, 'Biyoloji 108')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'hafta_1.txt', mimeType: 'text/plain', buffer: Buffer.from(biologyNotes) })
+  await expect(page.getByLabel('Ders notun')).toHaveValue(/Mitokondri/)
+  await page.getByLabel('Not başlığı').fill('1. hafta')
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'hafta_2.txt', mimeType: 'text/plain', buffer: Buffer.from(biologyNotes) })
+  await expect(page.getByText('2 dosya')).toBeVisible()
+  await expect(page.getByLabel('hafta_1.txt başlığı')).toHaveValue('1. hafta')
+  await expect(page.getByLabel('hafta_2.txt başlığı')).toHaveValue('hafta 2')
+  await page.getByRole('button', { name: '2 notu kaydet ve hazırla' }).click()
+  await expect(page.getByText('2 not')).toBeVisible()
+})
+
 test('mock exam from prepared questions, without AI', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/')
