@@ -34,7 +34,7 @@ const env = { GEMINI_API_KEY: 'server-key' }
 
 describe('handleStatus', () => {
   it('says whether a key is set without revealing it', async () => {
-    expect(await handleStatus({}).json()).toEqual({ ok: true, configured: false, models: ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'] })
+    expect(await handleStatus({}).json()).toEqual({ ok: true, configured: false, models: ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.1-flash-lite'] })
     const body = await handleStatus({ GEMINI_API_KEY: 'secret', GEMINI_MODEL: 'm', GEMINI_FALLBACK_MODELS: 'a, m ,b' }).json()
     expect(body).toEqual({ ok: true, configured: true, models: ['m', 'a', 'b'] })
     expect(JSON.stringify(body)).not.toContain('secret')
@@ -120,6 +120,6 @@ describe('callGeminiWithFallback', () => {
   })
 
   it('uses the configured main model first', () => {
-    expect(geminiModels({ GEMINI_MODEL: 'gemini-3.5-flash-lite' })).toEqual(['gemini-3.5-flash-lite', 'gemini-3.8-flash'])
+    expect(geminiModels({ GEMINI_MODEL: 'gemini-flash-lite-latest' })).toEqual(['gemini-flash-lite-latest', 'gemini-3.1-flash-lite'])
   })
 })

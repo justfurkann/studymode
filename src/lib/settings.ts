@@ -31,8 +31,9 @@ export const PROVIDERS: Record<KeyProvider, { label: string; keyHint: string; ke
     keyHint: 'AIza…',
     keyUrl: 'https://aistudio.google.com/apikey',
     models: [
-      { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite — hızlı ve ücretsiz kota dostu' },
-      { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite — dengeli' },
+      { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite — en hızlı ve ücretsiz kota dostu' },
+      { id: 'gemini-flash-lite-latest', label: 'Gemini Flash Lite (Güncel)' },
+      { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
       { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash — kapsamlı' },
     ],
   },
@@ -50,7 +51,7 @@ const KEY = 'studymode.settings.v1'
 const defaults: Settings = {
   provider: 'shared',
   keys: { anthropic: '', openai: '', google: '' },
-  models: { anthropic: 'claude-opus-5-5', openai: 'gpt-5-mini', google: 'gemini-3.1-flash-lite' },
+  models: { anthropic: 'claude-opus-5-5', openai: 'gpt-5-mini', google: 'gemini-3.5-flash-lite' },
   theme: 'system',
 }
 
@@ -66,6 +67,10 @@ function read(): Settings {
     // Earlier versions stored a single Anthropic key and model.
     if (parsed.apiKey) keys.anthropic = parsed.apiKey
     if (parsed.model) models.anthropic = parsed.model
+    // Migrate older default Gemini models that time out on large notes.
+    if (models.google === 'gemini-3.8-flash' || models.google === 'gemini-3.1-flash-lite') {
+      models.google = defaults.models.google
+    }
     const provider: AiProvider = ['shared', 'anthropic', 'openai', 'google'].includes(parsed.provider as string)
       ? (parsed.provider as AiProvider)
       : parsed.apiKey

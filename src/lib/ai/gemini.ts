@@ -15,8 +15,8 @@ interface GeminiResponse {
   promptFeedback?: { blockReason?: string }
 }
 
-const DEFAULT_ATTEMPT_TIMEOUT_MS = 14_000
-const DEFAULT_DEADLINE_MS = 48_000
+const DEFAULT_ATTEMPT_TIMEOUT_MS = 22_000
+const DEFAULT_DEADLINE_MS = 50_000
 
 export async function callGemini(options: {
   apiKey: string
@@ -31,8 +31,10 @@ export async function callGemini(options: {
     responseMimeType: 'application/json',
     maxOutputTokens: 32768,
   }
-  // Gemini 3.8 / 4 default to MEDIUM thinking, which can take >45s on large study sets and trigger Vercel's 60s timeout.
-  if (model.includes('3.8-flash') || model.includes('4-argon')) {
+  // Keep thinking overhead minimal so large lecture notes finish in 4-8s instead of timing out at 60s.
+  if (model.includes('3.1-flash-lite')) {
+    generationConfig.thinkingConfig = { thinkingLevel: 'MINIMAL' }
+  } else if (model.includes('3.8-flash') || model.includes('4-argon')) {
     generationConfig.thinkingConfig = { thinkingLevel: 'LOW' }
   }
 

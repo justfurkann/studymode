@@ -8,19 +8,21 @@ export const StudySetSchema = z.object({
   summary: z.object({
     overview: z.string(),
     points: z.array(z.string()),
-    keyTerms: z.array(z.object({ term: z.string(), definition: z.string() })),
+    keyTerms: z.array(z.object({ term: z.string(), definition: z.string() })).default([]),
   }),
-  cards: z.array(z.object({ front: z.string(), back: z.string(), source: z.string() })),
-  questions: z.array(
-    z.object({
-      prompt: z.string(),
-      options: z.array(z.string()),
-      answerIndex: z.number().int(),
-      explanation: z.string(),
-      source: z.string(),
-    }),
-  ),
-  practice: z.array(z.object({ question: z.string(), answer: z.string(), hint: z.string() })),
+  cards: z.array(z.object({ front: z.string(), back: z.string(), source: z.string().default('') })).default([]),
+  questions: z
+    .array(
+      z.object({
+        prompt: z.string(),
+        options: z.array(z.string()),
+        answerIndex: z.number().int(),
+        explanation: z.string().default(''),
+        source: z.string().default(''),
+      }),
+    )
+    .default([]),
+  practice: z.array(z.object({ question: z.string(), answer: z.string().default(''), hint: z.string().default('') })).default([]),
 })
 
 export interface StudyInput {
@@ -34,12 +36,12 @@ Write everything in the language of the notes (usually Turkish). Use only inform
 
 Produce:
 - summary.overview: 2-4 sentences on what the notes cover and how the parts connect.
-- summary.points: 5-10 key points, each one self-contained sentence a student could revise from.
+- summary.points: 5-8 key points, each one self-contained sentence a student could revise from.
 - summary.keyTerms: the important terms with a one-sentence definition taken from the notes.
-- cards: 8-20 flashcards for active recall. The front is a specific question (not just a term name when a question works better); the back is a short, complete answer. Cover different parts of the notes, not only definitions.
-- questions: 6-12 multiple-choice questions with exactly 4 options and one correct answer (answerIndex is 0-based). Prefer questions that test understanding and application over word recall. Distractors must be plausible and clearly wrong according to the notes. Vary the position of the correct answer. The explanation says why the answer is right and, briefly, why the most tempting distractor is wrong.
-- practice: 2-4 open-ended questions that make the student explain, compare, or apply ideas, with a model answer grounded in the notes and a one-line hint.
-- Every card and question has "source": a short verbatim quote (max ~200 characters) from the notes that supports it.`
+- cards: 8-12 flashcards for active recall. The front is a specific question (not just a term name when a question works better); the back is a short, complete answer. Cover different parts of the notes, not only definitions.
+- questions: 5-8 multiple-choice questions with exactly 4 options and one correct answer (answerIndex is 0-based). Prefer questions that test understanding and application over word recall. Distractors must be plausible and clearly wrong according to the notes. Vary the position of the correct answer. The explanation says why the answer is right and, briefly, why the most tempting distractor is wrong.
+- practice: 2-3 open-ended questions that make the student explain, compare, or apply ideas, with a model answer grounded in the notes and a one-line hint.
+- Every card and question has "source": a short verbatim quote (max ~120 characters) from the notes that supports it.`
 
 // ---------- Mock exam from several notes ----------
 
@@ -48,11 +50,11 @@ export const ExamSchema = z.object({
     z.object({
       type: z.enum(['mcq', 'open']),
       prompt: z.string(),
-      options: z.array(z.string()),
-      answerIndex: z.number().int(),
-      explanation: z.string(),
-      modelAnswer: z.string(),
-      source: z.string(),
+      options: z.array(z.string()).default([]),
+      answerIndex: z.number().int().default(-1),
+      explanation: z.string().default(''),
+      modelAnswer: z.string().default(''),
+      source: z.string().default(''),
     }),
   ),
 })
@@ -78,7 +80,7 @@ Each question has:
 - prompt: the question.
 - For "mcq": exactly 4 options, answerIndex 0-based, explanation of why the answer is right; modelAnswer is "".
 - For "open": options is [], answerIndex is -1; modelAnswer is a complete answer that would get full marks, written so it can be used as a grading key; explanation lists the points a grader should look for.
-- source: a short verbatim quote (max ~200 characters) from the notes the question is based on.
+- source: a short verbatim quote (max ~120 characters) from the notes the question is based on.
 
 Difficulty: "easy" checks recall of key facts; "medium" mixes recall with understanding; "hard" asks for application, comparison, and multi-step reasoning.
 If past exam questions are provided, imitate their style, length, and the kind of thing they ask about, but write new questions; never copy them.`
@@ -102,7 +104,7 @@ Judge the content, not spelling or style.`
 
 // ---------- Registry ----------
 
-const MAX_PROMPT_NOTE_CHARS = 48_000
+const MAX_PROMPT_NOTE_CHARS = 24_000
 
 /** Keeps huge PDFs within free-tier token-per-minute limits and under serverless timeouts by sampling beginning, middle, and end. */
 function trimNoteText(text: string, budget = MAX_PROMPT_NOTE_CHARS): string {
@@ -163,11 +165,12 @@ export function jsonModeSystem(task: TaskName): string {
   return `${TASKS[task].system}\n\nRespond with a single JSON object only, no prose and no code fences, matching this JSON Schema:\n${JSON.stringify(schema)}`
 }
 
-/** Parses a model's JSON reply (tolerating code fences) and checks it against the task schema. */
+/** Parses a model's JSON reply (tolerating code fences and null string fields) and checks it against the task schema. */
 export function parseTaskOutput<T extends TaskName>(task: T, text: string): TaskOutput<T> | null {
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   try {
-    const result = TASKS[task].schema.safeParse(JSON.parse(cleaned))
+    const parsed = JSON.parse(cleaned, (key, value) => (key && value === null ? '' : value))
+    const result = TASKS[task].schema.safeParse(parsed)
     return result.success ? (result.data as TaskOutput<T>) : null
   } catch {
     return null
