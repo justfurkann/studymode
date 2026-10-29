@@ -1,44 +1,74 @@
 # studymode
 
-Üniversite öğrencileri için Türkçe bir çalışma alanı. Ders notlarını yükle; kısa özet, mini test, çalışma kartları ve kendini değerlendirebileceğin alıştırmalarla konuyu pekiştir.
+Üniversite öğrencileri için Türkçe çalışma uygulaması. Ders notunu yükle; özet, çalışma kartları, çoktan seçmeli test ve açık uçlu sorular hazırlansın. Kartlar aralıklı tekrar (spaced repetition) ile sınav tarihine göre planlanır.
+
+## Özellikler
+
+- **Dersler ve sınav tarihleri:** Her dersin notları, kartları ve sıradaki sınavı. Sınav yaklaştıkça tekrar aralıkları sıkışır.
+- **Not yükleme:** PDF, TXT, Markdown ya da metin yapıştırma. PDF metni tarayıcıda çıkarılır.
+- **İki hazırlama modu:**
+  - **Yapay zekâ:** Kullanıcının kendi Anthropic API anahtarıyla Claude çağrılır. Özet, kartlar, test soruları (açıklama ve nottan alıntıyla) ve örnek cevaplı açık uçlu sorular üretir.
+  - **Basit mod:** Ücretsiz, tamamen cihazda çalışır. Kurallarla nottan cümle seçer; en iyi `Kavram: açıklama` biçimindeki notlarda çalışır.
+- **Aralıklı tekrar:** "Bugün" ekranı tekrar bekleyen kartları, yaklaşan sınavları ve düşük puanlı konuları gösterir.
+- **Testten karta:** Yanlış yaptığın soruları tek tıkla tekrar kartına çevir.
+- **Hesap (isteğe bağlı):** Supabase ile e-posta/şifre girişi ve cihazlar arası senkronizasyon. Supabase ayarlanmadıysa her şey tarayıcıda saklanır.
+- Karanlık mod, mobil uyumlu arayüz, ana ekrana eklenebilir (PWA manifest), JSON yedek alma ve geri yükleme.
 
 ## Çalıştırma
 
-Node.js 22.13+ veya 24 LTS gerekir. Doğrulanan ortam: Node.js 24, npm 11.
+Node.js 22+ gerekir.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Bulut ortamında varsayılan npm önbelleği yazılamıyorsa `npm ci --cache /workspace/.npm-cache` kullan. Vite varsayılan olarak 5173 portunda çalışır.
-
 ```sh
-npm test         # Not işleme ve PDF/metin içe aktarma testleri
-npm run build    # TypeScript kontrolü ve üretim derlemesi
-npm run preview  # Üretim derlemesini çalıştır
-npm run test:e2e # Tarayıcıda kullanıcı akışları
+npm test          # birim testleri (Vitest)
+npm run test:e2e  # tarayıcı testleri (Playwright)
+npm run build     # tip kontrolü + üretim derlemesi
 ```
 
-Tarayıcı testleri bulut ortamındaki `/usr/bin/chromium` yolunu kullanır. Farklı bir kurulumda `PLAYWRIGHT_CHROMIUM_EXECUTABLE` ile Chromium yolunu belirt.
+Playwright, projede sabitlenen sürümün tarayıcısını bulamazsa `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/yol/chromium` ile mevcut bir Chromium göster.
 
-## İlk sürüm
+## Supabase kurulumu (hesap ve senkronizasyon)
 
-- PDF, TXT ve Markdown yükleme veya doğrudan metin yapıştırma.
-- Kaynak notundan önemli cümleleri seçen kısa özet ve kavram listesi.
-- Notun içeriğine dayalı çoktan seçmeli mini testler ve cevap açıklamaları.
-- Çalışma kartları ve öz değerlendirme alıştırmaları.
-- Not arama/silme, tamamlanan testler ve başarı istatistikleri.
-- Mobil ekran desteği ve keşfedilebilir bir örnek ders notu.
+1. [supabase.com](https://supabase.com) üzerinde ücretsiz bir proje oluştur.
+2. **SQL Editor**'de `supabase/schema.sql` dosyasının içeriğini çalıştır. Tablolar ve Row Level Security kuralları oluşur; herkes yalnızca kendi verisini görebilir.
+3. **Project Settings → API** sayfasından proje URL'sini ve `anon` anahtarını al. `.env.example` dosyasını `.env` olarak kopyalayıp doldur:
+   ```sh
+   VITE_SUPABASE_URL=https://xxxx.supabase.co
+   VITE_SUPABASE_ANON_KEY=eyJ...
+   ```
+   `anon` anahtarı tarayıcıya gömülmek için tasarlanmıştır; güvenliği RLS kuralları sağlar. `service_role` anahtarını asla buraya koyma.
+4. **Authentication → URL Configuration** altında Site URL'yi uygulamanın adresi yap (yerelde `http://localhost:5173`). E-posta onayı varsayılan olarak açıktır; arkadaşlarla denerken istersen **Authentication → Providers → Email** altından kapatabilirsin.
 
-React + TypeScript + Vite ile geliştirilmiştir. PDF metni, PDF.js ve yerel worker ile tarayıcıda çıkarılır. Yazı tipleri uygulamayla birlikte sunulur.
+Giriş yapmadan önce tarayıcıda oluşturulan veriler, Ayarlar sayfasındaki "Hesabıma taşı" ile hesaba aktarılabilir.
 
-## Veriler ve sınırlar
+## Yapay zekâ modu
 
-Bu prototip harici yapay zekâ veya sunucu kullanmaz. Özetler metinden seçilir; testler tanımlar ve boşluk doldurma cümleleri üzerinden kurallarla oluşturulur. Kaynakta olmayan açıklamalar üretilmez. Az veya uygun olmayan içerikte test oluşturulmayabilir. Ders notunun doğruluğu bağımsız olarak denetlenmez.
+- Anahtar Ayarlar sayfasından girilir, yalnızca o tarayıcının `localStorage` alanında tutulur ve Supabase'e gönderilmez.
+- İstekler doğrudan tarayıcıdan Anthropic API'sine gider (`dangerouslyAllowBrowser`). Bu, herkesin kendi anahtarını kullandığı arkadaş-çevresi kullanımı için uygundur. Uygulamayı ortak bir anahtarla herkese açmak istersen anahtarı bir sunucu fonksiyonuna (örn. Supabase Edge Function) taşımak gerekir.
+- Model ayarlardan seçilir (varsayılan Claude Opus 5.5; daha ucuz Sonnet 5.5 ve Haiku 5.5 seçenekleri var). Cevaplar şemaya göre doğrulanmış JSON olarak alınır (`src/lib/ai.ts`).
 
-Notlar ve test sonuçları bu tarayıcının `localStorage` alanında tutulur; cihazlar arasında eşitlenmez. Tarayıcı verilerini temizlemek kayıtları siler. Alıştırma cevapları geçicidir ve sekme değiştirince temizlenir. Dosya içeriği dışarı gönderilmez.
+## Yayınlama
 
-Dosya sınırları: 10 MiB, 150 PDF sayfası ve 400.000 karakter. En az 120 karakterlik anlamlı not gerekir. Metni seçilebilen PDF’ler desteklenir; taranmış görseller için OCR ve şifreli PDF desteği yoktur.
+Statik bir site olarak her yere konabilir. Vercel için `vercel.json`, Netlify için `public/_redirects` SPA yönlendirmelerini içerir. Ortam değişkenlerini (`VITE_SUPABASE_*`) barındırma servisinin panelinden ekle ve Supabase'deki Site URL'yi yayın adresine güncelle.
 
-Sonraki ürün kararları: gerçek yapay zekâ destekli açıklamalar, hesap/senkronizasyon, derslere göre kişiselleştirme ve aralıklı tekrar planı.
+## Kod yapısı
+
+```
+src/
+  lib/          veri modeli, depolama (yerel + Supabase), aralıklı tekrar, yapay zekâ, basit mod
+  components/   yerleşim, ortak arayüz parçaları, not sekmeleri
+  pages/        Bugün, Dersler, Ders, Not, Not ekle, Tekrar, Ayarlar, Giriş
+  styles/       tasarım değişkenleri (açık/koyu tema) ve bileşen stilleri
+supabase/       veritabanı şeması
+tests/          Playwright uçtan uca testleri
+```
+
+## Sınırlar
+
+- Taranmış (görsel) PDF'lerde OCR yok; metni seçilebilen PDF gerekir.
+- Basit mod yalnızca nottaki cümleleri seçer; düzensiz notlarda az içerik çıkarabilir.
+- Bulut modunda çevrimdışı çalışma yok; yerel modda her şey tarayıcıda.
