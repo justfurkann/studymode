@@ -1,7 +1,8 @@
 import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, Trash2, Upload } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Spinner, useToast, useConfirm } from '../components/ui'
+import { authErrorMessage, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
 import { hasLocalData, parseData } from '../lib/backend'
 import { PROVIDERS, updateSettings, useSettings, type AiProvider, type KeyProvider, type Theme } from '../lib/settings'
 import { migrateLocalToCloud, useStore } from '../lib/store'
@@ -54,6 +55,7 @@ function AccountSection() {
       <p>
         <span className="muted">Giriş yapıldı:</span> <strong>{store.session.user.email}</strong>
       </p>
+      <ProfileForm />
       {localLeft && (
         <Alert
           tone="info"
@@ -73,6 +75,99 @@ function AccountSection() {
         </button>
       </div>
     </div>
+  )
+}
+
+function ProfileForm() {
+  const store = useStore()
+  const toast = useToast()
+  const user = store.session!.user
+  const meta = (user.user_metadata ?? {}) as { first_name?: string; last_name?: string }
+  const [first, setFirst] = useState(meta.first_name ?? '')
+  const [last, setLast] = useState(meta.last_name ?? '')
+  const [password, setPassword] = useState('')
+  const [repeat, setRepeat] = useState('')
+  const [busy, setBusy] = useState<'name' | 'password' | null>(null)
+  const [error, setError] = useState('')
+  const nameChanged = first.trim() !== (meta.first_name ?? '') || last.trim() !== (meta.last_name ?? '')
+
+  async function saveName(event: FormEvent) {
+    event.preventDefault()
+    if (!first.trim() || !last.trim()) return setError('Adını ve soyadını yaz.')
+    setBusy('name')
+    setError('')
+    try {
+      const { error } = await supabase!.auth.updateUser({ data: nameMetadata(first, last) })
+      if (error) throw error
+      toast('Adın kaydedildi')
+    } catch (e) {
+      setError(authErrorMessage(e))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function savePassword(event: FormEvent) {
+    event.preventDefault()
+    const problem = passwordProblem(password, repeat)
+    if (problem) return setError(problem)
+    setBusy('password')
+    setError('')
+    try {
+      const { error } = await supabase!.auth.updateUser({ password })
+      if (error) throw error
+      setPassword('')
+      setRepeat('')
+      toast('Şifren güncellendi')
+    } catch (e) {
+      setError(authErrorMessage(e))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <>
+      <form className="form" onSubmit={saveName}>
+        {!meta.first_name && <Alert tone="info">Hesabında adın kayıtlı değil. Ekleyince menüde e-posta yerine adın görünür.</Alert>}
+        <div className="form-row">
+          <label className="field">
+            <span>Ad</span>
+            <input className="input" autoComplete="given-name" value={first} onChange={(e) => setFirst(e.target.value)} maxLength={50} />
+          </label>
+          <label className="field">
+            <span>Soyad</span>
+            <input className="input" autoComplete="family-name" value={last} onChange={(e) => setLast(e.target.value)} maxLength={50} />
+          </label>
+        </div>
+        <div>
+          <button className="btn" disabled={!nameChanged || busy !== null}>
+            {busy === 'name' && <Spinner size={15} />} Adı kaydet
+          </button>
+        </div>
+      </form>
+      <details>
+        <summary style={{ cursor: 'pointer', fontWeight: 550 }}>Şifreyi değiştir</summary>
+        <form className="form" onSubmit={savePassword} style={{ marginTop: 12 }}>
+          <div className="form-row">
+            <label className="field">
+              <span>Yeni şifre</span>
+              <input className="input" type="password" autoComplete="new-password" minLength={MIN_PASSWORD} value={password} onChange={(e) => setPassword(e.target.value)} />
+            </label>
+            <label className="field">
+              <span>Yeni şifre (tekrar)</span>
+              <input className="input" type="password" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} />
+            </label>
+          </div>
+          <div>
+            <button className="btn" disabled={!password || busy !== null}>
+              {busy === 'password' && <Spinner size={15} />} Şifreyi güncelle
+            </button>
+          </div>
+        </form>
+      </details>
+      {error && <Alert tone="danger">{error}</Alert>}
+    </>
   )
 }
 

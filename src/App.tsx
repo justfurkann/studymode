@@ -8,6 +8,7 @@ import { Exam } from './pages/Exam'
 import { Courses } from './pages/Courses'
 import { Login } from './pages/Login'
 import { NoteDetail } from './pages/NoteDetail'
+import { ResetPassword } from './pages/ResetPassword'
 import { Review } from './pages/Review'
 import { Settings } from './pages/Settings'
 import { Today } from './pages/Today'
@@ -48,6 +49,7 @@ function Routed() {
         <Route path="tekrar" element={<Review />} />
         <Route path="ayarlar" element={<Settings />} />
         <Route path="giris" element={<Login />} />
+        <Route path="sifre-yenile" element={<ResetPassword />} />
         <Route path="*" element={<Today />} />
       </Route>
     </Routes>

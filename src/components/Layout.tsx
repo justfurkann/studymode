@@ -1,15 +1,35 @@
 import { BookOpen, Brain, House, Plus, Settings, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { authErrorMessage, displayName } from '../lib/auth'
 import { dueCards } from '../lib/format'
 import { useStore } from '../lib/store'
-import { openedFromConfirmationEmail } from '../lib/supabase'
+import { authLinkError, openedFromConfirmationEmail, openedFromRecoveryEmail, supabase } from '../lib/supabase'
 import { Alert } from './ui'
+
+// The reset link should open the new-password screen once, not on every later visit to the layout.
+let recoveryHandled = false
 
 export function Layout() {
   const { data, mode, session, saveError, clearSaveError } = useStore()
   const due = dueCards(data.cards).length
+  const navigate = useNavigate()
   const [confirmed, setConfirmed] = useState(openedFromConfirmationEmail)
+  const [linkError, setLinkError] = useState(authLinkError)
+  const name = displayName(session?.user)
+
+  // A password reset link signs the user in; send them straight to the new-password form.
+  useEffect(() => {
+    if (openedFromRecoveryEmail && !recoveryHandled) {
+      recoveryHandled = true
+      navigate('/sifre-yenile', { replace: true })
+    }
+    if (!supabase) return
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') navigate('/sifre-yenile', { replace: true })
+    })
+    return () => data.subscription.unsubscribe()
+  }, [navigate])
 
   useEffect(() => {
     if (!confirmed) return
@@ -45,15 +65,36 @@ export function Layout() {
         ))}
         <div className="sidebar-footer">
           <span className={`status-dot ${mode === 'cloud' ? 'cloud' : ''}`} />
-          {mode === 'cloud' ? session?.user.email : 'Bu cihazda kayıtlı'}
+          <span title={session?.user.email} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {mode === 'cloud' ? name : 'Bu cihazda kayıtlı'}
+          </span>
         </div>
       </aside>
 
       <main className="main">
-        <div className="mobile-account"><NavLink to={session ? '/ayarlar' : '/giris'}><span className={`status-dot ${mode === 'cloud' ? 'cloud' : ''}`} />{session?.user.email ?? 'Misafir · Bu cihazda kayıtlı'}</NavLink><span>{saveError ? 'Kayıt hatası' : mode === 'cloud' ? 'Bulut hesabı' : 'Giriş yap'}</span></div>
+        <div className="mobile-account"><NavLink to={session ? '/ayarlar' : '/giris'}><span className={`status-dot ${mode === 'cloud' ? 'cloud' : ''}`} />{session ? name : 'Misafir · Bu cihazda kayıtlı'}</NavLink><span>{saveError ? 'Kayıt hatası' : mode === 'cloud' ? 'Bulut hesabı' : 'Giriş yap'}</span></div>
         {confirmed && mode === 'cloud' && (
           <div className="page" style={{ marginBottom: 20 }}>
             <Alert tone="info">E-postan doğrulandı ve giriş yaptın. Notların artık tüm cihazlarında senkronize olacak.</Alert>
+          </div>
+        )}
+        {linkError && (
+          <div className="page" style={{ marginBottom: 20 }}>
+            <Alert
+              tone="warning"
+              action={
+                <button className="btn btn-sm" onClick={() => setLinkError(null)}>
+                  Tamam
+                </button>
+              }
+            >
+              {authErrorMessage(linkError)}{' '}
+              {!session && (
+                <Link to="/giris" style={{ fontWeight: 600, textDecoration: 'underline' }} onClick={() => setLinkError(null)}>
+                  Giriş sayfasına git
+                </Link>
+              )}
+            </Alert>
           </div>
         )}
         {saveError && (

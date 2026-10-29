@@ -1,16 +1,25 @@
 import { ArrowLeft } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Alert, Spinner } from '../components/ui'
+import { authErrorMessage, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
 import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
+
+type Mode = 'in' | 'up' | 'forgot'
+
+const TITLES: Record<Mode, string> = { in: 'Giriş yap', up: 'Hesap oluştur', forgot: 'Şifremi unuttum' }
 
 export function Login() {
   const store = useStore()
   const navigate = useNavigate()
-  const [mode, setMode] = useState<'in' | 'up'>('in')
+  const [params] = useSearchParams()
+  const [mode, setMode] = useState<Mode>(params.get('mod') === 'unuttum' ? 'forgot' : params.get('mod') === 'kayit' ? 'up' : 'in')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [repeat, setRepeat] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
@@ -18,72 +27,145 @@ export function Login() {
   if (!supabase) return <Navigate to="/ayarlar" replace />
   if (store.session) return <Navigate to="/" replace />
 
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    setBusy(true)
+  function switchTo(next: Mode) {
+    setMode(next)
     setError('')
     setInfo('')
+    setPassword('')
+    setRepeat('')
+  }
+
+  // Only flag a mismatch once the second field has been filled in far enough to compare.
+  const mismatch = mode === 'up' && repeat.length > 0 && repeat !== password.slice(0, repeat.length) ? 'Şifreler aynı değil.' : ''
+
+  async function submit(event: FormEvent) {
+    event.preventDefault()
+    setError('')
+    setInfo('')
+
+    if (mode === 'up') {
+      if (!firstName.trim() || !lastName.trim()) return setError('Adını ve soyadını yaz.')
+      const problem = passwordProblem(password, repeat)
+      if (problem) return setError(problem)
+    }
+
+    setBusy(true)
     try {
       if (mode === 'in') {
-        const { error } = await supabase!.auth.signInWithPassword({ email, password })
+        const { error } = await supabase!.auth.signInWithPassword({ email: email.trim(), password })
         if (error) throw error
         navigate('/')
-      } else {
-        const { data, error } = await supabase!.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
+      } else if (mode === 'up') {
+        const { data, error } = await supabase!.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: window.location.origin, data: nameMetadata(firstName, lastName) },
+        })
         if (error) throw error
-        if (!data.session) setInfo('Hesabın oluşturuldu. E-postana gelen bağlantıya tıklayıp hesabını onayla, sonra giriş yap.')
-        else navigate('/')
+        if (data.session) navigate('/')
+        else {
+          setInfo(`Hesabın oluşturuldu. ${email.trim()} adresine gelen bağlantıya tıklayıp hesabını onayla, sonra giriş yap. E-posta birkaç dakika içinde gelmezse gereksiz klasörüne bak.`)
+          setPassword('')
+          setRepeat('')
+        }
+      } else {
+        const { error } = await supabase!.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin })
+        if (error) throw error
+        // Same message whether or not the address has an account, so the form cannot be used to look up emails.
+        setInfo('Bu e-postayla bir hesap varsa şifre yenileme bağlantısı gönderdik. Gelen kutunu (ve gereksiz klasörünü) kontrol et.')
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : ''
-      setError(
-        /invalid login credentials/i.test(message)
-          ? 'E-posta veya şifre hatalı.'
-          : /email not confirmed/i.test(message)
-            ? 'E-postanı henüz onaylamadın. Gelen kutunu kontrol et.'
-            : /already registered/i.test(message)
-              ? 'Bu e-postayla zaten bir hesap var. Giriş yapmayı dene.'
-              : message || 'Bir şeyler ters gitti.',
-      )
+      setError(authErrorMessage(e))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="page" style={{ maxWidth: 420 }}>
+    <div className="page" style={{ maxWidth: 440 }}>
       <Link to="/ayarlar" className="back-link">
         <ArrowLeft size={16} /> Ayarlar
       </Link>
       <div className="panel form">
-        <h1>{mode === 'in' ? 'Giriş yap' : 'Hesap oluştur'}</h1>
-        <p className="muted">Hesapla notların, kartların ve ilerlemen tüm cihazlarında senkronize olur.</p>
+        <h1>{TITLES[mode]}</h1>
+        <p className="muted">
+          {mode === 'forgot'
+            ? 'E-posta adresini yaz, sana yeni şifre belirleyebileceğin bir bağlantı gönderelim.'
+            : 'Hesapla notların, kartların ve ilerlemen tüm cihazlarında senkronize olur.'}
+        </p>
         <form className="form" onSubmit={submit}>
+          {mode === 'up' && (
+            <div className="form-row">
+              <label className="field">
+                <span>Ad</span>
+                <input className="input" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={50} required />
+              </label>
+              <label className="field">
+                <span>Soyad</span>
+                <input className="input" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={50} required />
+              </label>
+            </div>
+          )}
           <label className="field">
             <span>E-posta</span>
             <input className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </label>
-          <label className="field">
-            <span>Şifre</span>
-            <input
-              className="input"
-              type="password"
-              autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </label>
+          {mode !== 'forgot' && (
+            <label className="field">
+              <span>Şifre</span>
+              <input
+                className="input"
+                type="password"
+                autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
+                minLength={mode === 'up' ? MIN_PASSWORD : undefined}
+                value={password}
+                onChange={(e) => (setPassword(e.target.value), setError(''))}
+                aria-describedby={mode === 'up' ? 'password-hint' : undefined}
+                required
+              />
+            </label>
+          )}
+          {mode === 'up' && (
+            <span id="password-hint" className="subtle" style={{ marginTop: -10 }}>
+              En az {MIN_PASSWORD} karakter
+            </span>
+          )}
+          {mode === 'up' && (
+            <label className="field">
+              <span>Şifre (tekrar)</span>
+              <input
+                className="input"
+                type="password"
+                autoComplete="new-password"
+                value={repeat}
+                onChange={(e) => (setRepeat(e.target.value), setError(''))}
+                aria-invalid={!!mismatch}
+                aria-describedby={mismatch ? 'password-mismatch' : undefined}
+                required
+              />
+            </label>
+          )}
+          {mismatch && (
+            <span id="password-mismatch" style={{ color: 'var(--danger)', fontSize: '0.875rem', marginTop: -10 }} role="alert">
+              {mismatch}
+            </span>
+          )}
+          {mode === 'in' && (
+            <div style={{ marginTop: -8 }}>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ paddingInline: 0 }} onClick={() => switchTo('forgot')}>
+                Şifremi unuttum
+              </button>
+            </div>
+          )}
           {error && <Alert tone="danger">{error}</Alert>}
           {info && <Alert tone="info">{info}</Alert>}
           <button className="btn btn-primary btn-lg" disabled={busy}>
-            {busy && <Spinner />} {mode === 'in' ? 'Giriş yap' : 'Hesap oluştur'}
+            {busy && <Spinner />} {mode === 'forgot' ? 'Yenileme bağlantısı gönder' : TITLES[mode]}
           </button>
         </form>
         <p className="subtle" style={{ textAlign: 'center' }}>
-          {mode === 'in' ? 'Hesabın yok mu?' : 'Zaten hesabın var mı?'}{' '}
-          <button className="btn btn-ghost btn-sm" onClick={() => (setMode(mode === 'in' ? 'up' : 'in'), setError(''), setInfo(''))}>
+          {mode === 'up' ? 'Zaten hesabın var mı?' : mode === 'forgot' ? 'Şifreni hatırladın mı?' : 'Hesabın yok mu?'}{' '}
+          <button className="btn btn-ghost btn-sm" onClick={() => switchTo(mode === 'in' ? 'up' : 'in')}>
             {mode === 'in' ? 'Hesap oluştur' : 'Giriş yap'}
           </button>
         </p>

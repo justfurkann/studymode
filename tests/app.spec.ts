@@ -395,7 +395,7 @@ test('account entry point leads to the sign-in form', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Giriş yap' })).toBeVisible()
   await page.getByRole('button', { name: 'Hesap oluştur' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Hesap oluştur' })).toBeVisible()
-  await expect(page.getByLabel('Şifre')).toHaveAttribute('autocomplete', 'new-password')
+  await expect(page.getByLabel('Şifre', { exact: true })).toHaveAttribute('autocomplete', 'new-password')
   expect(errors).toEqual([])
 })
 
@@ -503,4 +503,81 @@ test('practice grading reports service errors and allows retry', async ({ page }
   await page.getByRole('button', { name: 'Cevabımı değerlendir' }).click()
   await expect(page.getByText('Geri bildirim · 60/100')).toBeVisible()
   await expect(page.getByText('Tekrar günlerini somutlaştır.')).toBeVisible()
+})
+
+test.describe('accounts', () => {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+
+  test('sign-up asks for name and a repeated password', async ({ page }) => {
+    const errors = watchErrors(page)
+    let signup: { email: string; password: string; data: Record<string, string> } | null = null
+    await page.route(`${SUPABASE}/auth/v1/signup**`, async (route) => {
+      signup = route.request().postDataJSON()
+      await route.fulfill({
+        status: 200,
+        json: { id: 'u1', aud: 'authenticated', role: '', email: signup!.email, email_confirmed_at: null, user_metadata: signup!.data, app_metadata: {}, identities: [{ id: 'i1' }], created_at: new Date().toISOString() },
+      })
+    })
+
+    await page.goto('/giris')
+    await page.getByRole('button', { name: 'Hesap oluştur' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Hesap oluştur' })).toBeVisible()
+    await page.getByLabel('Ad', { exact: true }).fill(' Ayşe ')
+    await page.getByLabel('Soyad').fill('Yılmaz')
+    await page.getByLabel('E-posta').fill('ayse@example.com')
+    await page.getByLabel('Şifre', { exact: true }).fill('uzunsifre1')
+    await page.getByLabel('Şifre (tekrar)').fill('uzunsifre2')
+    await expect(page.getByText('Şifreler aynı değil.')).toBeVisible()
+    await page.getByRole('button', { name: 'Hesap oluştur' }).first().click()
+    expect(signup).toBeNull()
+
+    await page.getByLabel('Şifre (tekrar)').fill('uzunsifre1')
+    await expect(page.getByText('Şifreler aynı değil.')).toHaveCount(0)
+    await page.locator('form').getByRole('button', { name: 'Hesap oluştur' }).click()
+    await expect(page.getByText(/ayse@example.com adresine gelen bağlantıya tıklayıp/)).toBeVisible()
+    expect(signup!.data).toEqual({ first_name: 'Ayşe', last_name: 'Yılmaz', full_name: 'Ayşe Yılmaz' })
+    expect(signup!.password).toBe('uzunsifre1')
+    expect(errors).toEqual([])
+  })
+
+  test('sign-up rejects short passwords before calling the server', async ({ page }) => {
+    let called = false
+    await page.route(`${SUPABASE}/auth/v1/signup**`, (route) => ((called = true), route.abort()))
+    await page.goto('/giris?mod=kayit')
+    await page.getByLabel('Ad', { exact: true }).fill('Ali')
+    await page.getByLabel('Soyad').fill('Veli')
+    await page.getByLabel('E-posta').fill('ali@example.com')
+    await page.getByLabel('Şifre', { exact: true }).fill('kisa')
+    await page.getByLabel('Şifre (tekrar)').fill('kisa')
+    await page.locator('form').evaluate((form: HTMLFormElement) => (form.noValidate = true))
+    await page.locator('form').getByRole('button', { name: 'Hesap oluştur' }).click()
+    await expect(page.getByText('Şifre en az 8 karakter olmalı.')).toBeVisible()
+    expect(called).toBe(false)
+  })
+
+  test('forgot password sends a reset link back to the app', async ({ page }) => {
+    let recover: { url: string; body: { email: string } } | null = null
+    await page.route(`${SUPABASE}/auth/v1/recover**`, async (route) => {
+      recover = { url: route.request().url(), body: route.request().postDataJSON() }
+      await route.fulfill({ status: 200, json: {} })
+    })
+    await page.goto('/giris')
+    await page.getByRole('button', { name: 'Şifremi unuttum' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Şifremi unuttum' })).toBeVisible()
+    await expect(page.getByLabel('Şifre', { exact: true })).toHaveCount(0)
+    await page.getByLabel('E-posta').fill('ayse@example.com')
+    await page.getByRole('button', { name: 'Yenileme bağlantısı gönder' }).click()
+    await expect(page.getByText(/şifre yenileme bağlantısı gönderdik/)).toBeVisible()
+    expect(recover!.body.email).toBe('ayse@example.com')
+    expect(decodeURIComponent(recover!.url)).toContain('redirect_to=http://127.0.0.1:5173')
+  })
+
+  test('expired email links and stale reset pages explain what to do', async ({ page }) => {
+    await page.goto('/#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired')
+    await expect(page.getByText(/Bağlantının süresi dolmuş/)).toBeVisible()
+    await page.goto('/sifre-yenile')
+    await expect(page.getByText('Bu bağlantı geçersiz ya da süresi dolmuş.', { exact: false })).toBeVisible()
+    await page.getByRole('link', { name: 'Yeni bağlantı iste' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Şifremi unuttum' })).toBeVisible()
+  })
 })
