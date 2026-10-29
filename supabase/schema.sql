@@ -54,19 +54,40 @@ create table if not exists public.quiz_attempts (
   created_at timestamptz not null default now()
 );
 
+-- Finished mock exams (added later; safe to run again on an existing database).
+create table if not exists public.exam_results (
+  id uuid primary key,
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  course_id uuid not null references public.courses (id) on delete cascade,
+  format text not null check (format in ('test', 'classic', 'mixed')),
+  difficulty text check (difficulty in ('easy', 'medium', 'hard')),
+  source text not null check (source in ('ai', 'local')),
+  note_ids jsonb not null default '[]'::jsonb,
+  questions jsonb not null,
+  answers jsonb not null,
+  scores jsonb not null,
+  feedback jsonb not null default '[]'::jsonb,
+  score real not null check (score >= 0),
+  total integer not null check (total > 0),
+  duration_seconds integer,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists notes_user_idx on public.notes (user_id);
 create index if not exists cards_user_due_idx on public.cards (user_id, due);
 create index if not exists attempts_user_idx on public.quiz_attempts (user_id);
+create index if not exists exams_user_idx on public.exam_results (user_id);
 
 alter table public.courses enable row level security;
 alter table public.notes enable row level security;
 alter table public.cards enable row level security;
 alter table public.quiz_attempts enable row level security;
+alter table public.exam_results enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['courses', 'notes', 'cards', 'quiz_attempts'] loop
+  foreach t in array array['courses', 'notes', 'cards', 'quiz_attempts', 'exam_results'] loop
     execute format('drop policy if exists "own rows" on public.%I', t);
     execute format(
       'create policy "own rows" on public.%I for all to authenticated

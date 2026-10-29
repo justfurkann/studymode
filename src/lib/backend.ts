@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { emptyData, type StudyData } from './types'
 
-export type Table = 'courses' | 'notes' | 'cards' | 'attempts'
+export type Table = 'courses' | 'notes' | 'cards' | 'attempts' | 'exams'
 
 export type Change =
   | { type: 'upsert'; table: Table; rows: object[] }
@@ -66,7 +66,9 @@ export function parseData(value: unknown): StudyData {
       }
     }
   }
-  return { courses: data.courses, notes: data.notes, cards: data.cards, attempts: data.attempts } as StudyData
+  // Backups and browser data from before mock exams were saved have no `exams` list.
+  const exams = Array.isArray(data.exams) ? data.exams.filter((e) => e && typeof e === 'object' && typeof (e as { id?: unknown }).id === 'string') : []
+  return { courses: data.courses, notes: data.notes, cards: data.cards, attempts: data.attempts, exams } as StudyData
 }
 
 // ---------- Supabase (account, synced across devices) ----------
@@ -76,6 +78,7 @@ const TABLE_NAMES: Record<Table, string> = {
   notes: 'notes',
   cards: 'cards',
   attempts: 'quiz_attempts',
+  exams: 'exam_results',
 }
 
 const toSnake = (key: string) => key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
@@ -93,10 +96,17 @@ function chunks<T>(items: T[], size: number): T[][] {
 
 const PAGE = 1000
 
-async function fetchAll(client: SupabaseClient, table: string) {
+/** PostgREST / Postgres codes for "this table does not exist". */
+const isMissingTable = (error: { code?: string }) => error.code === 'PGRST205' || error.code === '42P01'
+
+/** Tables added after the first schema; an account whose database lacks them still loads. */
+const OPTIONAL_TABLES = new Set<Table>(['exams'])
+
+async function fetchAll(client: SupabaseClient, table: Table) {
   const rows: Record<string, unknown>[] = []
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = await client.from(table).select('*').order('created_at').range(from, from + PAGE - 1)
+    const { data, error } = await client.from(TABLE_NAMES[table]).select('*').order('created_at').range(from, from + PAGE - 1)
+    if (error && OPTIONAL_TABLES.has(table) && isMissingTable(error)) return rows
     if (error) throw new Error(`Veriler yüklenemedi: ${error.message}`)
     rows.push(...data)
     if (data.length < PAGE) return rows
@@ -108,7 +118,7 @@ export function supabaseBackend(client: SupabaseClient): Backend {
     async load() {
       const entries = await Promise.all(
         (Object.keys(TABLE_NAMES) as Table[]).map(async (table) => {
-          const rows = await fetchAll(client, TABLE_NAMES[table])
+          const rows = await fetchAll(client, table)
           return [table, rows.map((row) => mapKeys(row, toCamel, ['user_id']))] as const
         }),
       )
@@ -120,6 +130,9 @@ export function supabaseBackend(client: SupabaseClient): Backend {
         if (change.type === 'upsert') {
           for (const rows of chunks(change.rows, 500)) {
             const { error } = await client.from(name).upsert(rows.map((row) => mapKeys(row, toSnake)))
+            if (error && isMissingTable(error)) {
+              throw new Error(`Kaydedilemedi: veritabanında "${name}" tablosu yok. Site sahibinin supabase/schema.sql dosyasını yeniden çalıştırması gerekiyor.`)
+            }
             if (error) throw new Error(`Kaydedilemedi: ${error.message}`)
           }
         } else {

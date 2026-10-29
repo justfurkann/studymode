@@ -618,3 +618,37 @@ test('step-by-step zero-to-mastery learning path guides the user through all 5 s
   expect(errors).toEqual([])
 })
 
+
+test('finished mock exams are saved and can be reopened from the course page', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).first().click()
+  await page.getByRole('link', { name: /Psikolojiye Giriş/ }).first().click()
+  const courseUrl = page.url()
+  await page.getByRole('link', { name: 'Sınav provası' }).click()
+  await page.getByLabel('Soru sayısı').selectOption('5')
+  await page.getByRole('button', { name: 'Sınavı başlat' }).click()
+  for (let i = 1; i <= 5; i += 1) {
+    await page.getByRole('radiogroup', { name: `Soru ${i} seçenekleri` }).getByRole('radio').first().click()
+  }
+  await page.getByRole('button', { name: 'Sınavı bitir' }).click()
+  await expect(page.getByText('Sonuç kaydedildi')).toBeVisible()
+  const score = await page.locator('.score').textContent()
+
+  // Leaving the page used to lose the result; it must survive a reload.
+  await page.goto(courseUrl)
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Hazırlık durumu' })).toBeVisible()
+  await expect(page.getByText('Sınav provaları')).toBeVisible()
+  await expect(page.getByText(/Kartların %\d+’ine hâkimsin/)).toBeVisible()
+  await page.getByRole('link', { name: new RegExp(`^${score}`) }).first().click()
+  await expect(page.getByText(/Sınav provası · /)).toBeVisible()
+  await expect(page.locator('.score')).toHaveText(score!)
+  await expect(page.getByText('Test · ', { exact: false }).or(page.getByText(/Hazır sorular/))).toBeVisible()
+
+  page.once('dialog', () => undefined)
+  await page.getByRole('button', { name: 'Sil' }).click()
+  await page.getByRole('button', { name: 'Evet, devam et' }).click()
+  await expect(page.getByText('Sınav provaları')).toHaveCount(0)
+  expect(errors).toEqual([])
+})

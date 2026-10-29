@@ -5,6 +5,7 @@ import { StoreProvider, useStore } from './lib/store'
 import { AddNote } from './pages/AddNote'
 import { CourseDetail } from './pages/CourseDetail'
 import { Exam } from './pages/Exam'
+import { ExamHistory } from './pages/ExamHistory'
 import { Courses } from './pages/Courses'
 import { Login } from './pages/Login'
 import { NoteDetail } from './pages/NoteDetail'
@@ -44,6 +45,7 @@ function Routed() {
         <Route path="dersler" element={<Courses />} />
         <Route path="ders/:id" element={<CourseDetail />} />
         <Route path="ders/:id/sinav" element={<Exam />} />
+        <Route path="ders/:id/sinav/:examId" element={<ExamHistory />} />
         <Route path="not/:id" element={<NoteDetail />} />
         <Route path="not-ekle" element={<AddNote />} />
         <Route path="tekrar" element={<Review />} />
