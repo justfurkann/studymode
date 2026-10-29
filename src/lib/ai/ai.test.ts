@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AiError, normalizeStudySet, type RawStudySet } from './ai'
+import { AiError, normalizeStudySet, type RawStudySet } from './index'
 
 const base: RawStudySet = {
   summary: { overview: ' Hücre  yapıları. ', points: ['Mitokondri enerji üretir.', ' '], keyTerms: [{ term: 'Ribozom', definition: 'Protein sentezler.' }] },

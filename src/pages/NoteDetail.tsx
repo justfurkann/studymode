@@ -8,7 +8,7 @@ import { SummaryTab } from '../components/note/SummaryTab'
 import { Alert, Empty, Modal, Spinner, useToast } from '../components/ui'
 import { readingMinutes, relativeDate, wordCount } from '../lib/format'
 import { generateLocally } from '../lib/localGenerator'
-import { useSettings } from '../lib/settings'
+import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import type { Generator, Note } from '../lib/types'
 
@@ -25,6 +25,7 @@ type TabId = (typeof TABS)[number]['id']
 function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => void; onClose?: () => void }) {
   const store = useStore()
   const settings = useSettings()
+  const ai = aiAvailability(settings, !!store.session)
   const [busy, setBusy] = useState<Generator | null>(null)
   const [error, setError] = useState('')
 
@@ -32,7 +33,7 @@ function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => v
     setBusy(generator)
     setError('')
     try {
-      const set = generator === 'ai' ? await (await import('../lib/ai')).generateWithAi(note.content, note.title, settings.apiKey, settings.model) : generateLocally(note.content)
+      const set = generator === 'ai' ? await (await import('../lib/ai')).generateStudySet(note.content, note.title, settings) : generateLocally(note.content)
       store.applyGenerated(note.id, set, generator)
       onDone()
     } catch (e) {
@@ -48,9 +49,9 @@ function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => v
         <p className="muted">Henüz çalışmadığın kartlar ve sorular yenileriyle değiştirilir. Çalıştığın kartların ilerlemesi korunur.</p>
       )}
       <div className="choice-grid">
-        <button className="choice" onClick={() => run('ai')} disabled={!settings.apiKey || !!busy}>
+        <button className="choice" onClick={() => run('ai')} disabled={!ai.ok || !!busy}>
           <strong>{busy === 'ai' ? <Spinner size={17} /> : <Sparkles size={17} />} Yapay zekâ</strong>
-          <span className="subtle">{settings.apiKey ? (busy === 'ai' ? 'Notun okunuyor, 1 dk kadar sürebilir…' : 'Daha iyi özet ve sorular.') : 'Önce ayarlardan API anahtarı ekle.'}</span>
+          <span className="subtle">{ai.ok ? (busy === 'ai' ? 'Notun okunuyor, 1 dk kadar sürebilir…' : `${ai.label} · Daha iyi özet ve sorular.`) : ai.reason}</span>
         </button>
         <button className="choice" onClick={() => run('local')} disabled={!!busy}>
           <strong>

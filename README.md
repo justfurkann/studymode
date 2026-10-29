@@ -42,9 +42,16 @@ Giriş yapmadan önce tarayıcıda oluşturulan veriler, Ayarlar sayfasındaki "
 
 ## Yapay zekâ modu
 
-- Anahtar Ayarlar sayfasından girilir, yalnızca o tarayıcının `localStorage` alanında tutulur ve Supabase'e gönderilmez.
-- İstekler doğrudan tarayıcıdan Anthropic API'sine gider (`dangerouslyAllowBrowser`). Bu, herkesin kendi anahtarını kullandığı arkadaş-çevresi kullanımı için uygundur. Uygulamayı ortak bir anahtarla herkese açmak istersen anahtarı bir sunucu fonksiyonuna (örn. Supabase Edge Function) taşımak gerekir.
-- Model ayarlardan seçilir (varsayılan Claude Opus 5.5; daha ucuz Sonnet 5.5 ve Haiku 5.5 seçenekleri var). Cevaplar şemaya göre doğrulanmış JSON olarak alınır (`src/lib/ai.ts`).
+Ayarlar → Yapay zekâ bölümünden dört seçenek var:
+
+- **Ücretsiz (varsayılan):** Giriş yapmış kullanıcılar için. Tarayıcı `/api/generate` Vercel fonksiyonunu çağırır; fonksiyon Supabase oturumunu doğrular ve Google Gemini'nin ücretsiz katmanını kullanır. Gemini anahtarı yalnızca sunucuda (`GEMINI_API_KEY` ortam değişkeni) durur. Fonksiyon yalnızca sabit görevleri (özet seti, sınav, puanlama) çalıştırır, genel amaçlı bir proxy değildir. Not: Google ücretsiz katmandaki içerikleri ürünlerini geliştirmek için kullanabilir.
+- **Claude / ChatGPT / Gemini (kendi anahtarın):** Anahtar yalnızca o tarayıcının `localStorage` alanında tutulur, Supabase'e gönderilmez. İstekler doğrudan tarayıcıdan servise gider; ücret kullanıcının kendi hesabından düşer.
+
+Ücretsiz modu açmak için:
+1. [aistudio.google.com/apikey](https://aistudio.google.com/apikey) adresinden bir API anahtarı al. Bu projeye **faturalandırma bağlama**: ücretsiz katmanda kota dolarsa yalnızca hata alınır, para çıkmaz. Faturalandırma bağlarsan önce kullanıcı başına bir limit ekle.
+2. Vercel → proje → Settings → Environment Variables altına `GEMINI_API_KEY` ekle ve yeniden yayınla. Model adını değiştirmek için isteğe bağlı `GEMINI_MODEL`.
+
+Talimatlar ve çıktı şemaları `src/lib/ai/tasks.ts` içinde; Claude yapılandırılmış çıktı (structured output), ChatGPT ve Gemini JSON modu kullanır ve her cevap aynı şemayla doğrulanır.
 
 ## Yayınlama
 
