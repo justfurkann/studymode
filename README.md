@@ -35,12 +35,7 @@ Playwright, projede sabitlenen sürümün tarayıcısını bulamazsa `PLAYWRIGHT
 
 1. [supabase.com](https://supabase.com) üzerinde ücretsiz bir proje oluştur.
 2. **SQL Editor**'de `supabase/schema.sql` dosyasının içeriğini çalıştır. Tablolar ve Row Level Security kuralları oluşur; herkes yalnızca kendi verisini görebilir.
-3. **Project Settings → API** sayfasından proje URL'sini ve `anon` anahtarını al. `.env.example` dosyasını `.env` olarak kopyalayıp doldur:
-   ```sh
-   VITE_SUPABASE_URL=https://xxxx.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJ...
-   ```
-   `anon` anahtarı tarayıcıya gömülmek için tasarlanmıştır; güvenliği RLS kuralları sağlar. `service_role` anahtarını asla buraya koyma.
+3. Proje adresi ve **publishable** anahtarı `src/lib/supabase.ts` içinde varsayılan olarak tanımlı. Başka bir projeye bağlanmak için `.env` dosyasında `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` değerlerini ver. Publishable/anon anahtarı tarayıcıya gömülmek için tasarlanmıştır; güvenliği RLS kuralları sağlar. `sb_secret_…` veya `service_role` anahtarını asla koda ya da `.env`'e koyma.
 4. **Authentication → URL Configuration** altında Site URL'yi uygulamanın adresi yap (yerelde `http://localhost:5173`). E-posta onayı varsayılan olarak açıktır; arkadaşlarla denerken istersen **Authentication → Providers → Email** altından kapatabilirsin.
 
 Giriş yapmadan önce tarayıcıda oluşturulan veriler, Ayarlar sayfasındaki "Hesabıma taşı" ile hesaba aktarılabilir.
