@@ -1,30 +1,77 @@
-import { ArrowLeft, ArrowRight, BookText, Check, FileText, Layers, ListChecks, PenLine, RefreshCw, Sparkles, Trash2, Wand2, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { ArrowLeft, Check, Copy, Download, FileText, MoreHorizontal, Pencil, PenLine, Printer, RefreshCw, Sparkles, Trash2, Wand2, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { NoteEditor } from '../components/NoteEditor'
 import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { CardsTab } from '../components/note/CardsTab'
 import { PracticeTab } from '../components/note/PracticeTab'
 import { QuizTab } from '../components/note/QuizTab'
-import { SummaryTab } from '../components/note/SummaryTab'
+import { SummaryEditor, SummaryTab } from '../components/note/SummaryTab'
 import { Alert, Empty, Modal, Spinner, useConfirm, useToast } from '../components/ui'
 import { readingMinutes, relativeDate, wordCount } from '../lib/format'
-import { findSourceMatch } from '../lib/noteTools'
+import { downloadText, findSourceMatch, summaryMarkdown } from '../lib/noteTools'
 import { computeNoteProgress, computeTopicMastery } from '../lib/learningPath'
 import { generateLocally } from '../lib/localGenerator'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import type { Generator, LearningStepId, Note } from '../lib/types'
 
-const TABS = [
-  { id: 'ozet', label: 'Özet', icon: BookText },
-  { id: 'kartlar', label: 'Kartlar', icon: Layers },
-  { id: 'test', label: 'Test', icon: ListChecks },
-  { id: 'uygula', label: 'Uygula', icon: PenLine },
-  { id: 'kaynak', label: 'Kaynak', icon: FileText },
-] as const
+/** The study flow, in order: read, measure, practise, explain. Each view covers one or two learning steps. */
+const VIEWS = [
+  { id: 'ozet', label: 'Özet', steps: ['tanis', 'anla'] },
+  { id: 'test', label: 'Test', steps: ['sina'] },
+  { id: 'kartlar', label: 'Kartlar', steps: ['pekistir'] },
+  { id: 'uygula', label: 'Anlat', steps: ['anlat'] },
+] as const satisfies ReadonlyArray<{ id: string; label: string; steps: readonly LearningStepId[] }>
 
-type TabId = (typeof TABS)[number]['id']
+type TabId = (typeof VIEWS)[number]['id'] | 'kaynak'
+
+const viewOfStep = (step: LearningStepId): TabId =>
+  step === 'tanis' || step === 'anla' ? 'ozet' : step === 'sina' ? 'test' : step === 'pekistir' ? 'kartlar' : 'uygula'
+
+/** The note's less frequent actions, kept out of the way of studying. */
+function NoteMenu({ items }: { items: Array<{ label: string; icon: ReactNode; onSelect: () => void; danger?: boolean } | false> }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (event: Event) => {
+      if (event instanceof KeyboardEvent ? event.key === 'Escape' : !ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', close)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', close)
+    }
+  }, [open])
+  return (
+    <div className="menu" ref={ref}>
+      <button className="btn btn-ghost btn-icon" aria-label="Diğer işlemler" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <MoreHorizontal size={20} />
+      </button>
+      {open && (
+        <div className="menu-list" role="menu">
+          {items.filter((i) => i !== false).map((item) => (
+            <button
+              key={item.label}
+              role="menuitem"
+              className={item.danger ? 'menu-danger' : ''}
+              onClick={() => {
+                setOpen(false)
+                item.onSelect()
+              }}
+            >
+              {item.icon} {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 
 function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => void; onClose?: () => void }) {
   const store = useStore()
@@ -105,15 +152,32 @@ export function NoteDetail() {
   const toast = useToast()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState<'note' | 'summary' | null>(null)
   const [confirm, confirmation] = useConfirm()
   const [regenerating, setRegenerating] = useState(false)
   // A link from an exam review can open the source tab with a quote to highlight (?alinti=…).
   const [highlightedSource, setHighlightedSource] = useState<string | null>(() => params.get('alinti'))
   const highlightRef = useRef<HTMLElement | null>(null)
   const note = store.data.notes.find((n) => n.id === id)
-  const requested = params.get('sekme') as TabId | null
-  const tab: TabId = TABS.some((t) => t.id === requested) ? requested! : 'ozet'
+  const requested = params.get('sekme')
+
+  const progress = note ? computeNoteProgress(note, store.data.cards, store.data.attempts) : null
+  const cardCount = note ? store.data.cards.filter((c) => c.noteId === note.id).length : 0
+  // Opening a note goes straight to the next thing to study; links can still ask for a view. The
+  // landing view is chosen once per note, so finishing a step mid-round never moves the screen.
+  const landing = useRef<{ noteId: string; view: TabId } | null>(null)
+  if (note && progress && landing.current?.noteId !== note.id) {
+    landing.current = {
+      noteId: note.id,
+      view: progress.isCompleted ? (cardCount ? 'kartlar' : 'ozet') : viewOfStep(progress.currentStep.id),
+    }
+  }
+  const tab: TabId =
+    requested === 'kaynak' || VIEWS.some((v) => v.id === requested)
+      ? (requested as TabId)
+      : params.get('adim') === 'tanis' || params.get('adim') === 'anla'
+        ? 'ozet'
+        : (landing.current?.view ?? 'ozet')
 
   useEffect(() => {
     if (tab === 'kaynak' && highlightedSource && highlightRef.current) {
@@ -121,7 +185,7 @@ export function NoteDetail() {
     }
   }, [tab, highlightedSource])
 
-  if (!note) {
+  if (!note || !progress) {
     return (
       <div className="page">
         <Empty icon={<FileText size={32} />} title="Not bulunamadı">
@@ -134,244 +198,179 @@ export function NoteDetail() {
   }
 
   const course = store.data.courses.find((c) => c.id === note.courseId)
-  const cardCount = store.data.cards.filter((c) => c.noteId === note.id).length
   const counts: Partial<Record<TabId, number>> = { kartlar: cardCount, test: note.questions.length, uygula: note.practice.length }
-  const progress = computeNoteProgress(note, store.data.cards, store.data.attempts)
   const mastery = computeTopicMastery(note, store.data.cards, store.data.attempts)
 
-  const requestedStep = params.get('adim') as LearningStepId | null
+  const requestedStep = params.get('adim')
   const summaryStep: 'tanis' | 'anla' =
-    requestedStep === 'anla'
-      ? 'anla'
-      : requestedStep === 'tanis'
-        ? 'tanis'
-        : progress.steps[0].done && !progress.steps[1].done
-          ? 'anla'
-          : 'tanis'
+    requestedStep === 'anla' || requestedStep === 'tanis' ? requestedStep : progress.steps[0].done && !progress.steps[1].done ? 'anla' : 'tanis'
 
-  const activeStepId: LearningStepId =
-    tab === 'ozet'
-      ? summaryStep
-      : tab === 'kartlar'
-        ? 'pekistir'
-        : tab === 'test'
-          ? 'sina'
-          : tab === 'uygula'
-            ? 'anlat'
-            : progress.currentStep.id
-
-  function goToStep(stepId: LearningStepId) {
-    if (stepId === 'tanis' || stepId === 'anla') {
-      setParams({ adim: stepId }, { replace: true })
-    } else if (stepId === 'pekistir') {
-      setParams({ sekme: 'kartlar' }, { replace: true })
-    } else if (stepId === 'sina') {
-      setParams({ sekme: 'test' }, { replace: true })
-    } else if (stepId === 'anlat') {
-      setParams({ sekme: 'uygula' }, { replace: true })
-    }
+  function show(view: TabId, step?: 'tanis' | 'anla') {
+    setParams(view === 'ozet' ? (step ? { adim: step } : {}) : { sekme: view }, { replace: true })
     window.scrollTo(0, 0)
   }
 
   function showSourceInNote(excerpt: string) {
     setHighlightedSource(excerpt)
-    setParams({ sekme: 'kaynak' }, { replace: true })
+    show('kaynak')
+  }
+
+  async function copySummary() {
+    try {
+      await navigator.clipboard.writeText(summaryMarkdown(note!))
+      toast('Özet kopyalandı')
+    } catch {
+      toast('Panoya erişilemedi. Markdown indir seçeneğini kullanabilirsin.')
+    }
+  }
+
+  function printSummary() {
+    // Only the summary view is laid out for printing.
+    if (tab !== 'ozet') show('ozet')
+    window.setTimeout(() => window.print(), 150)
   }
 
   async function remove() {
-    if (!note || !await confirm(`“${note.title}” notu ve kartları silinsin mi?`)) return
+    if (!note || !(await confirm(`“${note.title}” notu ve kartları silinsin mi?`))) return
     store.deleteNote(note.id)
     toast('Not silindi')
     navigate(course ? `/ders/${course.id}` : '/dersler')
   }
 
   const sourceMatch = tab === 'kaynak' && highlightedSource ? findSourceMatch(note.content, highlightedSource) : null
+  const recommended = progress.isCompleted ? null : viewOfStep(progress.currentStep.id)
 
   return (
-    <div className="page">
+    <div className="page note-page">
       <Link to={course ? `/ders/${course.id}` : '/dersler'} className="back-link">
         <ArrowLeft size={16} /> {course?.name ?? 'Dersler'}
       </Link>
 
-      <div className="page-header">
-        <div>
+      <div className="note-head">
+        <div className="grow">
           <h1>{note.title}</h1>
-          <div className="btn-row">
-            <span className="subtle">
-              {wordCount(note.content).toLocaleString('tr-TR')} kelime · {readingMinutes(note.content)} dk okuma · {relativeDate(note.createdAt)}
-            </span>
-            {note.generator === 'ai' && <span className="chip chip-accent">Yapay zekâ ile hazırlandı</span>}
-            {note.generator === 'local' && <span className="chip">{note.summary?.origin === 'demo' ? 'Hazır örnek set' : 'Basit mod'}</span>}
-          </div>
+          <p className="subtle note-meta">
+            {[
+              note.generator === 'ai' && <span key="g">Yapay zekâ</span>,
+              note.generator === 'local' && <span key="g">{note.summary?.origin === 'demo' ? 'Hazır örnek set' : 'Basit mod'}</span>,
+              note.generator && progress.percent > 0 && <span key="p">%{progress.percent} tamamlandı</span>,
+              mastery.assessed && (
+                <span key="m" style={{ color: mastery.percent >= 70 ? 'var(--success)' : 'var(--warning)' }}>
+                  Hâkimiyet %{mastery.percent}
+                </span>
+              ),
+              ...(note.summary?.tags ?? []).map((t) => <span key={`t-${t}`}>#{t}</span>),
+            ]
+              .filter(Boolean)
+              // The separator sticks to the item before it, so a wrapped line never starts with "·".
+              .map((item, i) => (i ? [<span key={`s${i}`} aria-hidden>{'\u00a0· '}</span>, item] : item))}
+          </p>
         </div>
-        <div className="btn-row header-actions">
-          <button className="btn btn-sm" onClick={() => setEditing(true)}>
-            <PenLine size={15} /> Düzenle
-          </button>
-          {note.generator && (
-            <button className="btn btn-sm" onClick={() => setRegenerating(true)}>
-              <RefreshCw size={15} /> Yeniden hazırla
-            </button>
-          )}
-          <button className="btn btn-ghost btn-icon btn-danger" aria-label="Notu sil" onClick={remove}>
-            <Trash2 size={17} />
-          </button>
-        </div>
+        <NoteMenu
+          items={[
+            { label: 'Kaynak metin', icon: <FileText size={16} />, onSelect: () => show('kaynak') },
+            { label: 'Notu düzenle', icon: <PenLine size={16} />, onSelect: () => setEditing('note') },
+            !!note.summary && { label: 'Özeti düzenle', icon: <Pencil size={16} />, onSelect: () => setEditing('summary') },
+            !!note.generator && { label: 'Yeniden hazırla', icon: <RefreshCw size={16} />, onSelect: () => setRegenerating(true) },
+            !!note.summary && { label: 'Özeti kopyala', icon: <Copy size={16} />, onSelect: copySummary },
+            !!note.summary && { label: 'Markdown indir', icon: <Download size={16} />, onSelect: () => downloadText(`${note.title}.md`, summaryMarkdown(note)) },
+            !!note.summary && { label: 'PDF / Yazdır', icon: <Printer size={16} />, onSelect: printSummary },
+            { label: 'Notu sil', icon: <Trash2 size={16} />, onSelect: remove, danger: true },
+          ]}
+        />
       </div>
 
       {confirmation}
-      {editing && <NoteEditor note={note} onClose={() => setEditing(false)} />}
+      {editing === 'note' && <NoteEditor note={note} onClose={() => setEditing(null)} />}
+      {editing === 'summary' && <SummaryEditor note={note} onClose={() => setEditing(null)} />}
       {note.summary?.sourceChanged && (
-        <Alert tone="warning">Kaynak metin değişti. Özet, kartlar ve sorular önceki metne ait; güncellemek için Yeniden hazırla’yı seç.</Alert>
-      )}
-      {!!note.summary?.tags?.length && (
-        <div className="btn-row">
-          {note.summary.tags.map((t) => (
-            <span key={t} className="chip">
-              #{t}
-            </span>
-          ))}
-        </div>
+        <Alert tone="warning">Kaynak metin değişti. Özet, kartlar ve sorular önceki metne ait; güncellemek için menüden Yeniden hazırla’yı seç.</Alert>
       )}
 
       {!note.generator ? (
-        <div className="panel">
-          <div className="form">
-            <h2>Bu not için çalışma seti hazırlanmadı</h2>
-            <GenerateChoice note={note} onDone={() => toast('Çalışma seti hazır')} />
-          </div>
-        </div>
-      ) : (
         <>
-          {/* 5-Step Guided Learning Roadmap for Zero-Knowledge Students */}
-          <section className="roadmap no-print" aria-label="Adım adım öğrenme yolu">
-            <div className="roadmap-head">
-              <div>
-                <div className="roadmap-title-row">
-                  <strong>Adım Adım Öğrenme Yolu</strong>
-                  <span className={`chip ${progress.isCompleted ? 'chip-success' : 'chip-accent'}`}>
-                    {progress.isCompleted ? 'Tamamlandı (%100)' : `${progress.completedCount}/${progress.totalSteps} adım · %${progress.percent}`}
-                  </span>
-                </div>
-                <p className="subtle">
-                  {progress.isCompleted
-                    ? 'Bu konunun 5 adımını da tamamladın! İstediğin adıma tekrar göz atabilirsin.'
-                    : `Sıradaki önerilen adım: ${progress.currentStep.stepNumber}. ${progress.currentStep.title} — ${progress.currentStep.description}`}
-                </p>
-              </div>
-              {!progress.isCompleted && activeStepId !== progress.currentStep.id && (
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => goToStep(progress.currentStep.id)}>
-                  Sıradaki adıma geç <ArrowRight size={15} />
-                </button>
-              )}
+          <div className="panel">
+            <div className="form">
+              <h2>Bu not için çalışma seti hazırlanmadı</h2>
+              <GenerateChoice note={note} onDone={() => toast('Çalışma seti hazır')} />
             </div>
-
-            <div className="dual-metrics" aria-label="İlerleme ve konu hâkimiyeti">
-              <div className="metric-card">
-                <div className="metric-card-top">
-                  <span className="guided-kicker">ÇALIŞMA İLERLEMESİ</span>
-                  <strong>%{progress.percent}</strong>
-                </div>
-                <span className="subtle">
-                  {progress.completedCount}/{progress.totalSteps} adım tamamlandı
-                </span>
-              </div>
-              <div className="metric-card">
-                <div className="metric-card-top">
-                  <span className="guided-kicker">KONU HÂKİMİYETİ</span>
-                  <strong style={{ color: mastery.assessed ? (mastery.percent >= 70 ? 'var(--success)' : 'var(--warning)') : 'var(--text-2)' }}>
-                    {mastery.assessed ? `%${mastery.percent}` : 'Ölçülmedi'}
-                  </strong>
-                </div>
-                <span className="subtle">{mastery.detail}</span>
-              </div>
-            </div>
-
-            <div className="roadmap-steps" role="group" aria-label="Öğrenme adımları">
-              {progress.steps.map((step) => {
-                const isCurrentView = activeStepId === step.id
-                const isNextRecommended = !progress.isCompleted && progress.currentStep.id === step.id
-                return (
-                  <button
-                    key={step.id}
-                    type="button"
-                    aria-current={isCurrentView ? 'step' : undefined}
-                    className={`roadmap-step ${step.done ? 'done' : ''} ${isCurrentView ? 'active' : ''} ${isNextRecommended ? 'recommended' : ''}`}
-                    onClick={() => goToStep(step.id)}
-                  >
-                    <div className="roadmap-step-top">
-                      <span className="roadmap-num">{step.done ? <Check size={13} /> : step.stepNumber}</span>
-                      <span className="roadmap-step-name">{step.shortTitle}</span>
-                    </div>
-                    <span className="roadmap-step-meta">{step.statusText}</span>
-                  </button>
-                )
-              })}
+          </div>
+          <section className="section">
+            <h2>Not içeriği</h2>
+            <div className="panel">
+              <p className="prewrap" style={{ lineHeight: 1.7 }}>
+                {note.content}
+              </p>
             </div>
           </section>
-
-          <div className="tabs" role="tablist" aria-label="Not bölümleri">
-            {TABS.map(({ id: tabId, label, icon: Icon }) => (
-              <button
-                key={tabId}
-                role="tab"
-                aria-selected={tab === tabId}
-                onClick={() => setParams(tabId === 'ozet' ? {} : { sekme: tabId }, { replace: true })}
-              >
-                <Icon size={16} /> {label}
-                {counts[tabId] !== undefined && <span className="tab-count">{counts[tabId]}</span>}
-              </button>
-            ))}
+        </>
+      ) : (
+        <>
+          <div className="study-steps no-print" role="tablist" aria-label="Çalışma adımları">
+            {VIEWS.map((view, i) => {
+              const done = view.steps.every((step) => progress.steps.find((s) => s.id === step)?.done)
+              return (
+                <button
+                  key={view.id}
+                  role="tab"
+                  aria-selected={tab === view.id}
+                  className={`${done ? 'done' : ''} ${recommended === view.id ? 'recommended' : ''}`}
+                  onClick={() => show(view.id)}
+                >
+                  <span className={`step-dot ${done ? 'done' : ''}`}>{done ? <Check size={12} /> : i + 1}</span>
+                  {view.label}
+                  {counts[view.id] !== undefined && <span className="tab-count">{counts[view.id]}</span>}
+                </button>
+              )
+            })}
           </div>
 
           <div role="tabpanel">
-            {tab === 'ozet' && <SummaryTab note={note} activeStep={summaryStep} onGoToStep={goToStep} />}
-            {tab === 'kartlar' && <CardsTab note={note} onGoToStep={goToStep} onShowSource={showSourceInNote} />}
+            {tab === 'ozet' && <SummaryTab note={note} activeStep={summaryStep} onStep={(step) => show('ozet', step)} onNext={() => show('test')} />}
             <div hidden={tab !== 'test'}>
-              <QuizTab key={JSON.stringify(note.questions)} note={note} active={tab === 'test'} onGoToStep={goToStep} onShowSource={showSourceInNote} />
+              <QuizTab key={JSON.stringify(note.questions)} note={note} active={tab === 'test'} onNext={() => show('kartlar')} onShowSource={showSourceInNote} />
             </div>
+            {tab === 'kartlar' && <CardsTab note={note} onNext={() => show('uygula')} onShowSource={showSourceInNote} />}
             <div hidden={tab !== 'uygula'}>
               <PracticeTab key={note.practice.map((p) => p.id).join()} note={note} />
             </div>
-            {tab === 'kaynak' && (
-              <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {highlightedSource && (
-                  <div className="source-banner" role="status">
-                    <div className="btn-row">
-                      <strong>Sorunun geçtiği bölüm</strong>
-                      {sourceMatch?.sectionLabel && <span className="chip chip-accent">{sourceMatch.sectionLabel}</span>}
-                      {!sourceMatch && <span className="subtle">Alıntı metinde tam eşleşmedi: “{highlightedSource}”</span>}
-                    </div>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setHighlightedSource(null)}>
-                      <X size={14} /> Vurguyu kaldır
-                    </button>
-                  </div>
-                )}
-                <p className="prewrap" style={{ lineHeight: 1.7 }}>
-                  {sourceMatch ? (
-                    <>
-                      {note.content.slice(0, sourceMatch.start)}
-                      <mark id="kaynak-vurgu" ref={highlightRef} className="source-highlight">
-                        {note.content.slice(sourceMatch.start, sourceMatch.end)}
-                      </mark>
-                      {note.content.slice(sourceMatch.end)}
-                    </>
-                  ) : (
-                    note.content
-                  )}
-                </p>
-              </div>
-            )}
           </div>
         </>
       )}
 
-      {!note.generator && (
-        <section className="section">
-          <h2>Not içeriği</h2>
-          <div className="panel">
+      {tab === 'kaynak' && (
+        <section className="section" aria-label="Kaynak metin">
+          <div className="section-head">
+            <h2>Kaynak metin</h2>
+            <span className="subtle">
+              {wordCount(note.content).toLocaleString('tr-TR')} kelime · {readingMinutes(note.content)} dk · {relativeDate(note.createdAt)}
+            </span>
+          </div>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {highlightedSource && (
+              <div className="source-banner" role="status">
+                <div className="btn-row">
+                  <strong>Sorunun geçtiği bölüm</strong>
+                  {sourceMatch?.sectionLabel && <span className="chip chip-accent">{sourceMatch.sectionLabel}</span>}
+                  {!sourceMatch && <span className="subtle">Alıntı metinde tam eşleşmedi: “{highlightedSource}”</span>}
+                </div>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setHighlightedSource(null)}>
+                  <X size={14} /> Vurguyu kaldır
+                </button>
+              </div>
+            )}
             <p className="prewrap" style={{ lineHeight: 1.7 }}>
-              {note.content}
+              {sourceMatch ? (
+                <>
+                  {note.content.slice(0, sourceMatch.start)}
+                  <mark id="kaynak-vurgu" ref={highlightRef} className="source-highlight">
+                    {note.content.slice(sourceMatch.start, sourceMatch.end)}
+                  </mark>
+                  {note.content.slice(sourceMatch.end)}
+                </>
+              ) : (
+                note.content
+              )}
             </p>
           </div>
         </section>
@@ -392,4 +391,3 @@ export function NoteDetail() {
     </div>
   )
 }
-

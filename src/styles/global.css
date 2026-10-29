@@ -957,37 +957,6 @@ a.list-item:hover {
 
 /* ============ Tabs ============ */
 
-.tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.tabs button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  background: transparent;
-  color: var(--text-2);
-  font-weight: 550;
-  white-space: nowrap;
-}
-
-.tabs button:hover {
-  color: var(--text);
-}
-
-.tabs button[aria-selected='true'] {
-  color: var(--text);
-  border-bottom-color: var(--accent);
-}
-
 .tab-count {
   font-size: 0.75rem;
   padding: 0 7px;
@@ -1357,17 +1326,6 @@ a.list-item:hover {
   }
 }
 
-@media (max-width: 600px) {
-  .tabs button {
-    padding: 10px 10px;
-    gap: 6px;
-  }
-
-  .tabs button svg {
-    display: none;
-  }
-}
-
 /* ============ Exam ============ */
 
 .exam-bar {
@@ -1396,173 +1354,7 @@ a.list-item:hover {
 
 /* ============ 5-Step Guided Learning Roadmap ============ */
 
-.roadmap {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.roadmap-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.roadmap-head > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  flex: 1;
-}
-
-.roadmap-title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.roadmap-steps {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-}
-
-.roadmap-step {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 12px;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--border);
-  background: var(--surface-2);
-  text-align: left;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.roadmap-step:hover {
-  border-color: var(--border-strong);
-  background: var(--surface);
-}
-
-.roadmap-step.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.roadmap-step.done {
-  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
-  background: var(--surface);
-}
-
-.roadmap-step.done.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.roadmap-step-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.roadmap-num {
-  width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-2);
-  flex-shrink: 0;
-}
-
-.roadmap-step.active .roadmap-num {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-accent);
-}
-
-.roadmap-step.done .roadmap-num {
-  background: var(--success);
-  border-color: var(--success);
-  color: #fff;
-}
-
-.roadmap-step-name {
-  font-weight: 650;
-  font-size: 0.9375rem;
-}
-
-.roadmap-step-meta {
-  font-size: 0.75rem;
-  color: var(--text-3);
-  line-height: 1.3;
-}
-
-@media (max-width: 720px) {
-  .roadmap-steps {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 /* ============ Guided Step Coach Boxes ============ */
-
-.guided-box {
-  display: flex;
-  flex-direction: column;
-  border-radius: var(--radius);
-  border: 1.5px solid color-mix(in srgb, var(--accent) 32%, var(--border));
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.guided-box-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 18px;
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-}
-
-.guided-stage-tabs {
-  display: inline-flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.guided-stage-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-2);
-}
-
-.guided-stage-btn.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent-text);
-}
 
 .step-dot {
   width: 20px;
@@ -1581,30 +1373,6 @@ a.list-item:hover {
   color: #fff;
 }
 
-.guided-stage-body {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 20px;
-}
-
-.guided-intro {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.guided-icon {
-  color: var(--accent);
-  flex-shrink: 0;
-  margin-top: 3px;
-}
-
-.guided-intro strong {
-  display: block;
-  margin-bottom: 4px;
-}
-
 .guided-overview-card {
   display: flex;
   flex-direction: column;
@@ -1614,14 +1382,6 @@ a.list-item:hover {
   background: var(--accent-soft);
   color: var(--text);
   line-height: 1.65;
-}
-
-.guided-kicker {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--accent-text);
-  text-transform: uppercase;
 }
 
 .term-check-grid {
@@ -1677,39 +1437,10 @@ a.list-item:hover {
   line-height: 1.5;
 }
 
-.guided-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  flex-wrap: wrap;
-}
-
 .point-stepper {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.point-dots {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.point-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--border-strong);
-}
-
-.point-dot.active {
-  width: 20px;
-  border-radius: 999px;
-  background: var(--accent);
 }
 
 .point-focus-card {
@@ -1739,37 +1470,6 @@ a.list-item:hover {
   font-size: 1.0625rem;
   line-height: 1.65;
 }
-
-.mini-card-trainer {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-}
-
-.mini-card-question {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.mini-card-question p {
-  font-size: 1.0625rem;
-  font-weight: 600;
-  line-height: 1.55;
-}
-
-.mini-card-answer {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--border-strong);
-}
-
 
 /* ============ Course progress ============ */
 
@@ -1966,40 +1666,6 @@ a.list-item:hover {
 
 /* ============ Dual Progress & Mastery Metrics ============ */
 
-.dual-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.metric-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-}
-
-.metric-card-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.metric-card-top strong {
-  font-size: 1.0625rem;
-  font-weight: 700;
-}
-
-@media (max-width: 560px) {
-  .dual-metrics {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* ============ Interactive Concept Explainer & Source Highlight ============ */
 
 .term-check-hit {
@@ -2076,8 +1742,6 @@ a.list-item:hover {
   font-weight: 600;
 }
 
-
-
 /* ============ Course exams form ============ */
 
 .exam-row {
@@ -2134,4 +1798,223 @@ a.list-item:hover {
 
 .source-link {
   align-self: flex-start;
+}
+
+/* ============ Study flow (note page) ============ */
+
+.note-page {
+  gap: 20px;
+}
+
+.note-page .back-link {
+  margin-bottom: -8px;
+}
+
+.note-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.note-head h1 {
+  font-size: 1.5rem;
+  overflow-wrap: anywhere;
+}
+
+.note-meta {
+  margin-top: 4px;
+}
+
+.note-meta > span {
+  white-space: nowrap;
+}
+
+.menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  min-width: 210px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg, var(--shadow));
+}
+
+.menu-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.9375rem;
+  text-align: left;
+}
+
+.menu-list button:hover,
+.menu-list button:focus-visible {
+  background: var(--surface-2);
+}
+
+.menu-list .menu-danger {
+  color: var(--danger);
+}
+
+.study-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.study-steps button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.study-steps button[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.study-steps button.recommended:not([aria-selected='true']) .step-dot {
+  background: var(--accent);
+  color: #fff;
+}
+
+.study-steps .step-dot.done {
+  animation: step-pop 0.35s ease-out;
+}
+
+@keyframes step-pop {
+  0% { transform: scale(0.6); }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@media (max-width: 480px) {
+  .study-steps .tab-count {
+    display: none;
+  }
+}
+
+.study-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-answer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.card-answer .btn {
+  justify-content: center;
+}
+
+.study-next {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.study-cards .flashcard {
+  min-height: 220px;
+}
+
+.card-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.study-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding-block: 28px;
+}
+
+.study-done .btn-row {
+  justify-content: center;
+}
+
+.study-done-mark {
+  font-size: 2.5rem;
+  line-height: 1;
+  animation: step-pop 0.45s ease-out;
+}
+
+.manage-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.manage-cards > summary {
+  cursor: pointer;
+  width: fit-content;
+  padding: 6px 2px;
+  color: var(--text-2);
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.manage-cards[open] > summary {
+  margin-bottom: 10px;
+}
+
+.summary-steps {
+  align-self: flex-start;
+}
+
+.summary-steps button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .study-cards .flashcard {
+    padding: 22px;
+  }
+}
+
+.note-head > .grow {
+  flex: 1;
+  min-width: 0;
 }

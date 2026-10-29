@@ -93,14 +93,15 @@ test('course with exam, pasted note in simple mode, spaced review and persistenc
   await expect(page.getByRole('heading', { level: 1, name: 'Hücre ve organeller' })).toBeVisible()
   await expect(page.getByText('Basit mod', { exact: true })).toBeVisible()
 
-  // Add a card by hand.
+  // Add a card by hand from the card manager.
   await page.getByRole('tab', { name: /Kartlar/ }).click()
+  await page.getByText(/Kartları yönet/).click()
   await page.getByRole('button', { name: 'Kart ekle' }).click()
   const dialog = page.getByRole('dialog', { name: 'Yeni kart' })
   await dialog.getByLabel('Ön yüz (soru)').fill('ATP nerede üretilir?')
   await dialog.getByLabel('Arka yüz (cevap)').fill('Mitokondride.')
   await dialog.getByRole('button', { name: 'Kaydet' }).click()
-  await expect(page.getByText('ATP nerede üretilir?')).toBeVisible()
+  await expect(page.getByText('ATP nerede üretilir?').first()).toBeVisible()
 
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Yaklaşan sınavlar' })).toBeVisible()
@@ -179,8 +180,8 @@ test('AI mode: key check and generation through the Claude API', async ({ page }
   await expect(page.getByRole('button', { name: /Yapay zekâ/ })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
 
-  await expect(page.getByText('Yapay zekâ ile hazırlandı')).toBeVisible()
-  await expect(page.getByLabel('Adım adım konu rehberi').getByText('Notlar hücre organellerini anlatıyor.')).toBeVisible()
+  await expect(page.locator('.note-meta').getByText('Yapay zekâ', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Kavramlar').getByText('Notlar hücre organellerini anlatıyor.')).toBeVisible()
 
   const message = requests.find((r) => r.method === 'POST' && /\/v1\/messages(\?|$)/.test(r.url))
   expect(message).toBeTruthy()
@@ -196,7 +197,7 @@ test('AI mode: key check and generation through the Claude API', async ({ page }
   await expect(page.getByText('Doğru!')).toBeVisible()
   await expect(page.getByText('“Ribozom: Genetik bilgiye göre”')).toBeVisible()
 
-  await page.getByRole('tab', { name: /Uygula/ }).click()
+  await page.getByRole('tab', { name: /Anlat/ }).click()
   await page.getByRole('button', { name: 'Örnek cevabı göster' }).click()
   await expect(page.getByText('Mitokondri enerji, ribozom protein üretir.')).toBeVisible()
   expect(errors).toEqual([])
@@ -231,7 +232,7 @@ test('AI mode with an own Gemini key uses JSON mode and validates the reply', as
   await createCourse(page, 'Biyoloji 105')
   await pasteNote(page, 'Organeller (Gemini)')
   await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
-  await expect(page.getByLabel('Adım adım konu rehberi').getByText('Gemini özeti.')).toBeVisible()
+  await expect(page.getByLabel('Kavramlar').getByText('Gemini özeti.')).toBeVisible()
   expect(bodies).toHaveLength(2)
   const body = bodies[0] as { generationConfig: { responseMimeType: string }; systemInstruction: { parts: Array<{ text: string }> } }
   expect(body.generationConfig.responseMimeType).toBe('application/json')
@@ -436,7 +437,8 @@ test('edit source, tags, course and summary; search and export', async ({ page }
   await createCourse(page, 'Biyoloji')
   await pasteNote(page, 'Hücre')
   await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
-  await page.getByRole('button', { name: 'Düzenle', exact: true }).click()
+  await page.getByRole('button', { name: 'Diğer işlemler' }).click()
+  await page.getByRole('menuitem', { name: 'Notu düzenle' }).click()
   const editor = page.getByRole('dialog', { name: 'Notu düzenle' })
   await editor.getByLabel('Not başlığı').fill('Yeni hücre notu')
   await editor.getByRole('combobox', { name: 'Ders', exact: true }).selectOption({ label: 'Hedef ders' })
@@ -444,21 +446,24 @@ test('edit source, tags, course and summary; search and export', async ({ page }
   await editor.getByLabel('Not içeriği').fill(biologyNotes + '\nYeni eklenen kaynak cümlesi burada yer alır.')
   await editor.getByRole('button', { name: 'Değişiklikleri kaydet' }).click()
   await expect(page.getByText(/Kaynak metin değişti/)).toBeVisible()
-  await page.getByRole('button', { name: 'Özeti düzenle' }).click()
+  await page.getByRole('button', { name: 'Diğer işlemler' }).click()
+  await page.getByRole('menuitem', { name: 'Özeti düzenle' }).click()
   await page.getByLabel('Genel özet').fill('Düzenlenmiş açıklama.')
   await page.getByRole('button', { name: 'Özeti kaydet' }).click()
-  await expect(page.getByLabel('Adım adım konu rehberi').getByText('Düzenlenmiş açıklama.')).toBeVisible()
+  await expect(page.getByLabel('Kavramlar').getByText('Düzenlenmiş açıklama.')).toBeVisible()
   const download = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'Markdown indir' }).click()
+  await page.getByRole('button', { name: 'Diğer işlemler' }).click()
+  await page.getByRole('menuitem', { name: 'Markdown indir' }).click()
   expect((await download).suggestedFilename()).toBe('Yeni hucre notu.md')
   await page.reload()
-  await expect(page.getByLabel('Adım adım konu rehberi').getByText('Düzenlenmiş açıklama.')).toBeVisible()
+  await expect(page.getByLabel('Kavramlar').getByText('Düzenlenmiş açıklama.')).toBeVisible()
   await page.getByRole('link', { name: 'Hedef ders', exact: true }).click()
   await page.getByLabel('Notlarda ara').fill('kaynak cümlesi')
   await page.getByRole('combobox', { name: 'Etiket', exact: true }).selectOption('vize')
   await expect(page.getByRole('link', { name: /Yeni hücre notu/ })).toBeVisible()
   await page.getByRole('link', { name: /Yeni hücre notu/ }).click()
-  await page.getByRole('button', { name: 'Notu sil', exact: true }).click()
+  await page.getByRole('button', { name: 'Diğer işlemler' }).click()
+  await page.getByRole('menuitem', { name: 'Notu sil' }).click()
   await expect(page.getByRole('dialog', { name: 'İşlemi onayla' })).toBeVisible()
   await page.getByRole('button', { name: 'Vazgeç', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Yeni hücre notu' })).toBeVisible()
@@ -475,7 +480,8 @@ test('review undo restores schedule and quiz draft survives tab change', async (
   await page.getByRole('tab', { name: /Test/ }).click()
   await expect(page.getByText('Soru 2 / 5')).toBeVisible()
   await page.getByRole('tab', { name: /Kartlar/ }).click()
-  await page.getByRole('link', { name: 'Hepsini çalış' }).click()
+  await page.getByText(/Kartları yönet/).click()
+  await page.getByRole('link', { name: 'Tekrar ekranında çalış' }).click()
   const original = await page.locator('.flashcard .front').textContent()
   const count = await page.getByText(/\d+ kart kaldı/).textContent()
   await page.getByRole('button', { name: /Cevabı göster/ }).click()
@@ -501,7 +507,7 @@ test('practice grading reports service errors and allows retry', async ({ page }
   })
   await page.goto('/')
   await page.getByRole('button', { name: 'Örnek notla dene' }).click()
-  await page.getByRole('tab', { name: /Uygula/ }).click()
+  await page.getByRole('tab', { name: /Anlat/ }).click()
   await page.getByLabel('Soru 1 için cevabın').fill('Notları kapatıp hatırlamayı dener, sonraki günlerde tekrar ederim.')
   await page.getByRole('button', { name: 'Cevabımı değerlendir' }).click()
   await expect(page.getByRole('alert')).toContainText('geçersiz')
@@ -594,38 +600,54 @@ test('step-by-step zero-to-mastery learning path guides the user through all 5 s
   await page.goto('/')
   await page.getByRole('button', { name: 'Örnek notla dene' }).click()
 
-  await expect(page.getByText('Adım Adım Öğrenme Yolu')).toBeVisible()
-  await expect(page.getByText('0/5 adım · %0')).toBeVisible()
+  const steps = page.getByRole('tablist', { name: 'Çalışma adımları' })
+  // A new note opens straight on the first step.
+  await expect(steps.getByRole('tab', { name: /Özet/ })).toHaveAttribute('aria-selected', 'true')
 
-  // Step 1: Tanış & Kavramlar -> Step 2: Madde Madde Anla
-  await page.getByRole('button', { name: /2\. Adıma Geç: Madde Madde Anla/ }).click()
-  await expect(page.getByText('1/5 adım · %20')).toBeVisible()
-  await expect(page.getByText('Ana Nokta 1 / 5')).toBeVisible()
+  // Concepts, then the main points one by one.
+  await page.getByRole('button', { name: /Devam: Ana noktalar/ }).click()
+  await expect(page.getByText('%20 tamamlandı')).toBeVisible()
+  await expect(page.getByText('Madde 1 / 5')).toBeVisible()
+  for (let i = 1; i < 5; i += 1) await page.getByRole('button', { name: 'Anladım' }).click()
+  await page.getByRole('button', { name: 'Teste geç' }).click()
+  await expect(page.getByText('%40 tamamlandı')).toBeVisible()
 
-  // Step through all 5 points in Step 2
-  for (let i = 1; i < 5; i += 1) {
-    await page.getByRole('button', { name: /Anladım, sıradaki madde/ }).click()
+  // The test comes before the cards and completes its step at any score.
+  await expect(steps.getByRole('tab', { name: /Test/ })).toHaveAttribute('aria-selected', 'true')
+  for (let i = 0; i < 5; i += 1) {
+    await page.getByRole('radio').first().click()
+    await page.getByRole('button', { name: 'Kontrol et' }).click()
+    await page.getByRole('button', { name: /Sonraki soru|Sonucu gör/ }).click()
   }
-  await page.getByRole('button', { name: /2\. Adımı Tamamla → Kartlarla Pekiştir/ }).click()
-  await expect(page.getByText('2/5 adım · %40')).toBeVisible()
+  await expect(page.getByText('%60 tamamlandı')).toBeVisible()
 
-  // Step 3: Inline flashcard trainer in Kartlar tab
-  await expect(page.getByText(/3\. Adım: Kartlarla Hafızaya Yerleştir/)).toBeVisible()
-  // Each card is graded by the student, which records a real review.
+  // Opening the note again (from a list, without a view in the address) goes to the next step: the cards.
+  await page.goto(page.url().split('?')[0])
+  await expect(steps.getByRole('tab', { name: /Kartlar/ })).toHaveAttribute('aria-selected', 'true')
+
+  // One card at a time: optional hint, turn, "Bildim" / "Tekrar".
+  await expect(page.getByText('Kart 1 / 6')).toBeVisible()
+  await page.getByRole('button', { name: 'İpucu' }).click()
+  await expect(page.locator('.card-hint')).toContainText('…')
+  await page.getByRole('button', { name: 'Çevir' }).click()
+  await page.getByRole('button', { name: 'Tekrar' }).click()
+  // A card marked "Tekrar" comes back at the end of the round.
+  await expect(page.getByText('Kart 1 / 6')).toBeVisible()
   for (let i = 0; i < 6; i += 1) {
-    await page.getByRole('button', { name: 'Cevabı kontrol et' }).click()
-    await page.getByRole('button', { name: 'Hatırladım' }).click()
+    await page.getByRole('button', { name: 'Çevir' }).click()
+    await page.getByRole('button', { name: 'Bildim' }).click()
   }
-  await page.getByRole('button', { name: /3\. Adımı Tamamla → 4\. Adım: Test/ }).click()
-  await expect(page.getByText('3/5 adım · %60')).toBeVisible()
+  await expect(page.getByText('Tur bitti')).toBeVisible()
+  await expect(page.getByText(/6 kartın 5 tanesini ilk denemede bildin/)).toBeVisible()
+  await expect(page.getByText('%80 tamamlandı')).toBeVisible()
 
-  // Step 5: Complete open-ended practice
-  await page.getByRole('group', { name: 'Öğrenme adımları' }).getByRole('button', { name: /Anlat/ }).click()
-  // Step 5 can only be finished after writing a real answer.
-  await expect(page.getByRole('button', { name: /5\. Adımı Tamamla: Konuyu Öğrendim/ })).toBeDisabled()
+  // Explain in your own words: needs a real answer before finishing.
+  await page.getByRole('button', { name: /Sıradaki: Kendi cümlelerinle anlat/ }).click()
+  await expect(page.getByRole('button', { name: /Bitir: Konuyu öğrendim/ })).toBeDisabled()
   await page.getByLabel('Soru 1 için cevabın').fill('Her gün kısa tekrar yapar, notu kapatıp hatırlamayı dener, yanlışlarımı incelerim.')
-  await page.getByRole('button', { name: /5\. Adımı Tamamla: Konuyu Öğrendim/ }).click()
-  await expect(page.getByText('Bu notun 5 adımını da tamamladın!')).toBeVisible()
+  await page.getByRole('button', { name: /Bitir: Konuyu öğrendim/ }).click()
+  await expect(page.getByText('Bu notu bitirdin! 🎉')).toBeVisible()
+  await expect(page.getByText('%100 tamamlandı')).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -792,11 +814,9 @@ test('interactive explainer, source jump, dual mastery metrics, smart study plan
   await page.goto('/')
   await page.getByRole('button', { name: 'Örnek notla dene' }).click()
 
-  // 1. Dual metrics on NoteDetail: Çalışma ilerlemesi vs Konu hâkimiyeti
-  const metrics = page.getByRole('region', { name: 'İlerleme ve konu hâkimiyeti' }).or(page.locator('.dual-metrics'))
-  await expect(metrics).toContainText('ÇALIŞMA İLERLEMESİ')
-  await expect(metrics).toContainText('KONU HÂKİMİYETİ')
-  await expect(metrics).toContainText('Ölçülmedi')
+  // 1. Mastery only shows up once the student has been measured.
+  const meta = page.locator('.note-meta')
+  await expect(meta).not.toContainText('Hâkimiyet')
 
   // 2. "Bu konuyu anlamadım" interactive explainer
   await page.getByRole('button', { name: 'Bu konuyu anlamadım' }).first().click()
@@ -810,7 +830,7 @@ test('interactive explainer, source jump, dual mastery metrics, smart study plan
   await page.getByRole('radio').first().click()
   await page.getByRole('button', { name: 'Kontrol et' }).click()
   await page.getByRole('button', { name: 'Kaynağında gör' }).click()
-  await expect(page.getByRole('tab', { name: 'Kaynak' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('region', { name: 'Kaynak metin' })).toBeVisible()
   await expect(page.locator('#kaynak-vurgu')).toBeVisible()
 
   // 4. Navigate to course via back-link, test mid-exam sessionStorage persistence across page reload
@@ -837,14 +857,14 @@ test.describe('study progress is kept', () => {
 
   test('written answers survive a reload and step 5 needs a real answer', async ({ page }) => {
     await openDemo(page)
-    await page.getByRole('tab', { name: /Uygula/ }).click()
-    const finish = page.getByRole('button', { name: /5\. Adımı Tamamla/ })
+    await page.getByRole('tab', { name: /Anlat/ }).click()
+    const finish = page.getByRole('button', { name: /Bitir: Konuyu öğrendim/ })
     await expect(finish).toBeDisabled()
     await page.getByLabel('Soru 1 için cevabın').fill('Önce konuyu okur, sonra notu kapatıp kendi cümlelerimle anlatırım.')
     await expect(finish).toBeEnabled()
     await page.waitForTimeout(900) // autosave delay
     await page.reload()
-    await page.getByRole('tab', { name: /Uygula/ }).click()
+    await page.getByRole('tab', { name: /Anlat/ }).click()
     await expect(page.getByLabel('Soru 1 için cevabın')).toHaveValue(/kendi cümlelerimle anlatırım/)
     // A written answer alone keeps today's streak alive.
     await page.goto('/')
@@ -854,8 +874,8 @@ test.describe('study progress is kept', () => {
   test('card self-assessment counts as a review for the daily goal', async ({ page }) => {
     await openDemo(page)
     await page.getByRole('tab', { name: /Kartlar/ }).click()
-    await page.getByRole('button', { name: 'Cevabı kontrol et' }).click()
-    await page.getByRole('button', { name: 'Hatırladım' }).click()
+    await page.getByRole('button', { name: 'Çevir' }).click()
+    await page.getByRole('button', { name: 'Bildim' }).click()
     await page.goto('/')
     await expect(page.getByRole('progressbar', { name: 'Günlük kart ilerlemesi' })).toHaveAttribute('aria-valuenow', '1')
   })

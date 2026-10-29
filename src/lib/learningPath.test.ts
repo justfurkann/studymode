@@ -47,6 +47,17 @@ function makeNote(overrides: Partial<Note> = {}): Note {
 }
 
 describe('learningPath', () => {
+  it('puts the test before the cards, and any finished test completes its step', () => {
+    const note = makeNote({ summary: makeSummary({ completedSteps: ['tanis', 'anla'] }) })
+    expect(computeNoteProgress(note, [], []).currentStep.id).toBe('sina')
+    const lowScore: QuizAttempt = { id: 'a1', courseId: 'c1', noteId: 'n1', score: 1, total: 5, wrongIds: [], createdAt: '2026-01-02T00:00:00Z' }
+    const progress = computeNoteProgress(note, [], [lowScore])
+    expect(progress.steps.map((s) => s.id)).toEqual(['tanis', 'anla', 'sina', 'pekistir', 'anlat'])
+    expect(progress.currentStep.id).toBe('pekistir')
+    // The low score still shows up as low topic mastery.
+    expect(computeTopicMastery(note, [], [lowScore]).percent).toBe(20)
+  })
+
   it('starts at step 1 (tanis) with 0% for a brand-new note', () => {
     const note = makeNote()
     const progress = computeNoteProgress(note, [], [])
@@ -72,7 +83,7 @@ describe('learningPath', () => {
     expect(progress.percent).toBe(20)
   })
 
-  it('auto-completes step 3 (pekistir) when at least half of the note cards are studied, and step 4 (sina) when quiz score >= 70%', () => {
+  it('auto-completes step 3 (pekistir) when at least half of the note cards are studied, and the test step once any test is finished', () => {
     const summary = toggleCompletedStep(toggleCompletedStep(makeSummary(), 'tanis', true), 'anla', true)
     const note = makeNote({ summary })
     const cards: Card[] = [
@@ -122,8 +133,8 @@ describe('learningPath', () => {
     const progress = computeNoteProgress(note, cards, attempts)
     expect(progress.steps[0].done).toBe(true) // tanis
     expect(progress.steps[1].done).toBe(true) // anla
-    expect(progress.steps[2].done).toBe(true) // pekistir (1/2 studied)
-    expect(progress.steps[3].done).toBe(true) // sina (4/5 = 80%)
+    expect(progress.steps[2].done).toBe(true) // sina (a test was taken)
+    expect(progress.steps[3].done).toBe(true) // pekistir (1/2 studied)
     expect(progress.steps[4].done).toBe(false) // anlat
     expect(progress.currentStep.id).toBe('anlat')
     expect(progress.percent).toBe(80)
