@@ -173,7 +173,7 @@ test('AI mode: key check and generation through the Claude API', async ({ page }
   await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
 
   await expect(page.getByText('Yapay zekâ ile hazırlandı')).toBeVisible()
-  await expect(page.getByText('Notlar hücre organellerini anlatıyor.')).toBeVisible()
+  await expect(page.getByLabel('Adım adım konu rehberi').getByText('Notlar hücre organellerini anlatıyor.')).toBeVisible()
 
   const message = requests.find((r) => r.method === 'POST' && /\/v1\/messages(\?|$)/.test(r.url))
   expect(message).toBeTruthy()
@@ -224,7 +224,7 @@ test('AI mode with an own Gemini key uses JSON mode and validates the reply', as
   await createCourse(page, 'Biyoloji 105')
   await pasteNote(page, 'Organeller (Gemini)')
   await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
-  await expect(page.getByText('Gemini özeti.')).toBeVisible()
+  await expect(page.getByLabel('Adım adım konu rehberi').getByText('Gemini özeti.')).toBeVisible()
   expect(bodies).toHaveLength(2)
   const body = bodies[0] as { generationConfig: { responseMimeType: string }; systemInstruction: { parts: Array<{ text: string }> } }
   expect(body.generationConfig.responseMimeType).toBe('application/json')
@@ -440,12 +440,12 @@ test('edit source, tags, course and summary; search and export', async ({ page }
   await page.getByRole('button', { name: 'Özeti düzenle' }).click()
   await page.getByLabel('Genel özet').fill('Düzenlenmiş açıklama.')
   await page.getByRole('button', { name: 'Özeti kaydet' }).click()
-  await expect(page.getByText('Düzenlenmiş açıklama.')).toBeVisible()
+  await expect(page.getByLabel('Adım adım konu rehberi').getByText('Düzenlenmiş açıklama.')).toBeVisible()
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Markdown indir' }).click()
   expect((await download).suggestedFilename()).toBe('Yeni hucre notu.md')
   await page.reload()
-  await expect(page.getByText('Düzenlenmiş açıklama.')).toBeVisible()
+  await expect(page.getByLabel('Adım adım konu rehberi').getByText('Düzenlenmiş açıklama.')).toBeVisible()
   await page.getByRole('link', { name: 'Hedef ders', exact: true }).click()
   await page.getByLabel('Notlarda ara').fill('kaynak cümlesi')
   await page.getByRole('combobox', { name: 'Etiket', exact: true }).selectOption('vize')
