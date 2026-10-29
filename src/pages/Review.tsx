@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import type { Card } from '../lib/types'
 import { Empty } from '../components/ui'
 import { dueCards } from '../lib/format'
+import { examDateForCard } from '../lib/courseExams'
 import { intervalLabel, schedule, type Grade } from '../lib/srs'
 import { useStore } from '../lib/store'
 import { useLoadDemo } from '../lib/useDemo'
@@ -140,7 +141,8 @@ export function Review() {
   }
 
   const now = new Date()
-  const exam = course?.examDate ?? null
+  // Same cap the store uses when saving the answer: the nearest exam that covers this card's note.
+  const exam = examDateForCard(store.data, card, now)
 
   return (
     <div className="page">

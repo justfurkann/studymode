@@ -94,24 +94,16 @@ alter table public.study_days add column if not exists actions integer not null 
 - "Anlamadım": kavramın geçtiği bölüm gönderiliyor; yerel yedek açıkça belirtiliyor.
 - `.aistudio/` depodan çıkarıldı.
 
-**Aşama 2 — Vize/final/bütünleme: 🟡 YARIM (yalnızca `claude/dreamy-sagan-5di1al` dalında, main'e birleştirilmedi)**
-Durum: tip denetimi GEÇİYOR, 106 birim testi geçiyor; uçtan uca testler bu aşama için henüz yazılmadı/çalıştırılmadı.
-- ✅ Veri modeli: `CourseExam`, `CourseExamKind`, `StudyData.courseExams` (`src/lib/types.ts`).
-- ✅ `src/lib/courseExams.ts` + testleri: EXAM_KINDS, examName, examCountdown ("Vizeye 8 gün", "Finale 8 gün", "Vize yarın", özel ad için "Proje sunumu: 8 gün kaldı"), legacyExam, examsForCourse, examCovers, upcomingExams, nearestExamFor, examDateForCard, nextExamDate.
-- ✅ `store.tsx`: `saveCourseExams(courseId, drafts)` (eklenen/değişen upsert, silinen delete, `course.examDate` en yakın sınava eşitlenir), `deleteCourse`/`deleteNote`/`replaceAll`/`migrateLocalToCloud` courseExams'i biliyor, `reviewCard` aralığı `examDateForCard` ile (notu kapsayan en yakın sınav).
-- ✅ `backend.ts`: `courseExams` → `course_exams`, OPTIONAL_TABLES'ta, `parseData` isteğe bağlı liste.
-- ✅ `supabase/schema.sql`: `course_exams` tablosu (kolon adı `"date"`), index, RLS. Kullanıcıya verilecek SQL aşağıda.
-- ✅ `CourseForm`: sınav listesi (tür, tarih, ağırlık %, "diğer" için ad, kapsam için not seçimi), eski tarih düzenlenebilir satır olarak gelir; sınavlar değişmediyse hiçbir şey yazılmaz (`examsChanged`). `Courses.tsx` (oluştur) ve `CourseDetail.tsx` (düzenle) bağlandı.
-- **Uyumluluk kararı:** `courses.exam_date` silinmez/dönüştürülmez; sınav kaydı yoksa `legacyExam` ile sanal "Sınav" gösterilir; sınavlar kaydedilince `exam_date` en yakın sınavı tutar (tablosu olmayan hesaplar ve eski kod yolları için).
-- ⬜ Kalan:
-  - `CourseDetail.tsx`: başlıktaki tek `examLabel(course.examDate)` yerine yaklaşan sınavlar listesi (examsForCourse + examCountdown + ağırlık + kapsam sayısı; `.exam-list` CSS'i hazır); "Sınav tarihi ekle" → "Sınav ekle"; 3'ten az not ve hiç etiket yoksa "Notlarda ara / Etiket" satırını gizle.
-  - `Courses.tsx` kart chip'i ve `Today.tsx` "Yaklaşan sınavlar" → `upcomingExams` + `examCountdown`.
-  - `studyPlan.ts`: not başına `nearestExamFor` (gün sayısı ve "Vizeye 8 gün"), başlık önerilen konuların sınavından bahsetsin (bilinen hata: başka dersin sınavını söyleyebiliyor).
-  - `Review.tsx` (~satır 143): aralık önizlemesi `examDateForCard` kullanmalı.
-  - `useDemo.ts`: örnek derse `saveCourseExams` ile bir "Vize" kaydı (şu an sadece `examDate`).
-  - `Exam.tsx`: kurulumda "Hangi sınava hazırlanıyorsun?" seçimi; seçilince kapsamdaki notlar (boşsa tümü) otomatik seçilsin.
-  - `ExamReview.tsx`: `q.source` için "Kaynağında gör" bağlantısı. `ExamQuestion`'a `noteId` ekle (yerel sorularda `examFromNotes` doldurur; yapay zekâ sorularında alıntıyı içeren notu bul). NoteDetail'in kaynak vurgulamasını URL'den (ör. `?sekme=kaynak&alinti=…`) tetiklenebilir yap.
-  - Uçtan uca testler: vize+final ekle, kapsam seç, provada otomatik seçim, yenilemede kalıcılık; tüm testler + build sonra PR.
+**Aşama 2 — Vize/final/bütünleme: ✅ TAMAM (Aşama 2 PR'ı)**
+- Veri modeli `CourseExam` (`types.ts`), yardımcılar `src/lib/courseExams.ts` (geri sayım "Vizeye 8 gün", ders adıyla "Biyoloji vizesine 8 gün kaldı", kapsam, en yakın sınav).
+- `store.saveCourseExams`, `backend.ts` → `course_exams` (OPTIONAL_TABLES: tablo yoksa çökmez, sınavlar o oturumda görünür ama buluta yazılmaz; `courses.exam_date` en yakın sınavı tutmaya devam eder).
+- Ders formu: sınav listesi (tür, tarih, ağırlık %, "Diğer" için ad, kapsam için not seçimi).
+- Ders sayfası "Sınavlar" bölümü (geri sayım, tarih, ağırlık, kapsam, o sınav için "Prova"); 3'ten az not ve etiket yoksa arama satırı gizli.
+- Dersler kartı, Bugün "Yaklaşan sınavlar" her sınavı ayrı gösterir; akıllı plan her notu kendisini kapsayan sınava göre önceliklendirir, başlık önerilen konuların sınavından bahseder (başka dersin sınavı hatası düzeltildi).
+- Kart aralığı (hem kayıtta hem tekrar ekranı önizlemesinde) notu kapsayan en yakın sınavla sınırlı.
+- Sınav provası: "Hangi sınava hazırlanıyorsun?" seçimi kapsamdaki notları otomatik seçer. Sınav incelemesinde her soru için "Kaynağında gör" (notun Kaynak sekmesinde alıntı vurgulanır, `?sekme=kaynak&alinti=…`).
+- Örnek ders: 7 gün sonra, %40 ağırlıklı bir Vize.
+- **Uyumluluk kararı:** `courses.exam_date` silinmez/dönüştürülmez; sınav kaydı yoksa sanal "Sınav" gösterilir; sınavlar kaydedilince `exam_date` en yakın sınavı tutar.
 - Kullanıcıya verilecek SQL (henüz verilmedi):
 ```sql
 create table if not exists public.course_exams (

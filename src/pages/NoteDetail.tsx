@@ -9,6 +9,7 @@ import { QuizTab } from '../components/note/QuizTab'
 import { SummaryTab } from '../components/note/SummaryTab'
 import { Alert, Empty, Modal, Spinner, useConfirm, useToast } from '../components/ui'
 import { readingMinutes, relativeDate, wordCount } from '../lib/format'
+import { findSourceMatch } from '../lib/noteTools'
 import { computeNoteProgress, computeTopicMastery } from '../lib/learningPath'
 import { generateLocally } from '../lib/localGenerator'
 import { aiAvailability, useSettings } from '../lib/settings'
@@ -24,35 +25,6 @@ const TABS = [
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
-
-function findSourceMatch(content: string, excerpt: string): { start: number; end: number; sectionLabel: string | null } | null {
-  const cleanExcerpt = excerpt.trim()
-  if (!cleanExcerpt) return null
-
-  const lowerContent = content.toLocaleLowerCase('tr-TR')
-  const lowerExcerpt = cleanExcerpt.toLocaleLowerCase('tr-TR')
-  let start = lowerContent.indexOf(lowerExcerpt)
-  let end = start >= 0 ? start + cleanExcerpt.length : -1
-
-  if (start < 0) {
-    // Try matching a shorter prefix/core slice if the quote was slightly trimmed
-    const probe = lowerExcerpt.slice(0, Math.min(48, lowerExcerpt.length)).trim()
-    if (probe.length >= 12) {
-      start = lowerContent.indexOf(probe)
-      if (start >= 0) {
-        end = Math.min(content.length, start + cleanExcerpt.length)
-      }
-    }
-  }
-
-  if (start < 0) return null
-
-  const before = content.slice(0, start)
-  const matches = [...before.matchAll(/(?:^|\n)\s*((?:Slayt|Sayfa|Bölüm|Hafta)\s+\d+[^\n]*)/gi)]
-  const sectionLabel = matches.length > 0 ? matches[matches.length - 1][1].trim() : null
-
-  return { start, end, sectionLabel }
-}
 
 function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => void; onClose?: () => void }) {
   const store = useStore()
@@ -136,7 +108,8 @@ export function NoteDetail() {
   const [editing, setEditing] = useState(false)
   const [confirm, confirmation] = useConfirm()
   const [regenerating, setRegenerating] = useState(false)
-  const [highlightedSource, setHighlightedSource] = useState<string | null>(null)
+  // A link from an exam review can open the source tab with a quote to highlight (?alinti=…).
+  const [highlightedSource, setHighlightedSource] = useState<string | null>(() => params.get('alinti'))
   const highlightRef = useRef<HTMLElement | null>(null)
   const note = store.data.notes.find((n) => n.id === id)
   const requested = params.get('sekme') as TabId | null

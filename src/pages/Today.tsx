@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import { Welcome } from '../components/Welcome'
 import { firstName } from '../lib/auth'
 import { useLoadDemo } from '../lib/useDemo'
-import { courseStats, dueCards, examLabel, relativeDate } from '../lib/format'
+import { examCountdown, examName, upcomingExams } from '../lib/courseExams'
+import { courseStats, dueCards, relativeDate } from '../lib/format'
 import { computeNoteProgress } from '../lib/learningPath'
-import { daysUntil } from '../lib/srs'
 import { useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import { computeStreakSummary } from '../lib/streak'
@@ -34,10 +34,7 @@ export function Today() {
   const streakSummary = computeStreakSummary(data.studyDays, settings.dailyGoal, now)
   const smartPlan = buildSmartStudyPlan(data, now, 2)
 
-  const exams = data.courses
-    .map((course) => ({ course, days: daysUntil(course.examDate, now), stats: courseStats(data, course, now) }))
-    .filter((e): e is typeof e & { days: number } => e.days !== null && e.days >= 0)
-    .sort((a, b) => a.days - b.days)
+  const exams = upcomingExams(data, now).slice(0, 5)
 
   const latestAttempt = new Map<string, (typeof data.attempts)[number]>()
   for (const attempt of data.attempts) {
@@ -204,15 +201,20 @@ export function Today() {
         <section className="section">
           <h2>Yaklaşan sınavlar</h2>
           <div className="panel panel-tight list">
-            {exams.map(({ course, stats }) => {
-              const label = examLabel(course.examDate, now)!
+            {exams.map(({ course, exam }) => {
+              const label = examCountdown(exam, now)!
+              const stats = courseStats(data, course, now)
               return (
-                <Link key={course.id} to={`/ders/${course.id}`} className="list-item">
+                <Link key={exam.id} to={`/ders/${course.id}`} className="list-item">
                   <CalendarClock size={18} style={{ color: course.color }} />
                   <div className="grow">
-                    <div className="title">{course.name}</div>
+                    <div className="title">
+                      {course.name} · {examName(exam)}
+                    </div>
                     <div className="subtle">
-                      {stats.notes} not · {stats.due ? `${stats.due} kart tekrar bekliyor` : 'tekrarlar güncel'}
+                      {exam.weight != null ? `Ağırlık %${exam.weight} · ` : ''}
+                      {exam.noteIds.length ? `${exam.noteIds.length} not` : `${stats.notes} not`} ·{' '}
+                      {stats.due ? `${stats.due} kart tekrar bekliyor` : 'tekrarlar güncel'}
                     </div>
                   </div>
                   <span className={`chip ${label.tone === 'neutral' ? '' : `chip-${label.tone}`}`}>{label.text}</span>

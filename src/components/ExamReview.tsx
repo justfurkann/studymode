@@ -1,6 +1,8 @@
-import { Check, X } from 'lucide-react'
+import { Check, FileText, X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { ExamQuestion } from '../lib/types'
+import { Link } from 'react-router-dom'
+import { noteForSource } from '../lib/exam'
+import type { ExamQuestion, Note } from '../lib/types'
 
 const FORMAT_LABELS = { test: 'Test', classic: 'Klasik', mixed: 'Karışık' } as const
 const DIFFICULTY_LABELS = { easy: 'Kolay', medium: 'Orta', hard: 'Zor' } as const
@@ -21,6 +23,7 @@ export function ExamReview({
   score,
   meta,
   actions,
+  notes = [],
 }: {
   title: string
   questions: ExamQuestion[]
@@ -30,7 +33,11 @@ export function ExamReview({
   score: number
   meta?: string
   actions?: ReactNode
+  /** The course's notes, to link each question's quote to the note it came from. */
+  notes?: Note[]
 }) {
+  /** Older exams and AI questions carry no note id; the quote itself then tells which note it is. */
+  const sourceNote = (q: ExamQuestion) => notes.find((n) => n.id === q.noteId) ?? noteForSource(notes, q.source)
   const total = questions.length
   const percent = examPercent(score, total)
   return (
@@ -87,6 +94,11 @@ export function ExamReview({
                 </>
               )}
               {q.source && <p className="source">“{q.source}”</p>}
+              {q.source && sourceNote(q) && (
+                <Link className="btn btn-ghost btn-sm source-link" to={`/not/${sourceNote(q)!.id}?sekme=kaynak&alinti=${encodeURIComponent(q.source)}`}>
+                  <FileText size={14} /> Kaynağında gör
+                </Link>
+              )}
             </div>
           )
         })}

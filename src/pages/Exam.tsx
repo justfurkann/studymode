@@ -1,13 +1,15 @@
 import { ArrowLeft, ClipboardList, Clock, RotateCcw, Sparkles, Wand2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { ExamReview } from '../components/ExamReview'
 import { Alert, Empty, Spinner, useToast, useConfirm } from '../components/ui'
 import type { ExamDifficulty, ExamFormat } from '../lib/ai/tasks'
-import { examFromNotes, normalizeExam, scoreExam, type ExamQuestion, type ExamResult } from '../lib/exam'
+import { examCountdown, examName, examsForCourse } from '../lib/courseExams'
+import { examFromNotes, normalizeExam, noteForSource, scoreExam, type ExamQuestion, type ExamResult } from '../lib/exam'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { clearActiveExam, loadActiveExam, saveActiveExam, secondsRemaining, type ActiveExamDraft, type ExamAnswer } from '../lib/examSession'
+import { daysUntil } from '../lib/srs'
 import { useStore } from '../lib/store'
 
 type Phase = 'setup' | 'preparing' | 'running' | 'grading' | 'result'
@@ -55,10 +57,23 @@ export function Exam() {
   const notes = useMemo(() => store.data.notes.filter((n) => n.courseId === id), [store.data.notes, id])
 
   const initialDraft = useMemo(() => loadActiveExam(session, id), [id])
+  const [params] = useSearchParams()
+  const upcoming = examsForCourse(store.data, id ?? '').filter((e) => (daysUntil(e.date) ?? -1) >= 0)
+  /** Notes an exam covers; an exam without a list covers the whole course. */
+  const notesFor = (examId: string) => {
+    const exam = upcoming.find((e) => e.id === examId)
+    const scoped = exam?.noteIds.filter((noteId) => notes.some((n) => n.id === noteId)) ?? []
+    return scoped.length ? scoped : notes.map((n) => n.id)
+  }
+  // The exam picked on the course page (?sinav=…), else the nearest one.
+  const [targetExam, setTargetExam] = useState(() => {
+    const requested = params.get('sinav')
+    return upcoming.find((e) => e.id === requested)?.id ?? upcoming[0]?.id ?? ''
+  })
 
   const [phase, setPhase] = useState<Phase>(() => (initialDraft ? 'running' : 'setup'))
   const [selected, setSelected] = useState<Set<string>>(() =>
-    new Set(initialDraft?.noteIds?.length ? initialDraft.noteIds : notes.map((n) => n.id)),
+    new Set(initialDraft?.noteIds?.length ? initialDraft.noteIds : notesFor(targetExam)),
   )
   const [useAi, setUseAi] = useState(() => initialDraft?.useAi ?? ai.ok)
   const [format, setFormat] = useState<ExamFormat>(() => initialDraft?.format ?? 'test')
@@ -165,7 +180,10 @@ export function Exam() {
           { courseName: course!.name, notes: chosen.map((n) => ({ title: n.title, text: n.content })), format, count, difficulty, pastQuestions },
           settings,
         )
-        list = normalizeExam(raw.questions, format, count)
+        list = normalizeExam(raw.questions, format, count).map((q) => {
+          const note = chosen.length === 1 ? chosen[0] : noteForSource(chosen, q.source)
+          return { ...q, noteId: note?.id ?? null, noteTitle: note?.title ?? null }
+        })
       } catch (e) {
         setPhase('setup')
         return setError(e instanceof Error ? e.message : 'Sınav hazırlanamadı.')
@@ -290,6 +308,27 @@ export function Exam() {
           </div>
         ) : (
           <div className="form">
+            {upcoming.length > 0 && (
+              <label className="field">
+                <span>Hangi sınava hazırlanıyorsun?</span>
+                <select
+                  className="select"
+                  value={targetExam}
+                  disabled={busy}
+                  onChange={(e) => {
+                    setTargetExam(e.target.value)
+                    if (e.target.value) setSelected(new Set(notesFor(e.target.value)))
+                  }}
+                >
+                  {upcoming.map((exam) => (
+                    <option key={exam.id} value={exam.id}>
+                      {examCountdown(exam)?.text ?? examName(exam)}
+                    </option>
+                  ))}
+                  <option value="">Belirli bir sınav değil</option>
+                </select>
+              </label>
+            )}
             <div className="field">
               <span>Sınava hangi konular dahil?</span>
               <div className="panel panel-tight list">
@@ -494,6 +533,7 @@ export function Exam() {
         scores={result?.scores ?? []}
         feedback={result?.feedback ?? []}
         score={result?.total ?? 0}
+        notes={notes}
         meta={savedId ? 'Sonuç kaydedildi; ders sayfasındaki sınav geçmişinden tekrar açabilirsin.' : undefined}
         actions={
           <>

@@ -126,6 +126,8 @@ export interface ExamQuestion {
   modelAnswer: string
   source: string | null
   noteTitle: string | null
+  /** Note the question came from, so the review can open the passage. Missing in older exams. */
+  noteId?: string | null
 }
 
 /** A finished mock exam, kept so students can review it and track their scores over time. */

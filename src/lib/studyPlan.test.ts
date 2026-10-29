@@ -61,4 +61,31 @@ describe('buildSmartStudyPlan', () => {
     expect(plan.items[1].note.id).toBe('n2')
     expect(plan.items[1].reason).toContain('Henüz çalışmaya başlanmadı')
   })
+
+  it('names the exam of the suggested topics, not another course, and skips exams that do not cover a note', () => {
+    const now = new Date('2026-05-10T10:00:00Z')
+    const day = '2026-05-01T00:00:00Z'
+    const note = (id: string, courseId: string) => ({
+      id, courseId, title: id, content: '...', summary: { overview: 'Özet', points: [], keyTerms: [] },
+      questions: [], practice: [], generator: 'ai' as const, createdAt: day, updatedAt: day,
+    })
+    const data: StudyData = {
+      courses: [
+        { id: 'c1', name: 'Biyoloji', examDate: '2026-05-12', color: '#5b5bd6', createdAt: day, updatedAt: day },
+        { id: 'c2', name: 'Tarih', examDate: '2026-05-20', color: '#2ea043', createdAt: day, updatedAt: day },
+      ],
+      // Only note b1 is on the Biology midterm; the history final covers the whole course.
+      notes: [note('b2', 'c1'), note('t1', 'c2')],
+      cards: [], attempts: [], exams: [], studyDays: [],
+      courseExams: [
+        { id: 'e1', courseId: 'c1', kind: 'vize', title: null, date: '2026-05-12', weight: 40, noteIds: ['b1'], createdAt: day, updatedAt: day },
+        { id: 'e2', courseId: 'c2', kind: 'final', title: null, date: '2026-05-20', weight: 60, noteIds: [], createdAt: day, updatedAt: day },
+      ],
+    }
+    const plan = buildSmartStudyPlan(data, now, 1)
+    expect(plan.items[0].note.id).toBe('t1')
+    expect(plan.items[0].reason).toContain('Finale 10 gün')
+    expect(plan.headline).toBe('Tarih finaline 10 gün kaldı — bugün şu konuyu çalış')
+    expect(plan.headline).not.toContain('Biyoloji')
+  })
 })

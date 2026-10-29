@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { examCountdown, examDateForCard, examsForCourse, nearestExamFor, nextExamDate, upcomingExams } from './courseExams'
+import { courseExamPhrase, examCountdown, examDateForCard, examsForCourse, nearestExamFor, nextExamDate, upcomingExams } from './courseExams'
 import { schedule } from './srs'
 import type { Course, CourseExam } from './types'
 
@@ -57,5 +57,12 @@ describe('course exams', () => {
   it('picks the next upcoming date to keep the old course date in sync', () => {
     expect(nextExamDate([{ date: '2026-12-20' }, { date: '2026-10-01' }, { date: '2026-11-07' }], now)).toBe('2026-11-07')
     expect(nextExamDate([{ date: '2026-10-01' }], now)).toBeNull()
+  })
+
+  it('names the course and puts the suffix on the exam word', () => {
+    expect(courseExamPhrase('Biyoloji', { kind: 'vize', title: null }, 8)).toBe('Biyoloji vizesine 8 gün kaldı')
+    expect(courseExamPhrase('Biyoloji', { kind: 'final', title: null }, 1)).toBe('Biyoloji finali yarın')
+    expect(courseExamPhrase('Biyoloji', { kind: 'diger', title: null }, 0)).toBe('Biyoloji sınavı bugün')
+    expect(courseExamPhrase('Biyoloji', { kind: 'diger', title: 'Proje sunumu' }, 5)).toBe('Biyoloji · Proje sunumu: 5 gün kaldı')
   })
 })

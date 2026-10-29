@@ -1,11 +1,13 @@
 import { computeNoteProgress, computeTopicMastery } from './learningPath'
-import { daysUntil } from './srs'
-import type { Course, LearningStepId, Note, StudyData } from './types'
+import { courseExamPhrase, examCountdown, nearestExamFor } from './courseExams'
+import type { Course, CourseExam, LearningStepId, Note, StudyData } from './types'
 
 export interface SmartPlanItem {
   note: Note
   course?: Course
   examDays: number | null
+  /** Nearest upcoming exam that covers this note. */
+  exam: CourseExam | null
   reason: string
   actionLabel: string
   targetUrl: string
@@ -34,8 +36,9 @@ export function buildSmartStudyPlan(data: StudyData, now = new Date(), maxItems 
 
   for (const note of data.notes) {
     const course = courseMap.get(note.courseId)
-    const rawDays = course ? daysUntil(course.examDate, now) : null
-    const examDays = rawDays !== null && rawDays >= 0 ? rawDays : null
+    // Only an exam that covers this note matters for it: a midterm on other topics should not rush it.
+    const upcoming = nearestExamFor(data, note.courseId, note.id, now)
+    const examDays = upcoming ? upcoming.days : null
 
     const progress = computeNoteProgress(note, data.cards, data.attempts)
     const mastery = computeTopicMastery(note, data.cards, data.attempts)
@@ -91,15 +94,14 @@ export function buildSmartStudyPlan(data: StudyData, now = new Date(), maxItems 
       targetUrl = `/not/${note.id}?sekme=uygula`
     }
 
-    if (examDays !== null) {
-      const examTag = examDays === 0 ? 'Sınav bugün' : `Sınava ${examDays} gün`
-      reason = `${examTag} · ${reason}`
-    }
+    const countdown = upcoming ? examCountdown(upcoming.exam, now) : null
+    if (countdown) reason = `${countdown.text} · ${reason}`
 
     candidates.push({
       note,
       course,
       examDays,
+      exam: upcoming?.exam ?? null,
       reason,
       actionLabel,
       targetUrl,
@@ -111,18 +113,15 @@ export function buildSmartStudyPlan(data: StudyData, now = new Date(), maxItems 
   candidates.sort((a, b) => b.priorityScore - a.priorityScore || b.note.updatedAt.localeCompare(a.note.updatedAt))
   const items = candidates.slice(0, maxItems)
 
-  // Determine headline based on the most urgent upcoming exam
-  const upcomingExams = data.courses
-    .map((course) => ({ course, days: daysUntil(course.examDate, now) }))
-    .filter((e): e is { course: Course; days: number } => e.days !== null && e.days >= 0)
-    .sort((a, b) => a.days - b.days)
-
-  const nearestExam = upcomingExams[0]
+  // The headline names the nearest exam among the suggested topics, never another course's exam.
+  const nearestExam = items
+    .filter((i): i is SmartPlanItem & { exam: CourseExam; examDays: number; course: Course } => !!i.exam && i.examDays !== null && !!i.course)
+    .sort((a, b) => a.examDays - b.examDays)[0]
   let headline = 'Bugün için akıllı çalışma planı'
   let subheadline = 'Konu hâkimiyetine ve öğrenme adımlarına göre önceliklendirildi'
 
-  if (nearestExam && items.length > 0) {
-    const dayPhrase = nearestExam.days === 0 ? 'Sınavın bugün' : `${nearestExam.course.name} sınavına ${nearestExam.days} gün kaldı`
+  if (nearestExam) {
+    const dayPhrase = courseExamPhrase(nearestExam.course.name, nearestExam.exam, nearestExam.examDays)
     headline =
       items.length === 1
         ? `${dayPhrase} — bugün şu konuyu çalış`

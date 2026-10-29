@@ -1,4 +1,5 @@
 import type { ExamFormat } from './ai/tasks'
+import { findSourceMatch } from './noteTools'
 import type { ExamQuestion, Note } from './types'
 
 export type { ExamQuestion }
@@ -60,6 +61,7 @@ export function examFromNotes(notes: Note[], count: number, random = Math.random
       modelAnswer: '',
       source: q.source,
       noteTitle: note.title,
+      noteId: note.id,
     })),
   )
   for (let i = pool.length - 1; i > 0; i -= 1) {
@@ -67,6 +69,12 @@ export function examFromNotes(notes: Note[], count: number, random = Math.random
     ;[pool[i], pool[j]] = [pool[j], pool[i]]
   }
   return pool.slice(0, count)
+}
+
+/** The note that contains a quoted passage, so an AI question can link back to its source. */
+export function noteForSource(notes: Note[], source: string | null): Note | null {
+  if (!source?.trim()) return null
+  return notes.find((n) => findSourceMatch(n.content, source)) ?? null
 }
 
 /** Multiple-choice is scored here; open answers need `openScores` from the AI grader (blank answers score 0). */

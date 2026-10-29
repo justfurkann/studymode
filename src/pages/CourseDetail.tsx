@@ -1,10 +1,12 @@
-import { ArrowLeft, Brain, ClipboardList, FileText, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Brain, CalendarClock, ClipboardList, FileText, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CourseForm } from '../components/CourseForm'
 import { examFormatLabel, examPercent } from '../components/ExamReview'
 import { Empty, useConfirm, useToast } from '../components/ui'
-import { cardMastery, courseStats, examLabel, relativeDate } from '../lib/format'
+import { examCountdown, examDateText, examName, examsForCourse } from '../lib/courseExams'
+import { cardMastery, courseStats, relativeDate } from '../lib/format'
+import { daysUntil } from '../lib/srs'
 import { computeNoteProgress } from '../lib/learningPath'
 import { matchesNote } from '../lib/noteTools'
 import { useStore } from '../lib/store'
@@ -33,8 +35,8 @@ export function CourseDetail() {
   }
 
   const stats = courseStats(store.data, course)
-  const exam = examLabel(course.examDate)
   const notes = store.data.notes.filter((n) => n.courseId === course.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  const tags = [...new Set(notes.flatMap((n) => n.summary?.tags ?? []))]
   const cardCount = (noteId: string) => store.data.cards.filter((c) => c.noteId === noteId).length
 
   async function remove() {
@@ -61,10 +63,9 @@ export function CourseDetail() {
             <span className="subtle">
               {stats.notes} not · {stats.cards} kart
             </span>
-            {exam && <span className={`chip ${exam.tone === 'neutral' ? '' : `chip-${exam.tone}`}`}>{exam.text}</span>}
-            {!course.examDate && (
+            {!examsForCourse(store.data, course.id).length && (
               <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
-                Sınav tarihi ekle
+                <Plus size={15} /> Sınav ekle
               </button>
             )}
           </div>
@@ -96,10 +97,12 @@ export function CourseDetail() {
       </div>
 
       {confirmation}
+      <CourseExams courseId={course.id} hasNotes={notes.length > 0} onEdit={() => setEditing(true)} />
       <CourseProgress courseId={course.id} />
 
       <section className="section">
         <h2>Notlar</h2>
+        {(notes.length >= 3 || tags.length > 0) && (
         <div className="form-row">
           <label className="field">
             Notlarda ara
@@ -109,12 +112,13 @@ export function CourseDetail() {
             Etiket
             <select className="select" value={tag} onChange={(e) => setTag(e.target.value)}>
               <option value="">Tüm etiketler</option>
-              {[...new Set(notes.flatMap((n) => n.summary?.tags ?? []))].map((t) => (
+              {tags.map((t) => (
                 <option key={t}>{t}</option>
               ))}
             </select>
           </label>
         </div>
+        )}
         {notes.length > 0 && !notes.some((n) => matchesNote(n, query, tag)) && <p className="muted">Aramana uygun not bulunamadı.</p>}
         {notes.length ? (
           <div className="panel panel-tight list">
@@ -160,6 +164,54 @@ export function CourseDetail() {
         />
       )}
     </div>
+  )
+}
+
+/** The course's exams: countdown, date, weight and which notes each one covers. */
+function CourseExams({ courseId, hasNotes, onEdit }: { courseId: string; hasNotes: boolean; onEdit: () => void }) {
+  const store = useStore()
+  const exams = examsForCourse(store.data, courseId)
+  if (!exams.length) return null
+  const now = new Date()
+  const upcoming = exams.filter((e) => (daysUntil(e.date, now) ?? -1) >= 0)
+  const past = exams.length - upcoming.length
+
+  return (
+    <section className="section" aria-label="Sınavlar">
+      <div className="section-head">
+        <h2>Sınavlar</h2>
+        <button className="btn btn-ghost btn-sm" onClick={onEdit}>
+          <Pencil size={14} /> Düzenle
+        </button>
+      </div>
+      <div className="panel panel-tight exam-list">
+        {upcoming.map((exam) => {
+          const countdown = examCountdown(exam, now)!
+          return (
+            <div key={exam.id} className="exam-list-item">
+              <CalendarClock size={18} className="muted" />
+              <div className="grow">
+                <div className="title">
+                  {examName(exam)}
+                  {exam.weight != null && <span className="subtle"> · %{exam.weight}</span>}
+                </div>
+                <div className="subtle">
+                  {examDateText(exam.date)} · {exam.noteIds.length ? `${exam.noteIds.length} not` : 'Tüm notlar'}
+                </div>
+              </div>
+              <span className={`chip ${countdown.tone === 'neutral' ? '' : `chip-${countdown.tone}`}`}>{countdown.text}</span>
+              {hasNotes && (
+                <Link to={`/ders/${courseId}/sinav?sinav=${exam.id}`} className="btn btn-sm" aria-label={`${examName(exam)} için prova`}>
+                  Prova
+                </Link>
+              )}
+            </div>
+          )
+        })}
+        {!upcoming.length && <p className="subtle">Yaklaşan sınav yok.</p>}
+        {past > 0 && <p className="subtle">{past} sınavın tarihi geçti.</p>}
+      </div>
+    </section>
   )
 }
 

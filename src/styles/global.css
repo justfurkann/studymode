@@ -2131,3 +2131,7 @@ a.list-item:hover {
 .exam-list-item:last-child {
   border-bottom: 0;
 }
+
+.source-link {
+  align-self: flex-start;
+}
