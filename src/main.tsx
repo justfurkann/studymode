@@ -1,9 +1,14 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import '@fontsource-variable/dm-sans';
-import './styles.css';
-import App from './App';
+import '@fontsource-variable/dm-sans'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App'
+import { applyTheme } from './lib/settings'
+import './styles/global.css'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode><App /></React.StrictMode>,
-);
+applyTheme()
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
