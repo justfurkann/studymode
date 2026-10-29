@@ -333,7 +333,7 @@ export function AddNote() {
                 {reading ? <Spinner size={28} /> : <FileUp size={28} className="muted" />}
                 <strong>{reading ? 'Dosya okunuyor…' : 'Dosyaları buraya bırak ya da seç'}</strong>
                 <span className="subtle">
-                  PDF, TXT veya Markdown · birden fazla seçebilirsin (en fazla {MAX_BATCH}) · dosya başına 10 MB · taranmış PDF desteklenmiyor
+                  PDF, Word, PowerPoint, TXT veya Markdown · birden fazla seçebilirsin (en fazla {MAX_BATCH}) · dosya başına 10 MB · taranmış PDF desteklenmiyor
                 </span>
                 {fileInputEl}
               </div>

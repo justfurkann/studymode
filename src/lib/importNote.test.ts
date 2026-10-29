@@ -1,3 +1,4 @@
+import { strToU8, zipSync } from 'fflate'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { extractNoteText, MAX_FILE_BYTES, MAX_TEXT_CHARACTERS } from './importNote'
 
@@ -47,8 +48,25 @@ describe('extractNoteText', () => {
   })
 
   it('rejects unsupported formats before attempting extraction', async () => {
-    await expect(extractNoteText(new File(['text'], 'notlar.docx'))).rejects.toThrow('PDF, TXT veya Markdown')
+    await expect(extractNoteText(new File(['text'], 'notlar.odt'))).rejects.toThrow('Word (.docx), PowerPoint (.pptx)')
     expect(pdfMocks.getDocument).not.toHaveBeenCalled()
+  })
+
+  it('asks for the newer format for old Word and PowerPoint files', async () => {
+    await expect(extractNoteText(new File(['x'], 'notlar.doc'))).rejects.toThrow('.docx ya da PDF')
+    await expect(extractNoteText(new File(['x'], 'sunum.PPT'))).rejects.toThrow('.pptx ya da PDF')
+  })
+
+  it('reads Word and PowerPoint files', async () => {
+    const docx = zipSync({ 'word/document.xml': strToU8('<w:document><w:p><w:r><w:t>Hücre zarı</w:t></w:r></w:p></w:document>') })
+    await expect(extractNoteText(new File([docx], 'hafta1.docx'))).resolves.toBe('Hücre zarı')
+    const pptx = zipSync({ 'ppt/slides/slide1.xml': strToU8('<p:sld><a:p><a:r><a:t>Mitokondri</a:t></a:r></a:p></p:sld>') })
+    await expect(extractNoteText(new File([pptx], 'sunum.pptx'))).resolves.toBe('Slayt 1\nMitokondri')
+  })
+
+  it('explains slides that only contain pictures', async () => {
+    const pptx = zipSync({ 'ppt/slides/slide1.xml': strToU8('<p:sld><p:pic/></p:sld>') })
+    await expect(extractNoteText(new File([pptx], 'resimli.pptx'))).rejects.toThrow('resim olarak')
   })
 
   it('rejects oversized files before reading their contents', async () => {

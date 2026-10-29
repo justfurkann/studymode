@@ -1,16 +1,20 @@
 export const MAX_FILE_BYTES = 10 * 1024 * 1024
 export const MAX_PDF_PAGES = 150
 export const MAX_TEXT_CHARACTERS = 400_000
-export const ACCEPTED_NOTE_EXTENSIONS = '.pdf,.txt,.md'
+export const ACCEPTED_NOTE_EXTENSIONS = '.pdf,.docx,.pptx,.txt,.md'
 
-const supportedExtensions = new Set(['pdf', 'txt', 'md'])
+const supportedExtensions = new Set(['pdf', 'docx', 'pptx', 'txt', 'md'])
+const legacyOffice: Record<string, string> = { doc: 'Word', ppt: 'PowerPoint' }
 
 /** Extracts notes locally. File contents are never sent to a server. */
 export async function extractNoteText(file: File): Promise<string> {
   const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
 
+  if (legacyOffice[extension]) {
+    throw new Error(`Eski ${legacyOffice[extension]} biçimi (.${extension}) desteklenmiyor. Dosyayı ${legacyOffice[extension]}’da açıp .${extension}x ya da PDF olarak kaydet.`)
+  }
   if (!supportedExtensions.has(extension)) {
-    throw new Error('PDF, TXT veya Markdown (.md) dosyası seçebilirsin.')
+    throw new Error('PDF, Word (.docx), PowerPoint (.pptx), TXT veya Markdown (.md) dosyası seçebilirsin.')
   }
   if (file.size > MAX_FILE_BYTES) {
     throw new Error('Dosya en fazla 10 MB olabilir. Daha küçük bir dosya seç.')
@@ -19,7 +23,8 @@ export async function extractNoteText(file: File): Promise<string> {
     throw new Error('Bu dosya boş görünüyor. İçinde ders notları olan bir dosya seç.')
   }
 
-  const rawText = extension === 'pdf' ? await extractPdfText(file) : await file.text()
+  const rawText =
+    extension === 'pdf' ? await extractPdfText(file) : extension === 'docx' || extension === 'pptx' ? await extractOfficeText(file, extension) : await file.text()
   const text = rawText
     .replace(/^\uFEFF/, '')
     .replace(/\u0000/g, '')
@@ -32,7 +37,9 @@ export async function extractNoteText(file: File): Promise<string> {
     throw new Error(
       extension === 'pdf'
         ? 'Bu PDF’den metin okunamadı. Taranmış sayfalar ve görseller henüz desteklenmiyor; metni seçilebilen bir PDF veya TXT dosyası kullan.'
-        : 'Bu dosyada okunabilir metin yok. İçinde ders notları olan bir dosya seç.',
+        : extension === 'pptx' || extension === 'docx'
+          ? 'Bu dosyada metin bulunamadı. İçerik resim olarak eklenmiş olabilir; görsellerden metin okuma henüz desteklenmiyor.'
+          : 'Bu dosyada okunabilir metin yok. İçinde ders notları olan bir dosya seç.',
     )
   }
   if (text.length > MAX_TEXT_CHARACTERS) {
@@ -40,6 +47,13 @@ export async function extractNoteText(file: File): Promise<string> {
   }
 
   return text
+}
+
+async function extractOfficeText(file: File, extension: 'docx' | 'pptx'): Promise<string> {
+  // Loaded on demand so the unzip code is only downloaded by people who upload Office files.
+  const { docxText, pptxText } = await import('./officeText')
+  const data = new Uint8Array(await file.arrayBuffer())
+  return extension === 'docx' ? docxText(data) : pptxText(data)
 }
 
 async function extractPdfText(file: File): Promise<string> {

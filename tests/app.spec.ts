@@ -1,3 +1,4 @@
+import { strToU8, zipSync } from 'fflate'
 import { expect, test, type Page } from '@playwright/test'
 
 const biologyNotes = `Hücre Biyolojisi
@@ -673,4 +674,26 @@ test('guests see an invitation to the free AI where it would help', async ({ pag
   await expect(prompt).toBeVisible()
   await prompt.getByRole('link', { name: 'Ücretsiz hesap aç' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Hesap oluştur' })).toBeVisible()
+})
+
+test('PowerPoint and Word files can be uploaded as notes', async ({ page }) => {
+  const errors = watchErrors(page)
+  const slide = (lines: string[]) => strToU8(`<p:sld>${lines.map((l) => `<a:p><a:r><a:t>${l}</a:t></a:r></a:p>`).join('')}</p:sld>`)
+  const pptx = zipSync({
+    'ppt/slides/slide1.xml': slide(['Hücre Biyolojisi', 'Mitokondri: Hücresel solunum yoluyla enerji üreten organeldir.']),
+    'ppt/slides/slide2.xml': slide(['Ribozom: Amino asitleri birleştirerek protein sentezini gerçekleştiren yapıdır.']),
+  })
+  const docx = zipSync({
+    'word/document.xml': strToU8(`<w:document><w:body>${biologyNotes.split('\n').filter(Boolean).map((l) => `<w:p><w:r><w:t>${l}</w:t></w:r></w:p>`).join('')}</w:body></w:document>`),
+  })
+  await createCourse(page, 'Biyoloji 110')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'hafta_3.pptx', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', buffer: Buffer.from(pptx) })
+  await expect(page.getByLabel('Ders notun')).toHaveValue(/Slayt 1\nHücre Biyolojisi[\s\S]*Slayt 2\nRibozom/)
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'hafta_4.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: Buffer.from(docx) })
+  await expect(page.getByText('2 dosya')).toBeVisible()
+  await expect(page.getByLabel('hafta_4.docx başlığı')).toHaveValue('hafta 4')
+  await page.getByRole('button', { name: '2 notu kaydet ve hazırla' }).click()
+  await expect(page.getByText('2 not')).toBeVisible()
+  expect(errors).toEqual([])
 })
