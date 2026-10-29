@@ -210,6 +210,17 @@ test('theme switch and mobile navigation', async ({ page }) => {
   expect(overflow).toBe(false)
 })
 
+test('account entry point leads to the sign-in form', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/ayarlar')
+  await page.getByRole('link', { name: 'Giriş yap veya hesap oluştur' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Giriş yap' })).toBeVisible()
+  await page.getByRole('button', { name: 'Hesap oluştur' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Hesap oluştur' })).toBeVisible()
+  await expect(page.getByLabel('Şifre')).toHaveAttribute('autocomplete', 'new-password')
+  expect(errors).toEqual([])
+})
+
 /** A single-page PDF with an uncompressed text stream. */
 function makePdf(lines: string[]): Buffer {
   const ascii = lines.map((line) => line.normalize('NFD').replace(/[^\x20-\x7e]/g, '').replace(/([\\()])/g, '\\$1'))
