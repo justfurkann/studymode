@@ -34,7 +34,7 @@ const env = { GEMINI_API_KEY: 'server-key' }
 
 describe('handleStatus', () => {
   it('says whether a key is set without revealing it', async () => {
-    expect(await handleStatus({}).json()).toEqual({ ok: true, configured: false, models: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'] })
+    expect(await handleStatus({}).json()).toEqual({ ok: true, configured: false, models: ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'] })
     const body = await handleStatus({ GEMINI_API_KEY: 'secret', GEMINI_MODEL: 'm', GEMINI_FALLBACK_MODELS: 'a, m ,b' }).json()
     expect(body).toEqual({ ok: true, configured: true, models: ['m', 'a', 'b'] })
     expect(JSON.stringify(body)).not.toContain('secret')
@@ -106,12 +106,12 @@ describe('callGeminiWithFallback', () => {
     expect(result).toEqual({ text: 'ok', model: 'a' })
   })
 
-  it('moves to the next model when one is unknown, out of quota or keeps failing', async () => {
-    const fetchImpl = fakeFetch({ gemini: [gemini('', 404), gemini('', 429), gemini('', 503), gemini('', 503), gemini('', 503), gemini('done')] })
-    const result = await callGeminiWithFallback({ apiKey: 'k', models: ['a', 'b', 'c', 'd'], system: 's', user: 'u', fetchImpl, sleep: noSleep })
+  it('moves to the next model when one is unknown, out of quota, times out or keeps failing', async () => {
+    const fetchImpl = fakeFetch({ gemini: [gemini('', 404), gemini('', 429), gemini('', 504), gemini('', 503), gemini('', 503), gemini('', 503), gemini('done')] })
+    const result = await callGeminiWithFallback({ apiKey: 'k', models: ['a', 'b', 't', 'c', 'd'], system: 's', user: 'u', fetchImpl, sleep: noSleep })
     expect(result).toEqual({ text: 'done', model: 'd' })
     const calls = (fetchImpl as unknown as { mock: { calls: Array<[string, RequestInit]> } }).mock.calls
-    expect(models(calls)).toEqual(['a', 'b', 'c', 'c', 'c', 'd'])
+    expect(models(calls)).toEqual(['a', 'b', 't', 'c', 'c', 'c', 'd'])
   })
 
   it('does not retry errors another attempt cannot fix', async () => {
@@ -120,6 +120,6 @@ describe('callGeminiWithFallback', () => {
   })
 
   it('uses the configured main model first', () => {
-    expect(geminiModels({ GEMINI_MODEL: 'gemini-3.6-flash' })).toEqual(['gemini-3.6-flash', 'gemini-3.5-flash-lite'])
+    expect(geminiModels({ GEMINI_MODEL: 'gemini-3.5-flash-lite' })).toEqual(['gemini-3.5-flash-lite', 'gemini-3.8-flash'])
   })
 })

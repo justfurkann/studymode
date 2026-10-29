@@ -102,24 +102,36 @@ Judge the content, not spelling or style.`
 
 // ---------- Registry ----------
 
+const MAX_PROMPT_NOTE_CHARS = 48_000
+
+/** Keeps huge PDFs within free-tier token-per-minute limits and under serverless timeouts by sampling beginning, middle, and end. */
+function trimNoteText(text: string, budget = MAX_PROMPT_NOTE_CHARS): string {
+  if (text.length <= budget) return text
+  const third = Math.floor(budget / 3)
+  const midStart = Math.floor((text.length - third) / 2)
+  return `${text.slice(0, third).trim()}\n\n[…]\n\n${text.slice(midStart, midStart + third).trim()}\n\n[…]\n\n${text.slice(text.length - third).trim()}`
+}
+
 export const TASKS = {
   study: {
     schema: StudySetSchema,
     system: STUDY_PROMPT,
-    user: (input: StudyInput) => `<note_title>${input.title}</note_title>\n<notes>\n${input.text}\n</notes>`,
+    user: (input: StudyInput) => `<note_title>${input.title}</note_title>\n<notes>\n${trimNoteText(input.text)}\n</notes>`,
   },
   exam: {
     schema: ExamSchema,
     system: EXAM_PROMPT,
-    user: (input: ExamInput) =>
-      [
+    user: (input: ExamInput) => {
+      const perNoteBudget = Math.max(4_000, Math.floor(MAX_PROMPT_NOTE_CHARS / Math.max(1, input.notes.length)))
+      return [
         `<course>${input.courseName}</course>`,
         `<exam format="${input.format === 'test' ? 'only mcq' : input.format === 'classic' ? 'only open' : 'about half mcq, half open'}" questions="${input.count}" difficulty="${input.difficulty}" />`,
         input.pastQuestions.trim() ? `<past_exam_questions>\n${input.pastQuestions.trim()}\n</past_exam_questions>` : '',
-        ...input.notes.map((n) => `<note title="${n.title.replace(/"/g, "'")}">\n${n.text}\n</note>`),
+        ...input.notes.map((n) => `<note title="${n.title.replace(/"/g, "'")}">\n${trimNoteText(n.text, perNoteBudget)}\n</note>`),
       ]
         .filter(Boolean)
-        .join('\n\n'),
+        .join('\n\n')
+    },
   },
   grade: {
     schema: GradeSchema,

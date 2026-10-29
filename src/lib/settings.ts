@@ -30,7 +30,11 @@ export const PROVIDERS: Record<KeyProvider, { label: string; keyHint: string; ke
     label: 'Gemini (Google)',
     keyHint: 'AIza…',
     keyUrl: 'https://aistudio.google.com/apikey',
-    models: [{ id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' }],
+    models: [
+      { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite — hızlı ve ücretsiz kota dostu' },
+      { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite — dengeli' },
+      { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash — kapsamlı' },
+    ],
   },
 }
 
@@ -46,7 +50,7 @@ const KEY = 'studymode.settings.v1'
 const defaults: Settings = {
   provider: 'shared',
   keys: { anthropic: '', openai: '', google: '' },
-  models: { anthropic: 'claude-opus-5-5', openai: 'gpt-5-mini', google: 'gemini-3.8-flash' },
+  models: { anthropic: 'claude-opus-5-5', openai: 'gpt-5-mini', google: 'gemini-3.1-flash-lite' },
   theme: 'system',
 }
 

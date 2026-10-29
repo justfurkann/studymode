@@ -1,0 +1,8 @@
+{
+  "name": "studymode",
+  "description": "Ders notlarını yükle; özet, test ve aralıklı tekrar kartlarıyla sınava kadar düzenli çalış.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
+import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL } from '../config'
 import type { Settings } from '../settings'
 import { supabase } from '../supabase'
 import type { GeneratedSet } from '../types'
@@ -60,6 +61,7 @@ function statusError(provider: string, status: number): AiError {
   if (status === 404) return new AiError(`${provider}: seçilen model bulunamadı. Ayarlardan model adını kontrol et.`)
   if (status === 429) return new AiError(`${provider} kotası doldu ya da çok fazla istek gönderildi. Biraz sonra tekrar dene.`)
   if (status === 413) return new AiError('İçerik çok uzun olduğu için cevap yarıda kaldı. Daha kısa bir bölümle dene.')
+  if (status === 503 || status === 504) return new AiError(`${provider} modelleri şu an yoğun. Birkaç saniye sonra tekrar dene.`)
   return new AiError(`${provider} hata verdi (${status}). Biraz sonra tekrar dene.`)
 }
 
@@ -102,9 +104,10 @@ async function viaOpenAi<T extends TaskName>(task: T, input: TaskInput<T>, apiKe
 
 async function viaGoogle<T extends TaskName>(task: T, input: TaskInput<T>, apiKey: string, model: string): Promise<TaskOutput<T>> {
   const user = userPrompt(task, input)
+  const models = [...new Set([model, DEFAULT_GEMINI_MODEL, ...DEFAULT_GEMINI_FALLBACKS].filter(Boolean))]
   return withJsonRetry(task, async () => {
     try {
-      return (await callGeminiWithFallback({ apiKey, models: [model], system: jsonModeSystem(task), user })).text
+      return (await callGeminiWithFallback({ apiKey, models, system: jsonModeSystem(task), user })).text
     } catch (error) {
       if (error instanceof GeminiError) throw statusError('Gemini', error.status)
       throw new AiError('Google’a bağlanılamadı. İnternet bağlantını kontrol et.')
@@ -122,6 +125,7 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>): Prom
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify({ task, input }),
+      signal: AbortSignal.timeout(55_000),
     })
   } catch (error) {
     // The detail and timing help tell a dropped connection from a server timeout.

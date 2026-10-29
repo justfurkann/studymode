@@ -7,6 +7,9 @@ import { isTaskName, jsonModeSystem, parseTaskOutput, userPrompt } from '../src/
 
 const MAX_BODY_CHARS = 1_500_000
 
+/** Gives Vercel Hobby functions the full 60s ceiling while our internal deadline finishes well before it. */
+export const maxDuration = 60
+
 type Env = Record<string, string | undefined>
 
 /** Main model first, then fallbacks, without duplicates. */
@@ -23,6 +26,7 @@ async function isSignedIn(request: Request, fetchImpl: typeof fetch): Promise<bo
   if (!auth?.startsWith('Bearer ')) return false
   const response = await fetchImpl(`${SUPABASE_URL}/auth/v1/user`, {
     headers: { apikey: SUPABASE_PUBLISHABLE_KEY, authorization: auth },
+    signal: AbortSignal.timeout(5_000),
   })
   return response.ok
 }
@@ -68,7 +72,7 @@ export async function handleGenerate(
   } catch (error) {
     if (error instanceof GeminiError) {
       if (error.status === 429) return json(429, { error: 'quota' })
-      if (error.status === 503) return json(503, { error: 'busy' })
+      if (error.status === 503 || error.status === 504) return json(503, { error: 'busy' })
       if (error.status === 413) return json(413, { error: 'too_large' })
       console.error('Gemini error', error.status, error.message)
       return json(502, { error: 'upstream', status: error.status, detail: error.message.slice(0, 200) })
