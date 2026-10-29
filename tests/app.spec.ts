@@ -278,6 +278,101 @@ test('several files at once become separate notes', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test('mock exam from prepared questions, without AI', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+  await page.getByRole('link', { name: /Psikolojiye Giriş/ }).first().click()
+  await page.getByRole('link', { name: 'Sınav provası' }).click()
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Sınav provası' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Hazır sorulardan karıştır/ })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByLabel('Soru sayısı').selectOption('5')
+  await page.getByLabel('Süre').selectOption('15')
+  await page.getByRole('button', { name: 'Sınavı başlat' }).click()
+
+  await expect(page.getByLabel('Kalan süre')).toContainText(/1[45]:\d\d/)
+  await expect(page.getByText('0/5 cevaplandı')).toBeVisible()
+  await page.getByRole('radiogroup', { name: 'Soru 1 seçenekleri' }).getByRole('radio').first().click()
+  await expect(page.getByText('1/5 cevaplandı')).toBeVisible()
+
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Sınavı bitir' }).click()
+  await expect(page.getByText('Sınav sonucu')).toBeVisible()
+  await expect(page.getByText(/\d+ puan/)).toBeVisible()
+  await expect(page.getByText('Boş bıraktın').first()).toBeVisible()
+  await page.getByRole('button', { name: 'Eksiklerimi karta çevir' }).click()
+  await expect(page.getByRole('button', { name: 'Kartlara eklendi' })).toBeDisabled()
+  expect(errors).toEqual([])
+})
+
+test('AI mock exam with past questions, written answers graded by AI', async ({ page }) => {
+  const errors = watchErrors(page)
+  const systems: string[] = []
+  const users: string[] = []
+  await page.route('https://api.anthropic.com/**', async (route) => {
+    const request = route.request()
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' }
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
+    if (request.url().includes('/v1/models/')) return route.fulfill({ status: 200, headers: cors, json: { id: 'claude-opus-5-5', type: 'model', display_name: 'x', created_at: '2026-01-01T00:00:00Z' } })
+    const body = request.postDataJSON() as { system: string; messages: Array<{ content: string }> }
+    systems.push(body.system)
+    users.push(body.messages[0].content)
+    let out: unknown
+    if (body.system.startsWith('You write a realistic practice exam')) {
+      out = {
+        questions: [
+          { type: 'mcq', prompt: 'Protein sentezi nerede olur?', options: ['Lizozom', 'Ribozom', 'Çekirdek', 'Zar'], answerIndex: 1, explanation: 'Ribozom.', modelAnswer: '', source: 'Ribozom: Genetik bilgiye göre' },
+          { type: 'open', prompt: 'Mitokondrinin görevini açıkla.', options: [], answerIndex: -1, explanation: 'Enerji üretimi, hücresel solunum.', modelAnswer: 'Hücresel solunumla enerji üretir.', source: 'Mitokondri: Hücresel solunum' },
+        ],
+      }
+    } else {
+      out = { results: [{ score: 0.5, feedback: 'Enerjiyi söyledin ama hücresel solunumu atladın.' }] }
+    }
+    return route.fulfill({
+      status: 200,
+      headers: cors,
+      json: { id: 'msg', type: 'message', role: 'assistant', model: 'claude-opus-5-5', content: [{ type: 'text', text: JSON.stringify(out) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } },
+    })
+  })
+
+  await page.goto('/ayarlar')
+  await page.getByRole('group', { name: 'Yapay zekâ servisi' }).getByRole('button', { name: 'Claude' }).click()
+  await page.getByPlaceholder('sk-ant-…').fill('sk-ant-test-key')
+  await page.getByRole('button', { name: 'Doğrula ve kaydet' }).click()
+  await expect(page.getByText('Anahtar çalışıyor ve kaydedildi.')).toBeVisible()
+
+  await createCourse(page, 'Biyoloji 107')
+  await pasteNote(page, 'Organeller')
+  await page.getByRole('button', { name: /Basit mod/ }).click()
+  await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
+  await page.getByRole('link', { name: 'Biyoloji 107' }).click()
+  await page.getByRole('link', { name: 'Sınav provası' }).click()
+
+  await expect(page.getByRole('button', { name: /Yapay zekâ yeni sorular yazsın/ })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('group', { name: 'Sınav türü' }).getByRole('button', { name: 'Karışık' }).click()
+  await page.getByRole('group', { name: 'Zorluk' }).getByRole('button', { name: 'Zor' }).click()
+  await page.getByLabel('Süre').selectOption('0')
+  await page.getByPlaceholder(/Eski sınavlardan/).fill('1) Golgi cisimciğinin görevini açıklayınız.')
+  await page.getByRole('button', { name: 'Sınavı başlat' }).click()
+
+  await expect(page.getByText('Protein sentezi nerede olur?')).toBeVisible()
+  expect(users[0]).toContain('Golgi cisimciğinin')
+  expect(users[0]).toContain('difficulty="hard"')
+  expect(users[0]).toContain('Mitokondri')
+  await expect(page.getByLabel('Kalan süre')).toHaveCount(0)
+
+  await page.getByRole('radiogroup', { name: 'Soru 1 seçenekleri' }).getByRole('radio', { name: /Ribozom/ }).click()
+  await page.getByLabel('Soru 2 cevabın').fill('Enerji üretir.')
+  await page.getByRole('button', { name: 'Sınavı bitir' }).click()
+
+  await expect(page.getByText('75 puan')).toBeVisible()
+  await expect(page.getByText('Enerjiyi söyledin ama hücresel solunumu atladın.')).toBeVisible()
+  await expect(page.getByText('50/100')).toBeVisible()
+  expect(systems.some((s) => s.startsWith('You grade'))).toBe(true)
+  expect(errors).toEqual([])
+})
+
 test('account entry point leads to the sign-in form', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/ayarlar')

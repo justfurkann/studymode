@@ -1,4 +1,4 @@
-import { ArrowLeft, Brain, FileText, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Brain, ClipboardList, FileText, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CourseForm } from '../components/CourseForm'
@@ -77,6 +77,11 @@ export function CourseDetail() {
         <Link to={`/not-ekle?ders=${course.id}`} className="btn btn-primary">
           <Plus size={18} /> Not ekle
         </Link>
+        {notes.length > 0 && (
+          <Link to={`/ders/${course.id}/sinav`} className="btn">
+            <ClipboardList size={18} /> Sınav provası
+          </Link>
+        )}
         {stats.cards > 0 && (
           <Link to={`/tekrar?ders=${course.id}`} className="btn">
             <Brain size={18} /> {stats.due ? `${stats.due} kartı tekrar et` : 'Tekrarlar güncel'}
