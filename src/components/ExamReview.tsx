@@ -62,13 +62,16 @@ export function ExamReview({
           return (
             <div className="panel" key={q.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div className="section-head">
-                <span className="subtle">Soru {i + 1}</span>
+                <span className="subtle">
+                  Soru {i + 1}
+                  {q.type === 'blank' ? ' · Boşluk doldurma' : ''}
+                </span>
                 <span className={`chip ${good ? 'chip-success' : value > 0 ? 'chip-warning' : 'chip-danger'}`}>
-                  {q.type === 'mcq' ? (good ? 'Doğru' : 'Yanlış') : `${Math.round(value * 100)}/100`}
+                  {q.type !== 'open' ? (good ? 'Doğru' : 'Yanlış') : `${Math.round(value * 100)}/100`}
                 </span>
               </div>
               <p style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}>{q.prompt}</p>
-              {q.type === 'mcq' ? (
+              {q.type !== 'open' ? (
                 <>
                   {!good && (
                     <p style={{ color: 'var(--danger)', display: 'flex', gap: 8 }}>

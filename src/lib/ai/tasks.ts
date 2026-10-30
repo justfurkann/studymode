@@ -48,7 +48,7 @@ Produce:
 export const ExamSchema = z.object({
   questions: z.array(
     z.object({
-      type: z.enum(['mcq', 'open']),
+      type: z.enum(['mcq', 'open', 'blank']),
       prompt: z.string(),
       options: z.array(z.string()).default([]),
       answerIndex: z.number().int().default(-1),
@@ -57,6 +57,8 @@ export const ExamSchema = z.object({
       source: z.string().default(''),
     }),
   ),
+  /** Fill-in-the-blank only: words that belong in the word bank but fit no blank. */
+  distractors: z.array(z.string()).default([]),
 })
 
 export type ExamFormat = 'test' | 'classic' | 'mixed'
@@ -74,6 +76,9 @@ export interface ExamInput {
   openCount?: number
   /** What the student knows about the real exam (what the teacher said). */
   examInfo?: string
+  /** Fill-in-the-blank sentences, and extra bank words that fit none of them. */
+  blankCount?: number
+  distractorCount?: number
 }
 
 const EXAM_PROMPT = `You write a realistic practice exam for a university course from the student's lecture notes.
@@ -85,10 +90,13 @@ Each question has:
 - prompt: the question.
 - For "mcq": exactly 4 options, answerIndex 0-based, explanation of why the answer is right; modelAnswer is "".
 - For "open": options is [], answerIndex is -1; modelAnswer is a complete answer that would get full marks, written so it can be used as a grading key; explanation lists the points a grader should look for.
+- For "blank" (fill in the blank): prompt is one sentence about the notes' content with exactly one key term replaced by "_____" (five underscores); modelAnswer is the missing word or short phrase (1-3 words), written exactly as it fits the sentence; options is [], answerIndex is -1; explanation says briefly why it fits. Every blank has a different answer, and the sentence must make the answer clear to someone who studied the notes.
 - source: a short verbatim quote (max ~120 characters) from the notes the question is based on.
 
+When blanks are asked for, also return "distractors": exactly the number asked of extra words or short phrases for the shared word bank. They are terms from the same notes and of the same kind as the answers, so they look plausible, but each one fits none of the blank sentences. Otherwise return "distractors": [].
+
 Difficulty: "easy" checks recall of key facts; "medium" mixes recall with understanding; "hard" asks for application, comparison, and multi-step reasoning.
-If the exam tag gives "mcq" and "open" counts, write exactly that many of each kind.
+If the exam tag gives "mcq", "open" and "blank" counts, write exactly that many of each kind.
 If past exam questions are provided, imitate their style, length, and the kind of thing they ask about, but write new questions; never copy them.
 If the student describes the real exam (what the teacher said: topics that weigh more, topics left out, question style), follow it when choosing topics and how to ask, but still ask only about material in the notes.`
 
@@ -258,7 +266,7 @@ export const TASKS = {
       return [
         `<course>${input.courseName}</course>`,
         input.mcqCount != null && input.openCount != null
-          ? `<exam mcq="${input.mcqCount}" open="${input.openCount}" questions="${input.mcqCount + input.openCount}" difficulty="${input.difficulty}" />`
+          ? `<exam mcq="${input.mcqCount}" open="${input.openCount}"${input.blankCount ? ` blank="${input.blankCount}" distractors="${input.distractorCount ?? 0}"` : ''} questions="${input.mcqCount + input.openCount + (input.blankCount ?? 0)}" difficulty="${input.difficulty}" />`
           : `<exam format="${input.format === 'test' ? 'only mcq' : input.format === 'classic' ? 'only open' : 'about half mcq, half open'}" questions="${input.count}" difficulty="${input.difficulty}" />`,
         input.examInfo?.trim() ? `<about_the_real_exam>\n${input.examInfo.trim().slice(0, 2000)}\n</about_the_real_exam>` : '',
         input.pastQuestions.trim() ? `<past_exam_questions>\n${input.pastQuestions.trim()}\n</past_exam_questions>` : '',

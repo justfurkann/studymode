@@ -1071,3 +1071,69 @@ test('on a phone the mock exam tab is in the bottom bar and settings move to the
   await page.getByRole('link', { name: 'Ayarlar' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Ayarlar' })).toBeVisible()
 })
+
+test('fill-in-the-blank: one word bank with extra words, scored per blank', async ({ page }) => {
+  const errors = watchErrors(page)
+  const users: string[] = []
+  await page.route('https://api.anthropic.com/**', async (route) => {
+    const request = route.request()
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' }
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
+    if (request.url().includes('/v1/models/')) return route.fulfill({ status: 200, headers: cors, json: { id: 'claude-opus-5-5', type: 'model', display_name: 'x', created_at: '2026-01-01T00:00:00Z' } })
+    const body = request.postDataJSON() as { messages: Array<{ content: string }> }
+    users.push(body.messages[0].content)
+    const blank = (prompt: string, answer: string) => ({ type: 'blank', prompt, options: [], answerIndex: -1, explanation: '', modelAnswer: answer, source: '' })
+    const out = {
+      questions: [
+        blank('Protein sentezi _____ üzerinde gerçekleşir.', 'Ribozom'),
+        blank('Hücrenin enerji santrali _____ olarak bilinir.', 'Mitokondri'),
+        blank('Proteinleri paketleyen organel _____ cisimciğidir.', 'Golgi'),
+        blank('Hücre içi sindirimi _____ yapar.', 'Lizozom'),
+      ],
+      distractors: ['Sentrozom', 'Koful'],
+    }
+    return route.fulfill({
+      status: 200,
+      headers: cors,
+      json: { id: 'msg', type: 'message', role: 'assistant', model: 'claude-opus-5-5', content: [{ type: 'text', text: JSON.stringify(out) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } },
+    })
+  })
+
+  await page.goto('/ayarlar')
+  await page.getByRole('group', { name: 'Yapay zekâ servisi' }).getByRole('button', { name: 'Claude' }).click()
+  await page.getByPlaceholder('sk-ant-…').fill('sk-ant-test-key')
+  await page.getByRole('button', { name: 'Doğrula ve kaydet' }).click()
+  await expect(page.getByText('Anahtar çalışıyor ve kaydedildi.')).toBeVisible()
+
+  await createCourse(page, 'Biyoloji 110')
+  await pasteNote(page, 'Organeller')
+  await page.getByRole('button', { name: /Basit mod/ }).click()
+  await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
+  await page.getByRole('link', { name: 'Biyoloji 110' }).click()
+  await page.getByRole('main').getByRole('link', { name: 'Sınav provası' }).click()
+
+  await page.getByLabel('Test sorusu').selectOption('0')
+  await page.getByLabel('Boşluk doldurma').selectOption('4')
+  await page.getByLabel('Boşta kalacak kelime').selectOption('2')
+  await page.getByLabel('Süre').selectOption('0')
+  await page.getByRole('button', { name: 'Sınavı başlat' }).click()
+
+  const bank = page.getByRole('region', { name: 'Kelime havuzu' })
+  await expect(bank.getByRole('listitem')).toHaveCount(6)
+  expect(users[0]).toContain('blank="4" distractors="2"')
+
+  await page.getByLabel('Soru 1 boşluğu').selectOption({ label: 'Ribozom' })
+  await expect(bank.getByRole('listitem').filter({ hasText: 'Ribozom' })).toHaveClass(/used/)
+  await page.getByLabel('Soru 2 boşluğu').selectOption({ label: 'Mitokondri' })
+  await page.getByLabel('Soru 3 boşluğu').selectOption({ label: 'Golgi' })
+  // A distractor in the last blank: wrong.
+  await page.getByLabel('Soru 4 boşluğu').selectOption({ label: 'Koful' })
+  await expect(page.getByText('4/4 cevaplandı')).toBeVisible()
+  await page.getByRole('button', { name: 'Sınavı bitir' }).click()
+
+  await expect(page.getByText('75 puan')).toBeVisible()
+  await expect(page.getByText('Soru 4 · Boşluk doldurma')).toBeVisible()
+  await page.getByRole('button', { name: 'Eksiklerimi karta çevir' }).click()
+  await expect(page.getByRole('button', { name: 'Kartlara eklendi' })).toBeDisabled()
+  expect(errors).toEqual([])
+})
