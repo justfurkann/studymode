@@ -4,9 +4,10 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { ExamReview } from '../components/ExamReview'
 import { Alert, Empty, Spinner, useToast, useConfirm } from '../components/ui'
-import type { ExamDifficulty, ExamFormat } from '../lib/ai/tasks'
+import type { ExamDifficulty } from '../lib/ai/tasks'
 import { examCountdown, examName, examsForCourse } from '../lib/courseExams'
-import { examFromNotes, normalizeExam, noteForSource, scoreExam, type ExamQuestion, type ExamResult } from '../lib/exam'
+import { examFromNotes, formatOfQuestions, normalizeExam, noteForSource, scoreExam, type ExamQuestion, type ExamResult } from '../lib/exam'
+import { EXAM_INFO_MAX, loadExamPlan, MCQ_COUNTS, OPEN_COUNTS, planFormat, saveExamPlan, type ExamPlan } from '../lib/examPlan'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { clearActiveExam, loadActiveExam, saveActiveExam, secondsRemaining, type ActiveExamDraft, type ExamAnswer } from '../lib/examSession'
 import { daysUntil } from '../lib/srs'
@@ -17,12 +18,7 @@ type Answer = ExamAnswer
 
 const LETTERS = 'ABCDEF'
 const COUNTS = [5, 10, 15, 20, 30]
-const DURATIONS = [0, 15, 30, 45, 60, 90]
-const FORMATS: Array<{ id: ExamFormat; label: string }> = [
-  { id: 'test', label: 'Test' },
-  { id: 'classic', label: 'Klasik' },
-  { id: 'mixed', label: 'Karışık' },
-]
+const DURATIONS = [0, 15, 30, 45, 60, 75, 90, 120]
 const DIFFICULTIES: Array<{ id: ExamDifficulty; label: string }> = [
   { id: 'easy', label: 'Kolay' },
   { id: 'medium', label: 'Orta' },
@@ -41,6 +37,14 @@ function formatTime(seconds: number) {
 const session = (() => {
   try {
     return typeof window === 'undefined' ? undefined : window.sessionStorage
+  } catch {
+    return undefined
+  }
+})()
+
+const local = (() => {
+  try {
+    return typeof window === 'undefined' ? undefined : window.localStorage
   } catch {
     return undefined
   }
@@ -76,11 +80,16 @@ export function Exam() {
     new Set(initialDraft?.noteIds?.length ? initialDraft.noteIds : notesFor(targetExam)),
   )
   const [useAi, setUseAi] = useState(() => initialDraft?.useAi ?? ai.ok)
-  const [format, setFormat] = useState<ExamFormat>(() => initialDraft?.format ?? 'test')
-  const [count, setCount] = useState(10)
-  const [minutes, setMinutes] = useState(() => initialDraft?.minutes ?? 30)
-  const [difficulty, setDifficulty] = useState<ExamDifficulty>(() => initialDraft?.difficulty ?? 'medium')
-  const [pastQuestions, setPastQuestions] = useState('')
+  // How the real exam looks, remembered per course and exam.
+  const [plan, setPlan] = useState<ExamPlan>(() => {
+    const saved = loadExamPlan(local, id ?? '', targetExam)
+    return initialDraft ? { ...saved, minutes: initialDraft.minutes, difficulty: initialDraft.difficulty } : saved
+  })
+  const updatePlan = (patch: Partial<ExamPlan>) => setPlan((p) => ({ ...p, ...patch }))
+  const { minutes, difficulty } = plan
+  // Without AI only prepared multiple-choice questions exist.
+  const count = useAi ? plan.mcqCount + plan.openCount : plan.mcqCount || COUNTS[1]
+  const format = useAi ? planFormat(plan) : 'test'
   const [error, setError] = useState('')
 
   const [questions, setQuestions] = useState<ExamQuestion[]>(() => initialDraft?.questions ?? [])
@@ -98,7 +107,6 @@ export function Exam() {
 
   const chosen = notes.filter((n) => selected.has(n.id))
   const chosenChars = chosen.reduce((sum, n) => sum + n.content.length, 0)
-  const effectiveFormat: ExamFormat = useAi ? format : 'test'
 
   // Persist running exam state in sessionStorage so accidental page reload does not lose answers.
   useEffect(() => {
@@ -112,14 +120,14 @@ export function Exam() {
         minutes,
         startedAt: startedAt.current,
         examSource: examSource.current,
-        format,
+        format: formatOfQuestions(questions),
         difficulty,
         useAi,
         noteIds: [...selected],
       }
       saveActiveExam(session, id, draft)
     }
-  }, [id, phase, questions, answers, endsAt, minutes, format, difficulty, useAi, selected])
+  }, [id, phase, questions, answers, endsAt, minutes, difficulty, useAi, selected])
 
   // Warn before leaving a running exam.
   useEffect(() => {
@@ -170,6 +178,8 @@ export function Exam() {
   async function start() {
     setError('')
     if (!chosen.length) return setError('En az bir not seç.')
+    if (!count) return setError('En az bir soru seç.')
+    saveExamPlan(local, course!.id, targetExam, plan)
     let list: ExamQuestion[]
     if (useAi) {
       if (chosenChars > MAX_NOTE_CHARS) return setError('Seçtiğin notlar tek bir sınav için çok uzun. Daha az not seç.')
@@ -177,10 +187,20 @@ export function Exam() {
       try {
         const { generateExam } = await import('../lib/ai')
         const raw = await generateExam(
-          { courseName: course!.name, notes: chosen.map((n) => ({ title: n.title, text: n.content })), format, count, difficulty, pastQuestions },
+          {
+            courseName: course!.name,
+            notes: chosen.map((n) => ({ title: n.title, text: n.content })),
+            format,
+            count,
+            difficulty,
+            pastQuestions: plan.pastQuestions,
+            mcqCount: plan.mcqCount,
+            openCount: plan.openCount,
+            examInfo: plan.info,
+          },
           settings,
         )
-        list = normalizeExam(raw.questions, format, count).map((q) => {
+        list = normalizeExam(raw.questions, format, count, { mcq: plan.mcqCount, open: plan.openCount }).map((q) => {
           const note = chosen.length === 1 ? chosen[0] : noteForSource(chosen, q.source)
           return { ...q, noteId: note?.id ?? null, noteTitle: note?.title ?? null }
         })
@@ -240,7 +260,7 @@ export function Exam() {
     // Keep the exam so it can be reviewed later and progress can be tracked per course.
     const record = store.addExam({
       courseId: course!.id,
-      format: effectiveFormat,
+      format: formatOfQuestions(questions),
       difficulty: examSource.current === 'ai' ? difficulty : null,
       source: examSource.current,
       noteIds: chosen.map((n) => n.id),
@@ -294,7 +314,7 @@ export function Exam() {
         <div className="page-header">
           <div>
             <h1>Sınav provası</h1>
-            <p className="muted">Sınavın nasıl olacağını söyle, ona benzer bir deneme hazırlayalım.</p>
+            <p className="muted">{course.name}: sınavın nasıl olacağını söyle, ona benzer bir deneme hazırlayalım.</p>
           </div>
         </div>
 
@@ -317,6 +337,7 @@ export function Exam() {
                   disabled={busy}
                   onChange={(e) => {
                     setTargetExam(e.target.value)
+                    setPlan(loadExamPlan(local, course.id, e.target.value))
                     if (e.target.value) setSelected(new Set(notesFor(e.target.value)))
                   }}
                 >
@@ -371,67 +392,94 @@ export function Exam() {
               <AiSignupPrompt reason="Yapay zekâ hocanın tarzına benzer test ve klasik sorular yazsın, cevaplarını puanlasın." />
             </div>
 
-            {useAi && (
-              <>
-                <div className="field">
-                  <span>Sınav türü</span>
-                  <div className="segmented" role="group" aria-label="Sınav türü">
-                    {FORMATS.map((f) => (
-                      <button type="button" key={f.id} aria-pressed={format === f.id} onClick={() => setFormat(f.id)} disabled={busy}>
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
+            <fieldset className="exam-plan" disabled={busy}>
+              <legend>Sınav nasıl olacak?</legend>
+              <p className="subtle">Gerçek sınavı ne kadar iyi tarif edersen prova ona o kadar benzer. Seçimlerin bu ders için hatırlanır.</p>
+              {useAi ? (
+                <div className="form-row">
+                  <label className="field">
+                    <span>Test sorusu</span>
+                    <select className="select" value={plan.mcqCount} onChange={(e) => updatePlan({ mcqCount: Number(e.target.value) })}>
+                      {MCQ_COUNTS.map((c) => (
+                        <option key={c} value={c}>
+                          {c ? `${c} test sorusu` : 'Test yok'}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Klasik soru</span>
+                    <select className="select" value={plan.openCount} onChange={(e) => updatePlan({ openCount: Number(e.target.value) })}>
+                      {OPEN_COUNTS.map((c) => (
+                        <option key={c} value={c}>
+                          {c ? `${c} klasik soru` : 'Klasik yok'}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
-                <div className="field">
-                  <span>Zorluk</span>
-                  <div className="segmented" role="group" aria-label="Zorluk">
-                    {DIFFICULTIES.map((d) => (
-                      <button type="button" key={d.id} aria-pressed={difficulty === d.id} onClick={() => setDifficulty(d.id)} disabled={busy}>
-                        {d.label}
-                      </button>
+              ) : (
+                <label className="field">
+                  <span>Soru sayısı</span>
+                  <select className="select" value={plan.mcqCount || COUNTS[1]} onChange={(e) => updatePlan({ mcqCount: Number(e.target.value) })}>
+                    {COUNTS.map((c) => (
+                      <option key={c} value={c}>
+                        {c} soru
+                      </option>
                     ))}
+                  </select>
+                </label>
+              )}
+              <div className="form-row">
+                <label className="field">
+                  <span>Süre</span>
+                  <select className="select" value={minutes} onChange={(e) => updatePlan({ minutes: Number(e.target.value) })}>
+                    {[...new Set([...DURATIONS, minutes])].sort((x, y) => x - y).map((d) => (
+                      <option key={d} value={d}>
+                        {d ? `${d} dakika` : 'Süre yok'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {useAi && (
+                  <div className="field">
+                    <span>Zorluk</span>
+                    <div className="segmented" role="group" aria-label="Zorluk">
+                      {DIFFICULTIES.map((d) => (
+                        <button type="button" key={d.id} aria-pressed={difficulty === d.id} onClick={() => updatePlan({ difficulty: d.id })}>
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-
-            <div className="form-row">
-              <label className="field">
-                <span>Soru sayısı</span>
-                <select className="select" value={count} onChange={(e) => setCount(Number(e.target.value))} disabled={busy}>
-                  {COUNTS.map((c) => (
-                    <option key={c} value={c}>
-                      {c} soru
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Süre</span>
-                <select className="select" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} disabled={busy}>
-                  {DURATIONS.map((d) => (
-                    <option key={d} value={d}>
-                      {d ? `${d} dakika` : 'Süre yok'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {useAi && (
-              <label className="field">
-                <span>Hocanın geçmiş sınav soruları (isteğe bağlı)</span>
-                <textarea
-                  className="textarea"
-                  style={{ minHeight: 120 }}
-                  value={pastQuestions}
-                  onChange={(e) => setPastQuestions(e.target.value)}
-                  placeholder="Eski sınavlardan birkaç soru yapıştır; yapay zekâ hocanın soru tarzını taklit eder."
-                  disabled={busy}
-                />
-              </label>
-            )}
+                )}
+              </div>
+              {useAi && (
+                <>
+                  <label className="field">
+                    <span>Hoca sınav hakkında ne dedi? (isteğe bağlı)</span>
+                    <textarea
+                      className="textarea"
+                      style={{ minHeight: 96 }}
+                      value={plan.info}
+                      maxLength={EXAM_INFO_MAX}
+                      onChange={(e) => updatePlan({ info: e.target.value })}
+                      placeholder="Örn. Tanım soruları ağırlıklı olacak, 5. hafta dahil değil, klasiklerde şekil çizdirebilir."
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Hocanın geçmiş sınav soruları (isteğe bağlı)</span>
+                    <textarea
+                      className="textarea"
+                      style={{ minHeight: 120 }}
+                      value={plan.pastQuestions}
+                      onChange={(e) => updatePlan({ pastQuestions: e.target.value })}
+                      placeholder="Eski sınavlardan birkaç soru yapıştır; yapay zekâ hocanın soru tarzını taklit eder."
+                    />
+                  </label>
+                </>
+              )}
+            </fieldset>
 
             {error && <Alert tone="danger">{error}</Alert>}
 

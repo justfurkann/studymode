@@ -23,8 +23,9 @@ interface RawExamQuestion {
 
 const clean = (value: string) => value.replace(/\s+/g, ' ').trim()
 
-/** Keeps only well-formed questions of the requested format, up to `count`. */
-export function normalizeExam(raw: RawExamQuestion[], format: ExamFormat, count: number): ExamQuestion[] {
+/** Keeps well-formed questions of the requested format, up to `count`; with a split, at most that many of each type (in the model's order). */
+export function normalizeExam(raw: RawExamQuestion[], format: ExamFormat, count: number, split?: { mcq: number; open: number }): ExamQuestion[] {
+  const left = split ? { mcq: split.mcq, open: split.open } : null
   return raw
     .map((q) => ({ ...q, prompt: q.prompt.trim(), options: q.options.map(clean) }))
     .filter((q) => {
@@ -33,6 +34,12 @@ export function normalizeExam(raw: RawExamQuestion[], format: ExamFormat, count:
         return format !== 'classic' && q.options.length >= 2 && q.options.length <= 6 && q.options.every(Boolean) && new Set(q.options).size === q.options.length && q.answerIndex >= 0 && q.answerIndex < q.options.length
       }
       return format !== 'test' && !!q.modelAnswer.trim()
+    })
+    .filter((q) => {
+      if (!left) return true
+      if (left[q.type] <= 0) return false
+      left[q.type] -= 1
+      return true
     })
     .slice(0, count)
     .map((q) => ({
@@ -92,4 +99,11 @@ export function scoreExam(questions: ExamQuestion[], answers: Array<number | str
     }
   })
   return { scores, feedback, total: scores.reduce((a, b) => a + b, 0) }
+}
+
+/** The format an exam actually has, from its questions. */
+export function formatOfQuestions(questions: Pick<ExamQuestion, 'type'>[]): ExamFormat {
+  const open = questions.filter((q) => q.type === 'open').length
+  if (!open) return 'test'
+  return open === questions.length ? 'classic' : 'mixed'
 }

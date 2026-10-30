@@ -6,6 +6,7 @@ import { AddNote } from './pages/AddNote'
 import { CourseDetail } from './pages/CourseDetail'
 import { Exam } from './pages/Exam'
 import { ExamHistory } from './pages/ExamHistory'
+import { ExamHub } from './pages/ExamHub'
 import { Landing } from './pages/Landing'
 import { Courses } from './pages/Courses'
 import { Login } from './pages/Login'
@@ -57,6 +58,7 @@ function Routed() {
         <Route path="not/:id" element={<NoteDetail />} />
         <Route path="not-ekle" element={<AddNote />} />
         <Route path="tekrar" element={<Review />} />
+        <Route path="sinav" element={<ExamHub />} />
         <Route path="ayarlar" element={<Settings />} />
         <Route path="giris" element={<Login />} />
         <Route path="sifre-yenile" element={<ResetPassword />} />

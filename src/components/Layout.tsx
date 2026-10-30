@@ -1,4 +1,4 @@
-import { BookOpen, Brain, House, Plus, Settings } from 'lucide-react'
+import { BookOpen, Brain, ClipboardList, House, Plus, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { authErrorMessage, displayName } from '../lib/auth'
@@ -45,6 +45,11 @@ export function Layout() {
     return () => window.clearTimeout(timer)
   }, [confirmed])
 
+  // A course's mock exam lives under /ders/…, but it belongs to the "Sınav provası" tab.
+  const inExam = /^\/ders\/[^/]+\/sinav/.test(pathname)
+  const navClass = (base: string, to: string) => ({ isActive }: { isActive: boolean }) =>
+    `${base} ${isActive || (to === '/sinav' && inExam) ? 'active' : ''}`.trim()
+
   // Logged-out first visitors get the marketing page instead of an empty app. A link error still needs the app shell to explain itself.
   if (pathname === '/' && !session && !data.courses.length && !linkError) return <Landing />
 
@@ -52,6 +57,7 @@ export function Layout() {
     { to: '/', label: 'Bugün', icon: House, end: true },
     { to: '/dersler', label: 'Dersler', icon: BookOpen },
     { to: '/tekrar', label: 'Tekrar', icon: Brain, badge: due },
+    { to: '/sinav', label: 'Sınav provası', icon: ClipboardList },
     { to: '/ayarlar', label: 'Ayarlar', icon: Settings },
   ]
 
@@ -65,7 +71,7 @@ export function Layout() {
           <Plus size={18} /> Not ekle
         </NavLink>
         {links.map(({ to, label, icon: Icon, end, badge }) => (
-          <NavLink key={to} to={to} end={end} className="nav-link">
+          <NavLink key={to} to={to} end={end} className={navClass('nav-link', to)}>
             <Icon size={18} />
             {label}
             {!!badge && <span className="nav-badge">{badge}</span>}
@@ -84,6 +90,12 @@ export function Layout() {
           <Link to="/" className="brand-link">
             <Brand size={26} />
           </Link>
+          <div className="mobile-top-actions">
+          {!session && (
+            <NavLink to="/ayarlar" className="btn btn-ghost btn-icon" aria-label="Ayarlar">
+              <Settings size={20} />
+            </NavLink>
+          )}
           {session ? (
             <Link to="/ayarlar" className="mobile-avatar" aria-label={`Hesap: ${name}`} title={session.user.email}>
               {initials(name)}
@@ -93,6 +105,7 @@ export function Layout() {
               Giriş yap
             </Link>
           )}
+          </div>
         </header>
         {confirmed && mode === 'cloud' && (
           <div className="page" style={{ marginBottom: 20 }}>
@@ -155,9 +168,9 @@ export function Layout() {
           <span>Tekrar</span>
           {!!due && <span className="dot">{due > 99 ? '99+' : due}</span>}
         </NavLink>
-        <NavLink to="/ayarlar">
-          <Settings size={20} />
-          <span>Ayarlar</span>
+        <NavLink to="/sinav" className={navClass('', '/sinav')}>
+          <ClipboardList size={20} />
+          <span>Sınav</span>
         </NavLink>
       </nav>
     </div>

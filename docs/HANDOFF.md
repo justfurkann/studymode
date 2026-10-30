@@ -52,7 +52,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (Aşama 4 sonrası): 113 birim testi, 36 tarayıcı testi.
+Son yeşil durum (Aşama 5 sonrası): 118 birim testi, 38 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -146,6 +146,11 @@ create policy "own rows" on public.course_exams for all to authenticated
 - Logo `src/components/Brand.tsx`; favicon ve `icon-192/512.png` yenilendi.
 - Telefonda üstte "Misafir · Bu cihazda kayıtlı" şeridi yerine logo + "Giriş yap" / baş harf çubuğu.
 - Emojiler kaldırıldı (🔥 → alev simgesi + son 7 gün şeridi, 🎉 → fosforlu onay rozeti).
+
+**Aşama 5 — "Sınav provası" sekmesi: ✅ TAMAM (Aşama 5 PR'ı)** — arkadaş geri bildirimi: "Ders için sınavın nasıl olacağını gireyim, örnek sınav oluştursun."
+- Menüde yeni sekme `/sinav` (`src/pages/ExamHub.tsx`): dersler, en yakın sınavı olan önce; geri sayım ve son prova puanı. Tıklayınca mevcut prova ekranı (`/ders/:id/sinav`) açılır. Telefonda alt menüde "Ayarlar"ın yerini "Sınav" aldı; Ayarlar üst çubukta (misafirde dişli simgesi, girişlide baş harfler).
+- Prova ekranında "Sınav nasıl olacak?" bölümü: test ve klasik soru sayısı ayrı (format bunlardan çıkar), süre (120 dk'ya kadar), zorluk, "Hoca sınav hakkında ne dedi?" ve geçmiş sorular. Yapay zekâya `mcq`/`open` sayıları ve `<about_the_real_exam>` gider; `normalizeExam` her türden en fazla istenen kadarını tutar.
+- Seçimler cihazda ders ve sınav başına hatırlanır (`src/lib/examPlan.ts`, `localStorage` anahtarı `studymode.examPlan.v1`). Veritabanı değişikliği yok, SQL gerekmez.
 
 ## Tasarım dili ("Fosforlu")
 

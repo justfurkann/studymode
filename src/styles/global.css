@@ -2712,3 +2712,72 @@ a.list-item:hover {
   border: 1.5px solid var(--card-line);
   box-shadow: 0 4px 0 var(--card-drop);
 }
+
+/* ============ Mock exam: hub and plan ============ */
+
+.mobile-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.exam-hub {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exam-hub-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.exam-hub-row:hover {
+  border-color: var(--card-line);
+  box-shadow: 0 3px 0 var(--card-drop);
+}
+
+.exam-hub-row .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.exam-hub-row .title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  letter-spacing: -0.015em;
+}
+
+.exam-plan {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1.5px solid var(--card-line);
+  box-shadow: 0 4px 0 var(--card-drop);
+  min-width: 0;
+}
+
+.exam-plan legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.exam-plan legend + * {
+  clear: both;
+}

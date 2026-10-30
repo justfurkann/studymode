@@ -69,6 +69,11 @@ export interface ExamInput {
   count: number
   difficulty: ExamDifficulty
   pastQuestions: string
+  /** Exact split asked for; when set, count is their sum. */
+  mcqCount?: number
+  openCount?: number
+  /** What the student knows about the real exam (what the teacher said). */
+  examInfo?: string
 }
 
 const EXAM_PROMPT = `You write a realistic practice exam for a university course from the student's lecture notes.
@@ -83,7 +88,9 @@ Each question has:
 - source: a short verbatim quote (max ~120 characters) from the notes the question is based on.
 
 Difficulty: "easy" checks recall of key facts; "medium" mixes recall with understanding; "hard" asks for application, comparison, and multi-step reasoning.
-If past exam questions are provided, imitate their style, length, and the kind of thing they ask about, but write new questions; never copy them.`
+If the exam tag gives "mcq" and "open" counts, write exactly that many of each kind.
+If past exam questions are provided, imitate their style, length, and the kind of thing they ask about, but write new questions; never copy them.
+If the student describes the real exam (what the teacher said: topics that weigh more, topics left out, question style), follow it when choosing topics and how to ask, but still ask only about material in the notes.`
 
 // ---------- Grading open answers ----------
 
@@ -250,7 +257,10 @@ export const TASKS = {
       const perNoteBudget = Math.max(4_000, Math.floor(MAX_PROMPT_NOTE_CHARS / Math.max(1, input.notes.length)))
       return [
         `<course>${input.courseName}</course>`,
-        `<exam format="${input.format === 'test' ? 'only mcq' : input.format === 'classic' ? 'only open' : 'about half mcq, half open'}" questions="${input.count}" difficulty="${input.difficulty}" />`,
+        input.mcqCount != null && input.openCount != null
+          ? `<exam mcq="${input.mcqCount}" open="${input.openCount}" questions="${input.mcqCount + input.openCount}" difficulty="${input.difficulty}" />`
+          : `<exam format="${input.format === 'test' ? 'only mcq' : input.format === 'classic' ? 'only open' : 'about half mcq, half open'}" questions="${input.count}" difficulty="${input.difficulty}" />`,
+        input.examInfo?.trim() ? `<about_the_real_exam>\n${input.examInfo.trim().slice(0, 2000)}\n</about_the_real_exam>` : '',
         input.pastQuestions.trim() ? `<past_exam_questions>\n${input.pastQuestions.trim()}\n</past_exam_questions>` : '',
         ...input.notes.map((n) => `<note title="${n.title.replace(/"/g, "'")}">\n${trimNoteText(n.text, perNoteBudget)}\n</note>`),
       ]
