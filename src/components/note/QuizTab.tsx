@@ -131,7 +131,7 @@ export function QuizTab({
           </div>
           <p className="muted">
             {ratio === 1
-              ? 'Hepsi doğru, harika! 🎉'
+              ? 'Hepsi doğru, harika!'
               : ratio >= 0.7
                 ? 'İyi gidiyorsun. Eksiklerini karta çevir, kartlarla kapat.'
                 : 'Eksiklerin belli oldu. Yanlışlarını karta çevir, kartlarla çalış.'}

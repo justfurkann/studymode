@@ -1,4 +1,4 @@
-import { ArrowRight, Brain, CalendarClock, Compass, FileText, Sparkles, Target } from 'lucide-react'
+import { ArrowRight, Brain, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Welcome } from '../components/Welcome'
 import { firstName } from '../lib/auth'
@@ -8,7 +8,7 @@ import { courseStats, dueCards, relativeDate } from '../lib/format'
 import { computeNoteProgress } from '../lib/learningPath'
 import { useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
-import { computeStreakSummary } from '../lib/streak'
+import { computeStreakSummary, isDayStudied, localDayKey, mergeStudyDays, shiftLocalDay } from '../lib/streak'
 import { buildSmartStudyPlan } from '../lib/studyPlan'
 import type { LearningStepId, Note } from '../lib/types'
 
@@ -29,10 +29,19 @@ export function Today() {
 
   const loadDemo = useLoadDemo()
 
-  if (!data.courses.length) return <Welcome onDemo={loadDemo} />
+  if (!data.courses.length) return <Welcome onDemo={loadDemo} name={firstName(store.session?.user) || undefined} />
 
   const streakSummary = computeStreakSummary(data.studyDays, settings.dailyGoal, now)
   const smartPlan = buildSmartStudyPlan(data, now, 2)
+
+  // The last seven days, oldest first, for the streak strip.
+  const studied = new Map(mergeStudyDays(data.studyDays).map((d) => [d.day, isDayStudied(d)]))
+  const todayKey = localDayKey(now)
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const key = shiftLocalDay(todayKey, i - 6)
+    const label = new Date(`${key}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'short' })
+    return { key, label, done: !!studied.get(key), today: i === 6 }
+  })
 
   const exams = upcomingExams(data, now).slice(0, 5)
 
@@ -78,14 +87,14 @@ export function Today() {
             <div className="count">{due.length}</div>
             <p>kart bugün tekrar bekliyor · yaklaşık {Math.max(1, Math.round(due.length * 0.25))} dk</p>
           </div>
-          <Link to="/tekrar" className="btn btn-lg">
+          <Link to="/tekrar" className="btn btn-primary btn-lg">
             <Brain size={18} /> Tekrara başla
           </Link>
         </section>
       ) : (
         <section className="hero done" aria-label="Tekrar">
           <div>
-            <h2>{data.cards.length ? 'Bugünlük tekrarların bitti 🎉' : 'Henüz tekrar kartın yok'}</h2>
+            <h2>{data.cards.length ? 'Bugünlük tekrarların bitti' : 'Henüz tekrar kartın yok'}</h2>
             <p>
               {data.cards.length
                 ? nextDue
@@ -129,7 +138,16 @@ export function Today() {
 
         <div className={`streak-badge ${streakSummary.streak > 0 ? 'active' : ''}`}>
           <div className="streak-badge-title">
-            {streakSummary.streak > 0 ? `🔥 ${streakSummary.streak} gündür çalışıyorsun` : '🔥 Çalışma serisi: 0 gün'}
+            <Flame size={18} aria-hidden="true" />
+            {streakSummary.streak > 0 ? `${streakSummary.streak} gündür çalışıyorsun` : 'Çalışma serisi: 0 gün'}
+          </div>
+          <div className="streak-week" aria-label="Son 7 gün">
+            {week.map((d) => (
+              <span key={d.key} className={`${d.done ? 'done' : ''} ${d.today ? 'today' : ''}`} title={d.done ? `${d.label}: çalıştın` : `${d.label}: çalışma yok`}>
+                <i />
+                {d.label}
+              </span>
+            ))}
           </div>
           <div className="subtle">
             {streakSummary.studiedToday

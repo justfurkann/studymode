@@ -182,7 +182,9 @@ export function CardsTab({ note, onNext, onShowSource }: { note: Note; onNext?: 
         </>
       ) : (
         <div className="panel study-done" role="status">
-          <div className="study-done-mark">🎉</div>
+          <div className="study-done-mark" aria-hidden="true">
+            <Check size={32} strokeWidth={3} />
+          </div>
           <strong>Tur bitti</strong>
           <p className="muted">
             {round} kartın {known} tanesini ilk denemede bildin. Kartlar aralıklı tekrarla doğru zamanda yine gelecek.

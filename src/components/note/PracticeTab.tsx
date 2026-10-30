@@ -138,7 +138,7 @@ export function PracticeTab({ note }: { note: Note }) {
     if (!note.summary) return
     let next = toggleCompletedStep(note.summary, 'anlat', true)
     store.updateNote(note.id, { summary: next })
-    if (showToast) toast('Tebrikler, bu notu bitirdin 🎉')
+    if (showToast) toast('Tebrikler, bu notu bitirdin')
   }
 
   if (!note.practice.length) {
@@ -171,7 +171,7 @@ export function PracticeTab({ note }: { note: Note }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <CheckCircle2 size={22} style={{ color: 'var(--success)', flexShrink: 0 }} />
               <div>
-                <strong>Bu notu bitirdin! 🎉</strong>
+                <strong>Bu notu bitirdin!</strong>
                 <p className="subtle">Unutmamak için kartlar aralıklı tekrarla yine karşına gelecek.</p>
               </div>
             </div>

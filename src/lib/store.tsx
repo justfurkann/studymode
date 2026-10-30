@@ -7,7 +7,7 @@ import { mergeStudyDays, recordStudyActivity } from './streak'
 import { supabase } from './supabase'
 import { emptyData, type Card, type Course, type CourseExam, type ExamRecord, type GeneratedSet, type Note, type PracticeItem, type QuizAttempt, type StudyData } from './types'
 
-export const COURSE_COLORS = ['#5b5bd6', '#0d9488', '#e5484d', '#f76b15', '#d6409f', '#3e9b4f', '#0090ff', '#8e4ec6']
+export const COURSE_COLORS = ['#0f9b8e', '#e5484d', '#f08c00', '#d6409f', '#2f9e44', '#3b6fe0', '#8e4ec6', '#1b2250']
 
 type Status = 'loading' | 'ready' | 'error'
 

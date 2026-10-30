@@ -48,7 +48,7 @@ async function pasteNote(page: Page, title: string) {
 test('demo note: summary, quiz, converting mistakes to cards', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /Notların biriksin/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /Önemlisini biz işaretleyelim/ })).toBeVisible()
   await page.getByRole('button', { name: 'Örnek notla dene' }).click()
 
   await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
@@ -646,7 +646,7 @@ test('step-by-step zero-to-mastery learning path guides the user through all 5 s
   await expect(page.getByRole('button', { name: /Bitir: Konuyu öğrendim/ })).toBeDisabled()
   await page.getByLabel('Soru 1 için cevabın').fill('Her gün kısa tekrar yapar, notu kapatıp hatırlamayı dener, yanlışlarımı incelerim.')
   await page.getByRole('button', { name: /Bitir: Konuyu öğrendim/ }).click()
-  await expect(page.getByText('Bu notu bitirdin! 🎉')).toBeVisible()
+  await expect(page.getByText('Bu notu bitirdin!')).toBeVisible()
   await expect(page.getByText('%100 tamamlandı')).toBeVisible()
   expect(errors).toEqual([])
 })
@@ -793,7 +793,7 @@ test('daily card goal and study streak update on Today page after reviewing card
   const streakPanel = page.getByRole('region', { name: 'Günlük hedef ve seri' })
   await expect(streakPanel).toBeVisible()
   await expect(streakPanel.getByText('0/5')).toBeVisible()
-  await expect(streakPanel.getByText('🔥 Çalışma serisi: 0 gün')).toBeVisible()
+  await expect(streakPanel.getByText('Çalışma serisi: 0 gün')).toBeVisible()
 
   // Review 2 cards
   await page.getByRole('link', { name: 'Tekrara başla' }).click()
@@ -803,9 +803,9 @@ test('daily card goal and study streak update on Today page after reviewing card
   }
   await page.getByRole('link', { name: 'Bitir' }).click()
 
-  // Verify progress (2/5) and active streak ("🔥 1 gündür çalışıyorsun")
+  // Verify progress (2/5) and active streak ("1 gündür çalışıyorsun")
   await expect(streakPanel.getByText('2/5')).toBeVisible()
-  await expect(streakPanel.getByText('🔥 1 gündür çalışıyorsun')).toBeVisible()
+  await expect(streakPanel.getByText('1 gündür çalışıyorsun')).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -868,7 +868,7 @@ test.describe('study progress is kept', () => {
     await expect(page.getByLabel('Soru 1 için cevabın')).toHaveValue(/kendi cümlelerimle anlatırım/)
     // A written answer alone keeps today's streak alive.
     await page.goto('/')
-    await expect(page.getByText('🔥 1 gündür çalışıyorsun')).toBeVisible()
+    await expect(page.getByText('1 gündür çalışıyorsun')).toBeVisible()
   })
 
   test('card self-assessment counts as a review for the daily goal', async ({ page }) => {
@@ -999,4 +999,30 @@ test.describe('midterms and finals', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
     await expect(page.locator('#kaynak-vurgu')).toBeVisible()
   })
+})
+
+test('logged-out visitors get the landing page, which leads to sign-up and fits a phone', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1, name: /Önemlisini biz işaretleyelim/ })).toBeVisible()
+  // The app's own menus are not part of the landing page.
+  await expect(page.getByRole('navigation', { name: 'Alt menü' })).toHaveCount(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false)
+  await page.getByText('Ücretsiz mi?').click()
+  await expect(page.getByText(/Hesap açınca yapay zekâ ücretsiz çalışır/)).toBeVisible()
+  await page.getByRole('link', { name: 'Ücretsiz başla' }).first().click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Hesap oluştur' })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('the landing page stays reachable once the app has data', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1, name: 'Bugün' })).toBeVisible()
+  await page.goto('/tanitim')
+  await expect(page.getByRole('heading', { level: 1, name: /Önemlisini biz işaretleyelim/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Örnek notla dene' })).toHaveCount(0)
 })

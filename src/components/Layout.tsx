@@ -1,11 +1,18 @@
-import { BookOpen, Brain, House, Plus, Settings, Sparkles } from 'lucide-react'
+import { BookOpen, Brain, House, Plus, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { authErrorMessage, displayName } from '../lib/auth'
 import { dueCards } from '../lib/format'
 import { useStore } from '../lib/store'
 import { authLinkError, openedFromConfirmationEmail, openedFromRecoveryEmail, supabase } from '../lib/supabase'
+import { Landing } from '../pages/Landing'
+import { Brand } from './Brand'
 import { Alert } from './ui'
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? '?').slice(0, 2)).toLocaleUpperCase('tr-TR')
+}
 
 // The reset link should open the new-password screen once, not on every later visit to the layout.
 let recoveryHandled = false
@@ -14,6 +21,7 @@ export function Layout() {
   const { data, mode, session, saveError, clearSaveError } = useStore()
   const due = dueCards(data.cards).length
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [confirmed, setConfirmed] = useState(openedFromConfirmationEmail)
   const [linkError, setLinkError] = useState(authLinkError)
   const name = displayName(session?.user)
@@ -37,6 +45,9 @@ export function Layout() {
     return () => window.clearTimeout(timer)
   }, [confirmed])
 
+  // Logged-out first visitors get the marketing page instead of an empty app. A link error still needs the app shell to explain itself.
+  if (pathname === '/' && !session && !data.courses.length && !linkError) return <Landing />
+
   const links = [
     { to: '/', label: 'Bugün', icon: House, end: true },
     { to: '/dersler', label: 'Dersler', icon: BookOpen },
@@ -47,12 +58,9 @@ export function Layout() {
   return (
     <div className="shell">
       <aside className="sidebar" aria-label="Ana menü">
-        <div className="brand">
-          <span className="brand-mark">
-            <Sparkles size={17} />
-          </span>
-          studymode
-        </div>
+        <Link to="/" className="brand-link">
+          <Brand />
+        </Link>
         <NavLink to="/not-ekle" className="btn btn-primary" style={{ marginBottom: 16 }}>
           <Plus size={18} /> Not ekle
         </NavLink>
@@ -72,7 +80,20 @@ export function Layout() {
       </aside>
 
       <main className="main">
-        <div className="mobile-account"><NavLink to={session ? '/ayarlar' : '/giris'}><span className={`status-dot ${mode === 'cloud' ? 'cloud' : ''}`} />{session ? name : 'Misafir · Bu cihazda kayıtlı'}</NavLink><span>{saveError ? 'Kayıt hatası' : mode === 'cloud' ? 'Bulut hesabı' : 'Giriş yap'}</span></div>
+        <header className="mobile-top">
+          <Link to="/" className="brand-link">
+            <Brand size={26} />
+          </Link>
+          {session ? (
+            <Link to="/ayarlar" className="mobile-avatar" aria-label={`Hesap: ${name}`} title={session.user.email}>
+              {initials(name)}
+            </Link>
+          ) : pathname === '/giris' ? null : (
+            <Link to="/giris" className="btn btn-sm">
+              Giriş yap
+            </Link>
+          )}
+        </header>
         {confirmed && mode === 'cloud' && (
           <div className="page" style={{ marginBottom: 20 }}>
             <Alert tone="info">E-postan doğrulandı ve giriş yaptın. Notların artık tüm cihazlarında senkronize olacak.</Alert>
