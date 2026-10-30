@@ -83,10 +83,10 @@ export function Login() {
 
   return (
     <div className="page" style={{ maxWidth: 440 }}>
-      <Link to="/ayarlar" className="back-link">
-        <ArrowLeft size={16} /> Ayarlar
+      <Link to="/" className="back-link">
+        <ArrowLeft size={16} /> Ana sayfa
       </Link>
-      <div className="panel form">
+      <div className="panel form auth-card">
         <h1>{TITLES[mode]}</h1>
         <p className="muted">
           {mode === 'forgot'

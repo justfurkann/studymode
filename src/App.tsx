@@ -6,6 +6,7 @@ import { AddNote } from './pages/AddNote'
 import { CourseDetail } from './pages/CourseDetail'
 import { Exam } from './pages/Exam'
 import { ExamHistory } from './pages/ExamHistory'
+import { Landing } from './pages/Landing'
 import { Courses } from './pages/Courses'
 import { Login } from './pages/Login'
 import { NoteDetail } from './pages/NoteDetail'
@@ -46,6 +47,7 @@ function Routed() {
 
   return (
     <Routes>
+      <Route path="tanitim" element={<Landing />} />
       <Route element={<Layout />}>
         <Route index element={<Today />} />
         <Route path="dersler" element={<Courses />} />
