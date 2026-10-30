@@ -1,13 +1,13 @@
 import { ArrowLeft, ClipboardList, Clock, RotateCcw, Sparkles, Wand2 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { ExamReview } from '../components/ExamReview'
 import { Alert, Empty, Spinner, useToast, useConfirm } from '../components/ui'
 import type { ExamDifficulty } from '../lib/ai/tasks'
 import { examCountdown, examName, examsForCourse } from '../lib/courseExams'
-import { examFromNotes, formatOfQuestions, normalizeExam, noteForSource, scoreExam, type ExamQuestion, type ExamResult } from '../lib/exam'
-import { EXAM_INFO_MAX, loadExamPlan, MCQ_COUNTS, OPEN_COUNTS, planFormat, saveExamPlan, type ExamPlan } from '../lib/examPlan'
+import { blankParts, examFromNotes, formatOfQuestions, normalizeExam, noteForSource, scoreExam, type ExamQuestion, type ExamResult } from '../lib/exam'
+import { BLANK_COUNTS, DISTRACTOR_COUNTS, EXAM_INFO_MAX, loadExamPlan, MCQ_COUNTS, OPEN_COUNTS, planFormat, saveExamPlan, type ExamPlan } from '../lib/examPlan'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { clearActiveExam, loadActiveExam, saveActiveExam, secondsRemaining, type ActiveExamDraft, type ExamAnswer } from '../lib/examSession'
 import { daysUntil } from '../lib/srs'
@@ -88,7 +88,7 @@ export function Exam() {
   const updatePlan = (patch: Partial<ExamPlan>) => setPlan((p) => ({ ...p, ...patch }))
   const { minutes, difficulty } = plan
   // Without AI only prepared multiple-choice questions exist.
-  const count = useAi ? plan.mcqCount + plan.openCount : plan.mcqCount || COUNTS[1]
+  const count = useAi ? plan.mcqCount + plan.openCount + plan.blankCount : plan.mcqCount || COUNTS[1]
   const format = useAi ? planFormat(plan) : 'test'
   const [error, setError] = useState('')
 
@@ -196,11 +196,19 @@ export function Exam() {
             pastQuestions: plan.pastQuestions,
             mcqCount: plan.mcqCount,
             openCount: plan.openCount,
+            blankCount: plan.blankCount,
+            distractorCount: plan.blankCount ? plan.distractorCount : 0,
             examInfo: plan.info,
           },
           settings,
         )
-        list = normalizeExam(raw.questions, format, count, { mcq: plan.mcqCount, open: plan.openCount }).map((q) => {
+        list = normalizeExam(
+          raw.questions,
+          format,
+          count,
+          { mcq: plan.mcqCount, open: plan.openCount, blank: plan.blankCount },
+          { distractors: raw.distractors, distractorCount: plan.distractorCount },
+        ).map((q) => {
           const note = chosen.length === 1 ? chosen[0] : noteForSource(chosen, q.source)
           return { ...q, noteId: note?.id ?? null, noteTitle: note?.title ?? null }
         })
@@ -291,7 +299,7 @@ export function Exam() {
         courseId: course!.id,
         noteId: null,
         front: q.prompt,
-        back: q.type === 'mcq' ? `${q.options[q.answerIndex]}${q.explanation ? `\n\n${q.explanation}` : ''}` : q.modelAnswer,
+        back: q.type === 'open' ? q.modelAnswer : `${q.options[q.answerIndex]}${q.explanation ? `\n\n${q.explanation}` : ''}`,
         source: q.source,
       })),
     )
@@ -417,6 +425,28 @@ export function Exam() {
                       ))}
                     </select>
                   </label>
+                  <label className="field">
+                    <span>Boşluk doldurma</span>
+                    <select className="select" value={plan.blankCount} onChange={(e) => updatePlan({ blankCount: Number(e.target.value) })}>
+                      {BLANK_COUNTS.map((c) => (
+                        <option key={c} value={c}>
+                          {c ? `${c} boşluk` : 'Boşluk doldurma yok'}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {plan.blankCount > 0 && (
+                    <label className="field">
+                      <span>Boşta kalacak kelime</span>
+                      <select className="select" value={plan.distractorCount} onChange={(e) => updatePlan({ distractorCount: Number(e.target.value) })}>
+                        {DISTRACTOR_COUNTS.map((c) => (
+                          <option key={c} value={c}>
+                            {c ? `${c} fazladan kelime` : 'Fazladan kelime yok'}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </div>
               ) : (
                 <label className="field">
@@ -504,6 +534,9 @@ export function Exam() {
   if (phase === 'running' || phase === 'grading') {
     const answered = answers.filter((a) => a !== null && !(typeof a === 'string' && !a.trim())).length
     const grading = phase === 'grading'
+    // All blanks share one bank; show it once, above the first blank, and mark the words already placed.
+    const firstBlank = questions.findIndex((q) => q.type === 'blank')
+    const usedWords = new Set(questions.flatMap((q, i) => (q.type === 'blank' && typeof answers[i] === 'number' ? [answers[i] as number] : [])))
     return (
       <div className="page page-narrow">{confirmation}
         <div className="exam-bar">
@@ -518,13 +551,49 @@ export function Exam() {
         </div>
 
         {questions.map((q, i) => (
-          <section className="panel" key={q.id} style={{ display: 'flex', flexDirection: 'column', gap: 14 }} aria-label={`Soru ${i + 1}`}>
+          <Fragment key={q.id}>
+          {q.type === 'blank' && i === firstBlank && (
+            <section className="panel word-bank" aria-label="Kelime havuzu">
+              <strong>Boşlukları aşağıdaki kelimelerle doldur</strong>
+              <p className="subtle">Her kelime en fazla bir kez kullanılır; bazı kelimeler hiçbir boşluğa uymaz.</p>
+              <ul>
+                {q.options.map((word, k) => (
+                  <li key={k} className={usedWords.has(k) ? 'used' : ''}>
+                    {word}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <section className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }} aria-label={`Soru ${i + 1}`}>
             <span className="subtle">
-              Soru {i + 1} · {q.type === 'mcq' ? 'Test' : 'Klasik'}
+              Soru {i + 1} · {q.type === 'mcq' ? 'Test' : q.type === 'blank' ? 'Boşluk doldurma' : 'Klasik'}
               {q.noteTitle ? ` · ${q.noteTitle}` : ''}
             </span>
-            <p className="question">{q.prompt}</p>
-            {q.type === 'mcq' ? (
+            {q.type === 'blank' ? (
+              <p className="question blank-sentence">
+                {blankParts(q.prompt)[0]}
+                <select
+                  className="blank-select"
+                  aria-label={`Soru ${i + 1} boşluğu`}
+                  value={typeof answers[i] === 'number' ? String(answers[i]) : ''}
+                  disabled={grading}
+                  onChange={(e) => setAnswers(answers.map((a, j) => (j === i ? (e.target.value === '' ? null : Number(e.target.value)) : a)))}
+                >
+                  <option value="">Seç…</option>
+                  {q.options.map((word, k) => (
+                    <option key={k} value={k}>
+                      {word}
+                      {usedWords.has(k) && answers[i] !== k ? ' (kullanıldı)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {blankParts(q.prompt)[1]}
+              </p>
+            ) : (
+              <p className="question">{q.prompt}</p>
+            )}
+            {q.type === 'blank' ? null : q.type === 'mcq' ? (
               <div className="options" role="radiogroup" aria-label={`Soru ${i + 1} seçenekleri`}>
                 {q.options.map((option, k) => (
                   <button
@@ -552,6 +621,7 @@ export function Exam() {
               />
             )}
           </section>
+          </Fragment>
         ))}
 
         <div className="btn-row">

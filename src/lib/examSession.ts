@@ -27,7 +27,7 @@ function isDraft(value: unknown): value is ActiveExamDraft {
   return (
     Array.isArray(d.questions) &&
     d.questions.length > 0 &&
-    d.questions.every((q) => q && typeof q === 'object' && typeof q.prompt === 'string' && (q.type === 'mcq' || q.type === 'open')) &&
+    d.questions.every((q) => q && typeof q === 'object' && typeof q.prompt === 'string' && (q.type === 'mcq' || q.type === 'open' || q.type === 'blank')) &&
     Array.isArray(d.answers) &&
     d.answers.length === d.questions.length &&
     (d.endsAt === null || typeof d.endsAt === 'number') &&

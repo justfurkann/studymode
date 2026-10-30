@@ -2781,3 +2781,62 @@ a.list-item:hover {
 .exam-plan legend + * {
   clear: both;
 }
+
+/* ============ Fill-in-the-blank ============ */
+
+.word-bank {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--hi-soft);
+  border-color: color-mix(in srgb, var(--hi) 60%, var(--border));
+}
+
+.word-bank ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.word-bank li {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1.5px solid var(--card-line);
+  font-weight: 650;
+  font-size: 0.9375rem;
+}
+
+.word-bank li.used {
+  opacity: 0.45;
+  text-decoration: line-through;
+  border-style: dashed;
+}
+
+.blank-sentence {
+  line-height: 2;
+}
+
+.blank-select {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 6px;
+  padding: 2px 8px;
+  min-height: 34px;
+  border: 0;
+  border-bottom: 2px solid var(--card-line);
+  border-radius: 6px 6px 0 0;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+  vertical-align: baseline;
+}
+
+.blank-select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

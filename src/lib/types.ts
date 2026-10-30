@@ -118,7 +118,8 @@ export interface QuizAttempt {
 
 export interface ExamQuestion {
   id: string
-  type: 'mcq' | 'open'
+  /** "blank": one sentence with "_____"; options is the exam's shared word bank (answers plus words that fit nowhere). */
+  type: 'mcq' | 'open' | 'blank'
   prompt: string
   options: string[]
   answerIndex: number

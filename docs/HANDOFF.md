@@ -52,7 +52,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (Aşama 5 sonrası): 118 birim testi, 38 tarayıcı testi.
+Son yeşil durum (Aşama 6 sonrası): 120 birim testi, 39 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -151,6 +151,12 @@ create policy "own rows" on public.course_exams for all to authenticated
 - Menüde yeni sekme `/sinav` (`src/pages/ExamHub.tsx`): dersler, en yakın sınavı olan önce; geri sayım ve son prova puanı. Tıklayınca mevcut prova ekranı (`/ders/:id/sinav`) açılır. Telefonda alt menüde "Ayarlar"ın yerini "Sınav" aldı; Ayarlar üst çubukta (misafirde dişli simgesi, girişlide baş harfler).
 - Prova ekranında "Sınav nasıl olacak?" bölümü: test ve klasik soru sayısı ayrı (format bunlardan çıkar), süre (120 dk'ya kadar), zorluk, "Hoca sınav hakkında ne dedi?" ve geçmiş sorular. Yapay zekâya `mcq`/`open` sayıları ve `<about_the_real_exam>` gider; `normalizeExam` her türden en fazla istenen kadarını tutar.
 - Seçimler cihazda ders ve sınav başına hatırlanır (`src/lib/examPlan.ts`, `localStorage` anahtarı `studymode.examPlan.v1`). Veritabanı değişikliği yok, SQL gerekmez.
+
+**Aşama 6 — Boşluk doldurma: ✅ TAMAM (Aşama 6 PR'ı)** — arkadaş geri bildirimi: sınavlarda test ve klasiğin yanında boşluk doldurma da var; kelime havuzunda hiçbir boşluğa uymayan fazladan kelimeler olur.
+- Yeni soru türü `blank` (`ExamQuestion.type`): tek cümle, bir `_____`; `options` tüm boşlukların ortak kelime havuzu, `answerIndex` doğru kelime. Puanlama test gibi (tam ya da sıfır).
+- Prova kurulumu: "Boşluk doldurma" (4-12) ve "Boşta kalacak kelime" (0-6, varsayılan 3). Yapay zekâ `blank` sorularını ve üst düzey `distractors` listesini döndürür; `normalizeExam` tek boşluklu olmayanları, tekrar eden cevapları ve fazladan kelime olarak cevapla aynı olanları atar, havuzu karıştırır ve soruları gerçek sınav sırasına koyar (test → boşluk → klasik).
+- Sınav ekranı: havuz ilk boşluk sorusunun üstünde bir kez gösterilir, kullanılan kelimenin üstü çizilir; her cümlede satır içi seçim kutusu.
+- Yalnızca yapay zekâ ile; "Hazır sorulardan karıştır" modunda boşluk doldurma yok. Veritabanı değişikliği yok (`exam_results.questions` jsonb; boşluklu sınavların türü `mixed`).
 
 ## Tasarım dili ("Fosforlu")
 
