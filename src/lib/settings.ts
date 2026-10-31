@@ -47,6 +47,8 @@ export interface Settings {
   models: Record<KeyProvider, string>
   theme: Theme
   dailyGoal: number
+  /** Small sounds for right, wrong and done. Off by default: libraries are quiet places. */
+  sounds: boolean
 }
 
 const KEY = 'studymode.settings.v1'
@@ -56,6 +58,7 @@ const defaults: Settings = {
   models: { anthropic: 'claude-opus-5-5', openai: 'gpt-5-mini', google: 'gemini-3.5-flash-lite' },
   theme: 'system',
   dailyGoal: DEFAULT_DAILY_GOAL,
+  sounds: false,
 }
 
 const str = (value: unknown, fallback: string) => (typeof value === 'string' && value.trim() ? value : fallback)
@@ -85,6 +88,7 @@ function read(): Settings {
       models: { anthropic: str(models.anthropic, defaults.models.anthropic), openai: str(models.openai, defaults.models.openai), google: str(models.google, defaults.models.google) },
       theme: parsed.theme === 'light' || parsed.theme === 'dark' ? parsed.theme : 'system',
       dailyGoal: clampDailyGoal(parsed.dailyGoal, defaults.dailyGoal),
+      sounds: parsed.sounds === true,
     }
   } catch {
     return defaults

@@ -423,8 +423,8 @@ export function Settings() {
       </section>
 
       <section className="section">
-        <h2>Görünüm</h2>
-        <div className="panel">
+        <h2>Görünüm ve ses</h2>
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'flex-start' }}>
           <div className="segmented" role="group" aria-label="Tema">
             {THEMES.map(({ id, label, icon: Icon }) => (
               <button key={id} aria-pressed={settings.theme === id} onClick={() => updateSettings({ theme: id })} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -432,6 +432,13 @@ export function Settings() {
               </button>
             ))}
           </div>
+          <label className="check-row">
+            <input type="checkbox" checked={settings.sounds} onChange={(e) => updateSettings({ sounds: e.target.checked })} />
+            <span>
+              Küçük sesler
+              <span className="subtle"> · Doğru, yanlış ve bitiş anlarında kısa bir ses. Kütüphanede kapalı tutmak isteyebilirsin.</span>
+            </span>
+          </label>
         </div>
       </section>
 

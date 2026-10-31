@@ -2840,3 +2840,346 @@ a.list-item:hover {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ============ Mola (Tekrar tab: games and focus timer) ============ */
+
+/* The highlighter drawn once, left to right, over a finished moment. */
+.hl-swipe {
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  animation: hl-swipe 0.55s 0.12s ease-out both;
+}
+
+@keyframes hl-swipe {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+.review-switch {
+  align-self: flex-start;
+}
+
+.mola {
+  gap: 18px;
+}
+
+.mola .page-header h1,
+.mola-title {
+  font-size: 1.75rem;
+}
+
+.mola-head .back-link {
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.mola-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mola-scope {
+  max-width: 360px;
+}
+
+.mola-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.mola-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.mola-tile:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.mola-tile:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mola-tile-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--hi-soft);
+  color: var(--text);
+}
+
+.mola-tile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mola-tile-body strong {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+}
+
+.mola-tile-body .muted {
+  font-size: 0.9375rem;
+}
+
+.mola-tile-body .subtle {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.mola-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mola-result-title {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Eşleştir */
+.match-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.match-tile {
+  min-height: 84px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  transition: opacity 0.3s 0.25s, visibility 0s 0.55s, transform 0.3s 0.25s, background 0.1s, border-color 0.1s;
+}
+
+.match-tile.is-front {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.match-tile:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.match-tile[aria-pressed='true'] {
+  border: 1.5px solid var(--card-line);
+  box-shadow: 0 3px 0 var(--card-drop);
+  background: var(--hi-soft);
+  transform: translateY(-2px);
+}
+
+.match-tile.is-matched {
+  background: var(--hi);
+  color: var(--on-hi);
+  border-color: var(--ink-line);
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.94);
+  cursor: default;
+}
+
+.match-tile.is-miss {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  animation: tile-shake 0.35s;
+}
+
+@keyframes tile-shake {
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+/* Hızlı tur */
+.quick-card {
+  min-height: 240px;
+}
+
+.quick-answers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.quick-no:hover {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.quick-yes:hover {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+
+.quick-feedback {
+  text-align: center;
+  min-height: 1.5em;
+}
+
+.quick-combo {
+  background: var(--hi);
+  color: var(--on-hi);
+  border-color: var(--ink-line);
+  font-weight: 650;
+}
+
+.quick-missed {
+  align-self: stretch;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-missed ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quick-missed li {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.quick-missed li > span:first-child {
+  font-weight: 650;
+}
+
+/* Odak defteri: a grid-paper page, one square per minute. */
+.focus-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding-block: 24px;
+}
+
+.focus-clock {
+  font-family: var(--font-display);
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-grid {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  max-width: 240px;
+}
+
+.focus-grid.cols-10 {
+  max-width: 440px;
+  grid-template-columns: repeat(10, 1fr);
+}
+
+.focus-grid.cols-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.focus-grid > span {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  transition: background 0.4s;
+}
+
+.focus-grid > span.is-filled {
+  background: var(--hi);
+  border-color: var(--ink-line);
+}
+
+.focus-grid > span.is-now {
+  border-color: var(--ink-line);
+  animation: focus-now 1.6s ease-in-out infinite;
+}
+
+@keyframes focus-now {
+  50% {
+    background: var(--hi-soft);
+  }
+}
+
+.focus-actions {
+  justify-content: center;
+}
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.check-row input {
+  margin-top: 4px;
+  accent-color: var(--accent);
+  width: 18px;
+  height: 18px;
+}
+
+.check-row .subtle {
+  font-weight: 400;
+}
+
+@media (max-width: 600px) {
+  .match-board {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .match-tile {
+    min-height: 64px;
+  }
+
+  .focus-clock {
+    font-size: 3rem;
+  }
+}
