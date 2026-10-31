@@ -14,6 +14,7 @@ import { NoteDetail } from './pages/NoteDetail'
 import { ResetPassword } from './pages/ResetPassword'
 import { Review } from './pages/Review'
 import { Settings } from './pages/Settings'
+import { SharedCourse } from './pages/SharedCourse'
 import { Today } from './pages/Today'
 
 /** Each course gets a fresh exam page, so a running exam never carries over to another course. */
@@ -60,6 +61,7 @@ function Routed() {
         <Route path="tekrar" element={<Review />} />
         <Route path="sinav" element={<ExamHub />} />
         <Route path="ayarlar" element={<Settings />} />
+        <Route path="paylas/:token" element={<SharedCourse />} />
         <Route path="giris" element={<Login />} />
         <Route path="sifre-yenile" element={<ResetPassword />} />
         <Route path="*" element={<Today />} />

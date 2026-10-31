@@ -1,7 +1,8 @@
-import { ArrowLeft, Brain, CalendarClock, ClipboardList, FileText, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Brain, CalendarClock, ClipboardList, FileText, Pencil, Plus, Share2, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CourseForm } from '../components/CourseForm'
+import { ShareCourse } from '../components/ShareCourse'
 import { examFormatLabel, examPercent } from '../components/ExamReview'
 import { Empty, useConfirm, useToast } from '../components/ui'
 import { examCountdown, examDateText, examName, examsForCourse } from '../lib/courseExams'
@@ -18,6 +19,7 @@ export function CourseDetail() {
   const navigate = useNavigate()
   const [confirm, confirmation] = useConfirm()
   const [query, setQuery] = useState('')
+  const [sharing, setSharing] = useState(false)
   const [tag, setTag] = useState('')
   const [editing, setEditing] = useState(false)
   const course = store.data.courses.find((c) => c.id === id)
@@ -71,6 +73,9 @@ export function CourseDetail() {
           </div>
         </div>
         <div className="btn-row header-actions">
+          <button className="btn btn-sm" onClick={() => setSharing(true)}>
+            <Share2 size={15} /> Paylaş
+          </button>
           <button className="btn btn-ghost btn-icon" aria-label="Dersi düzenle" onClick={() => setEditing(true)}>
             <Pencil size={17} />
           </button>
@@ -97,6 +102,7 @@ export function CourseDetail() {
       </div>
 
       {confirmation}
+      {sharing && <ShareCourse courseId={course.id} onClose={() => setSharing(false)} />}
       <CourseExams courseId={course.id} hasNotes={notes.length > 0} onEdit={() => setEditing(true)} />
       <CourseProgress courseId={course.id} />
 

@@ -133,3 +133,39 @@ begin
     );
   end loop;
 end $$;
+
+-- Shared courses: a snapshot of one course behind an unguessable link (Aşama 9).
+-- Owners manage their own rows; nobody can list shares. A friend reads one only by its exact
+-- token, through get_course_share below.
+create table if not exists public.course_shares (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  course_id uuid references public.courses (id) on delete cascade,
+  token text not null unique check (token ~ '^[A-Za-z0-9]{16,64}$'),
+  title text not null check (char_length(title) between 1 and 120),
+  owner_name text check (owner_name is null or char_length(owner_name) <= 80),
+  snapshot jsonb not null check (octet_length(snapshot::text) <= 3000000),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists course_shares_user_idx on public.course_shares (user_id, course_id);
+alter table public.course_shares enable row level security;
+drop policy if exists "own rows" on public.course_shares;
+create policy "own rows" on public.course_shares for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+create or replace function public.get_course_share(share_token text)
+returns table (title text, owner_name text, snapshot jsonb, updated_at timestamptz)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select s.title, s.owner_name, s.snapshot, s.updated_at
+  from public.course_shares s
+  where s.token = share_token
+  limit 1;
+$$;
+revoke all on function public.get_course_share(text) from public;
+grant execute on function public.get_course_share(text) to anon, authenticated;

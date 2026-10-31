@@ -3362,3 +3362,62 @@ a.list-item:hover {
     grid-column: 1 / -1;
   }
 }
+
+/* ============ Ders paylaşımı ============ */
+
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.share-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-2);
+}
+
+.share-link {
+  display: flex;
+  gap: 8px;
+}
+
+.share-link .input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+.share-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.qr {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--ink-line);
+}
+
+/* Always dark ink on yellow, whatever the theme: QR scanners need the contrast. */
+.qr-bg {
+  fill: var(--hi);
+}
+
+.qr-ink {
+  fill: var(--on-hi);
+}
+
+.shared-card .stat-row {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .share-link {
+    flex-direction: column;
+  }
+}

@@ -55,13 +55,15 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (Aşama 8 sonrası): 149 birim testi, 46 tarayıcı testi.
+Son yeşil durum (Aşama 9 sonrası): 153 birim testi, 50 tarayıcı testi.
 
 ## 4. Veritabanı
 
 Tablolar: `courses`, `notes`, `cards`, `quiz_attempts`, `exam_results`, `study_days`, `course_exams` (hepsi `user_id` + RLS "own rows").
 
-**Çalıştırıldı (kullanıcı teyit etti, Ekim 2026):** ilk şema, `exam_results`, `study_days`, `quiz_attempts.answers`, `study_days.actions`, `course_exams`. Bekleyen SQL yok.
+**Çalıştırıldı (kullanıcı teyit etti, Ekim 2026):** ilk şema, `exam_results`, `study_days`, `quiz_attempts.answers`, `study_days.actions`, `course_exams`.
+
+**BEKLEYEN SQL (Aşama 9, ders paylaşımı):** `course_shares` tablosu + `get_course_share` fonksiyonu (aşağıda Aşama 9 bölümünde). Çalıştırılana kadar uygulama çökmez; paylaşımda "veritabanı güncellemesi bekleniyor" der.
 
 **Kayıt için (artık çalıştırıldı):**
 ```sql
@@ -83,11 +85,11 @@ alter table public.study_days add column if not exists actions integer not null 
 
 ## 6. Birleştirilmiş PR'lar (özet)
 
-#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma) · #24 devir notu · #25 Aşama 7 (Mola) · Aşama 8 (Sınavlar sekmesi). Hepsi `main`de ve canlıda.
+#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma) · #24 devir notu · #25 Aşama 7 (Mola) · #26 Aşama 8 (Sınavlar sekmesi) · Aşama 9 (ders paylaşımı). Hepsi `main`de ve canlıda.
 
 ## 7. Aşamalar ve durum
 
-**Şu an açık bir hedef yok.** Aşama 1-8 bitti, hepsi canlıda. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
+**Şu an açık bir hedef yok.** Aşama 1-9 bitti, hepsi canlıda. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
 
 **Aşama 1 — Doğrulama ve hatalar: ✅ TAMAM (#18)**
 - Uzun not: bölüm başına bir yeniden deneme, kısmi sonuç + uyarı, not eklemede bölüm ilerlemesi.
@@ -180,6 +182,51 @@ create policy "own rows" on public.course_exams for all to authenticated
 - **Telefon takvimine ekle:** `.ics` dosyası (tüm gün etkinlik, bir gün önce 09:00 hatırlatma). Bildirim altyapımız olmadığı için hatırlatmayı telefonun takvimi yapar.
 - Dersler sayfası: notu olmayan derste "Not ekle" etiketi; hiç ders yokken "Bütün dönemi tek seferde gir".
 - Mantık `src/lib/examFocus.ts` (+ testleri). Veritabanı değişikliği yok, SQL gerekmez.
+
+**Aşama 9 — Ders paylaşımı (link + QR): ✅ KOD TAMAM (Aşama 9 PR'ı), SQL kullanıcıda bekliyor** — kullanıcı isteği: arkadaşla dersi link ya da QR ile paylaşmak. Karar: **kopya** yöntemi (canlı ortak ders değil).
+- Ders sayfasında "Paylaş" → `ShareCourse.tsx` penceresi. Ders bir **anlık kopya** (snapshot) olarak `course_shares` tablosuna yazılır, 22 karakterlik tahmin edilemez bağlantı (`/paylas/<token>`) üretilir; kopyala, telefonun paylaş menüsü, QR kod (`qrcode-generator` 1.4.4, sarı zemin + lacivert; iki temada okunur). "Dersin şimdiki hâliyle güncelle" (aynı bağlantı) ve "Paylaşımı kapat" (satır silinir, bağlantı ölür). Giriş yapmamışsa bağlantı oluşturamaz.
+- Anlık kopyada **yalnızca içerik** var: notlar, temiz özet (overview/points/keyTerms/tags), sorular, model cevaplı açık uçlu sorular, kartlar (ön/arka/kaynak), **yaklaşan** sınav tarihleri. **Gitmeyenler:** kart ilerlemesi, tamamlanan adımlar, işaretli kavramlar, yazılı cevap taslakları ve puanları, test denemeleri, sınav sonuçları, e-posta (sahip adı yalnızca ad soyad; ad yoksa boş). Sınır 2,5 MB.
+- Arkadaş `/paylas/<token>` açar (`SharedCourse.tsx`): önizleme (kim paylaştı, not/kart/soru/sınav sayıları, içindekiler), "Derslerime ekle" → `store.importCourse` tek seferde yeni kimliklerle, sıfır ilerlemeyle kopyalar (aynı adlı ders varsa "(paylaşılan)" eki). Misafir de ekleyebilir (yalnızca bu cihaza). Aynı cihazda tekrar açılırsa "Bu dersi daha önce ekledin · Derse git".
+- Güvenlik: tabloda yalnızca sahip RLS'i; başkası listeleyemez/değiştiremez. Okuma yalnızca tam token ile `security definer` fonksiyon üzerinden (anon + authenticated). Yerel Postgres 16'da sahte Supabase auth ile denendi: başkası 0 satır görür/günceller/siler, yanlış ya da `%` token boş döner, başkası adına ekleme RLS'e takılır, kısa token kısıtlamaya takılır, ders silinince paylaşım da silinir; şema iki kez üst üste çalıştırılabiliyor.
+- Kod: `src/lib/share.ts` (snapshot, zod doğrulama, token, Supabase çağrıları; + testleri), `store.importCourse`.
+- SQL (`schema.sql` sonunda da var):
+```sql
+-- Shared courses: a snapshot of one course behind an unguessable link (Aşama 9).
+-- Owners manage their own rows; nobody can list shares. A friend reads one only by its exact
+-- token, through get_course_share below.
+create table if not exists public.course_shares (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  course_id uuid references public.courses (id) on delete cascade,
+  token text not null unique check (token ~ '^[A-Za-z0-9]{16,64}$'),
+  title text not null check (char_length(title) between 1 and 120),
+  owner_name text check (owner_name is null or char_length(owner_name) <= 80),
+  snapshot jsonb not null check (octet_length(snapshot::text) <= 3000000),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists course_shares_user_idx on public.course_shares (user_id, course_id);
+alter table public.course_shares enable row level security;
+drop policy if exists "own rows" on public.course_shares;
+create policy "own rows" on public.course_shares for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+create or replace function public.get_course_share(share_token text)
+returns table (title text, owner_name text, snapshot jsonb, updated_at timestamptz)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select s.title, s.owner_name, s.snapshot, s.updated_at
+  from public.course_shares s
+  where s.token = share_token
+  limit 1;
+$$;
+revoke all on function public.get_course_share(text) from public;
+grant execute on function public.get_course_share(text) to anon, authenticated;
+```
 
 ## Tasarım dili ("Fosforlu")
 
