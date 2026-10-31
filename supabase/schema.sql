@@ -169,3 +169,37 @@ as $$
 $$;
 revoke all on function public.get_course_share(text) from public;
 grant execute on function public.get_course_share(text) to anon, authenticated;
+
+-- Feedback and client errors (Aşama 10). Anyone using the app (signed in or not) may add a row;
+-- nobody can read, change or delete rows through the API. The owner reads them in Supabase.
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid default auth.uid() references auth.users (id) on delete set null,
+  kind text not null check (kind in ('fikir', 'hata', 'diger')),
+  message text not null check (char_length(message) between 3 and 2000),
+  contact text check (contact is null or char_length(contact) <= 120),
+  page text check (page is null or char_length(page) <= 200),
+  device text check (device is null or char_length(device) <= 300),
+  created_at timestamptz not null default now()
+);
+create table if not exists public.client_errors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid default auth.uid() references auth.users (id) on delete set null,
+  message text not null check (char_length(message) between 1 and 500),
+  stack text check (stack is null or char_length(stack) <= 4000),
+  page text check (page is null or char_length(page) <= 200),
+  device text check (device is null or char_length(device) <= 300),
+  release text check (release is null or char_length(release) <= 40),
+  created_at timestamptz not null default now()
+);
+create index if not exists feedback_created_idx on public.feedback (created_at desc);
+create index if not exists client_errors_created_idx on public.client_errors (created_at desc);
+alter table public.feedback enable row level security;
+alter table public.client_errors enable row level security;
+drop policy if exists "anyone can send" on public.feedback;
+create policy "anyone can send" on public.feedback for insert to anon, authenticated
+  with check (user_id is null or user_id = (select auth.uid()));
+drop policy if exists "anyone can report" on public.client_errors;
+create policy "anyone can report" on public.client_errors for insert to anon, authenticated
+  with check (user_id is null or user_id = (select auth.uid()));
+grant insert on public.feedback, public.client_errors to anon, authenticated;

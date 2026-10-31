@@ -1,4 +1,5 @@
 import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, Trash2, Upload } from 'lucide-react'
+import { FeedbackLink } from '../components/Feedback'
 import { MakerCard } from '../components/MadeBy'
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
@@ -447,6 +448,14 @@ export function Settings() {
         <h2>Verilerin</h2>
         <div className="panel">
           <DataSection />
+        </div>
+      </section>
+
+      <section className="section" aria-label="Geri bildirim">
+        <h2>Fikrin mi var, hata mı buldun?</h2>
+        <div className="panel feedback-panel">
+          <p className="muted">Yaz, doğrudan uygulamayı yapan kişiye gitsin. Her mesaj okunuyor; çoğu fikir uygulamaya böyle girdi.</p>
+          <FeedbackLink className="btn" label="Geri bildirim gönder" />
         </div>
       </section>
 

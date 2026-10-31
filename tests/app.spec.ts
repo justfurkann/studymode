@@ -1676,3 +1676,37 @@ test('opening another page starts at its top, not where the last page was scroll
   await expect(page.getByRole('heading', { level: 1, name: 'Selam, ben JustFurkan' })).toBeInViewport()
   expect(await page.evaluate(() => window.scrollY)).toBe(0)
 })
+
+test('feedback goes straight to the maker, from Settings and from the bottom of every page', async ({ page }) => {
+  const errors = watchErrors(page)
+  const sent: Array<Record<string, unknown>> = []
+  await page.route('https://jpcatyopkpnudgdyncas.supabase.co/rest/v1/feedback**', async (route) => {
+    sent.push(route.request().postDataJSON())
+    await route.fulfill({ status: 201, body: '' })
+  })
+  await page.goto('/ayarlar')
+  await page.getByRole('region', { name: 'Geri bildirim' }).getByRole('button', { name: 'Geri bildirim gönder' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Fikrin mi var, hata mı buldun?' })
+  await dialog.getByRole('button', { name: 'Hata' }).click()
+  await expect(dialog.getByRole('button', { name: 'Gönder' })).toBeDisabled()
+  await dialog.getByLabel('Mesajın').fill('Sınav sekmesinde tarih seçerken ekran kaydı.')
+  await dialog.getByLabel(/Sana nasıl dönelim/).fill('@birarkadas')
+  await dialog.getByRole('button', { name: 'Gönder' }).click()
+  await expect(dialog.getByText(/Teşekkürler!/)).toBeVisible()
+  expect(sent).toHaveLength(1)
+  expect(sent[0]).toMatchObject({ kind: 'hata', message: 'Sınav sekmesinde tarih seçerken ekran kaydı.', contact: '@birarkadas', page: '/ayarlar' })
+  expect(String(sent[0].device)).toContain('x')
+  await dialog.getByRole('button', { name: 'Kapat', exact: true }).last().click()
+
+  // A second message right away is held back for a few seconds.
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/dersler')
+  const link = page.getByRole('main').getByRole('button', { name: 'Fikir · Hata bildir' })
+  await link.scrollIntoViewIfNeeded()
+  await link.click()
+  await page.getByLabel('Mesajın').fill('Bir fikir daha')
+  await page.getByRole('button', { name: 'Gönder' }).click()
+  await expect(page.getByText(/Az önce gönderdin/)).toBeVisible()
+  expect(sent).toHaveLength(1)
+  expect(errors).toEqual([])
+})

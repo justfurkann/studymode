@@ -63,15 +63,17 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (Mola 2 sonrası): 156 birim testi, 52 tarayıcı testi.
+Son yeşil durum (Aşama 10 sonrası): 156 birim testi, 55 tarayıcı testi.
 
 ## 4. Veritabanı
 
-Tablolar: `courses`, `notes`, `cards`, `quiz_attempts`, `exam_results`, `study_days`, `course_exams` (hepsi `user_id` + RLS "own rows").
+Tablolar: `courses`, `notes`, `cards`, `quiz_attempts`, `exam_results`, `study_days`, `course_exams` (hepsi `user_id` + RLS "own rows"), `course_shares` (sahip RLS + token ile okuma fonksiyonu), `feedback` ve `client_errors` (yalnızca ekleme; API'den okunamaz, Claude/sahip Supabase'den okur).
 
 **Çalıştırıldı (kullanıcı teyit etti, Ekim 2026):** ilk şema, `exam_results`, `study_days`, `quiz_attempts.answers`, `study_days.actions`, `course_exams`.
 
-**Aşama 9 SQL'i de çalıştırıldı (1 Kasım 2026):** `course_shares` + `get_course_share`; Claude Supabase üzerinden teyit etti (tablo, RLS, politika, fonksiyon yerinde). Bekleyen SQL yok.
+**Aşama 9 SQL'i de çalıştırıldı (1 Kasım 2026):** `course_shares` + `get_course_share`; Claude Supabase üzerinden teyit etti (tablo, RLS, politika, fonksiyon yerinde).
+
+**Aşama 10 SQL'i (`feedback`, `client_errors`) Claude tarafından kullanıcının isteğiyle canlıya uygulandı (1 Kasım 2026, migration `feedback_and_client_errors`).** Bekleyen SQL yok.
 
 **Kayıt için (artık çalıştırıldı):**
 ```sql
@@ -246,6 +248,48 @@ grant execute on function public.get_course_share(text) to anon, authenticated;
 ```
 
 **İmza (Made by JustFurkan):** `src/components/MadeBy.tsx` tek kaynak (ad + sosyal hesaplar). Görünür yerler: tanıtım sayfası alt bilgisi, bilgisayarda yan menünün altı, telefonda her sayfanın en altı (`.mobile-made-by`, alt menünün üstünde). İmza **`/hakkinda` sayfasına** gider (`src/pages/About.tsx`, uygulama menüsünün dışında, `/hakkında` yazımı da çalışır): büyük piksel gökyüzü, fotoğraf, "Selam, ben JustFurkan", birinci ağızdan iki paragraf, sosyal hesaplar, "Instagram'dan yaz". Sürprizler: "Burayı nasıl buldun?" (4 seçenek, her birine esprili cevap) ve fotoğrafa 5 kez dokununca "Gizli başarım açıldı: Kurcalamacı" + piksel kıvılcımlar. Ayrıca Ayarlar → "Hakkında" kartvizit kartı (`MakerCard`: üstte hareketli piksel gökyüzü (`PixelSky.tsx`: iki katman piksel bulut farklı hızda kayar, fosforlu yıldızlar göz kırpar; renkler `--sky-top/--sky-bottom/--cloud/--cloud-shade` belirteçlerinde, karanlıkta gece gökyüzü; hareket azaltma tercihinde durur), kullanıcının piksel sanat profil resmi (`public/maker-160.webp`, `maker-320.webp`, eğik, fosforlu çerçeve), birinci ağızdan kısa selam, marka logolu yuvarlak bağlantılar, "Instagram'dan yaz" ana düğmesi). Hesaplar (6 tane; hakkında sayfasında bilgisayarda 3+3, telefonda 2+2+2): Instagram @furkann_ztrk, LinkedIn M. Furkan Öztürk (linkedin.com/in/m-furkan-öztürk-43bb933a8, adres kodlanmış yazılır), X @furkan_ztrk_, TikTok @justfurkann_, YouTube @justfurkann, GitHub justfurkann. Logolar Simple Icons'tan (CC0) `BrandIcon.tsx` içine gömülü yollar; tema rengini alır, paket bağımlılığı yok. WhatsApp kasıtlı olarak eklenmedi (herkese açık sitede numara/hesap paylaşmak; kullanıcıya soruldu).
+
+**Aşama 10 — Görünürlük: Analytics, geri bildirim, hata kaydı, haftalık rapor: ✅ TAMAM** — kullanıcı isteği: "Claude ile bağ kurabileceğimiz, siteye faydası olacak bir şey".
+- **Vercel Web Analytics:** kullanıcı Vercel'de açtı; `@vercel/analytics` 2.0.1 (`main.tsx`, `<Analytics />`, localhost'ta kapalı). Çerezsiz. Hobby'de ayda 50.000 olay ücretsiz; aşılırsa yalnızca toplama durur. Claude Vercel üzerinden okur (`count_pageviews`, `aggregate_pageviews`).
+- **Geri bildirim:** `src/components/Feedback.tsx` (pencere: Fikir/Hata/Diğer, mesaj, misafirse isteğe bağlı iletişim; 20 sn bekleme) — girişler: Ayarlar'da "Fikrin mi var, hata mı buldun?" bölümü, bilgisayarda yan menünün altı, telefonda her sayfanın sonu ("Fikir · Hata bildir · Made by JustFurkan"), hakkında sayfası. `src/lib/feedback.ts` → `feedback` tablosu (sayfa ve cihaz bilgisiyle; not içeriği gönderilmez).
+- **Hata kaydı:** `installErrorReporting` (window error + unhandledrejection) ve `ErrorBoundary` (ekran çökerse "Bir şeyler ters gitti, sayfayı yenile" + rapor) → `client_errors`. Ziyaret başına en fazla 5, aynı mesaj bir kez; ağ kopmaları ve tarayıcı eklentisi gürültüsü atlanır; localhost/testlerde kapalı.
+- **Okuma (Claude):** `select * from feedback order by created_at desc` ve `client_errors` için aynısı, Supabase `execute_sql` ile.
+- SQL (`schema.sql` sonunda da var):
+```sql
+-- Feedback and client errors (Aşama 10). Anyone using the app (signed in or not) may add a row;
+-- nobody can read, change or delete rows through the API. The owner reads them in Supabase.
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid default auth.uid() references auth.users (id) on delete set null,
+  kind text not null check (kind in ('fikir', 'hata', 'diger')),
+  message text not null check (char_length(message) between 3 and 2000),
+  contact text check (contact is null or char_length(contact) <= 120),
+  page text check (page is null or char_length(page) <= 200),
+  device text check (device is null or char_length(device) <= 300),
+  created_at timestamptz not null default now()
+);
+create table if not exists public.client_errors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid default auth.uid() references auth.users (id) on delete set null,
+  message text not null check (char_length(message) between 1 and 500),
+  stack text check (stack is null or char_length(stack) <= 4000),
+  page text check (page is null or char_length(page) <= 200),
+  device text check (device is null or char_length(device) <= 300),
+  release text check (release is null or char_length(release) <= 40),
+  created_at timestamptz not null default now()
+);
+create index if not exists feedback_created_idx on public.feedback (created_at desc);
+create index if not exists client_errors_created_idx on public.client_errors (created_at desc);
+alter table public.feedback enable row level security;
+alter table public.client_errors enable row level security;
+drop policy if exists "anyone can send" on public.feedback;
+create policy "anyone can send" on public.feedback for insert to anon, authenticated
+  with check (user_id is null or user_id = (select auth.uid()));
+drop policy if exists "anyone can report" on public.client_errors;
+create policy "anyone can report" on public.client_errors for insert to anon, authenticated
+  with check (user_id is null or user_id = (select auth.uid()));
+grant insert on public.feedback, public.client_errors to anon, authenticated;
+```
 
 ## Tasarım dili ("Fosforlu")
 

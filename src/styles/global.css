@@ -3791,16 +3791,75 @@ a.list-item:hover {
   font-weight: 400;
 }
 
-.mobile-made-by {
+.mobile-foot {
   display: none;
 }
 
 @media (max-width: 860px) {
-  .mobile-made-by {
-    display: block;
-    width: fit-content;
+  .mobile-foot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px 16px;
     margin: 32px auto 0;
   }
+}
+
+/* "Fikir · Hata bildir": a quiet text button next to the signature. */
+.feedback-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.feedback-link:hover {
+  color: var(--text);
+}
+
+.feedback-link.btn {
+  padding: 0 16px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9375rem;
+}
+
+.sidebar-feedback {
+  padding: 0 12px 6px;
+}
+
+.feedback-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.feedback-done {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.about-feedback .feedback-link {
+  font-size: inherit;
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
+.crash {
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* Settings → Hakkında: a small business card. */
