@@ -262,23 +262,11 @@ function AiSection() {
                   </button>
                 </div>
               </label>
-              <label className="field">
-                <span>Model</span>
-                <input
-                  className="input"
-                  list={`models-${provider}`}
-                  value={settings.models[provider]}
-                  onChange={(e) => updateSettings({ models: { ...settings.models, [provider]: e.target.value.trim() } })}
-                  spellCheck={false}
-                />
-                <datalist id={`models-${provider}`}>
-                  {info.models.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </datalist>
-              </label>
+              <ModelPicker
+                models={info.models}
+                value={settings.models[provider]}
+                onChange={(model) => updateSettings({ models: { ...settings.models, [provider]: model } })}
+              />
               <div className="btn-row">
                 <button className="btn btn-primary" onClick={() => save(provider)} disabled={state.kind === 'testing' || draft.trim() === saved}>
                   {state.kind === 'testing' ? <Spinner size={16} /> : <KeyRound size={17} />} {!draft.trim() && saved ? 'Anahtarı kaldır' : 'Doğrula ve kaydet'}
@@ -464,6 +452,48 @@ export function Settings() {
         <h2>Hakkında</h2>
         <MakerCard />
       </section>
+    </div>
+  )
+}
+
+const CUSTOM = '__custom__'
+
+/**
+ * A real list of models (the old suggestion box only showed the one already typed, so it looked
+ * like there was a single choice), plus "Başka bir model" for typing any other model name.
+ */
+function ModelPicker({ models, value, onChange }: { models: Array<{ id: string; label: string }>; value: string; onChange: (model: string) => void }) {
+  const known = models.some((m) => m.id === value)
+  const [custom, setCustom] = useState(!known)
+  return (
+    <div className="field">
+      <label className="field">
+        <span>Model</span>
+        <select
+          className="select"
+          value={custom ? CUSTOM : value}
+          onChange={(e) => {
+            if (e.target.value === CUSTOM) setCustom(true)
+            else {
+              setCustom(false)
+              onChange(e.target.value)
+            }
+          }}
+        >
+          {models.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
+          ))}
+          <option value={CUSTOM}>Başka bir model (adını yaz)</option>
+        </select>
+      </label>
+      {custom && (
+        <label className="field">
+          <span>Model adı</span>
+          <input className="input" value={value} onChange={(e) => onChange(e.target.value.trim())} spellCheck={false} placeholder="ör. model-adi-1.0" />
+        </label>
+      )}
     </div>
   )
 }

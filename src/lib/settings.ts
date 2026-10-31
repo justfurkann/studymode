@@ -23,8 +23,9 @@ export const PROVIDERS: Record<KeyProvider, { label: string; keyHint: string; ke
     keyHint: 'sk-…',
     keyUrl: 'https://platform.openai.com/api-keys',
     models: [
-      { id: 'gpt-5-mini', label: 'GPT-5 mini' },
-      { id: 'gpt-5', label: 'GPT-5' },
+      { id: 'gpt-5-mini', label: 'GPT-5 mini — dengeli' },
+      { id: 'gpt-5', label: 'GPT-5 — en kaliteli' },
+      { id: 'gpt-5-nano', label: 'GPT-5 nano — en ucuz' },
     ],
   },
   google: {
