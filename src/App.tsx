@@ -1,4 +1,5 @@
-import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Route, Routes, useLocation, useNavigationType, useParams } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Alert, Spinner, ToastProvider } from './components/ui'
 import { StoreProvider, useStore } from './lib/store'
@@ -17,6 +18,21 @@ import { Review } from './pages/Review'
 import { Settings } from './pages/Settings'
 import { SharedCourse } from './pages/SharedCourse'
 import { Today } from './pages/Today'
+
+/**
+ * A new page starts at the top. Without this the browser keeps the old scroll position, so a link
+ * at the bottom of one page (like "Made by") opened the next page at its bottom too. Going back
+ * (POP) keeps the browser's own restoring; links to an #anchor and changes of ?query on the same
+ * page (tabs, games) are left alone.
+ */
+function ScrollToTop() {
+  const { pathname, hash } = useLocation()
+  const type = useNavigationType()
+  useEffect(() => {
+    if (type !== 'POP' && !hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [pathname, hash, type])
+  return null
+}
 
 /** Each course gets a fresh exam page, so a running exam never carries over to another course. */
 function ExamForCourse() {
@@ -76,6 +92,7 @@ function Routed() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <StoreProvider>
         <ToastProvider>
           <Routed />
