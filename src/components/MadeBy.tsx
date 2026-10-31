@@ -7,6 +7,7 @@ export const MAKER = 'JustFurkan'
 
 export const SOCIALS: Array<{ brand: Brand; label: string; handle: string; url: string }> = [
   { brand: 'instagram', label: 'Instagram', handle: '@furkann_ztrk', url: 'https://www.instagram.com/furkann_ztrk' },
+  { brand: 'linkedin', label: 'LinkedIn', handle: 'M. Furkan Öztürk', url: 'https://www.linkedin.com/in/m-furkan-%C3%B6zt%C3%BCrk-43bb933a8' },
   { brand: 'x', label: 'X', handle: '@furkan_ztrk_', url: 'https://x.com/furkan_ztrk_' },
   { brand: 'tiktok', label: 'TikTok', handle: '@justfurkann_', url: 'https://www.tiktok.com/@justfurkann_' },
   { brand: 'youtube', label: 'YouTube', handle: '@justfurkann', url: 'https://www.youtube.com/@justfurkann' },
