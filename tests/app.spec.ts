@@ -1617,7 +1617,8 @@ test("the maker's signature is on the landing page, the sidebar and in Settings 
   await expect(about).toContainText("StudyMode'u kendi sınav dönemim için yaptım")
   await expect(about.getByRole('link', { name: "Instagram'dan yaz" })).toHaveAttribute('href', 'https://www.instagram.com/furkann_ztrk')
   const links = about.getByRole('list', { name: 'JustFurkan sosyal medya hesapları' }).getByRole('link')
-  await expect(links).toHaveCount(5)
+  await expect(links).toHaveCount(6)
+  await expect(about.getByRole('link', { name: 'LinkedIn: M. Furkan Öztürk' })).toHaveAttribute('href', 'https://www.linkedin.com/in/m-furkan-%C3%B6zt%C3%BCrk-43bb933a8')
   await expect(about.getByRole('link', { name: 'X: @furkan_ztrk_' })).toHaveAttribute('href', 'https://x.com/furkan_ztrk_')
   await expect(about.getByRole('link', { name: 'TikTok: @justfurkann_' })).toHaveAttribute('href', 'https://www.tiktok.com/@justfurkann_')
   await expect(about.getByRole('link', { name: 'YouTube: @justfurkann' })).toHaveAttribute('href', 'https://www.youtube.com/@justfurkann')
@@ -1640,7 +1641,7 @@ test('the maker page: Made by leads there, socials, and two small secrets', asyn
   await expect(page).toHaveURL(/\/hakkinda$/)
   await expect(page.getByRole('heading', { level: 1, name: 'Selam, ben JustFurkan' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Instagram: @furkann_ztrk' })).toHaveAttribute('href', 'https://www.instagram.com/furkann_ztrk')
-  await expect(page.getByRole('list', { name: 'JustFurkan sosyal medya hesapları' }).getByRole('link')).toHaveCount(5)
+  await expect(page.getByRole('list', { name: 'JustFurkan sosyal medya hesapları' }).getByRole('link')).toHaveCount(6)
 
   // "Burayı nasıl buldun?"
   await page.getByRole('button', { name: 'Ayarları kurcalarken' }).click()
