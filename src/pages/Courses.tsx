@@ -59,6 +59,11 @@ export function Courses() {
                     </span>
                   )}
                   {exam && <span className={`chip ${exam.tone === 'neutral' ? '' : `chip-${exam.tone}`}`}>{exam.text}</span>}
+                  {stats.notes === 0 && (
+                    <span className="chip chip-accent">
+                      <Plus size={13} /> Not ekle
+                    </span>
+                  )}
                 </div>
               </Link>
             )
@@ -72,6 +77,9 @@ export function Courses() {
               <button className="btn btn-primary" onClick={() => setParams({ yeni: '1' })}>
                 <Plus size={18} /> İlk dersimi oluştur
               </button>
+              <Link to="/sinav" className="btn">
+                Bütün dönemi tek seferde gir
+              </Link>
               <button className="btn" onClick={loadDemo}>
                 Örnek notla dene
               </button>

@@ -1037,8 +1037,8 @@ test('the mock exam tab lists courses and remembers how the exam will look', asy
   await page.getByRole('button', { name: 'Örnek notla dene' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
 
-  await page.getByRole('complementary', { name: 'Ana menü' }).getByRole('link', { name: 'Sınav provası' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Sınav provası' })).toBeVisible()
+  await page.getByRole('complementary', { name: 'Ana menü' }).getByRole('link', { name: 'Sınavlar' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Sınavlar' })).toBeVisible()
   const row = page.getByRole('link', { name: 'Psikolojiye Giriş (örnek) için prova hazırla' })
   await expect(row).toContainText('Vizeye 7 gün')
   await expect(row).toContainText('Henüz prova yok')
@@ -1065,9 +1065,12 @@ test('the mock exam tab lists courses and remembers how the exam will look', asy
 test('on a phone the mock exam tab is in the bottom bar and settings move to the top', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/dersler')
-  await page.getByRole('navigation', { name: 'Alt menü' }).getByRole('link', { name: 'Sınav' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Sınav provası' })).toBeVisible()
+  await page.getByRole('navigation', { name: 'Alt menü' }).getByRole('link', { name: 'Sınavlar' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Sınavlar' })).toBeVisible()
+  // With nothing entered yet the tab opens straight on adding exams.
+  await expect(page.getByRole('form', { name: 'Dönemini kur' })).toBeVisible()
   await expect(page.getByText('Prova için önce bir ders ve not lazım')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false)
   await page.getByRole('link', { name: 'Ayarlar' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Ayarlar' })).toBeVisible()
 })
@@ -1299,6 +1302,91 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
     await sounds.check()
     await page.reload()
     await expect(page.getByLabel(/Küçük sesler/)).toBeChecked()
+    expect(errors).toEqual([])
+  })
+})
+
+test.describe('exams tab: semester setup, what to start with, calendar export', () => {
+  test('the whole semester in one table becomes courses with exams, ordered by date', async ({ page }) => {
+    const errors = watchErrors(page)
+    await page.goto('/sinav')
+    const form = page.getByRole('form', { name: 'Dönemini kur' })
+    await expect(form).toBeVisible()
+
+    const row = (n: number) => form.getByRole('group', { name: `${n}. ders` })
+    await row(1).getByLabel('Ders adı').fill('Anatomi')
+    await row(1).getByLabel('Vize').fill(isoDaysFromNow(5))
+    await row(1).getByLabel('Final').fill(isoDaysFromNow(40))
+    await row(2).getByLabel('Ders adı').fill('Fizyoloji')
+    await row(2).getByLabel('Vize').fill(isoDaysFromNow(12))
+    await form.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('2 ders oluşturuldu')).toBeVisible()
+    await expect(form).toBeHidden()
+
+    // The calendar is in date order.
+    const calendar = page.getByRole('region', { name: 'Sınav takvimi' })
+    const items = calendar.getByRole('link')
+    await expect(items).toHaveCount(3)
+    await expect(items.nth(0)).toContainText('Anatomi · Vize')
+    await expect(items.nth(0)).toContainText('Vizeye 5 gün')
+    await expect(items.nth(0)).toContainText('Henüz not yok')
+    await expect(items.nth(1)).toContainText('Fizyoloji · Vize')
+    await expect(items.nth(2)).toContainText('Anatomi · Final')
+
+    // The most urgent exam has no notes yet, so the first step is adding one.
+    const focus = page.getByRole('region', { name: 'Şimdi bununla başla' })
+    await expect(focus).toContainText('Anatomi vizesine 5 gün kaldı')
+    await focus.getByRole('link', { name: /Not ekle/ }).click()
+    await expect(page).toHaveURL(/\/not-ekle\?ders=/)
+
+    // Both courses wait on the Courses page, ready for notes.
+    await page.goto('/dersler')
+    await expect(page.getByRole('link', { name: /Anatomi/ })).toContainText('Not ekle')
+    await expect(page.getByRole('link', { name: /Fizyoloji/ })).toContainText('Vizeye 12 gün')
+
+    // Opening the table again shows what is there; a new date updates, an empty cell deletes nothing.
+    await page.goto('/sinav')
+    await page.getByRole('button', { name: 'Sınav ekle' }).click()
+    await expect(row(1).getByLabel('Ders adı')).toHaveValue('Anatomi')
+    await expect(row(1).getByLabel('Vize')).toHaveValue(isoDaysFromNow(5))
+    await row(2).getByLabel('Final').fill(isoDaysFromNow(45))
+    await form.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('1 ders güncellendi')).toBeVisible()
+    await expect(calendar.getByRole('link')).toHaveCount(4)
+
+    // A course page still has every exam.
+    await page.getByRole('link', { name: /Anatomi Vize/ }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Anatomi' })).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test('exams can be exported to the phone calendar', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+    await page.goto('/sinav')
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Telefon takvimine ekle' }).click()
+    const file = await download
+    expect(file.suggestedFilename()).toBe('studymode-sinavlar.ics')
+    const text = (await (await file.createReadStream()).toArray()).map(String).join('')
+    expect(text).toContain('BEGIN:VEVENT')
+    expect(text).toContain('Psikolojiye Giriş (örnek) · Vize')
+    expect(text).toContain(`DTSTART;VALUE=DATE:${isoDaysFromNow(7).replaceAll('-', '')}`)
+  })
+
+  test('Today says which exam to start with and leads to the next step', async ({ page }) => {
+    const errors = watchErrors(page)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+    await page.goto('/')
+    const focus = page.getByRole('region', { name: 'Şimdi bununla başla' })
+    await expect(focus).toContainText('Psikolojiye Giriş (örnek) vizesine 7 gün kaldı')
+    await expect(focus).toContainText('Hazırlığın: %')
+    await expect(focus).toContainText('Öğrenme ve bellek')
+    await focus.getByRole('link').click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
     expect(errors).toEqual([])
   })
 })

@@ -3183,3 +3183,182 @@ a.list-item:hover {
     font-size: 3rem;
   }
 }
+
+/* ============ Sınavlar ============ */
+
+/* "Şimdi bununla başla": a focus card, so it gets the pressable look. */
+.focus-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1.5px solid var(--card-line);
+  box-shadow: 0 4px 0 var(--card-drop);
+}
+
+.focus-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.focus-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--hi);
+  color: var(--on-hi);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.focus-card-label .course-swatch {
+  width: 8px;
+  height: 8px;
+}
+
+.exams-page {
+  gap: 22px;
+}
+
+.exam-cal-row .title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.exam-date {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 52px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  line-height: 1.05;
+}
+
+.exam-date strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.exam-date span {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  text-transform: lowercase;
+}
+
+.exam-date.is-soon {
+  background: var(--hi);
+  border-color: var(--ink-line);
+  color: var(--on-hi);
+}
+
+.exam-date.is-soon span {
+  color: var(--on-hi);
+}
+
+.exam-past summary {
+  cursor: pointer;
+  color: var(--text-2);
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent-text);
+  font-weight: 650;
+  text-decoration: underline;
+}
+
+.semester {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.semester h2 {
+  font-size: 1.25rem;
+}
+
+.semester-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.semester-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.semester-name {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+}
+
+.semester-name .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.semester-name .input[readonly] {
+  background: var(--surface-2);
+  font-weight: 650;
+}
+
+.semester-date {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.semester-date span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.semester-date .input {
+  min-width: 0;
+  width: 100%;
+}
+
+.semester-note {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 600px) {
+  .semester-row {
+    grid-template-columns: 1fr 1fr;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border);
+  }
+
+  .semester-name {
+    grid-column: 1 / -1;
+  }
+}

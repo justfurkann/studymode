@@ -45,7 +45,7 @@ export function Layout() {
     return () => window.clearTimeout(timer)
   }, [confirmed])
 
-  // A course's mock exam lives under /ders/…, but it belongs to the "Sınav provası" tab.
+  // A course's mock exam lives under /ders/…, but it belongs to the "Sınavlar" tab.
   const inExam = /^\/ders\/[^/]+\/sinav/.test(pathname)
   const navClass = (base: string, to: string) => ({ isActive }: { isActive: boolean }) =>
     `${base} ${isActive || (to === '/sinav' && inExam) ? 'active' : ''}`.trim()
@@ -57,7 +57,7 @@ export function Layout() {
     { to: '/', label: 'Bugün', icon: House, end: true },
     { to: '/dersler', label: 'Dersler', icon: BookOpen },
     { to: '/tekrar', label: 'Tekrar', icon: Brain, badge: due },
-    { to: '/sinav', label: 'Sınav provası', icon: ClipboardList },
+    { to: '/sinav', label: 'Sınavlar', icon: ClipboardList },
     { to: '/ayarlar', label: 'Ayarlar', icon: Settings },
   ]
 
@@ -170,7 +170,7 @@ export function Layout() {
         </NavLink>
         <NavLink to="/sinav" className={navClass('', '/sinav')}>
           <ClipboardList size={20} />
-          <span>Sınav</span>
+          <span>Sınavlar</span>
         </NavLink>
       </nav>
     </div>
