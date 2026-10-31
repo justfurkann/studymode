@@ -15,6 +15,8 @@ export const MATCH_MIN_PAIRS = 3
 export const MATCH_PENALTY_MS = 2000
 export const QUICK_SECONDS = 60
 export const QUICK_MIN_CARDS = 4
+/** Wrong answers allowed in a quick round; the third one ends it. */
+export const QUICK_LIVES = 3
 export const TILE_MAX = 80
 export const FOCUS_CHOICES = [25, 50] as const
 /** One notebook page is one full 25-minute session. */
@@ -93,6 +95,15 @@ export function buildMatchBoard(cards: Card[], rng: Rng = Math.random, pairs = M
   return shuffled(tiles, rng)
 }
 
+/**
+ * The same cards as `buildMatchBoard`, laid out as two columns: terms on the left, answers on the
+ * right, each shuffled on its own. Easier to read than one mixed grid.
+ */
+export function buildMatchColumns(cards: Card[], rng: Rng = Math.random, pairs = MATCH_PAIRS): { fronts: MatchTile[]; backs: MatchTile[] } {
+  const tiles = buildMatchBoard(cards, rng, pairs)
+  return { fronts: shuffled(tiles.filter((t) => t.side === 'front'), rng), backs: shuffled(tiles.filter((t) => t.side === 'back'), rng) }
+}
+
 export type MatchPick = 'select' | 'match' | 'miss'
 
 /** What tapping `next` does when `selected` is already chosen. */
@@ -154,9 +165,11 @@ export interface MolaRecords {
   quick: Record<string, number>
   /** Focus minutes per local day (YYYY-MM-DD). */
   focus: Record<string, number>
+  /** Finished focus rounds (pomodoros) per local day. */
+  rounds: Record<string, number>
 }
 
-const emptyRecords = (): MolaRecords => ({ match: {}, quick: {}, focus: {} })
+const emptyRecords = (): MolaRecords => ({ match: {}, quick: {}, focus: {}, rounds: {} })
 
 function numberMap(value: unknown): Record<string, number> {
   if (!value || typeof value !== 'object') return {}
@@ -171,7 +184,7 @@ export function parseRecords(raw: string | null): MolaRecords {
   if (!raw) return emptyRecords()
   try {
     const parsed = JSON.parse(raw) as Partial<MolaRecords>
-    return { match: numberMap(parsed.match), quick: numberMap(parsed.quick), focus: numberMap(parsed.focus) }
+    return { match: numberMap(parsed.match), quick: numberMap(parsed.quick), focus: numberMap(parsed.focus), rounds: numberMap(parsed.rounds) }
   } catch {
     return emptyRecords()
   }
@@ -222,6 +235,22 @@ export function addFocusMinutes(minutes: number, now = new Date()) {
   writeRecords({ ...records, focus: { ...records.focus, [day]: (records.focus[day] ?? 0) + minutes } })
 }
 
+export function addFocusRound(now = new Date()) {
+  const records = readRecords()
+  const day = localDayKey(now)
+  writeRecords({ ...records, rounds: { ...records.rounds, [day]: (records.rounds[day] ?? 0) + 1 } })
+}
+
+/** The last seven days, oldest first, for the small chart. */
+export function focusWeek(records: Pick<MolaRecords, 'focus' | 'rounds'>, now = new Date()): Array<{ day: string; label: string; minutes: number; rounds: number; today: boolean }> {
+  const today = localDayKey(now)
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = shiftLocalDay(today, i - 6)
+    const label = new Date(`${day}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'short' })
+    return { day, label, minutes: records.focus[day] ?? 0, rounds: records.rounds[day] ?? 0, today: i === 6 }
+  })
+}
+
 /** Focus minutes of the last seven days, today included. */
 export function focusLastWeek(focus: Record<string, number>, now = new Date()): number {
   const today = localDayKey(now)
@@ -234,18 +263,60 @@ export function focusLastWeek(focus: Record<string, number>, now = new Date()): 
 
 const TIMER_KEY = 'studymode.focus.v1'
 
+export type FocusPlanId = 'klasik' | 'uzun'
+export type FocusPhase = 'focus' | 'short' | 'long'
+
+export const FOCUS_PLANS: Record<FocusPlanId, { label: string; focus: number; short: number; long: number }> = {
+  klasik: { label: '25 + 5', focus: 25, short: 5, long: 15 },
+  uzun: { label: '50 + 10', focus: 50, short: 10, long: 20 },
+}
+/** Every fourth focus round is followed by a long break. */
+export const LONG_BREAK_EVERY = 4
+
 /** Kept on the device so the timer keeps running while the student is on another page. */
 export interface FocusTimer {
+  /** Length of the current phase. */
   minutes: number
-  /** While running: when the session ends (epoch ms). */
+  /** While running: when the phase ends (epoch ms). */
   endsAt: number | null
-  /** While paused: what was left (ms). */
+  /** While paused (or ready to start): what is left (ms). */
   remainingMs: number | null
+  plan: FocusPlanId
+  phase: FocusPhase
+  /** 1-based focus round; a break belongs to the round before it. */
+  round: number
+  /** What the student is studying, if they picked a course. */
+  courseId: string | null
 }
 
-export function startTimer(minutes: number, now = Date.now()): FocusTimer {
-  return { minutes, endsAt: now + minutes * 60_000, remainingMs: null }
+/** A running focus round. */
+export function startFocus(plan: FocusPlanId, round = 1, courseId: string | null = null, now = Date.now()): FocusTimer {
+  const minutes = FOCUS_PLANS[plan].focus
+  return { minutes, endsAt: now + minutes * 60_000, remainingMs: null, plan, phase: 'focus', round, courseId }
 }
+
+/** Older code and tests: a plain focus round of any length. */
+export function startTimer(minutes: number, now = Date.now()): FocusTimer {
+  return { minutes, endsAt: now + minutes * 60_000, remainingMs: null, plan: 'klasik', phase: 'focus', round: 1, courseId: null }
+}
+
+/**
+ * What comes after the current phase: a focus round is followed by a break that starts right away
+ * (a long one every fourth round); a break is followed by the next focus round, ready but waiting
+ * for the student to press start.
+ */
+export function nextPhase(timer: FocusTimer, now = Date.now()): FocusTimer {
+  const plan = FOCUS_PLANS[timer.plan]
+  if (timer.phase === 'focus') {
+    const phase: FocusPhase = timer.round % LONG_BREAK_EVERY === 0 ? 'long' : 'short'
+    const minutes = plan[phase]
+    return { ...timer, phase, minutes, endsAt: now + minutes * 60_000, remainingMs: null }
+  }
+  return { ...timer, phase: 'focus', round: timer.round + 1, minutes: plan.focus, endsAt: null, remainingMs: plan.focus * 60_000 }
+}
+
+/** A phase that has not started yet (the next focus round after a break). */
+export const isWaiting = (timer: FocusTimer) => timer.endsAt === null && timer.remainingMs === timer.minutes * 60_000
 
 export function remainingMs(timer: FocusTimer, now = Date.now()): number {
   if (timer.endsAt !== null) return Math.max(0, timer.endsAt - now)
@@ -286,7 +357,11 @@ export function parseTimer(raw: string | null): FocusTimer | null {
     const endsAt = typeof t.endsAt === 'number' && Number.isFinite(t.endsAt) ? t.endsAt : null
     const left = typeof t.remainingMs === 'number' && Number.isFinite(t.remainingMs) ? Math.min(t.remainingMs, minutes * 60_000) : null
     if (endsAt === null && left === null) return null
-    return { minutes, endsAt, remainingMs: endsAt === null ? left : null }
+    const plan: FocusPlanId = t.plan === 'uzun' ? 'uzun' : 'klasik'
+    const phase: FocusPhase = t.phase === 'short' || t.phase === 'long' ? t.phase : 'focus'
+    const round = Number.isInteger(t.round) && (t.round as number) >= 1 && (t.round as number) < 1000 ? (t.round as number) : 1
+    const courseId = typeof t.courseId === 'string' && t.courseId ? t.courseId : null
+    return { minutes, endsAt, remainingMs: endsAt === null ? left : null, plan, phase, round, courseId }
   } catch {
     return null
   }

@@ -63,7 +63,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (imza sonrası): 153 birim testi, 51 tarayıcı testi.
+Son yeşil durum (Mola 2 sonrası): 156 birim testi, 52 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -181,6 +181,13 @@ create policy "own rows" on public.course_exams for all to authenticated
 - **Sesler:** Ayarlar → "Görünüm ve ses" → "Küçük sesler" (varsayılan kapalı). Ses dosyası yok, Web Audio ile kısa tonlar (`src/lib/sound.ts`).
 - Mantık `src/lib/mola.ts` (+ testleri), ekran `src/pages/Mola.tsx`. Rekorlar ve odak dakikaları yalnızca cihazda (`studymode.mola.v1`). Veritabanı değişikliği yok, SQL gerekmez.
 - Sonraki adım adayları (konuşuldu, yapılmadı): paylaşılabilir haftalık karne, çıkartma albümü, arkadaşla düello (veritabanı + RLS ister).
+
+**Mola 2 (kullanıcı geri bildirimiyle yenilendi, 1 Kasım 2026):** Kod `src/components/mola/` altında (`MatchGame`, `QuickGame`, `FocusTimer`, `FocusEngine`, `shared`); `src/pages/Mola.tsx` yalnızca menü ve Tekrar|Mola anahtarı.
+- **Eşleştir:** iki sütun (solda "Kavram", sağda "Cevap"; `buildMatchColumns`). Seçilen kutu fosforlu; doğru çift yeşil + tik, **yerinde kalır** (kaybolup düzen kaymıyor); yanlış çift kırmızı titrer, +2 sn. İlerleme çubuğu ve "3/6 eşleşti".
+- **Hızlı tur:** kart parmakla **sağa = doğru, sola = yanlış** kaydırılır (90 px eşik; sürüklerken DOĞRU/YANLIŞ damgası); düğmeler ve ←/→ da çalışır. Her cevaptan sonra ekran yeşil/kırmızı yanıp söner, alt satırda doğru cevap. **3 hak** (`QUICK_LIVES`): her yanlışta sıradaki kutuya damga animasyonlu çarpı; 3 yanlış ya da 60 sn biter ("Haklar bitti" / "Süre bitti").
+- **Odak sayacı (Pomodoro):** `FOCUS_PLANS` 25+5 (uzun mola 15) ve 50+10 (uzun 20), 4 turda bir uzun mola. Halka gösterge (odakta sarı, molada yeşil), tur noktaları, isteğe bağlı "Neye çalışıyorsun?" dersi, Duraklat/Devam, Molaya geç/Molayı atla, Bitir (geçen odak dakikaları sayılır). Odak bitince mola **kendiliğinden** başlar; mola bitince sıradaki tur "N. turu başlat" diye bekler. Molada Eşleştir/Hızlı tur önerisi (seçilen dersin kartlarıyla). Son 7 gün çubuk grafiği, "Bugün: X dk · N tur".
+- **Uygulama genelinde sayaç:** `src/lib/focusStore.ts` (tek paylaşılan durum, `localStorage` `studymode.focus.v1`, sekmeler arası senkron) + `FocusEngine` (Layout'ta): hangi sayfada olursan ol fazı ilerletir, tamamlanan odak turunu kaydeder (dakika, tur, seri), ses çalar, uygulama arka plandaysa sistem bildirimi gönderir (izin "Başla"ya basınca istenir; iOS'ta yalnızca ana ekrana eklenmiş uygulamada çalışır), sekme başlığında geri sayım, diğer sayfalarda sağ altta küçük sayaç rozeti. Uygulama kapalıyken biten faz, bittiği andan itibaren hesaplanır.
+- Eski kayıtlar uyumlu: önceki sürümün sayaç kaydı (plan/faz yok) okunur; `rounds` alanı yoksa boş sayılır.
 
 **Sesli not (rafa kaldırıldı, 1 Kasım 2026):** Araştırma sonucu: Gemini TTS modelleri (`gemini-3.8-flash-tts`, `-lite-tts`) resmî fiyat sayfasında ücretsiz katmanda ve Türkçe destekli; tek istekte 2 konuşmacılı "podcast" mümkün. NotebookLM'in açık API'si yok. ElevenLabs ücretsiz planı ayda ~10 bin karakter ve ticari kullanım yok, uygun değil. Kısıtlar: ücretsiz kota belirsiz ve düşük olabilir (kullanıcı başına kota gerekir); WAV dosyası büyük (1 dk ≈ 2-3 MB, Vercel cevap sınırı ~4,5 MB), parçalama ya da düşük örnekleme gerekir. Kullanıcı "boşverelim, başka şeylere efor harcayalım" dedi. İstenirse buradan devam edilir.
 

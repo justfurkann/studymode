@@ -1,4 +1,5 @@
 import { BookOpen, Brain, ClipboardList, House, Plus, Settings } from 'lucide-react'
+import { FocusEngine } from './mola/FocusEngine'
 import { MadeBy } from './MadeBy'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -150,6 +151,7 @@ export function Layout() {
         <Outlet />
         <MadeBy className="mobile-made-by" />
       </main>
+      <FocusEngine />
 
       <nav className="mobile-bar" aria-label="Alt menü">
         <NavLink to="/" end>

@@ -2980,24 +2980,52 @@ a.list-item:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* Eşleştir */
+.match-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Two columns: terms left, answers right. */
 .match-board {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
+.match-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.match-col-head {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding-left: 4px;
+}
+
 .match-tile {
-  min-height: 84px;
-  padding: 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  padding: 10px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--text);
   font-size: 0.875rem;
   line-height: 1.35;
+  text-align: center;
   overflow-wrap: anywhere;
-  transition: opacity 0.3s 0.25s, visibility 0s 0.55s, transform 0.3s 0.25s, background 0.1s, border-color 0.1s;
+  transition: background 0.15s, border-color 0.15s, opacity 0.3s, transform 0.15s;
 }
 
 .match-tile.is-front {
@@ -3013,38 +3041,180 @@ a.list-item:hover {
 .match-tile[aria-pressed='true'] {
   border: 1.5px solid var(--card-line);
   box-shadow: 0 3px 0 var(--card-drop);
-  background: var(--hi-soft);
+  background: var(--hi);
+  color: var(--on-hi);
   transform: translateY(-2px);
 }
 
+/* A found pair: green with a tick, faded, but kept in place so nothing jumps. */
 .match-tile.is-matched {
-  background: var(--hi);
-  color: var(--on-hi);
-  border-color: var(--ink-line);
-  opacity: 0;
-  visibility: hidden;
-  transform: scale(0.94);
+  background: var(--success-soft);
+  border-color: var(--success);
+  color: var(--text-2);
+  opacity: 0.55;
   cursor: default;
+}
+
+.match-tile.is-pop {
+  opacity: 1;
+  animation: tile-pop 0.45s ease-out;
+}
+
+.match-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: var(--success);
+}
+
+@keyframes tile-pop {
+  40% {
+    transform: scale(1.06);
+  }
 }
 
 .match-tile.is-miss {
   border-color: var(--danger);
   background: var(--danger-soft);
-  animation: tile-shake 0.35s;
+  animation: tile-shake 0.4s;
 }
 
 @keyframes tile-shake {
-  25% {
-    transform: translateX(-4px);
+  20%,
+  60% {
+    transform: translateX(-5px);
   }
-  75% {
-    transform: translateX(4px);
+  40%,
+  80% {
+    transform: translateX(5px);
   }
 }
 
 /* Hızlı tur */
+.quick {
+  position: relative;
+}
+
+.quick-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .quick-card {
+  position: relative;
   min-height: 240px;
+  touch-action: pan-y;
+  user-select: none;
+  cursor: grab;
+  transition: transform 0.2s ease-out, opacity 0.2s;
+}
+
+.quick-card:active {
+  cursor: grabbing;
+}
+
+.quick-card.is-leaving-right {
+  transform: translateX(120%) rotate(14deg);
+  opacity: 0;
+}
+
+.quick-card.is-leaving-left {
+  transform: translateX(-120%) rotate(-14deg);
+  opacity: 0;
+}
+
+/* "Doğru" / "Yanlış" stamps that appear as the card is dragged. */
+.quick-stamp {
+  position: absolute;
+  top: 18px;
+  padding: 2px 10px;
+  border-radius: 8px;
+  border: 2.5px solid currentColor;
+  background: var(--surface);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.quick-stamp.is-yes {
+  left: 18px;
+  color: var(--success);
+  transform: rotate(-10deg);
+}
+
+.quick-stamp.is-no {
+  right: 18px;
+  color: var(--danger);
+  transform: rotate(10deg);
+}
+
+/* The whole screen flashes green or red after an answer. */
+.quick-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  animation: quick-flash 0.45s ease-out forwards;
+}
+
+.quick-flash.is-ok {
+  background: var(--success);
+}
+
+.quick-flash.is-bad {
+  background: var(--danger);
+}
+
+@keyframes quick-flash {
+  from {
+    opacity: 0.32;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Three lives; a lost one gets a red cross stamped in. */
+.lives {
+  display: flex;
+  gap: 8px;
+}
+
+.life {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+}
+
+.life.is-lost {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.life.is-lost svg {
+  animation: life-stamp 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes life-stamp {
+  from {
+    transform: scale(2.2) rotate(-25deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
 }
 
 .quick-answers {
@@ -3066,6 +3236,15 @@ a.list-item:hover {
 .quick-feedback {
   text-align: center;
   min-height: 1.5em;
+  font-weight: 600;
+}
+
+.quick-feedback.is-ok {
+  color: var(--success);
+}
+
+.quick-feedback.is-bad {
+  color: var(--danger);
 }
 
 .quick-combo {
@@ -3104,66 +3283,225 @@ a.list-item:hover {
   font-weight: 650;
 }
 
-/* Odak defteri: a grid-paper page, one square per minute. */
-.focus-page {
+/* Odak sayacı: a pomodoro ring. */
+.focus-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.focus-course {
+  max-width: 360px;
+}
+
+.focus-note {
+  font-weight: 600;
+}
+
+.focus-stage {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
-  padding-block: 24px;
+  gap: 16px;
+  padding-block: 20px 24px;
+}
+
+.focus-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.focus-phase {
+  font-weight: 700;
+}
+
+.focus-phase.is-focus {
+  background: var(--hi);
+  color: var(--on-hi);
+  border-color: var(--ink-line);
+}
+
+.focus-phase.is-short,
+.focus-phase.is-long {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.focus-course-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.focus-ring {
+  position: relative;
+  width: min(240px, 70vw);
+  aspect-ratio: 1;
+}
+
+.focus-ring svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ring-track {
+  fill: none;
+  stroke: var(--surface-2);
+  stroke-width: 12;
+}
+
+.ring-fill {
+  fill: none;
+  stroke: var(--hi);
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.focus-ring.is-short .ring-fill,
+.focus-ring.is-long .ring-fill {
+  stroke: var(--success);
+}
+
+.focus-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
 }
 
 .focus-clock {
   font-family: var(--font-display);
-  font-size: 3.5rem;
+  font-size: 3.25rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.focus-grid {
-  display: grid;
-  gap: 4px;
-  width: 100%;
-  max-width: 240px;
+.focus-dots {
+  display: flex;
+  gap: 8px;
 }
 
-.focus-grid.cols-10 {
-  max-width: 440px;
-  grid-template-columns: repeat(10, 1fr);
-}
-
-.focus-grid.cols-5 {
-  grid-template-columns: repeat(5, 1fr);
-}
-
-.focus-grid > span {
-  aspect-ratio: 1;
+.focus-dots span {
+  width: 12px;
+  height: 12px;
   border-radius: 4px;
-  border: 1px solid var(--border-strong);
-  background: var(--bg);
-  transition: background 0.4s;
+  border: 1.5px solid var(--border-strong);
 }
 
-.focus-grid > span.is-filled {
+.focus-dots span.is-done {
   background: var(--hi);
   border-color: var(--ink-line);
 }
 
-.focus-grid > span.is-now {
-  border-color: var(--ink-line);
-  animation: focus-now 1.6s ease-in-out infinite;
-}
-
-@keyframes focus-now {
-  50% {
-    background: var(--hi-soft);
-  }
-}
-
 .focus-actions {
   justify-content: center;
+}
+
+.focus-break {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-color: var(--success);
+}
+
+.focus-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.focus-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.focus-bar-value {
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-height: 1em;
+  color: var(--text-2);
+}
+
+.focus-bar-track {
+  position: relative;
+  width: 100%;
+  max-width: 28px;
+  height: 80px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.focus-bar-track span {
+  position: absolute;
+  inset: auto 0 0;
+  background: var(--hi);
+  border-top: 1.5px solid var(--ink-line);
+}
+
+.focus-bar-label {
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+.focus-bar.is-today .focus-bar-label {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* The running timer, visible on every other page. */
+.focus-pill {
+  position: fixed;
+  right: 16px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--hi);
+  color: var(--on-hi);
+  border: 1.5px solid var(--ink-line);
+  box-shadow: 0 3px 0 var(--ink-line);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.focus-pill strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-pill.is-short,
+.focus-pill.is-long {
+  background: var(--success-soft);
+  color: var(--text);
+  border-color: var(--success);
+  box-shadow: 0 3px 0 var(--success);
+}
+
+.focus-pill.is-paused {
+  opacity: 0.85;
+}
+
+@media (min-width: 861px) {
+  .focus-pill {
+    bottom: 24px;
+    right: 24px;
+  }
 }
 
 .check-row {
@@ -3185,19 +3523,7 @@ a.list-item:hover {
   font-weight: 400;
 }
 
-@media (max-width: 600px) {
-  .match-board {
-    grid-template-columns: repeat(2, 1fr);
-  }
 
-  .match-tile {
-    min-height: 64px;
-  }
-
-  .focus-clock {
-    font-size: 3rem;
-  }
-}
 
 /* ============ Sınavlar ============ */
 

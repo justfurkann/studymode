@@ -16,6 +16,12 @@ import {
   nextQuickItem,
   parseRecords,
   parseTimer,
+  startFocus,
+  nextPhase,
+  isWaiting,
+  buildMatchColumns,
+  focusWeek,
+  addFocusRound,
   tileFront,
   pauseTimer,
   quickPoints,
@@ -178,12 +184,12 @@ describe('records on this device', () => {
     expect(saveQuickScore(null, 0)).toBe(false)
     expect(saveQuickScore(null, 12)).toBe(true)
     expect(saveQuickScore(null, 9)).toBe(false)
-    expect(readRecords()).toEqual({ match: { all: 31_000, c1: 50_000 }, quick: { all: 12 }, focus: {} })
+    expect(readRecords()).toEqual({ match: { all: 31_000, c1: 50_000 }, quick: { all: 12 }, focus: {}, rounds: {} })
   })
 
   it('ignores broken stored data', () => {
-    expect(parseRecords('{oops')).toEqual({ match: {}, quick: {}, focus: {} })
-    expect(parseRecords('{"match":{"all":"x","c1":-3,"c2":20},"focus":null}')).toEqual({ match: { c2: 20 }, quick: {}, focus: {} })
+    expect(parseRecords('{oops')).toEqual({ match: {}, quick: {}, focus: {}, rounds: {} })
+    expect(parseRecords('{"match":{"all":"x","c1":-3,"c2":20},"focus":null}')).toEqual({ match: { c2: 20 }, quick: {}, focus: {}, rounds: {} })
   })
 
   it('adds focus minutes per day and sums the last seven days', () => {
@@ -222,10 +228,70 @@ describe('focus timer', () => {
   })
 
   it('reads back only a valid stored timer', () => {
-    expect(parseTimer(JSON.stringify(startTimer(50, t0)))).toEqual({ minutes: 50, endsAt: t0 + 50 * 60_000, remainingMs: null })
-    expect(parseTimer(JSON.stringify({ minutes: 25, endsAt: null, remainingMs: 99 * 60_000 }))).toEqual({ minutes: 25, endsAt: null, remainingMs: 25 * 60_000 })
+    const base = { plan: 'klasik', phase: 'focus', round: 1, courseId: null }
+    expect(parseTimer(JSON.stringify(startTimer(50, t0)))).toEqual({ minutes: 50, endsAt: t0 + 50 * 60_000, remainingMs: null, ...base })
+    // A timer saved by the previous version (no plan or phase) still loads.
+    expect(parseTimer(JSON.stringify({ minutes: 25, endsAt: null, remainingMs: 99 * 60_000 }))).toEqual({ minutes: 25, endsAt: null, remainingMs: 25 * 60_000, ...base })
+    expect(parseTimer(JSON.stringify({ ...startFocus('uzun', 3, 'c1', t0), phase: 'nope' }))).toEqual({ ...startFocus('uzun', 3, 'c1', t0), phase: 'focus' })
     expect(parseTimer('{"minutes":0,"endsAt":5}')).toBeNull()
     expect(parseTimer('{"minutes":25,"endsAt":null,"remainingMs":null}')).toBeNull()
     expect(parseTimer('nope')).toBeNull()
+  })
+})
+
+describe('pomodoro phases', () => {
+  const t0 = 5_000_000
+
+  it('goes focus → short break → waiting round, with a long break every fourth round', () => {
+    let t = startFocus('klasik', 1, 'c1', t0)
+    expect([t.phase, t.minutes, t.round]).toEqual(['focus', 25, 1])
+    t = nextPhase(t, t0 + 25 * 60_000)
+    expect([t.phase, t.minutes, t.round, t.endsAt]).toEqual(['short', 5, 1, t0 + 30 * 60_000])
+    t = nextPhase(t, t0 + 30 * 60_000)
+    expect([t.phase, t.minutes, t.round, t.endsAt]).toEqual(['focus', 25, 2, null])
+    expect(isWaiting(t)).toBe(true)
+    expect(t.courseId).toBe('c1')
+    const fourth = nextPhase({ ...startFocus('klasik', 4, null, t0) }, t0)
+    expect([fourth.phase, fourth.minutes]).toEqual(['long', 15])
+    const long = nextPhase(startFocus('uzun', 1, null, t0), t0)
+    expect([long.phase, long.minutes]).toEqual(['short', 10])
+  })
+})
+
+describe('two-column match board', () => {
+  it('puts every term on the left and every answer on the right', () => {
+    const { fronts, backs } = buildMatchColumns(deck, seeded(5))
+    expect(fronts).toHaveLength(6)
+    expect(backs).toHaveLength(6)
+    expect(fronts.every((t) => t.side === 'front')).toBe(true)
+    expect(backs.every((t) => t.side === 'back')).toBe(true)
+    expect(new Set(fronts.map((t) => t.cardId))).toEqual(new Set(backs.map((t) => t.cardId)))
+  })
+})
+
+describe('focus week', () => {
+  beforeEach(() => {
+    const data = new Map<string, string>()
+    globalThis.localStorage = {
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => void data.set(k, v),
+      removeItem: (k: string) => void data.delete(k),
+      clear: () => data.clear(),
+      key: () => null,
+      get length() { return data.size },
+    } as Storage
+  })
+
+  it('lists seven days, oldest first, with minutes and finished rounds', () => {
+    const now = new Date(2026, 9, 31, 12)
+    addFocusMinutes(50, now)
+    addFocusRound(now)
+    addFocusRound(now)
+    addFocusMinutes(25, new Date(2026, 9, 29, 9))
+    const week = focusWeek(readRecords(), now)
+    expect(week).toHaveLength(7)
+    expect(week[6]).toMatchObject({ day: '2026-10-31', minutes: 50, rounds: 2, today: true })
+    expect(week[4]).toMatchObject({ day: '2026-10-29', minutes: 25, rounds: 0, today: false })
+    expect(week[0].day).toBe('2026-10-25')
   })
 })
