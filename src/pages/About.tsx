@@ -2,6 +2,7 @@ import { ArrowRight, Sparkles } from 'lucide-react'
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
+import { FeedbackLink } from '../components/Feedback'
 import { BrandIcon } from '../components/BrandIcon'
 import { MAKER, SOCIALS } from '../components/MadeBy'
 import { PixelSky } from '../components/PixelSky'
@@ -120,6 +121,9 @@ export function About() {
               StudyMode'a göz at <ArrowRight size={18} />
             </Link>
           </div>
+          <p className="subtle about-feedback">
+            Uygulamayla ilgili bir fikrin ya da hata mı var? <FeedbackLink label="Buradan yaz" />
+          </p>
 
           {found && (
             <p className="about-secret" role="status">
