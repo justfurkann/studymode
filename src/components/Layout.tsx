@@ -1,4 +1,5 @@
 import { BookOpen, Brain, ClipboardList, House, Plus, Settings } from 'lucide-react'
+import { MadeBy } from './MadeBy'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { authErrorMessage, displayName } from '../lib/auth'
@@ -83,6 +84,7 @@ export function Layout() {
             {mode === 'cloud' ? name : 'Bu cihazda kayıtlı'}
           </span>
         </div>
+        <MadeBy className="sidebar-made-by" />
       </aside>
 
       <main className="main">

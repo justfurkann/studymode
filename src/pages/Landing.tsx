@@ -1,4 +1,5 @@
 import { ArrowRight, CalendarClock, Check, FileText, Layers, ListChecks, MessageSquareText, Smartphone } from 'lucide-react'
+import { MadeBy } from '../components/MadeBy'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { useStore } from '../lib/store'
@@ -233,6 +234,7 @@ export function Landing() {
       <footer className="lp-wrap lp-footer">
         <Brand size={24} />
         <span>Türk üniversite öğrencileri için ders çalışma uygulaması.</span>
+        <MadeBy />
         <Link to="/giris">Giriş yap</Link>
       </footer>
     </div>
