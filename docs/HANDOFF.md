@@ -63,7 +63,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (Aşama 10 sonrası): 156 birim testi, 55 tarayıcı testi.
+Son yeşil durum (yeni sürüm uyarısı sonrası): 159 birim testi, 56 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -290,6 +290,8 @@ create policy "anyone can report" on public.client_errors for insert to anon, au
   with check (user_id is null or user_id = (select auth.uid()));
 grant insert on public.feedback, public.client_errors to anon, authenticated;
 ```
+
+**Yayından sonra eski sekme ("Failed to fetch dynamically imported module"):** Her yayında dosya adları değişir, eskiler silinir; yayından önce açılmış bir sekme, tembel yüklenen parçayı (yapay zekâ kodu, PDF okuyucu, Office okuyucu) eski adla ister ve 404 alır. Kullanıcı ilk kez kendi anahtarını doğrularken bu hatayı gördü (1 Kasım 2026). Çözüm `src/lib/version.ts`: bütün dinamik `import()`'lar `freshImport` içinden geçer; eksik parça Türkçe `StaleVersionError` olur ("Uygulamanın yeni bir sürümü yayınlandı. Sayfayı yenileyip tekrar dene"). Ayrıca sekme yeniden görünür olunca ve 10 dakikada bir `/` sayfasının ana betiği karşılaştırılır; yeni sürüm varsa üstte fosforlu "Uygulamanın yeni sürümü hazır · Yenile" çubuğu (`UpdateWatcher.tsx`) çıkar ve kullanıcı **başka sayfaya geçtiği an** kendiliğinden yenilenir (yazılanlar kaybolmasın diye o sayfadayken zorla yenilemez). Yeni bir dinamik import eklenirse `freshImport(() => import(...))` ile yazılmalı.
 
 ## Tasarım dili ("Fosforlu")
 

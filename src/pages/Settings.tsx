@@ -11,6 +11,7 @@ import { migrateLocalToCloud, useStore } from '../lib/store'
 import { clampDailyGoal } from '../lib/streak'
 import { supabase } from '../lib/supabase'
 import { emptyData } from '../lib/types'
+import { freshImport } from '../lib/version'
 
 function AccountSection() {
   const store = useStore()
@@ -196,7 +197,7 @@ function AiSection() {
     }
     setState({ kind: 'testing' })
     try {
-      await (await import('../lib/ai')).testApiKey(target, trimmed, settings.models[target])
+      await (await freshImport(() => import('../lib/ai'))).testApiKey(target, trimmed, settings.models[target])
       updateSettings({ keys: { ...settings.keys, [target]: trimmed } })
       setState({ kind: 'ok', message: 'Anahtar çalışıyor ve kaydedildi.' })
     } catch (e) {

@@ -8,6 +8,7 @@ import { generateLocally } from '../lib/localGenerator'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import type { GeneratedSet, Generator } from '../lib/types'
+import { freshImport } from '../lib/version'
 
 const NEW_COURSE = '__new__'
 const MIN_CHARS = 120
@@ -61,7 +62,7 @@ export function AddNote() {
   const makeTranscriber = () =>
     ai.ok
       ? async (images: import('../lib/ai').TranscribeImage[]) => {
-          const { transcribeImages } = await import('../lib/ai')
+          const { transcribeImages } = await freshImport(() => import('../lib/ai'))
           return transcribeImages(images, settings)
         }
       : undefined
@@ -140,7 +141,7 @@ export function AddNote() {
   /** Builds a study set; `onChunk` reports progress for long notes that are processed in parts. */
   async function buildSet(text: string, noteTitle: string, generator: Generator, onChunk?: (status: string) => void): Promise<{ set: GeneratedSet; warning: string }> {
     if (generator === 'local') return { set: generateLocally(text), warning: '' }
-    const { generateStudySet, partialChunkMessage } = await import('../lib/ai')
+    const { generateStudySet, partialChunkMessage } = await freshImport(() => import('../lib/ai'))
     const set = await generateStudySet(text, noteTitle, settings, (done, total) => {
       if (total > 1) onChunk?.(`Uzun not ${total} bölüme ayrıldı · ${done}/${total} bölüm işlendi`)
     })

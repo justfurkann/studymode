@@ -7,6 +7,7 @@ import { AiSignupPrompt } from '../AiSignupPrompt'
 import { useStore } from '../../lib/store'
 import type { Note } from '../../lib/types'
 import { Modal, Spinner } from '../ui'
+import { freshImport } from '../../lib/version'
 
 const EXPLAIN_MODES: Array<{ mode: ExplainMode; label: string }> = [
   { mode: 'simple', label: 'Daha basit anlat' },
@@ -37,7 +38,7 @@ function ConceptExplainer({
     setActiveMode(mode)
     setBusy(true)
     try {
-      const { explainConcept, localExplainConcept, contextAround } = await import('../../lib/ai')
+      const { explainConcept, localExplainConcept, contextAround } = await freshImport(() => import('../../lib/ai'))
       // Only the passage around the concept is sent: it is what the explanation needs, and it keeps
       // requests small for long notes.
       const context = contextAround(note.content, topic, 8_000)

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation, useNavigationType, useParams } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { UpdateWatcher } from './components/UpdateWatcher'
 import { Alert, Spinner, ToastProvider } from './components/ui'
 import { StoreProvider, useStore } from './lib/store'
 import { About } from './pages/About'
@@ -93,6 +94,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <UpdateWatcher />
       <StoreProvider>
         <ToastProvider>
           <Routed />

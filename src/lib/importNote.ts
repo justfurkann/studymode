@@ -1,4 +1,5 @@
 import type { ImageMimeType, TranscribeImage } from './ai/tasks'
+import { freshImport, StaleVersionError } from './version'
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024
 export const MAX_PDF_PAGES = 150
@@ -99,7 +100,7 @@ async function extractImageText(file: File, extension: string, options?: NoteImp
 
 async function extractOfficeText(file: File, extension: 'docx' | 'pptx'): Promise<string> {
   // Loaded on demand so the unzip code is only downloaded by people who upload Office files.
-  const { docxText, pptxText } = await import('./officeText')
+  const { docxText, pptxText } = await freshImport(() => import('./officeText'))
   const data = new Uint8Array(await file.arrayBuffer())
   return extension === 'docx' ? docxText(data) : pptxText(data)
 }
@@ -109,8 +110,8 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
 
   try {
     const [pdfjs, worker] = await Promise.all([
-      import('pdfjs-dist'),
-      import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+      freshImport(() => import('pdfjs-dist')),
+      freshImport(() => import('pdfjs-dist/build/pdf.worker.min.mjs?url')),
     ])
     pdfjs.GlobalWorkerOptions.workerSrc = worker.default
     loadingTask = pdfjs.getDocument({
@@ -194,7 +195,7 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
 
     return pages.filter(Boolean).join('\n\n')
   } catch (error) {
-    if (error instanceof NoteImportError) throw error
+    if (error instanceof NoteImportError || error instanceof StaleVersionError) throw error
     if (error instanceof Error && error.name === 'PasswordException') {
       throw new Error('Bu PDF şifre korumalı. Şifresiz bir kopyasını yükle.')
     }

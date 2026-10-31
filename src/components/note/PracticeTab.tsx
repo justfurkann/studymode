@@ -7,6 +7,7 @@ import { aiAvailability, useSettings } from '../../lib/settings'
 import { useStore } from '../../lib/store'
 import type { Note, PracticeItem } from '../../lib/types'
 import { Alert, Celebrate, Empty, Spinner, useToast } from '../ui'
+import { freshImport } from '../../lib/version'
 
 /** How long to wait after the last keystroke before saving a written answer. */
 const SAVE_DELAY_MS = 700
@@ -44,7 +45,7 @@ function PracticeCard({ noteId, item, index, onInteracted }: { noteId: string; i
     setBusy(true)
     setError('')
     try {
-      const { gradeAnswers } = await import('../../lib/ai')
+      const { gradeAnswers } = await freshImport(() => import('../../lib/ai'))
       const [result] = await gradeAnswers(
         { items: [{ question: item.question, modelAnswer: item.answer, criteria: item.hint ?? '', answer: draft }] },
         settings,
