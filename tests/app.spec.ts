@@ -1665,3 +1665,14 @@ test('the maker page: Made by leads there, socials, and two small secrets', asyn
   await expect(page).not.toHaveURL(/hakk/)
   expect(errors).toEqual([])
 })
+
+test('opening another page starts at its top, not where the last page was scrolled', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 700 })
+  await page.goto('/ayarlar')
+  const sign = page.getByRole('main').getByRole('link', { name: 'Made by JustFurkan' })
+  await sign.scrollIntoViewIfNeeded()
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(300)
+  await sign.click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Selam, ben JustFurkan' })).toBeInViewport()
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
+})
