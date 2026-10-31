@@ -1710,3 +1710,16 @@ test('feedback goes straight to the maker, from Settings and from the bottom of 
   expect(sent).toHaveLength(1)
   expect(errors).toEqual([])
 })
+
+test('after a new deploy, a missing app file explains itself instead of a raw error', async ({ page }) => {
+  // Simulate an old tab: the lazily loaded AI code is gone from the server.
+  await page.route('**/src/lib/ai/index.ts*', (route) => route.abort())
+  await page.goto('/ayarlar')
+  await page.getByRole('button', { name: 'ChatGPT' }).click()
+  await page.getByLabel(/API anahtarı/).fill('sk-test-1234567890')
+  await page.getByRole('button', { name: 'Doğrula ve kaydet' }).click()
+  await expect(page.getByText(/Uygulamanın yeni bir sürümü yayınlandı/)).toBeVisible()
+  await expect(page.getByText(/Failed to fetch dynamically imported module/)).toHaveCount(0)
+  await expect(page.getByRole('status').filter({ hasText: 'Uygulamanın yeni sürümü hazır.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Yenile' })).toBeVisible()
+})

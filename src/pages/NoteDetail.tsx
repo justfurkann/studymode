@@ -15,6 +15,7 @@ import { generateLocally } from '../lib/localGenerator'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import type { Generator, LearningStepId, Note } from '../lib/types'
+import { freshImport } from '../lib/version'
 
 /** The study flow, in order: read, measure, practise, explain. Each view covers one or two learning steps. */
 const VIEWS = [
@@ -90,7 +91,7 @@ function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => v
       let warning = ''
       let set
       if (generator === 'ai') {
-        const { generateStudySet, partialChunkMessage } = await import('../lib/ai')
+        const { generateStudySet, partialChunkMessage } = await freshImport(() => import('../lib/ai'))
         const result = await generateStudySet(note.content, note.title, settings, (done, total) => {
           if (total > 1) setChunkStatus(`Uzun not ${total} bölüme ayrıldı · ${done}/${total} bölüm işlendi`)
         })

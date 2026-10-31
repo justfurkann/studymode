@@ -12,6 +12,7 @@ import { aiAvailability, useSettings } from '../lib/settings'
 import { clearActiveExam, loadActiveExam, saveActiveExam, secondsRemaining, type ActiveExamDraft, type ExamAnswer } from '../lib/examSession'
 import { daysUntil } from '../lib/srs'
 import { useStore } from '../lib/store'
+import { freshImport } from '../lib/version'
 
 type Phase = 'setup' | 'preparing' | 'running' | 'grading' | 'result'
 type Answer = ExamAnswer
@@ -185,7 +186,7 @@ export function Exam() {
       if (chosenChars > MAX_NOTE_CHARS) return setError('Seçtiğin notlar tek bir sınav için çok uzun. Daha az not seç.')
       setPhase('preparing')
       try {
-        const { generateExam } = await import('../lib/ai')
+        const { generateExam } = await freshImport(() => import('../lib/ai'))
         const raw = await generateExam(
           {
             courseName: course!.name,
@@ -252,7 +253,7 @@ export function Exam() {
     if (openToGrade.length) {
       setPhase('grading')
       try {
-        const { gradeAnswers } = await import('../lib/ai')
+        const { gradeAnswers } = await freshImport(() => import('../lib/ai'))
         const results = await gradeAnswers(
           { items: openToGrade.map(({ q, answer }) => ({ question: q.prompt, modelAnswer: q.modelAnswer, criteria: q.explanation, answer: String(answer) })) },
           settings,
