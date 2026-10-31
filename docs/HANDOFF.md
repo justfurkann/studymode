@@ -55,7 +55,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (Aşama 7 sonrası): 139 birim testi, 43 tarayıcı testi.
+Son yeşil durum (Aşama 8 sonrası): 149 birim testi, 46 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -83,11 +83,11 @@ alter table public.study_days add column if not exists actions integer not null 
 
 ## 6. Birleştirilmiş PR'lar (özet)
 
-#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma) · #24 devir notu · Aşama 7 (Mola). Hepsi `main`de ve canlıda.
+#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma) · #24 devir notu · #25 Aşama 7 (Mola) · Aşama 8 (Sınavlar sekmesi). Hepsi `main`de ve canlıda.
 
 ## 7. Aşamalar ve durum
 
-**Şu an açık bir hedef yok.** Aşama 1-7 bitti, hepsi canlıda. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
+**Şu an açık bir hedef yok.** Aşama 1-8 bitti, hepsi canlıda. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
 
 **Aşama 1 — Doğrulama ve hatalar: ✅ TAMAM (#18)**
 - Uzun not: bölüm başına bir yeniden deneme, kısmi sonuç + uyarı, not eklemede bölüm ilerlemesi.
@@ -171,6 +171,15 @@ create policy "own rows" on public.course_exams for all to authenticated
 - **Sesler:** Ayarlar → "Görünüm ve ses" → "Küçük sesler" (varsayılan kapalı). Ses dosyası yok, Web Audio ile kısa tonlar (`src/lib/sound.ts`).
 - Mantık `src/lib/mola.ts` (+ testleri), ekran `src/pages/Mola.tsx`. Rekorlar ve odak dakikaları yalnızca cihazda (`studymode.mola.v1`). Veritabanı değişikliği yok, SQL gerekmez.
 - Sonraki adım adayları (konuşuldu, yapılmadı): paylaşılabilir haftalık karne, çıkartma albümü, arkadaşla düello (veritabanı + RLS ister).
+
+**Aşama 8 — "Sınavlar" sekmesi: ✅ TAMAM (Aşama 8 PR'ı)** — kullanıcı isteği: bütün derslerimi ve sınav tarihlerini tek seferde gireyim, dersler oluşsun; uygulama aciliyete göre "şimdi bununla başla" desin.
+- "Sınav provası" sekmesi **"Sınavlar"** oldu (`/sinav`; yan menü ve alt menü adı değişti). Sırayla: "Sınav ekle" düğmesi → **Dönemini kur** tablosu, "Şimdi bununla başla" kartı, **Takvim** (bütün yaklaşan sınavlar tarih sırasıyla, 3 gün ve altı fosforlu tarih kutusu, ağırlık, hazırlık %), tarihi olmayan dersler, katlanır "Geçmiş sınavlar", en altta eski prova listesi (aynen).
+- Hiç ders ya da yaklaşan sınav yoksa sekme doğrudan Dönemini kur tablosuyla açılır.
+- **Dönemini kur** (`SemesterEditor.tsx`): satır başına ders adı, vize, final. Yeni ad → yeni ders (+ sınavları); mevcut ad (büyük/küçük harf, boşluk farkı yok sayılır) → ilk vize/final tarihi güncellenir ya da eklenir. Bütünleme, quiz, ağırlık, kapsam ve ikinci vize olduğu gibi kalır; **boş hücre hiçbir sınavı silmez.** Mevcut dersler salt okunur satır olarak gelir.
+- **Şimdi bununla başla** (`ExamFocusCard.tsx`, Bugün sayfasında ve Sınavlar'da): 45 gün içindeki sınavlar arasında aciliyet = (1 − hazırlık) × ağırlık katsayısı / (gün + 1). Hazırlık, sınavın kapsadığı notların hâkimiyet ortalaması; test ya da kart tekrarı olmayan not en fazla %40 sayılır; notu olmayan derste hazırlık "bilinmiyor" ve eylem "Not ekle" (`/not-ekle?ders=…`). %85 ve üstü hazır sınavlar öne çıkarılmaz. Eylem akıllı plandaki o sınava ait ilk not; hepsi çalışılmışsa "Prova yap".
+- **Telefon takvimine ekle:** `.ics` dosyası (tüm gün etkinlik, bir gün önce 09:00 hatırlatma). Bildirim altyapımız olmadığı için hatırlatmayı telefonun takvimi yapar.
+- Dersler sayfası: notu olmayan derste "Not ekle" etiketi; hiç ders yokken "Bütün dönemi tek seferde gir".
+- Mantık `src/lib/examFocus.ts` (+ testleri). Veritabanı değişikliği yok, SQL gerekmez.
 
 ## Tasarım dili ("Fosforlu")
 

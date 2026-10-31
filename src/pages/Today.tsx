@@ -1,6 +1,8 @@
 import { ArrowRight, Brain, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ExamFocusCard } from '../components/ExamFocusCard'
 import { Welcome } from '../components/Welcome'
+import { pickExamFocus } from '../lib/examFocus'
 import { firstName } from '../lib/auth'
 import { useLoadDemo } from '../lib/useDemo'
 import { examCountdown, examName, upcomingExams } from '../lib/courseExams'
@@ -33,6 +35,7 @@ export function Today() {
 
   const streakSummary = computeStreakSummary(data.studyDays, settings.dailyGoal, now)
   const smartPlan = buildSmartStudyPlan(data, now, 2)
+  const focus = pickExamFocus(data, now)
 
   // The last seven days, oldest first, for the streak strip.
   const studied = new Map(mergeStudyDays(data.studyDays).map((d) => [d.day, isDayStudied(d)]))
@@ -108,6 +111,8 @@ export function Today() {
           </Link>
         </section>
       )}
+
+      {focus && <ExamFocusCard focus={focus} />}
 
       <section className="panel streak-panel" aria-label="Günlük hedef ve seri">
         <div className="streak-goal">
