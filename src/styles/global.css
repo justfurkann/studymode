@@ -3421,3 +3421,76 @@ a.list-item:hover {
     flex-direction: column;
   }
 }
+
+/* ============ İmza ============ */
+
+.made-by {
+  color: var(--text-3);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.made-by strong {
+  color: var(--text-2);
+  font-weight: 700;
+}
+
+.made-by:hover strong {
+  background: var(--hi);
+  color: var(--on-hi);
+  border-radius: 0.18em;
+}
+
+.sidebar-made-by {
+  padding: 0 12px 12px;
+}
+
+.lp-footer .made-by {
+  margin-left: 0;
+  font-weight: 400;
+}
+
+.shared-foot {
+  text-align: center;
+}
+
+.about {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.socials {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.social-chip {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  line-height: 1.25;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.social-chip:hover {
+  border-color: var(--text);
+  background: var(--hi-soft);
+}
+
+.social-name {
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.social-handle {
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}

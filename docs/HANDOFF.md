@@ -63,7 +63,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (Aşama 9 sonrası): 153 birim testi, 50 tarayıcı testi.
+Son yeşil durum (imza sonrası): 153 birim testi, 51 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -237,6 +237,8 @@ $$;
 revoke all on function public.get_course_share(text) from public;
 grant execute on function public.get_course_share(text) to anon, authenticated;
 ```
+
+**İmza (Made by JustFurkan):** `src/components/MadeBy.tsx` tek kaynak (ad + sosyal hesaplar). Görünür yerler: tanıtım sayfası alt bilgisi, bilgisayarda yan menünün altı, paylaşılan ders sayfasının altı (bağlantı Instagram'a gider), Ayarlar → "Hakkında" kartı (Instagram @furkann_ztrk, X @furkan_ztrk_, TikTok @justfurkann_, YouTube @justfurkann, GitHub justfurkann). Lucide'da marka simgesi yok, bu yüzden simgesiz metin kartları. WhatsApp kasıtlı olarak eklenmedi (herkese açık sitede numara/hesap paylaşmak; kullanıcıya soruldu).
 
 ## Tasarım dili ("Fosforlu")
 

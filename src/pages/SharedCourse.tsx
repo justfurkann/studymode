@@ -1,6 +1,7 @@
 import { BookOpen, CalendarClock, FileText, Layers, ListChecks } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { MadeBy } from '../components/MadeBy'
 import { Alert, Empty, Spinner, useToast } from '../components/ui'
 import { examName } from '../lib/courseExams'
 import { fetchShare, importedCourseId, rememberImport, ShareError, snapshotCounts, type FetchedShare } from '../lib/share'
@@ -155,6 +156,9 @@ export function SharedCourse() {
           </div>
         </section>
       )}
+      <p className="subtle shared-foot">
+        StudyMode · <MadeBy />
+      </p>
     </div>
   )
 }
