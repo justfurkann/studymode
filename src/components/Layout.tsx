@@ -148,6 +148,7 @@ export function Layout() {
           </div>
         )}
         <Outlet />
+        <MadeBy className="mobile-made-by" />
       </main>
 
       <nav className="mobile-bar" aria-label="Alt menü">

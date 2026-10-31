@@ -1,4 +1,5 @@
 import { BrandIcon, type Brand } from './BrandIcon'
+import { PixelSky } from './PixelSky'
 
 /** The maker's signature: who built StudyMode, and where to find them. */
 export const MAKER = 'JustFurkan'
@@ -27,12 +28,12 @@ export function MakerCard() {
   const instagram = SOCIALS[0]
   return (
     <div className="maker-card">
-      <div className="maker-band" aria-hidden="true" />
+      <div className="maker-band">
+        <PixelSky />
+      </div>
       <div className="maker-body">
         <div className="maker-head">
-          <span className="maker-avatar" aria-hidden="true">
-            JF
-          </span>
+          <img className="maker-avatar" src="/maker-160.webp" srcSet="/maker-160.webp 1x, /maker-320.webp 2x" width={76} height={76} alt={`${MAKER} profil resmi`} loading="lazy" decoding="async" />
           <div className="maker-title">
             <strong className="maker-name">{MAKER}</strong>
             <span className="subtle">StudyMode'u yapan kişi</span>
