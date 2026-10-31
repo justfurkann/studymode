@@ -55,7 +55,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (Aşama 6 sonrası): 120 birim testi, 39 tarayıcı testi.
+Son yeşil durum (Aşama 7 sonrası): 139 birim testi, 43 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -83,11 +83,11 @@ alter table public.study_days add column if not exists actions integer not null 
 
 ## 6. Birleştirilmiş PR'lar (özet)
 
-#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma). Hepsi `main`de ve canlıda.
+#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma) · #24 devir notu · Aşama 7 (Mola). Hepsi `main`de ve canlıda.
 
 ## 7. Aşamalar ve durum
 
-**Şu an açık bir hedef yok.** Aşama 1-6 bitti, hepsi canlıda. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
+**Şu an açık bir hedef yok.** Aşama 1-7 bitti, hepsi canlıda. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
 
 **Aşama 1 — Doğrulama ve hatalar: ✅ TAMAM (#18)**
 - Uzun not: bölüm başına bir yeniden deneme, kısmi sonuç + uyarı, not eklemede bölüm ilerlemesi.
@@ -160,6 +160,17 @@ create policy "own rows" on public.course_exams for all to authenticated
 - Prova kurulumu: "Boşluk doldurma" (4-12) ve "Boşta kalacak kelime" (0-6, varsayılan 3). Yapay zekâ `blank` sorularını ve üst düzey `distractors` listesini döndürür; `normalizeExam` tek boşluklu olmayanları, tekrar eden cevapları ve fazladan kelime olarak cevapla aynı olanları atar, havuzu karıştırır ve soruları gerçek sınav sırasına koyar (test → boşluk → klasik).
 - Sınav ekranı: havuz ilk boşluk sorusunun üstünde bir kez gösterilir, kullanılan kelimenin üstü çizilir; her cümlede satır içi seçim kutusu.
 - Yalnızca yapay zekâ ile; "Hazır sorulardan karıştır" modunda boşluk doldurma yok. Veritabanı değişikliği yok (`exam_results.questions` jsonb; boşluklu sınavların türü `mixed`).
+
+**Aşama 7 — Mola (eğlence bölümü): ✅ TAMAM (Aşama 7 PR'ı)** — kullanıcı isteği: "renk katacak, sade ama güzel, eğlenceli ufak şeyler". Rakip analizi sonrası kural: eğlence kullanıcının kendi kartlarından beslenir ya da çalışmayı ödüllendirir; konu dışı oyun yok, yapay zekâ harcanmaz.
+- Yer: "Tekrar" sekmesinin üstünde "Tekrar | Mola" anahtarı (`/tekrar?bolum=mola`, oyun `&oyun=eslestir|hizli|odak`). Alt menü 5 öğede kaldı. Nottan/dersten açılan tekrarda (`?not=`, `?ders=`) anahtar görünmez.
+- **Eşleştir:** 6 kart, 12 kutucuk, süreye karşı; yanlış eşleşme +2 sn. "“X” ne anlama gelir?" ön yüzleri kutucukta yalnızca "X" olur (`tileFront`). Rekor ders başına.
+- **Hızlı tur:** 60 sn, gösterilen cevap doğru mu yanlış mı (yanlışlar başka kartın cevabı); üst üste üçüncü doğrudan itibaren 2 puan; klavye ←/→; sonda "Kaçırdıkların" listesi.
+- **Odak defteri:** 25/50 dk sayaç; her dakika kareli sayfada bir kare boyanır. Başka sayfaya geçince/yenileyince sürer (`localStorage` `studymode.focus.v1`), tam oturum seriyi sürdürür, erken bitirilen dakikalar haftalık toplama eklenir. "1 dolu sayfa" = 25 dk.
+- **Önemli kural:** Oyunlar seriyi sürdürür (`store.recordActivity`), ama aralıklı tekrar planına ve günlük kart hedefine **dokunmaz**.
+- **Kutlama:** `Celebrate` bileşeni (`ui.tsx`): bitiş anında kelimenin altından fosforlu kalem bir kez geçer (kart turu, test sonucu, not bitişi, tekrar oturumu sonu, oyun sonuçları). Hareket azaltma tercihinde animasyonsuz.
+- **Sesler:** Ayarlar → "Görünüm ve ses" → "Küçük sesler" (varsayılan kapalı). Ses dosyası yok, Web Audio ile kısa tonlar (`src/lib/sound.ts`).
+- Mantık `src/lib/mola.ts` (+ testleri), ekran `src/pages/Mola.tsx`. Rekorlar ve odak dakikaları yalnızca cihazda (`studymode.mola.v1`). Veritabanı değişikliği yok, SQL gerekmez.
+- Sonraki adım adayları (konuşuldu, yapılmadı): paylaşılabilir haftalık karne, çıkartma albümü, arkadaşla düello (veritabanı + RLS ister).
 
 ## Tasarım dili ("Fosforlu")
 

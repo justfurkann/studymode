@@ -1137,3 +1137,168 @@ test('fill-in-the-blank: one word bank with extra words, scored per blank', asyn
   await expect(page.getByRole('button', { name: 'Kartlara eklendi' })).toBeDisabled()
   expect(errors).toEqual([])
 })
+
+test.describe('mola: games and focus timer in the Tekrar tab', () => {
+  async function storedCards(page: Page): Promise<Array<{ front: string; back: string; due: string }>> {
+    return page.evaluate(() => JSON.parse(localStorage.getItem('studymode.data.v2') || '{}').cards ?? [])
+  }
+  const clean = (s: string) => s.replace(/\s+/g, ' ').trim()
+
+  test('match game: pairs disappear, the time becomes a record, streak counts but reviews do not', async ({ page }) => {
+    const errors = watchErrors(page)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+    const before = await storedCards(page)
+
+    await page.goto('/tekrar')
+    await page.getByRole('tab', { name: 'Mola' }).click()
+    await expect(page).toHaveURL(/bolum=mola/)
+    await expect(page.getByRole('heading', { level: 1, name: /Kısa bir mola/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Eşleştir' })).toContainText('Henüz rekor yok')
+    await page.getByRole('button', { name: 'Eşleştir' }).click()
+
+    const board = page.getByRole('group', { name: 'Eşleştirme kartları' })
+    const tiles = board.getByRole('button')
+    await expect(tiles.first()).toBeVisible()
+    const count = await tiles.count()
+    expect(count % 2).toBe(0)
+    expect(count).toBeGreaterThanOrEqual(6)
+
+    // One wrong pair first: two fronts never match, then a front with a wrong back.
+    const texts = (await tiles.allInnerTexts()).map(clean)
+    // Fronts may be shortened to the term ("“Öğrenme” ne anlama gelir?" → "Öğrenme"), answers to a prefix.
+    const isFront = (text: string) => before.some((c) => clean(c.front).includes(text.replace(/…$/, '')))
+    const owner = (text: string) => {
+      const prefix = text.replace(/…$/, '')
+      return isFront(text) ? before.findIndex((c) => clean(c.front).includes(prefix)) : before.findIndex((c) => clean(c.back).startsWith(prefix))
+    }
+    const firstFront = texts.findIndex(isFront)
+    const wrongBack = texts.findIndex((t, i) => i !== firstFront && !isFront(t) && owner(t) !== owner(texts[firstFront]))
+    await tiles.nth(firstFront).click()
+    await expect(tiles.nth(firstFront)).toHaveAttribute('aria-pressed', 'true')
+    await tiles.nth(wrongBack).click()
+    await expect(page.getByText(/1 yanlış/)).toBeVisible()
+
+    // Then every pair, matched by which card each tile came from.
+    const done = new Set<number>()
+    for (let i = 0; i < texts.length; i++) {
+      if (done.has(i)) continue
+      const j = texts.findIndex((t, k) => k !== i && !done.has(k) && owner(t) === owner(texts[i]))
+      await tiles.nth(i).click()
+      await tiles.nth(j).click()
+      done.add(i).add(j)
+    }
+
+    await expect(page.getByText('Yeni rekor!')).toBeVisible()
+    await expect(page.getByText('1 yanlış eşleşme (+2 sn)')).toBeVisible()
+    await expect(page.getByText('İlk rekorun bu.')).toBeVisible()
+    await page.getByRole('button', { name: 'Molaya dön' }).last().click()
+    await expect(page.getByRole('button', { name: 'Eşleştir' })).toContainText(/Rekor: \d+,\d sn/)
+
+    // Games keep the streak alive but never touch the review schedule or the daily card goal.
+    const after = await storedCards(page)
+    expect(after.map((c) => c.due)).toEqual(before.map((c) => c.due))
+    await page.goto('/')
+    const streakPanel = page.getByRole('region', { name: 'Günlük hedef ve seri' })
+    await expect(streakPanel.getByText('1 gündür çalışıyorsun')).toBeVisible()
+    await expect(streakPanel.getByText('0/20')).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test('quick round: true or false against the clock, missed cards listed at the end', async ({ page }) => {
+    const errors = watchErrors(page)
+    await page.clock.install()
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+    const cards = await storedCards(page)
+
+    await page.goto('/tekrar?bolum=mola')
+    await page.getByRole('button', { name: 'Hızlı tur' }).click()
+    await expect(page.getByText('Bu cevap bu soruya mı ait?')).toBeVisible()
+
+    // Answer five correctly (third one onwards is worth two points), then one wrong on purpose.
+    let expected = 0
+    for (let i = 0; i < 6; i++) {
+      const card = page.locator('.quick-card')
+      const prompt = clean(await card.locator('.front').innerText())
+      const shown = clean(await card.locator('.back').innerText())
+      const real = cards.find((c) => clean(c.front) === prompt)!
+      const isTrue = clean(real.back).startsWith(shown.replace(/…$/, ''))
+      const sayTrue = i < 5 ? isTrue : !isTrue
+      await page.keyboard.press(sayTrue ? 'ArrowRight' : 'ArrowLeft')
+      if (i < 5) expected += i >= 2 ? 2 : 1
+      await expect(page.locator('.mola-stats')).toContainText(`${expected} puan`)
+    }
+    await expect(page.getByText(/Az önceki: .+ → /)).toBeVisible()
+
+    await page.clock.fastForward('01:05')
+    await expect(page.getByText(`${expected} puan`, { exact: true })).toBeVisible()
+    await expect(page.getByText('Yeni rekor!')).toBeVisible()
+    await expect(page.getByText('6 sorudan 5 tanesini bildin.')).toBeVisible()
+    await expect(page.getByText('Kaçırdıkların')).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test('focus notebook fills a square per minute, keeps running on other pages and credits the week', async ({ page }) => {
+    const errors = watchErrors(page)
+    await page.clock.install()
+    await page.goto('/tekrar?bolum=mola')
+    // Without cards the games are locked, the focus timer is not.
+    await expect(page.getByRole('button', { name: 'Eşleştir' })).toBeDisabled()
+    await page.getByRole('button', { name: 'Odak defteri' }).click()
+    await expect(page.locator('.focus-clock')).toHaveText('25:00')
+    await page.getByRole('button', { name: 'Başla' }).click()
+
+    await page.clock.runFor('05:00')
+    await expect(page.getByRole('img', { name: '25 karenin 5 tanesi boyandı' })).toBeVisible()
+    await expect(page.locator('.focus-clock')).toHaveText('20:00')
+    await page.getByRole('button', { name: 'Duraklat' }).click()
+    await page.clock.runFor('03:00')
+    await expect(page.locator('.focus-clock')).toHaveText('20:00')
+    await page.getByRole('button', { name: 'Devam et' }).click()
+
+    // Leave the page; the timer keeps going and is credited on return.
+    await page.goto('/dersler')
+    await page.clock.runFor('21:00')
+    await page.goto('/tekrar?bolum=mola')
+    await expect(page.getByRole('button', { name: 'Odak defteri' })).toContainText('Sayfa doldu')
+    await page.getByRole('button', { name: 'Odak defteri' }).click()
+    await expect(page.getByText(/25 dakika odaklandın/)).toBeVisible()
+    await expect(page.getByText('Son 7 gün: 25 dk · 1 dolu sayfa')).toBeVisible()
+    await expect(page.getByRole('img', { name: '25 karenin 25 tanesi boyandı' })).toBeVisible()
+
+    // Stopping early still adds the minutes that passed.
+    await page.getByRole('button', { name: '50 dakika' }).click()
+    await page.getByRole('button', { name: 'Başla' }).click()
+    await page.clock.runFor('10:30')
+    await page.getByRole('button', { name: 'Bitir' }).click()
+    await expect(page.getByText('Son 7 gün: 35 dk · 1 dolu sayfa')).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test('on a phone the Mola section fits and sounds can be turned on in Settings', async ({ page }) => {
+    const errors = watchErrors(page)
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+    await page.getByRole('navigation', { name: 'Alt menü' }).getByRole('link', { name: 'Tekrar' }).click()
+    await page.getByRole('tab', { name: 'Mola' }).click()
+    await page.getByRole('button', { name: 'Eşleştir' }).click()
+    await expect(page.getByRole('group', { name: 'Eşleştirme kartları' })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false)
+    await page.getByRole('button', { name: 'Molaya dön' }).click()
+    await page.getByRole('tab', { name: 'Tekrar' }).click()
+    await expect(page).toHaveURL(/\/tekrar$/)
+
+    await page.goto('/ayarlar')
+    const sounds = page.getByLabel(/Küçük sesler/)
+    await expect(sounds).not.toBeChecked()
+    await sounds.check()
+    await page.reload()
+    await expect(page.getByLabel(/Küçük sesler/)).toBeChecked()
+    expect(errors).toEqual([])
+  })
+})

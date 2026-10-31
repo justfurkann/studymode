@@ -1,5 +1,6 @@
 import { AlertCircle, Info, LoaderCircle, TriangleAlert, X } from 'lucide-react'
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { playSound } from '../lib/sound'
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -54,7 +55,18 @@ export function Spinner({ size = 18 }: { size?: number }) {
   return <LoaderCircle size={size} className="spinner" aria-hidden />
 }
 
-export function Empty({ icon, title, children }: { icon: ReactNode; title: string; children?: ReactNode }) {
+/**
+ * A finished moment: the words get marked with the highlighter, drawn left to right once, and the
+ * "done" sound plays if the student turned sounds on. Use it for one or two words, like `.hl`.
+ */
+export function Celebrate({ children, sound = true }: { children: ReactNode; sound?: boolean }) {
+  useEffect(() => {
+    if (sound) playSound('done')
+  }, [sound])
+  return <span className="hl hl-swipe">{children}</span>
+}
+
+export function Empty({ icon, title, children }: { icon: ReactNode; title: ReactNode; children?: ReactNode }) {
   return (
     <div className="empty">
       {icon}

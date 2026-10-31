@@ -6,7 +6,7 @@ import { canCompletePractice, isMeaningfulAnswer } from '../../lib/practice'
 import { aiAvailability, useSettings } from '../../lib/settings'
 import { useStore } from '../../lib/store'
 import type { Note, PracticeItem } from '../../lib/types'
-import { Alert, Empty, Spinner, useToast } from '../ui'
+import { Alert, Celebrate, Empty, Spinner, useToast } from '../ui'
 
 /** How long to wait after the last keystroke before saving a written answer. */
 const SAVE_DELAY_MS = 700
@@ -171,7 +171,7 @@ export function PracticeTab({ note }: { note: Note }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <CheckCircle2 size={22} style={{ color: 'var(--success)', flexShrink: 0 }} />
               <div>
-                <strong>Bu notu bitirdin!</strong>
+                <strong>Bu notu <Celebrate>bitirdin!</Celebrate></strong>
                 <p className="subtle">Unutmamak için kartlar aralıklı tekrarla yine karşına gelecek.</p>
               </div>
             </div>

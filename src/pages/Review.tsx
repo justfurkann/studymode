@@ -2,12 +2,13 @@ import { ArrowLeft, Brain, PartyPopper, RotateCcw, Shuffle, Volume2 } from 'luci
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Card } from '../lib/types'
-import { Empty } from '../components/ui'
+import { Celebrate, Empty } from '../components/ui'
 import { dueCards } from '../lib/format'
 import { examDateForCard } from '../lib/courseExams'
 import { intervalLabel, schedule, type Grade } from '../lib/srs'
 import { useStore } from '../lib/store'
 import { useLoadDemo } from '../lib/useDemo'
+import { Mola, ReviewSwitch } from './Mola'
 
 const GRADES: Array<{ grade: Grade; label: string; key: string }> = [
   { grade: 'again', label: 'Bilemedim', key: '1' },
@@ -16,7 +17,16 @@ const GRADES: Array<{ grade: Grade; label: string; key: string }> = [
   { grade: 'easy', label: 'Kolay', key: '4' },
 ]
 
+/** The Tekrar tab: today's reviews, and next to them "Mola" (games and the focus timer). */
 export function Review() {
+  const [params] = useSearchParams()
+  // A review started from a note or a course stays focused on it; the switch is for the tab itself.
+  const scoped = !!(params.get('not') || params.get('ders'))
+  if (!scoped && params.get('bolum') === 'mola') return <Mola />
+  return <ReviewSession showSwitch={!scoped} />
+}
+
+function ReviewSession({ showSwitch }: { showSwitch: boolean }) {
   const store = useStore()
   const loadDemo = useLoadDemo()
   const [params] = useSearchParams()
@@ -101,13 +111,17 @@ export function Review() {
   if (!card) {
     return (
       <div className="page page-narrow">
-        <Link to={back} className="back-link">
-          <ArrowLeft size={16} /> Geri
-        </Link>
+        {showSwitch ? (
+          <ReviewSwitch active="tekrar" />
+        ) : (
+          <Link to={back} className="back-link">
+            <ArrowLeft size={16} /> Geri
+          </Link>
+        )}
         <div className="btn-row">{last && <button className="btn" onClick={undo}><RotateCcw size={16} /> Son cevabı geri al</button>}{hardOnly && <button className="btn" onClick={() => filterHard(false)}>Tüm kartlara dön</button>}</div>
         <div className="panel">
           {done > 0 ? (
-            <Empty icon={<PartyPopper size={36} />} title="Oturum bitti!">
+            <Empty icon={<PartyPopper size={36} />} title={<>Oturum <Celebrate>bitti!</Celebrate></>}>
               <p>{done} kart tekrar ettin. Kartlar, verdiğin cevaplara göre tekrar planlandı.</p>
               <Link to="/" className="btn btn-primary">
                 Bugün sayfasına dön
@@ -130,9 +144,14 @@ export function Review() {
           ) : (
             <Empty icon={<Brain size={36} />} title="Şu an tekrar edilecek kart yok">
               <p>Bugünlük tekrarların bitti. Kartlar, verdiğin cevaplara göre doğru zamanda burada yeniden görünecek.</p>
-              <Link to="/" className="btn">
-                Bugün sayfasına dön
-              </Link>
+              <div className="btn-row" style={{ justifyContent: 'center' }}>
+                <Link to="/tekrar?bolum=mola&oyun=eslestir" className="btn">
+                  Molada eşleştir oyna
+                </Link>
+                <Link to="/" className="btn">
+                  Bugün sayfasına dön
+                </Link>
+              </div>
             </Empty>
           )}
         </div>
@@ -147,6 +166,7 @@ export function Review() {
   return (
     <div className="page">
       <div className="review">
+        {showSwitch && <ReviewSwitch active="tekrar" />}
         <div className="section-head">
           <Link to={back} className="back-link">
             <ArrowLeft size={16} /> Bitir

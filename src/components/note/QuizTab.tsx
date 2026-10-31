@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { toggleCompletedStep } from '../../lib/learningPath'
 import { useStore } from '../../lib/store'
 import type { Note, Question, QuizAttempt } from '../../lib/types'
-import { Empty, useToast } from '../ui'
+import { Celebrate, Empty, useToast } from '../ui'
 
 const LETTERS = 'ABCDEF'
 
@@ -127,7 +127,7 @@ export function QuizTab({
             {past ? `Son sonucun · ${new Date(lastAttempt!.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}` : 'Sonuç'}
           </span>
           <div className="score">
-            {score}/{total}
+            {past ? `${score}/${total}` : <Celebrate>{score}/{total}</Celebrate>}
           </div>
           <p className="muted">
             {ratio === 1

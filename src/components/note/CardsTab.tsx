@@ -5,7 +5,7 @@ import { cardHint } from '../../lib/cardHint'
 import { toggleCompletedStep } from '../../lib/learningPath'
 import { useStore } from '../../lib/store'
 import type { Card, Note } from '../../lib/types'
-import { Empty, Modal } from '../ui'
+import { Celebrate, Empty, Modal } from '../ui'
 
 function CardEditor({ card, onSave, onClose }: { card?: Card; onSave: (front: string, back: string) => void; onClose: () => void }) {
   const [front, setFront] = useState(card?.front ?? '')
@@ -185,7 +185,7 @@ export function CardsTab({ note, onNext, onShowSource }: { note: Note; onNext?: 
           <div className="study-done-mark" aria-hidden="true">
             <Check size={32} strokeWidth={3} />
           </div>
-          <strong>Tur bitti</strong>
+          <strong>Tur <Celebrate>bitti</Celebrate></strong>
           <p className="muted">
             {round} kartın {known} tanesini ilk denemede bildin. Kartlar aralıklı tekrarla doğru zamanda yine gelecek.
           </p>
