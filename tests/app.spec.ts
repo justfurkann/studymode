@@ -1568,7 +1568,13 @@ test("the maker's signature is on the landing page, the sidebar and in Settings 
   await expect(about.getByRole('link', { name: 'TikTok: @justfurkann_' })).toHaveAttribute('href', 'https://www.tiktok.com/@justfurkann_')
   await expect(about.getByRole('link', { name: 'YouTube: @justfurkann' })).toHaveAttribute('href', 'https://www.youtube.com/@justfurkann')
   await expect(about.getByRole('link', { name: 'GitHub: justfurkann' })).toHaveAttribute('target', '_blank')
+  await expect(about.getByRole('img', { name: 'JustFurkan profil resmi' })).toBeVisible()
+  // On a phone there is no sidebar: the signature sits at the bottom of every page instead.
   await page.setViewportSize({ width: 375, height: 812 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false)
+  await page.goto('/dersler')
+  const mobileSign = page.getByRole('main').getByRole('link', { name: 'Made by JustFurkan' })
+  await mobileSign.scrollIntoViewIfNeeded()
+  await expect(mobileSign).toBeVisible()
   expect(errors).toEqual([])
 })

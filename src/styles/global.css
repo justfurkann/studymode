@@ -28,6 +28,11 @@
   --hero-fg: #ffffff;
   --hero-sub: rgb(255 255 255 / 0.78);
   --hero-line: transparent;
+  /* Pixel sky in the maker card: day. */
+  --sky-top: #3f8df3;
+  --sky-bottom: #9ad6ff;
+  --cloud: #ffffff;
+  --cloud-shade: #cfe6ff;
   --brand-bg: #1b2250;
   --brand-fg: #ffe14d;
   --success: #1c8a55;
@@ -84,6 +89,11 @@
     --hero-fg: #f4f3ea;
     --hero-sub: #b9bbd2;
     --hero-line: #2c3156;
+    /* Pixel sky in the maker card: night. */
+    --sky-top: #141a4a;
+    --sky-bottom: #2c3a8a;
+    --cloud: #4d5ca8;
+    --cloud-shade: #3b4890;
     --brand-bg: #ffe14d;
     --brand-fg: #11142a;
     --success: #5fd69b;
@@ -124,6 +134,11 @@
   --hero-fg: #f4f3ea;
   --hero-sub: #b9bbd2;
   --hero-line: #2c3156;
+  /* Pixel sky in the maker card: night. */
+  --sky-top: #141a4a;
+  --sky-bottom: #2c3a8a;
+  --cloud: #4d5ca8;
+  --cloud-shade: #3b4890;
   --brand-bg: #ffe14d;
   --brand-fg: #11142a;
   --success: #5fd69b;
@@ -3450,8 +3465,16 @@ a.list-item:hover {
   font-weight: 400;
 }
 
-.shared-foot {
-  text-align: center;
+.mobile-made-by {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .mobile-made-by {
+    display: block;
+    width: fit-content;
+    margin: 32px auto 0;
+  }
 }
 
 /* Settings → Hakkında: a small business card. */
@@ -3465,20 +3488,75 @@ a.list-item:hover {
 
 /* A highlighter stripe across grid paper, like the top of a notebook page. */
 .maker-band {
-  height: 64px;
-  background:
-    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 16px 16px,
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 16px 16px,
-    var(--hi-soft);
+  position: relative;
+  height: 96px;
   border-bottom: 1px solid var(--border);
+}
+
+.pixel-sky {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(var(--sky-top), var(--sky-bottom));
+}
+
+.sky-layer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
+  width: 800px;
+  animation: sky-drift 60s linear infinite;
+}
+
+.sky-layer svg {
+  flex-shrink: 0;
+  display: block;
+}
+
+.sky-far {
+  opacity: 0.6;
+  animation-duration: 90s;
+}
+
+.sky-near {
+  animation-duration: 45s;
+}
+
+@keyframes sky-drift {
+  to {
+    transform: translateX(-400px);
+  }
+}
+
+.sky-cloud {
+  fill: var(--cloud);
+}
+
+.sky-cloud-shade {
+  fill: var(--cloud-shade);
+}
+
+/* A four-point pixel spark in highlighter yellow. */
+.sky-spark {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--hi);
+  box-shadow: 4px 0 var(--hi), -4px 0 var(--hi), 0 4px var(--hi), 0 -4px var(--hi);
+  animation: sky-twinkle 2.4s steps(2, jump-none) infinite;
+}
+
+@keyframes sky-twinkle {
+  50% {
+    opacity: 0.15;
+  }
 }
 
 .maker-body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 0 20px 20px;
-  margin-top: -30px;
+  padding: 12px 20px 20px;
 }
 
 .maker-head {
@@ -3489,19 +3567,17 @@ a.list-item:hover {
 
 .maker-avatar {
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 20px;
   background: var(--hi);
-  color: var(--on-hi);
   border: 1.5px solid var(--ink-line);
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.5rem;
-  letter-spacing: -0.03em;
+  box-shadow: 0 3px 0 var(--ink-line);
+  object-fit: cover;
+  image-rendering: pixelated;
   transform: rotate(-4deg);
+  margin-top: -52px;
 }
 
 .maker-title {
