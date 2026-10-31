@@ -28,6 +28,14 @@ Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yen
 - Sohbette bir kez Supabase **secret** anahtarı (`sb_secret_…`) paylaşıldı. Kullanıcıya iptal etmesi söylendi; iptal edildiği **teyit edilmedi**. Kontrol edilmeli: Supabase → Project Settings → API Keys.
 - Secret / service_role anahtarları koda, `.env`'e ya da sohbete asla konmaz.
 
+**Claude'un doğrudan erişimi (1 Kasım 2026'da fark edildi):** Oturumda **Supabase** ve **Vercel** bağlantıları (MCP araçları) var; ToolSearch ile `supabase` / `vercel` aranınca yüklenir.
+- Supabase proje kimliği `jpcatyopkpnudgdyncas`: tablo ve politika kontrolü, `get_advisors` güvenlik taraması, SQL çalıştırma.
+- Vercel proje `prj_MKBVUckUIIar9RINW2u77MmYraGb`, ekip `team_0hA1FTe7Vn1ou2ld6IwpEAxf` (justfurkan): yayın durumu (`list_deployments`), canlı hatalar (`get_runtime_errors`). Ekip erişim onayı 1 Kasım'da verildi; süresi biterse `authorize_team_access` ile yeni onay bağlantısı üretilip kullanıcıya verilir.
+- **Kullanıcı kararı (seçenek A):** Veritabanı değişikliklerini Claude çalıştırır, ama **her SQL'i önce kullanıcıya gösterip "tamam" aldıktan sonra.** Onaysız şema değişikliği yok. Salt okuma (kontrol, tarama, kayıt okuma) serbest.
+- Her birleştirmeden sonra Vercel'de yayının READY olduğu kontrol edilir.
+- Supabase güvenlik taramasında kalan uyarılar: `get_course_share` için iki "security definer anon/authenticated" uyarısı **bilinçli** (önizleme için gerekli; yalnızca tam token ile tek satır döner). "Leaked password protection" kapalı; kullanıcıya açması önerildi (planına bağlı olabilir).
+- 1 Kasım kontrolü: son 4 production yayını READY. Son 7 günde yalnızca 29 Ekim akşamı eski bir yayında `/api/generate` 300 sn zaman aşımı ve Gemini 503 hataları var; sonraki zaman aşımı ve yedek model düzeltmeleriyle (`maxDuration = 60`, deneme başına zaman aşımı) çözülmüş, o tarihten beri hata yok.
+
 ## 3. Teknoloji ve kod yapısı
 
 React 19 + TypeScript + Vite 7, React Router 7, Supabase JS, Anthropic SDK, zod 4, pdf.js, fflate (Office dosyaları), lucide-react ikonları, yazı tipleri Bricolage Grotesque (başlık) ve Figtree (gövde) — `@fontsource-variable`. Sürümler `package.json`'da sabit (`^` yok). Google AI Studio `package-lock.json`'ı sürekli siliyor; sürümler sabit olduğu için sorun değil, lockfile commit'lenmiyor.
@@ -63,7 +71,7 @@ Tablolar: `courses`, `notes`, `cards`, `quiz_attempts`, `exam_results`, `study_d
 
 **Çalıştırıldı (kullanıcı teyit etti, Ekim 2026):** ilk şema, `exam_results`, `study_days`, `quiz_attempts.answers`, `study_days.actions`, `course_exams`.
 
-**BEKLEYEN SQL (Aşama 9, ders paylaşımı):** `course_shares` tablosu + `get_course_share` fonksiyonu (aşağıda Aşama 9 bölümünde). Çalıştırılana kadar uygulama çökmez; paylaşımda "veritabanı güncellemesi bekleniyor" der.
+**Aşama 9 SQL'i de çalıştırıldı (1 Kasım 2026):** `course_shares` + `get_course_share`; Claude Supabase üzerinden teyit etti (tablo, RLS, politika, fonksiyon yerinde). Bekleyen SQL yok.
 
 **Kayıt için (artık çalıştırıldı):**
 ```sql
@@ -85,7 +93,7 @@ alter table public.study_days add column if not exists actions integer not null 
 
 ## 6. Birleştirilmiş PR'lar (özet)
 
-#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma) · #24 devir notu · #25 Aşama 7 (Mola) · #26 Aşama 8 (Sınavlar sekmesi) · Aşama 9 (ders paylaşımı). Hepsi `main`de ve canlıda.
+#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma) · #24 devir notu · #25 Aşama 7 (Mola) · #26 Aşama 8 (Sınavlar sekmesi) · #27 Aşama 9 (ders paylaşımı). Hepsi `main`de ve canlıda.
 
 ## 7. Aşamalar ve durum
 
@@ -174,6 +182,8 @@ create policy "own rows" on public.course_exams for all to authenticated
 - Mantık `src/lib/mola.ts` (+ testleri), ekran `src/pages/Mola.tsx`. Rekorlar ve odak dakikaları yalnızca cihazda (`studymode.mola.v1`). Veritabanı değişikliği yok, SQL gerekmez.
 - Sonraki adım adayları (konuşuldu, yapılmadı): paylaşılabilir haftalık karne, çıkartma albümü, arkadaşla düello (veritabanı + RLS ister).
 
+**Sesli not (rafa kaldırıldı, 1 Kasım 2026):** Araştırma sonucu: Gemini TTS modelleri (`gemini-3.8-flash-tts`, `-lite-tts`) resmî fiyat sayfasında ücretsiz katmanda ve Türkçe destekli; tek istekte 2 konuşmacılı "podcast" mümkün. NotebookLM'in açık API'si yok. ElevenLabs ücretsiz planı ayda ~10 bin karakter ve ticari kullanım yok, uygun değil. Kısıtlar: ücretsiz kota belirsiz ve düşük olabilir (kullanıcı başına kota gerekir); WAV dosyası büyük (1 dk ≈ 2-3 MB, Vercel cevap sınırı ~4,5 MB), parçalama ya da düşük örnekleme gerekir. Kullanıcı "boşverelim, başka şeylere efor harcayalım" dedi. İstenirse buradan devam edilir.
+
 **Aşama 8 — "Sınavlar" sekmesi: ✅ TAMAM (Aşama 8 PR'ı)** — kullanıcı isteği: bütün derslerimi ve sınav tarihlerini tek seferde gireyim, dersler oluşsun; uygulama aciliyete göre "şimdi bununla başla" desin.
 - "Sınav provası" sekmesi **"Sınavlar"** oldu (`/sinav`; yan menü ve alt menü adı değişti). Sırayla: "Sınav ekle" düğmesi → **Dönemini kur** tablosu, "Şimdi bununla başla" kartı, **Takvim** (bütün yaklaşan sınavlar tarih sırasıyla, 3 gün ve altı fosforlu tarih kutusu, ağırlık, hazırlık %), tarihi olmayan dersler, katlanır "Geçmiş sınavlar", en altta eski prova listesi (aynen).
 - Hiç ders ya da yaklaşan sınav yoksa sekme doğrudan Dönemini kur tablosuyla açılır.
@@ -183,7 +193,7 @@ create policy "own rows" on public.course_exams for all to authenticated
 - Dersler sayfası: notu olmayan derste "Not ekle" etiketi; hiç ders yokken "Bütün dönemi tek seferde gir".
 - Mantık `src/lib/examFocus.ts` (+ testleri). Veritabanı değişikliği yok, SQL gerekmez.
 
-**Aşama 9 — Ders paylaşımı (link + QR): ✅ KOD TAMAM (Aşama 9 PR'ı), SQL kullanıcıda bekliyor** — kullanıcı isteği: arkadaşla dersi link ya da QR ile paylaşmak. Karar: **kopya** yöntemi (canlı ortak ders değil).
+**Aşama 9 — Ders paylaşımı (link + QR): ✅ TAMAM (#27), SQL çalıştırıldı, kullanıcı canlıda denedi** — kullanıcı isteği: arkadaşla dersi link ya da QR ile paylaşmak. Karar: **kopya** yöntemi (canlı ortak ders değil).
 - Ders sayfasında "Paylaş" → `ShareCourse.tsx` penceresi. Ders bir **anlık kopya** (snapshot) olarak `course_shares` tablosuna yazılır, 22 karakterlik tahmin edilemez bağlantı (`/paylas/<token>`) üretilir; kopyala, telefonun paylaş menüsü, QR kod (`qrcode-generator` 1.4.4, sarı zemin + lacivert; iki temada okunur). "Dersin şimdiki hâliyle güncelle" (aynı bağlantı) ve "Paylaşımı kapat" (satır silinir, bağlantı ölür). Giriş yapmamışsa bağlantı oluşturamaz.
 - Anlık kopyada **yalnızca içerik** var: notlar, temiz özet (overview/points/keyTerms/tags), sorular, model cevaplı açık uçlu sorular, kartlar (ön/arka/kaynak), **yaklaşan** sınav tarihleri. **Gitmeyenler:** kart ilerlemesi, tamamlanan adımlar, işaretli kavramlar, yazılı cevap taslakları ve puanları, test denemeleri, sınav sonuçları, e-posta (sahip adı yalnızca ad soyad; ad yoksa boş). Sınır 2,5 MB.
 - Arkadaş `/paylas/<token>` açar (`SharedCourse.tsx`): önizleme (kim paylaştı, not/kart/soru/sınav sayıları, içindekiler), "Derslerime ekle" → `store.importCourse` tek seferde yeni kimliklerle, sıfır ilerlemeyle kopyalar (aynı adlı ders varsa "(paylaşılan)" eki). Misafir de ekleyebilir (yalnızca bu cihaza). Aynı cihazda tekrar açılırsa "Bu dersi daha önce ekledin · Derse git".
