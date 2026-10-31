@@ -1147,7 +1147,7 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
   }
   const clean = (s: string) => s.replace(/\s+/g, ' ').trim()
 
-  test('match game: pairs disappear, the time becomes a record, streak counts but reviews do not', async ({ page }) => {
+  test('match game: found pairs turn green, the time becomes a record, streak counts but reviews do not', async ({ page }) => {
     const errors = watchErrors(page)
     await page.goto('/')
     await page.getByRole('button', { name: 'Örnek notla dene' }).click()
@@ -1224,7 +1224,9 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
     // Answer five correctly (third one onwards is worth two points), then one wrong on purpose.
     let expected = 0
     for (let i = 0; i < 6; i++) {
-      const card = page.locator('.quick-card')
+      // Wait for the previous card to fly off and the next one to settle.
+      const card = page.locator('.quick-card:not(.is-leaving-left):not(.is-leaving-right)')
+      await expect(card).toHaveCount(1)
       const prompt = clean(await card.locator('.front').innerText())
       const shown = clean(await card.locator('.back').innerText())
       const real = cards.find((c) => clean(c.front) === prompt)!
@@ -1234,7 +1236,8 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
       if (i < 5) expected += i >= 2 ? 2 : 1
       await expect(page.locator('.mola-stats')).toContainText(`${expected} puan`)
     }
-    await expect(page.getByText(/Az önceki: .+ → /)).toBeVisible()
+    await expect(page.getByText(/^Yanlış\. .+ → /)).toBeVisible()
+    await expect(page.getByRole('img', { name: 'Kalan hak: 2/3' })).toBeVisible()
 
     await page.clock.fastForward('01:05')
     await expect(page.getByText(`${expected} puan`, { exact: true })).toBeVisible()
@@ -1244,40 +1247,91 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
     expect(errors).toEqual([])
   })
 
-  test('focus notebook fills a square per minute, keeps running on other pages and credits the week', async ({ page }) => {
+  test('focus timer runs pomodoro rounds: focus, automatic break, next round, on any page', async ({ page }) => {
     const errors = watchErrors(page)
     await page.clock.install()
     await page.goto('/tekrar?bolum=mola')
     // Without cards the games are locked, the focus timer is not.
     await expect(page.getByRole('button', { name: 'Eşleştir' })).toBeDisabled()
-    await page.getByRole('button', { name: 'Odak defteri' }).click()
+    await page.getByRole('button', { name: 'Odak sayacı' }).click()
     await expect(page.locator('.focus-clock')).toHaveText('25:00')
+    await page.getByRole('button', { name: '50 + 10 dk' }).click()
+    await expect(page.locator('.focus-clock')).toHaveText('50:00')
+    await page.getByRole('button', { name: '25 + 5 dk' }).click()
     await page.getByRole('button', { name: 'Başla' }).click()
 
     await page.clock.runFor('05:00')
-    await expect(page.getByRole('img', { name: '25 karenin 5 tanesi boyandı' })).toBeVisible()
     await expect(page.locator('.focus-clock')).toHaveText('20:00')
     await page.getByRole('button', { name: 'Duraklat' }).click()
     await page.clock.runFor('03:00')
     await expect(page.locator('.focus-clock')).toHaveText('20:00')
     await page.getByRole('button', { name: 'Devam et' }).click()
 
-    // Leave the page; the timer keeps going and is credited on return.
+    // On another page a small pill keeps the time, and the round ends there too.
     await page.goto('/dersler')
-    await page.clock.runFor('21:00')
-    await page.goto('/tekrar?bolum=mola')
-    await expect(page.getByRole('button', { name: 'Odak defteri' })).toContainText('Sayfa doldu')
-    await page.getByRole('button', { name: 'Odak defteri' }).click()
-    await expect(page.getByText(/25 dakika odaklandın/)).toBeVisible()
-    await expect(page.getByText('Son 7 gün: 25 dk · 1 dolu sayfa')).toBeVisible()
-    await expect(page.getByRole('img', { name: '25 karenin 25 tanesi boyandı' })).toBeVisible()
+    const pill = page.getByRole('link', { name: /^Odak sayacı: Odak, \d\d:\d\d kaldı/ })
+    await expect(pill).toBeVisible()
+    await page.clock.runFor('20:30')
+    await expect(page.getByRole('link', { name: /^Odak sayacı: Mola, 0[45]:\d\d kaldı/ })).toBeVisible()
 
-    // Stopping early still adds the minutes that passed.
-    await page.getByRole('button', { name: '50 dakika' }).click()
-    await page.getByRole('button', { name: 'Başla' }).click()
+    // Back on the timer: the break started by itself, with game suggestions.
+    await page.getByRole('link', { name: /^Odak sayacı: Mola/ }).click()
+    await expect(page.getByText(/Tur bitti, 25 dakika odaklandın/)).toBeVisible()
+    await expect(page.locator('.focus-phase')).toHaveText(/Kısa mola/)
+    await expect(page.getByRole('region', { name: 'Mola önerileri' })).toBeVisible()
+    await expect(page.getByRole('img', { name: 'Bu sette 1/4 tur tamam' })).toBeVisible()
+    await expect(page.getByText('Bugün: 25 dk · 1 tur')).toBeVisible()
+
+    // When the break ends, round 2 waits for the student.
+    await page.clock.runFor('05:30')
+    await expect(page.getByRole('button', { name: '2. turu başlat' })).toBeVisible()
+    await page.getByRole('button', { name: '2. turu başlat' }).click()
     await page.clock.runFor('10:30')
+    // Stopping early still adds the minutes that passed.
     await page.getByRole('button', { name: 'Bitir' }).click()
-    await expect(page.getByText('Son 7 gün: 35 dk · 1 dolu sayfa')).toBeVisible()
+    await expect(page.getByText('Son 7 gün: 35 dk')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Başla' })).toBeVisible()
+
+    // The finished round kept the streak alive.
+    await page.goto('/')
+    expect(errors).toEqual([])
+  })
+
+  test('quick round: swipe to answer, three wrong answers end it', async ({ page }) => {
+    const errors = watchErrors(page)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+    const cards = await storedCards(page)
+    await page.goto('/tekrar?bolum=mola&oyun=hizli')
+    await expect(page.getByRole('img', { name: 'Kalan hak: 3/3' })).toBeVisible()
+
+    async function swipeWrong() {
+      const card = page.locator('.quick-card:not(.is-leaving-left):not(.is-leaving-right)')
+      await expect(card).toHaveCount(1)
+      const prompt = clean(await card.locator('.front').innerText())
+      const shown = clean(await card.locator('.back').innerText())
+      const real = cards.find((c) => clean(c.front) === prompt)!
+      const isTrue = clean(real.back).startsWith(shown.replace(/…$/, ''))
+      // Swipe the opposite way on purpose.
+      const box = (await card.boundingBox())!
+      const y = box.y + box.height / 2
+      const x = box.x + box.width / 2
+      await page.mouse.move(x, y)
+      await page.mouse.down()
+      await page.mouse.move(x + (isTrue ? -60 : 60), y, { steps: 4 })
+      await page.mouse.move(x + (isTrue ? -160 : 160), y, { steps: 4 })
+      await page.mouse.up()
+    }
+
+    await swipeWrong()
+    await expect(page.locator('.quick-flash.is-bad')).toHaveCount(1)
+    await expect(page.getByRole('img', { name: 'Kalan hak: 2/3' })).toBeVisible()
+    await swipeWrong()
+    await expect(page.getByRole('img', { name: 'Kalan hak: 1/3' })).toBeVisible()
+    await swipeWrong()
+    await expect(page.getByText('Haklar bitti')).toBeVisible()
+    await expect(page.getByText('Kaçırdıkların')).toBeVisible()
     expect(errors).toEqual([])
   })
 
