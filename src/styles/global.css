@@ -3974,7 +3974,220 @@ a.list-item:hover {
 }
 
 @media (max-width: 600px) {
-  .maker-cta {
-    align-self: stretch;
+  .maker-ctas .maker-cta {
+    flex: 1;
+  }
+}
+
+/* ============ /hakkinda ============ */
+
+.about-hero {
+  position: relative;
+  padding-bottom: 8px;
+}
+
+.about-sky {
+  position: relative;
+  height: 180px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* The page version of the sky: taller, so the clouds have room. */
+.about-sky .sky-layer {
+  transform-origin: 0 0;
+  scale: 1.6;
+}
+
+.about-hero-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  margin-top: -76px;
+  position: relative;
+}
+
+.about-photo {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 32px;
+  transform: rotate(-4deg);
+  margin-bottom: 10px;
+}
+
+.about-photo img {
+  display: block;
+  width: 140px;
+  height: 140px;
+  border-radius: 32px;
+  border: 2px solid var(--ink-line);
+  box-shadow: 0 5px 0 var(--ink-line);
+  background: var(--hi);
+  image-rendering: pixelated;
+}
+
+.about-photo.is-tapped {
+  animation: photo-wiggle 0.3s;
+}
+
+.about-photo.is-found img {
+  border-color: var(--hi);
+  box-shadow: 0 0 0 4px var(--ink-line), 0 6px 0 4px var(--ink-line);
+}
+
+@keyframes photo-wiggle {
+  50% {
+    transform: rotate(4deg) scale(1.04);
+  }
+}
+
+/* Pixel sparks bursting out of the photo when the secret is found. */
+.about-sparks {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  pointer-events: none;
+}
+
+.about-sparks > span {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px;
+  background: var(--hi);
+  box-shadow: 0 0 0 2px var(--ink-line);
+  animation: spark-out 0.8s ease-out forwards;
+}
+
+@keyframes spark-out {
+  from {
+    transform: rotate(var(--a)) translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: rotate(var(--a)) translateY(-110px);
+    opacity: 0;
+  }
+}
+
+.about-hero h1 {
+  font-size: clamp(2rem, 7vw, 3rem);
+  letter-spacing: -0.03em;
+}
+
+.about-lead {
+  color: var(--text-2);
+  font-size: 1.0625rem;
+}
+
+.about-body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 720px;
+  padding-block: 28px 48px;
+}
+
+.about-text {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--text-2);
+}
+
+.about-socials {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.about-social {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px 10px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color 0.15s;
+}
+
+.about-social:hover {
+  border-color: var(--text);
+}
+
+.about-social:hover .maker-social-icon {
+  background: var(--hi);
+  color: var(--on-hi);
+  border-color: var(--ink-line);
+}
+
+.about-social-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.about-social-text span {
+  color: var(--text-2);
+  font-size: 0.875rem;
+}
+
+.about-secret {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-weight: 600;
+}
+
+.about-egg {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1.5px dashed var(--border-strong);
+}
+
+.about-egg h2 {
+  font-size: 1.25rem;
+}
+
+.about-egg-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.about-egg-option {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 14px;
+}
+
+.about-egg-option[aria-pressed='true'] {
+  background: var(--hi);
+  color: var(--on-hi);
+  border-color: var(--ink-line);
+}
+
+.about-egg-reply {
+  font-weight: 600;
+  animation: card-in 0.3s ease-out;
+}
+
+@media (max-width: 600px) {
+  .about-ctas .btn {
+    flex: 1;
   }
 }

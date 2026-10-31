@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Alert, Spinner, ToastProvider } from './components/ui'
 import { StoreProvider, useStore } from './lib/store'
+import { About } from './pages/About'
 import { AddNote } from './pages/AddNote'
 import { CourseDetail } from './pages/CourseDetail'
 import { Exam } from './pages/Exam'
@@ -50,6 +51,8 @@ function Routed() {
   return (
     <Routes>
       <Route path="tanitim" element={<Landing />} />
+      <Route path="hakkinda" element={<About />} />
+      <Route path="hakkında" element={<About />} />
       <Route element={<Layout />}>
         <Route index element={<Today />} />
         <Route path="dersler" element={<Courses />} />

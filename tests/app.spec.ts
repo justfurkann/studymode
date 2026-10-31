@@ -1609,7 +1609,7 @@ test.describe('sharing a course with a friend', () => {
 test("the maker's signature is on the landing page, the sidebar and in Settings with social links", async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/tanitim')
-  await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Made by JustFurkan' })).toHaveAttribute('href', 'https://www.instagram.com/furkann_ztrk')
+  await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Made by JustFurkan' })).toHaveAttribute('href', '/hakkinda')
   await page.goto('/ayarlar')
   await expect(page.getByRole('complementary', { name: 'Ana menü' }).getByRole('link', { name: 'Made by JustFurkan' })).toBeVisible()
   const about = page.getByRole('region', { name: 'Hakkında' })
@@ -1630,5 +1630,37 @@ test("the maker's signature is on the landing page, the sidebar and in Settings 
   const mobileSign = page.getByRole('main').getByRole('link', { name: 'Made by JustFurkan' })
   await mobileSign.scrollIntoViewIfNeeded()
   await expect(mobileSign).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('the maker page: Made by leads there, socials, and two small secrets', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/ayarlar')
+  await page.getByRole('complementary', { name: 'Ana menü' }).getByRole('link', { name: 'Made by JustFurkan' }).click()
+  await expect(page).toHaveURL(/\/hakkinda$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Selam, ben JustFurkan' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Instagram: @furkann_ztrk' })).toHaveAttribute('href', 'https://www.instagram.com/furkann_ztrk')
+  await expect(page.getByRole('list', { name: 'JustFurkan sosyal medya hesapları' }).getByRole('link')).toHaveCount(5)
+
+  // "Burayı nasıl buldun?"
+  await page.getByRole('button', { name: 'Ayarları kurcalarken' }).click()
+  await expect(page.getByText(/gerçek bir meraklısın/)).toBeVisible()
+  await page.getByRole('button', { name: 'Tesadüfen' }).click()
+  await expect(page.getByText('Tesadüf diye bir şey yok. Bu sayfa seni bekliyordu.')).toBeVisible()
+
+  // Five taps on the photo unlock a hidden achievement.
+  const photo = page.getByRole('button', { name: 'JustFurkan profil resmi' })
+  for (let i = 0; i < 4; i++) await photo.click()
+  await expect(page.getByText(/Gizli başarım/)).toHaveCount(0)
+  await photo.click()
+  await expect(page.getByText(/Gizli başarım açıldı/)).toBeVisible()
+
+  // The Turkish spelling of the address works too, and the page fits a phone.
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/hakk%C4%B1nda')
+  await expect(page.getByRole('heading', { level: 1, name: 'Selam, ben JustFurkan' })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false)
+  await page.getByRole('link', { name: 'Uygulamaya git' }).click()
+  await expect(page).not.toHaveURL(/hakk/)
   expect(errors).toEqual([])
 })
