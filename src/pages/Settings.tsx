@@ -1,5 +1,5 @@
 import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, Trash2, Upload } from 'lucide-react'
-import { MAKER, SocialLinks } from '../components/MadeBy'
+import { MakerCard } from '../components/MadeBy'
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Spinner, useToast, useConfirm } from '../components/ui'
@@ -452,12 +452,7 @@ export function Settings() {
 
       <section className="section" id="hakkinda" aria-label="Hakkında">
         <h2>Hakkında</h2>
-        <div className="panel about">
-          <p>
-            StudyMode'u <strong>{MAKER}</strong> yaptı; önce kendisi ve arkadaşları sınavlara daha rahat hazırlansın diye. Fikrin, önerin ya da bir hata gördüysen yaz.
-          </p>
-          <SocialLinks />
-        </div>
+        <MakerCard />
       </section>
     </div>
   )

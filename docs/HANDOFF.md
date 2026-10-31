@@ -238,7 +238,7 @@ revoke all on function public.get_course_share(text) from public;
 grant execute on function public.get_course_share(text) to anon, authenticated;
 ```
 
-**İmza (Made by JustFurkan):** `src/components/MadeBy.tsx` tek kaynak (ad + sosyal hesaplar). Görünür yerler: tanıtım sayfası alt bilgisi, bilgisayarda yan menünün altı, paylaşılan ders sayfasının altı (bağlantı Instagram'a gider), Ayarlar → "Hakkında" kartı (Instagram @furkann_ztrk, X @furkan_ztrk_, TikTok @justfurkann_, YouTube @justfurkann, GitHub justfurkann). Lucide'da marka simgesi yok, bu yüzden simgesiz metin kartları. WhatsApp kasıtlı olarak eklenmedi (herkese açık sitede numara/hesap paylaşmak; kullanıcıya soruldu).
+**İmza (Made by JustFurkan):** `src/components/MadeBy.tsx` tek kaynak (ad + sosyal hesaplar). Görünür yerler: tanıtım sayfası alt bilgisi, bilgisayarda yan menünün altı, paylaşılan ders sayfasının altı (bağlantı Instagram'a gider), Ayarlar → "Hakkında" kartvizit kartı (`MakerCard`: fosforlu kareli şerit, eğik "JF" rozeti, birinci ağızdan kısa selam, marka logolu yuvarlak bağlantılar, "Instagram'dan yaz" ana düğmesi). Hesaplar: Instagram @furkann_ztrk, X @furkan_ztrk_, TikTok @justfurkann_, YouTube @justfurkann, GitHub justfurkann. Logolar Simple Icons'tan (CC0) `BrandIcon.tsx` içine gömülü yollar; tema rengini alır, paket bağımlılığı yok. WhatsApp kasıtlı olarak eklenmedi (herkese açık sitede numara/hesap paylaşmak; kullanıcıya soruldu).
 
 ## Tasarım dili ("Fosforlu")
 
