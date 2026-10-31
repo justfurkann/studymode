@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { BrandIcon, type Brand } from './BrandIcon'
 import { PixelSky } from './PixelSky'
 
@@ -14,12 +15,12 @@ export const SOCIALS: Array<{ brand: Brand; label: string; handle: string; url: 
 
 const external = { target: '_blank', rel: 'noopener noreferrer' } as const
 
-/** One quiet line: "Made by JustFurkan", linking to Instagram. */
+/** One quiet line: "Made by JustFurkan", leading to the maker's page (/hakkinda). */
 export function MadeBy({ className = '' }: { className?: string }) {
   return (
-    <a className={`made-by ${className}`} href={SOCIALS[0].url} {...external}>
+    <Link className={`made-by ${className}`} to="/hakkinda">
       Made by <strong>{MAKER}</strong>
-    </a>
+    </Link>
   )
 }
 
@@ -54,9 +55,14 @@ export function MakerCard() {
             </li>
           ))}
         </ul>
-        <a className="btn btn-primary maker-cta" href={instagram.url} {...external}>
-          <BrandIcon brand="instagram" size={17} /> Instagram'dan yaz
-        </a>
+        <div className="btn-row maker-ctas">
+          <a className="btn btn-primary maker-cta" href={instagram.url} {...external}>
+            <BrandIcon brand="instagram" size={17} /> Instagram'dan yaz
+          </a>
+          <Link className="btn maker-cta" to="/hakkinda">
+            Sayfamı aç
+          </Link>
+        </div>
       </div>
     </div>
   )
