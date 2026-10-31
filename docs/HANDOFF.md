@@ -24,6 +24,8 @@ Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yen
 | **Yapay zekâ** | Varsayılan: sunucudaki ortak **ücretsiz Gemini** (`/api/generate`, giriş zorunlu). Kullanıcı isterse kendi Claude / ChatGPT / Gemini anahtarını bağlar (anahtar yalnızca tarayıcıda, `localStorage`). Gemini model sırası: `gemini-3.5-flash-lite` → `gemini-flash-lite-latest` → `gemini-3.1-flash-lite` (yoğunlukta tekrar deneme ve yedek modele geçme var). |
 
 **Güvenlik notları**
+- **Ücretsiz Gemini anahtarı:** Vercel ortam değişkeni `GEMINI_API_KEY` (Google AI Studio'da oluşturulmuş, faturasız projede). Kullanıcı 1 Kasım 2026'da tüm Google API anahtarlarını sildiğini söyledi; Vercel'deki değer yenisiyle değiştirilmeli (adımlar sohbette verildi). `GET https://studymode.fun/api/generate` yalnızca değişkenin *var olduğunu* söyler (`configured`), anahtarın geçerli olduğunu değil.
+- Ayarlar'daki model alanı artık gerçek bir liste (`ModelPicker`, eski datalist yalnızca yazılı olanı gösteriyordu) + "Başka bir model (adını yaz)".
 - Google AI Studio projesine **asla faturalandırma bağlanmayacak**. "Kota dolarsa yalnızca hata, para çıkmaz" güvencesi buna dayanıyor.
 - Sohbette bir kez Supabase **secret** anahtarı (`sb_secret_…`) paylaşıldı. Kullanıcıya iptal etmesi söylendi; iptal edildiği **teyit edilmedi**. Kontrol edilmeli: Supabase → Project Settings → API Keys.
 - Secret / service_role anahtarları koda, `.env`'e ya da sohbete asla konmaz.
@@ -63,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (yeni sürüm uyarısı sonrası): 159 birim testi, 56 tarayıcı testi.
+Son yeşil durum (model listesi sonrası): 159 birim testi, 57 tarayıcı testi.
 
 ## 4. Veritabanı
 
