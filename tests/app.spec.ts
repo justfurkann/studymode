@@ -1390,3 +1390,164 @@ test.describe('exams tab: semester setup, what to start with, calendar export', 
     expect(errors).toEqual([])
   })
 })
+
+test.describe('sharing a course with a friend', () => {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  const TOKEN = 'AbCdEfGhIjKlMnOpQrStUv'
+  const snapshot = {
+    v: 1,
+    course: { name: 'Anatomi', color: '#e5484d' },
+    notes: [
+      {
+        title: 'Kemikler',
+        content: 'Kemik dokusu ...',
+        summary: { overview: 'Kemiklerin yapısı', points: ['Uzun kemikler'], keyTerms: [{ term: 'Osteon', definition: 'Kemiğin yapı birimi' }] },
+        questions: [{ prompt: 'Kemiğin yapı birimi nedir?', options: ['Osteon', 'Nöron', 'Nefron', 'Sarkomer'], answerIndex: 0, explanation: 'Osteon.', source: null }],
+        practice: [{ question: 'Kemik dokusunu anlat.', answer: 'Model cevap', hint: null }],
+        generator: 'ai',
+      },
+      { title: 'Kaslar', content: 'Kas dokusu ...', summary: null, questions: [], practice: [], generator: null },
+    ],
+    cards: [
+      { front: 'Osteon nedir?', back: 'Kemiğin yapı birimi', source: null, note: 0 },
+      { front: 'Sarkomer nedir?', back: 'Kasın kasılma birimi', source: null, note: 1 },
+    ],
+    exams: [{ kind: 'vize', title: null, date: isoDaysFromNow(9), weight: 40, notes: [] }],
+  }
+
+  test('a friend previews the link and copies the course into their own list', async ({ page }) => {
+    const errors = watchErrors(page)
+    let asked = ''
+    await page.route(`${SUPABASE}/rest/v1/rpc/get_course_share**`, async (route) => {
+      asked = route.request().postDataJSON().share_token
+      await route.fulfill({ json: [{ title: 'Anatomi', owner_name: 'Ayşe Yılmaz', snapshot, updated_at: new Date().toISOString() }] })
+    })
+    await page.goto(`/paylas/${TOKEN}`)
+    await expect(page.getByText('Ayşe Yılmaz seninle bir ders paylaştı')).toBeVisible()
+    expect(asked).toBe(TOKEN)
+    await expect(page.getByRole('heading', { level: 1, name: 'Anatomi' })).toBeVisible()
+    await expect(page.getByText('2 not', { exact: true })).toBeVisible()
+    await expect(page.getByText('2 kart', { exact: true })).toBeVisible()
+    await expect(page.getByText('Kemikler')).toBeVisible()
+    await expect(page.getByText(/Hesapsız eklersen/)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Derslerime ekle' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Anatomi' })).toBeVisible()
+    await expect(page.getByText('Anatomi derslerine eklendi')).toBeVisible()
+    await expect(page.getByText('Vizeye 9 gün').first()).toBeVisible()
+    await page.getByRole('link', { name: /Kemikler/ }).first().click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Kemikler' })).toBeVisible()
+
+    // The copy starts fresh: both cards are due now, and nothing of the owner's progress came along.
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('studymode.data.v2') || '{}'))
+    expect(stored.cards).toHaveLength(2)
+    expect(stored.cards.every((c: { reps: number; lapses: number }) => c.reps === 0 && c.lapses === 0)).toBe(true)
+    expect(stored.courseExams).toHaveLength(1)
+
+    // Opening the link again says it is already added.
+    await page.goto(`/paylas/${TOKEN}`)
+    await expect(page.getByText('Bu dersi daha önce ekledin.')).toBeVisible()
+    await page.getByRole('link', { name: 'Derse git' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Anatomi' })).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test('a closed link, and a database without sharing yet, explain themselves', async ({ page }) => {
+    await page.route(`${SUPABASE}/rest/v1/rpc/get_course_share**`, (route) => route.fulfill({ json: [] }))
+    await page.goto(`/paylas/${TOKEN}`)
+    await expect(page.getByText('Bu bağlantı çalışmıyor')).toBeVisible()
+
+    await page.unroute(`${SUPABASE}/rest/v1/rpc/get_course_share**`)
+    await page.route(`${SUPABASE}/rest/v1/rpc/get_course_share**`, (route) =>
+      route.fulfill({ status: 404, json: { code: 'PGRST202', message: 'Could not find the function', details: null, hint: null } }),
+    )
+    await page.reload()
+    await expect(page.getByText(/veritabanı güncellemesi bekleniyor/)).toBeVisible()
+
+    await page.goto('/paylas/kisa')
+    await expect(page.getByText('Bu bağlantı çalışmıyor')).toBeVisible()
+  })
+
+  test('guests are asked to sign in before creating a link', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
+    await page.goto('/dersler')
+    await page.getByRole('link', { name: /Psikolojiye Giriş/ }).click()
+    await page.getByRole('button', { name: 'Paylaş' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Dersi paylaş' })
+    await expect(dialog.getByText(/Senin ilerlemen, yazılı cevapların ve puanların paylaşılmaz/)).toBeVisible()
+    await expect(dialog.getByText(/giriş yapman gerekiyor/)).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Bağlantı oluştur' })).toHaveCount(0)
+  })
+
+  test('a signed-in owner creates a link with a QR code, updates it and closes it', async ({ page }) => {
+    const errors = watchErrors(page)
+    const user = { id: 'aaaaaaaa-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'ayse@example.com', user_metadata: { full_name: 'Ayşe Yılmaz', first_name: 'Ayşe' }, app_metadata: {}, created_at: '2026-10-01T00:00:00Z' }
+    await page.addInitScript((u) => {
+      localStorage.setItem(
+        'sb-jpcatyopkpnudgdyncas-auth-token',
+        JSON.stringify({ access_token: 'fake', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user: u }),
+      )
+    }, user)
+    const T = '2026-10-01T00:00:00Z'
+    const course = { id: 'cccccccc-0000-0000-0000-000000000001', user_id: user.id, name: 'Anatomi', color: '#e5484d', exam_date: null, created_at: T, updated_at: T }
+    const note = { id: 'dddddddd-0000-0000-0000-000000000001', user_id: user.id, course_id: course.id, title: 'Kemikler', content: 'Kemik dokusu', summary: { overview: 'Özet', points: ['a'], keyTerms: [], completedSteps: ['tanis'] }, questions: [], practice: [{ id: 'p1', question: 'Anlat', answer: null, hint: null, draft: 'GİZLİ TASLAK' }], generator: 'ai', created_at: T, updated_at: T }
+    let shares: Array<Record<string, unknown>> = []
+    let inserted: Record<string, unknown> | null = null
+    let patched = false
+    await page.route(`${SUPABASE}/auth/v1/**`, (route) => route.fulfill({ json: user }))
+    await page.route(`${SUPABASE}/rest/v1/**`, async (route) => {
+      const req = route.request()
+      const table = new URL(req.url()).pathname.split('/').pop()
+      const single = (req.headers()['accept'] ?? '').includes('vnd.pgrst.object')
+      if (table === 'course_shares') {
+        if (req.method() === 'GET') return route.fulfill({ json: shares })
+        if (req.method() === 'POST') {
+          inserted = req.postDataJSON()
+          const row = { id: 'ssssssss-0000-0000-0000-000000000001', token: inserted!.token, created_at: T, updated_at: T }
+          shares = [row]
+          return route.fulfill({ status: 201, json: single ? row : [row] })
+        }
+        if (req.method() === 'PATCH') {
+          patched = true
+          const row = { ...shares[0], updated_at: new Date().toISOString() }
+          return route.fulfill({ json: single ? row : [row] })
+        }
+        if (req.method() === 'DELETE') {
+          shares = []
+          return route.fulfill({ status: 204, body: '' })
+        }
+      }
+      if (req.method() === 'GET') return route.fulfill({ json: table === 'courses' ? [course] : table === 'notes' ? [note] : [] })
+      return route.fulfill({ status: 201, json: [] })
+    })
+
+    await page.goto(`/ders/${course.id}`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Anatomi' })).toBeVisible()
+    await page.getByRole('button', { name: 'Paylaş' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Dersi paylaş' })
+    await expect(dialog.getByText(/Bağlantıya sahip olan herkes/)).toBeVisible()
+    await dialog.getByRole('button', { name: 'Bağlantı oluştur' }).click()
+
+    const link = dialog.getByLabel('Paylaşım bağlantısı', { exact: true })
+    await expect(link).toHaveValue(/\/paylas\/[A-Za-z0-9]{22}$/)
+    await expect(dialog.getByRole('img', { name: 'Paylaşım bağlantısının QR kodu' })).toBeVisible()
+    // What went to the server: content and the owner's name, never progress, drafts or the email.
+    expect(inserted!.course_id).toBe(course.id)
+    expect(inserted!.owner_name).toBe('Ayşe Yılmaz')
+    const sent = JSON.stringify(inserted!.snapshot)
+    expect(sent).toContain('Kemikler')
+    for (const secret of ['GİZLİ TASLAK', 'completedSteps', 'ayse@example.com']) expect(sent).not.toContain(secret)
+    expect(JSON.stringify(inserted)).not.toContain('ayse@example.com')
+
+    await dialog.getByRole('button', { name: /şimdiki hâliyle güncelle/ }).click()
+    await expect(page.getByText('Bağlantı güncellendi')).toBeVisible()
+    expect(patched).toBe(true)
+
+    await dialog.getByRole('button', { name: 'Paylaşımı kapat' }).click()
+    await expect(page.getByText(/Paylaşım kapatıldı/)).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Bağlantı oluştur' })).toBeVisible()
+    expect(errors).toEqual([])
+  })
+})

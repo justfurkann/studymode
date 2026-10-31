@@ -4,6 +4,7 @@ import { clearLocalData, localBackend, readLocalData, supabaseBackend, type Back
 import { newCardState, schedule, type Grade } from './srs'
 import { examDateForCard, nextExamDate } from './courseExams'
 import { mergeStudyDays, recordStudyActivity } from './streak'
+import type { ShareSnapshot } from './share'
 import { supabase } from './supabase'
 import { emptyData, type Card, type Course, type CourseExam, type ExamRecord, type GeneratedSet, type Note, type PracticeItem, type QuizAttempt, type StudyData } from './types'
 
@@ -47,6 +48,8 @@ interface StoreValue {
   updatePractice(noteId: string, itemId: string, patch: Partial<Pick<PracticeItem, 'draft' | 'evaluation'>>, countsAsActivity?: boolean): void
   addExam(input: Omit<ExamRecord, 'id' | 'createdAt'>): ExamRecord
   deleteExam(id: string): void
+  /** Copies a course a friend shared into this account, with fresh progress. */
+  importCourse(snapshot: ShareSnapshot): Course
 
   /** Replaces everything (backup import, moving local data to an account). Rejects if saving fails. */
   replaceAll(data: StudyData): Promise<void>
@@ -392,6 +395,57 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             { type: 'delete', table: 'courseExams', ids: removed },
           ],
         )
+      },
+
+      importCourse(snapshot) {
+        const d = current()
+        const now = nowIso()
+        // A friend's "Biyoloji" next to your own "Biyoloji" would be confusing.
+        const taken = new Set(d.courses.map((c) => c.name.toLocaleLowerCase('tr-TR')))
+        const name = taken.has(snapshot.course.name.toLocaleLowerCase('tr-TR')) ? `${snapshot.course.name} (paylaşılan)`.slice(0, 120) : snapshot.course.name
+        const course: Course = {
+          id: uuid(),
+          name,
+          color: COURSE_COLORS.includes(snapshot.course.color) ? snapshot.course.color : COURSE_COLORS[d.courses.length % COURSE_COLORS.length],
+          examDate: null,
+          createdAt: now,
+          updatedAt: now,
+        }
+        const notes: Note[] = snapshot.notes.map((n) => ({
+          id: uuid(),
+          courseId: course.id,
+          title: n.title,
+          content: n.content,
+          summary: n.summary ? { ...n.summary } : null,
+          questions: n.questions.map((q) => ({ ...q, id: uuid() })),
+          practice: n.practice.map((p) => ({ ...p, id: uuid() })),
+          generator: n.generator,
+          createdAt: now,
+          updatedAt: now,
+        }))
+        const cards = makeCards(snapshot.cards.map((c) => ({ courseId: course.id, noteId: c.note === null ? null : notes[c.note].id, front: c.front, back: c.back, source: c.source })))
+        const exams: CourseExam[] = snapshot.exams.map((e) => ({
+          id: uuid(),
+          courseId: course.id,
+          kind: e.kind,
+          title: e.title,
+          date: e.date,
+          weight: e.weight,
+          noteIds: e.notes.map((i) => notes[i].id),
+          createdAt: now,
+          updatedAt: now,
+        }))
+        const withExam = { ...course, examDate: nextExamDate(exams) }
+        commit(
+          { ...d, courses: [...d.courses, withExam], notes: [...d.notes, ...notes], cards: [...d.cards, ...cards], courseExams: [...d.courseExams, ...exams] },
+          [
+            { type: 'upsert', table: 'courses', rows: [withExam] },
+            { type: 'upsert', table: 'notes', rows: notes },
+            { type: 'upsert', table: 'cards', rows: cards },
+            { type: 'upsert', table: 'courseExams', rows: exams },
+          ],
+        )
+        return withExam
       },
 
       recordActivity() {
