@@ -1,4 +1,4 @@
-# StudyMode — Devir Notu (Claude Code oturumu, 30 Ekim 2026)
+# StudyMode — Devir Notu (Claude Code oturumu, son güncelleme 31 Ekim 2026)
 
 Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yeni bir oturuma (Claude Code veya Google AI Studio) bağlam vermek için yazıldı.
 
@@ -38,8 +38,11 @@ src/lib/ai/              tasks.ts (talimatlar + zod şemaları, sunucuyla ortak)
 src/lib/store.tsx        Tüm veri işlemleri (yerel/Supabase), seri sayımı
 src/lib/backend.ts       Yerel depolama + Supabase; OPTIONAL_TABLES ve OPTIONAL_COLUMNS (tablo/sütun yokken çökmez)
 src/lib/                 srs.ts (aralıklı tekrar), streak.ts, learningPath.ts (5 adım, hâkimiyet), studyPlan.ts, exam.ts,
-                         examSession.ts, practice.ts, importNote.ts, officeText.ts, auth.ts, settings.ts, courseExams.ts (YARIM)
-src/pages/               Landing (tanıtım), Today, Courses, CourseDetail, NoteDetail, AddNote, Review, Exam, ExamHistory, Settings, Login, ResetPassword
+                         examSession.ts, examPlan.ts (prova planı, cihazda), cardHint.ts, practice.ts, importNote.ts, officeText.ts,
+                         auth.ts, settings.ts, courseExams.ts (vize/final), useDemo.ts, demo.ts
+src/pages/               Landing (tanıtım, / ve /tanitim), Today, Courses, CourseDetail, NoteDetail, AddNote, Review,
+                         ExamHub (/sinav sekmesi), Exam (/ders/:id/sinav), ExamHistory, Settings, Login, ResetPassword
+src/styles/global.css    Tek stil dosyası; en üstte tema değişkenleri (aydınlık + karanlık)
 src/components/          Brand (logo), Layout, ui, CourseForm, ExamReview, AiSignupPrompt, Welcome, NoteEditor, note/{Summary,Cards,Quiz,Practice}Tab
 supabase/schema.sql      Tüm tablolar; tekrar çalıştırılabilir ("if not exists")
 tests/app.spec.ts        Playwright uçtan uca testleri
@@ -56,7 +59,7 @@ Son yeşil durum (Aşama 6 sonrası): 120 birim testi, 39 tarayıcı testi.
 
 ## 4. Veritabanı
 
-Tablolar: `courses`, `notes`, `cards`, `quiz_attempts`, `exam_results`, `study_days` (hepsi `user_id` + RLS "own rows").
+Tablolar: `courses`, `notes`, `cards`, `quiz_attempts`, `exam_results`, `study_days`, `course_exams` (hepsi `user_id` + RLS "own rows").
 
 **Çalıştırıldı (kullanıcı teyit etti, Ekim 2026):** ilk şema, `exam_results`, `study_days`, `quiz_attempts.answers`, `study_days.actions`, `course_exams`. Bekleyen SQL yok.
 
@@ -80,9 +83,11 @@ alter table public.study_days add column if not exists actions integer not null 
 
 ## 6. Birleştirilmiş PR'lar (özet)
 
-#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · **#18 Aşama 1 (aşağıda)**
+#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma). Hepsi `main`de ve canlıda.
 
-## 7. Şu anki hedef (kullanıcının "goal"u) ve durum
+## 7. Aşamalar ve durum
+
+**Şu an açık bir hedef yok.** Aşama 1-6 bitti, hepsi canlıda. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
 
 **Aşama 1 — Doğrulama ve hatalar: ✅ TAMAM (#18)**
 - Uzun not: bölüm başına bir yeniden deneme, kısmi sonuç + uyarı, not eklemede bölüm ilerlemesi.
@@ -133,11 +138,9 @@ create policy "own rows" on public.course_exams for all to authenticated
 - "⋯" menüsü: Kaynak metin, Notu düzenle, Özeti düzenle, Yeniden hazırla, Özeti kopyala, Markdown indir, PDF/Yazdır (özet görünümüne geçip yazdırır), Notu sil.
 - Özet: "Kavramlar / Ana noktalar" anahtarı, uzun açıklama paragrafları yok; son madde "Teste geç".
 - Test: ilk açılışta tek satır açıklama; sonuçta "Tekrar çöz", "Yanlışlarımı karta çevir", "Kartlarla pekiştir →".
-- Kartlar: tek kart akışı — soru → **İpucu** (cevaptan türetilir: kısa cevapta "M_________", uzun cevapta ilk kelimeler; `src/lib/cardHint.ts`) → **Çevir** → **Tekrar / Bildim** → sonraki. "Tekrar" denen kart turun sonuna döner. Tur sonunda 🎉 "6 kartın 5 tanesini ilk denemede bildin". Kart listesi, Kart ekle ve "Tekrar ekranında çalış" kapalı **"Kartları yönet (N)"** çekmecesinde. Klavye: boşluk çevirir, 1 Tekrar, 2 Bildim.
-- Anlat: tek satır yönerge, "Bitir: Konuyu öğrendim", bitişte "Bu notu bitirdin! 🎉".
+- Kartlar: tek kart akışı — soru → **İpucu** (cevaptan türetilir: kısa cevapta "M_________", uzun cevapta ilk kelimeler; `src/lib/cardHint.ts`) → **Çevir** → **Tekrar / Bildim** → sonraki. "Tekrar" denen kart turun sonuna döner. Tur sonunda "6 kartın 5 tanesini ilk denemede bildin" (emoji Aşama 4'te onay rozetine döndü). Kart listesi, Kart ekle ve "Tekrar ekranında çalış" kapalı **"Kartları yönet (N)"** çekmecesinde. Klavye: boşluk çevirir, 1 Tekrar, 2 Bildim.
+- Anlat: tek satır yönerge, "Bitir: Konuyu öğrendim", bitişte "Bu notu bitirdin!".
 - Ölü CSS temizlendi (roadmap, metrik kartı, eski kart eğitmeni; ~336 satır).
-
-**Teslimde istenenler:** (1) 7 AI Studio maddesi + 6 hata için durum raporu ve elle denenecekler, (2) SQL ve Vercel adımları, (3) AI Studio'ya devir mesajı, (4) "arkadaşlarla teste hazır mı" değerlendirmesi.
 
 **Aşama 4 — Görsel tasarım yenilemesi: ✅ TAMAM (Aşama 4 PR'ı)**
 - Kullanıcıya üç yön sunuldu (A Fosforlu, B Kütüphane, C Pati); **A seçildi**.
@@ -169,6 +172,9 @@ Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, la
 - **Emoji kullanma**; gerekiyorsa lucide simgesi.
 
 ## 8. Kullanıcının elle denemesi gerekenler (henüz teyit edilmedi)
+
+- **Gerçek Gemini ile sınav provası:** "Hoca ne dedi?" metninin dikkate alınması, test/klasik/boşluk sayılarına uyulması, boşluk cümlelerinin anlamlı ve fazladan kelimelerin inandırıcı olması. Testler sahte yapay zekâ cevaplarıyla yapıldı; çıktı kalitesi hiç görülmedi.
+- Uzun boşluk bölümünde (10-12) kelime havuzunun yukarıda kalması rahatsız ederse havuz ekranın üstüne sabitlenebilir.
 
 - Fotoğraf ve taranmış PDF'ten not okuma, gerçek Gemini ile (hiç denenmedi).
 - Yapay zekâ çıktı kalitesi, gerçek bir ders notuyla (sorular, Türkçe, uydurma bilgi var mı).
