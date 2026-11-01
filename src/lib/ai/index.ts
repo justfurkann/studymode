@@ -186,8 +186,9 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify(engine ? { task, input, engine } : { task, input }),
-      // Slow tasks get the server's whole 60 s, so the browser does not give up first.
-      signal: AbortSignal.timeout(task === 'detail' || task === 'tts' || task === 'image' ? 62_000 : 55_000),
+      // Longer than the function's 60 s limit: the server always answers (or fails) first, so the
+      // student gets a real answer or a clear message, never "Fetch is aborted".
+      signal: AbortSignal.timeout(65_000),
     })
   } catch (error) {
     // The detail and timing help tell a dropped connection from a server timeout.
