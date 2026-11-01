@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Alert, Empty, Spinner, useToast } from '../components/ui'
 import { ROLE_LABEL, useQuota, type Role } from '../lib/account'
 import { LEVELS } from '../lib/studentType'
+import { ageGroup, GENDERS } from '../lib/education'
 import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 
@@ -20,6 +21,11 @@ interface AdminUser {
   /** From admin_schools (profile.education); missing until that database function exists. */
   level?: string | null
   school?: string | null
+  department?: string | null
+  class_year?: string | null
+  birth_year?: number | null
+  gender?: string | null
+  heard_from?: string | null
 }
 interface AdminFeedback {
   kind: string
@@ -34,6 +40,15 @@ interface AdminError {
   page: string | null
   times: number
   last_at: string
+}
+
+const GENDER_LABEL = Object.fromEntries(GENDERS.map((g) => [g.id, g.label])) as Record<string, string>
+
+/** Most common first; empty answers left out. */
+function tally(values: string[]): Array<[string, number]> {
+  const m = new Map<string, number>()
+  for (const v of values) if (v) m.set(v, (m.get(v) ?? 0) + 1)
+  return [...m].sort((a, b) => b[1] - a[1])
 }
 
 const LEVEL_LABEL = Object.fromEntries(LEVELS.map((l) => [l.id, l.label])) as Record<string, string>
@@ -62,9 +77,9 @@ export function Admin() {
       return
     }
     // Schools are optional: without the admin_schools function the list simply has no school column.
-    type SchoolRow = { id: string; level: string | null; school: string | null }
+    type SchoolRow = Pick<AdminUser, 'id' | 'level' | 'school' | 'department' | 'class_year' | 'birth_year' | 'gender' | 'heard_from'>
     const schools = new Map<string, SchoolRow>(((sc.error ? [] : sc.data) as SchoolRow[] | null ?? []).map((r) => [r.id, r]))
-    setUsers(((u.data ?? []) as AdminUser[]).map((x) => ({ ...x, level: schools.get(x.id)?.level ?? null, school: schools.get(x.id)?.school ?? null })))
+    setUsers(((u.data ?? []) as AdminUser[]).map((x) => ({ ...x, ...(schools.get(x.id) ?? {}), id: x.id })))
     setFeedback((f.data ?? []) as AdminFeedback[])
     setErrors((e.data ?? []) as AdminError[])
   }, [])
@@ -123,11 +138,14 @@ export function Admin() {
   const requestsToday = today.reduce((n, u) => n + u.ai_today, 0)
   const vips = today.filter((u) => u.role === 'vip').length
   // Where people study: universities by name, other levels by level.
-  const schoolCounts = [...today.reduce((m, u) => {
-    const key = u.school || (u.level ? LEVEL_LABEL[u.level] ?? u.level : '')
-    if (key) m.set(key, (m.get(key) ?? 0) + 1)
-    return m
-  }, new Map<string, number>())].sort((a, b) => b[1] - a[1])
+  const schoolCounts = tally(today.map((u) => u.school || (u.level ? LEVEL_LABEL[u.level] ?? u.level : '')))
+  // Only counts, never one person's age or gender.
+  const summaries: Array<{ title: string; items: Array<[string, number]> }> = [
+    { title: 'Bölümler', items: tally(today.map((u) => u.department ?? '')) },
+    { title: 'Nereden duydular', items: tally(today.map((u) => u.heard_from ?? '')) },
+    { title: 'Cinsiyet', items: tally(today.map((u) => (u.gender ? GENDER_LABEL[u.gender] ?? '' : ''))) },
+    { title: 'Yaş', items: tally(today.map((u) => ageGroup(u.birth_year ?? null) ?? '')) },
+  ].filter((x) => x.items.length > 0)
   const answered = today.filter((u) => u.level).length
 
   return (
@@ -178,6 +196,18 @@ export function Admin() {
               </span>
             ))}
           </div>
+          {summaries.map(({ title, items }) => (
+            <div key={title} className="admin-summary">
+              <strong>{title}</strong>
+              <div className="admin-schools">
+                {items.slice(0, 10).map(([name, n]) => (
+                  <span key={name} className="chip">
+                    {name} · {n}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
         </section>
       )}
 
@@ -202,7 +232,7 @@ export function Admin() {
                   </div>
                   {(u.school || u.level) && (
                     <div className="subtle admin-school">
-                      <GraduationCap size={13} aria-hidden /> {[u.school, u.level ? LEVEL_LABEL[u.level] : ''].filter(Boolean).join(' · ')}
+                      <GraduationCap size={13} aria-hidden /> {(u.school ? [u.school, u.department, u.class_year] : [u.level ? LEVEL_LABEL[u.level] : '']).filter(Boolean).join(' · ')}
                     </div>
                   )}
                   <div className="subtle">

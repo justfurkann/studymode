@@ -2,7 +2,7 @@ import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, Lif
 import { requestTour } from '../lib/tour'
 import { StudentTypeSection } from '../components/StudentTypeCard'
 import { EducationForm } from '../components/EducationForm'
-import { educationLabel, useEducation } from '../lib/education'
+import { educationLabel, needsEducation, useEducation } from '../lib/education'
 import { FeedbackLink } from '../components/Feedback'
 import { MakerCard } from '../components/MadeBy'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
@@ -635,12 +635,13 @@ function EducationSection() {
   const education = useEducation()
   const [editing, setEditing] = useState(false)
   const toast = useToast()
-  if (!education || editing) {
+  if (!education || editing || needsEducation(education)) {
     return (
       <div className="panel">
         {!education && <p className="muted" style={{ marginTop: 0 }}>Nerede okuduğunu ekle; profilinde görünür.</p>}
         <EducationForm
           initial={education}
+          startAt={editing ? 'level' : undefined}
           onSaved={() => {
             setEditing(false)
             toast('Okul bilgin kaydedildi')

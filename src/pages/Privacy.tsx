@@ -58,7 +58,7 @@ export function Privacy() {
           <h2>Hangi bilgileri tutuyoruz?</h2>
           <ul>
             <li>
-              <strong>Hesap bilgileri:</strong> ad, soyad ve e-posta adresi. Google ile giriş yaparsan Google'ın bize verdiği ad, e-posta ve profil fotoğrafı bağlantısı. Söylersen okuduğun seviye ve okul (ör. Üniversite, ODTÜ); profilinde görünür, Ayarlar'dan değiştirebilirsin. Şifren Supabase
+              <strong>Hesap bilgileri:</strong> ad, soyad ve e-posta adresi. Google ile giriş yaparsan Google'ın bize verdiği ad, e-posta ve profil fotoğrafı bağlantısı. Okuduğun seviye; üniversitedeysen okul, bölüm ve sınıf. İsteğe bağlı olarak doğum yılın, cinsiyetin ve StudyMode'u nereden duyduğun. Bunlar profilinde durur, Ayarlar'dan değiştirebilirsin; doğum yılı ve cinsiyet uygulamayı kimlerin kullandığını anlamak için yalnızca toplu sayılar olarak (ör. yaş grupları) değerlendirilir. Şifren Supabase
               tarafından şifrelenmiş (hash) olarak saklanır; biz göremeyiz.
             </li>
             <li>

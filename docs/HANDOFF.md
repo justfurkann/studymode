@@ -626,6 +626,12 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Yönetim:** kullanıcı satırında okul · seviye, üstte "Okullar" özeti (en çok 12). Veri `admin_schools()` veritabanı fonksiyonundan (schema.sql sonu; `admin_users` değişmedi). Fonksiyon yoksa liste okulsuz açılır.
 - **SQL:** `admin_schools` yerel Postgres 16'da denendi (yönetici görür, normal kullanıcı `not allowed`, anon `permission denied`). Supabase MCP bu oturumda bağlı değildi; kullanıcı SQL Editor'den çalıştırdı/çalıştıracak.
 
+### Aşama 28 — Bölüm, sınıf ve "biraz da sen" (1 Kasım 2026, `dreamy-sagan`)
+
+- Pencere adımları: seviye → (üniversite/YL) okul → **bölüm + sınıf (zorunlu)** → **doğum yılı, cinsiyet, "nereden duydun?" (isteğe bağlı)** → Kaydet. `education` artık `{ level, school, department, classYear, birthYear, gender, heardFrom, v: 2, at }`. `needsEducation()`: hiç cevap yoksa, v<2 ise ya da üniversiteli olup bölüm/sınıf eksikse pencere bir kez daha çıkar ve kaldığı adımdan başlar.
+- Kullanıcı tam doğum tarihi + cinsiyet istedi; **doğum yılı** ve "Belirtmek istemiyorum" seçenekli cinsiyet olarak yapıldı (veri azaltma, reşit olmayanlar). Yönetim panelinde yaş/cinsiyet **yalnızca toplu** (yaş grupları, sayılar); kişi satırında okul · bölüm · sınıf.
+- `admin_schools()` genişledi (drop + create; yeni sütunlar department, class_year, birth_year, gender, heard_from). Yerel Postgres'te denendi; bozuk doğum yılı boş döner. Gizlilik sayfası güncellendi.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
