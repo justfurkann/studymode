@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (rozet + Google girişi sonrası): 168 birim testi, 65 tarayıcı testi.
+Son yeşil durum (Google düğmesi sonrası): 168 birim testi, 66 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -426,7 +426,7 @@ grant execute on function public.ai_quota(), public.consume_ai(), public.is_admi
 - **Test hesabı:** Claude için ayrı bir hesap var (Gmail + adresi); bilgiler oturum ortamında `STUDYMODE_TEST_EMAIL` / `STUDYMODE_TEST_PASSWORD` değişkenlerinde (değerleri asla yazdırma). Canlı sitede gerçek tarayıcıyla giriş 1 Kasım'da doğrulandı. Raporlarda gerçek kullanıcı sayılarından ayrı tut.
 - **Ortak not defteri (Claude Docs):** "StudyMode · Fikir defteri" — https://claude.ai/artifact/UkjEttyZqSAekHkWW9bPqw (şimdi sırada, düşünülen fikirler, rafa kalkanlar, kalıcı kurallar). Yeni fikirler oraya yazılır.
 
-**Google ile giriş (kod hazır, Supabase'de açılmayı bekliyor):** Giriş/kayıt kartında "Google ile devam et" düğmesi; `supabase.auth.signInWithOAuth({ provider: 'google', redirectTo: origin })`. Düğme yalnızca Supabase'de Google sağlayıcısı açıksa görünür (`isGoogleEnabled`, `/auth/v1/settings`), yani kurulum bitmeden hata göstermez. Google'dan gelen ad (`full_name`/`name`/`given_name`) `displayName` ve `firstName` tarafından okunur. Kurulum (kullanıcı yapar): Google Cloud → OAuth izin ekranı + Web istemcisi (yönlendirme adresi `https://jpcatyopkpnudgdyncas.supabase.co/auth/v1/callback`, köken `https://studymode.fun`) → Client ID/Secret Supabase → Authentication → Providers → Google. Faturalandırma gerekmez.
+**Google ile giriş (canlıda, 1 Kasım 2026'da açıldı):** Giriş/kayıt kartında Google'ın kendi "Google ile devam et" düğmesi (Google Identity Services, `src/lib/googleSignIn.ts`): studymode.fun üzerinde çizilir, Google hesap seçicisi "studymode.fun" der (eski yönlendirme akışı `jpcatyopkpnudgdyncas.supabase.co` yazıyordu ve dolandırıcı gibi duruyordu). Google'ın verdiği kimlik belirteci `supabase.auth.signInWithIdToken({ provider: 'google', token, nonce })` ile doğrulanır; Google'a nonce'un SHA-256'sı, Supabase'e kendisi gider. Client ID `config.ts`'te (`GOOGLE_CLIENT_ID`, herkese açık; secret yalnızca Supabase'de). Google betiği engellenirse eski yönlendirme düğmesine (`signInWithOAuth`) düşer. Yapılacak: gizlilik politikası sayfası + Google marka doğrulaması (ekranda "StudyMode" adı ve logo çıksın). Düğme yalnızca Supabase'de Google sağlayıcısı açıksa görünür (`isGoogleEnabled`, `/auth/v1/settings`), yani kurulum bitmeden hata göstermez. Google'dan gelen ad (`full_name`/`name`/`given_name`) `displayName` ve `firstName` tarafından okunur. Kurulum (kullanıcı yapar): Google Cloud → OAuth izin ekranı + Web istemcisi (yönlendirme adresi `https://jpcatyopkpnudgdyncas.supabase.co/auth/v1/callback`, köken `https://studymode.fun`) → Client ID/Secret Supabase → Authentication → Providers → Google. Faturalandırma gerekmez.
 
 ## Tasarım dili ("Fosforlu")
 

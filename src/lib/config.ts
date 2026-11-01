@@ -5,6 +5,12 @@
 export const SUPABASE_URL = 'https://jpcatyopkpnudgdyncas.supabase.co'
 export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_un15T1jZ2JXF4Cygq-JSUQ_stzVNyYz'
 
+/**
+ * Google sign-in (OAuth Web client). A client ID is public by design; the client secret lives only
+ * in Supabase (Authentication → Providers → Google), never here.
+ */
+export const GOOGLE_CLIENT_ID = '189951485932-ginghsotdhaj3amtm0fek00efbgsi7iu.apps.googleusercontent.com'
+
 /** Model behind the shared free AI. The server can override it with GEMINI_MODEL. */
 export const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite'
 

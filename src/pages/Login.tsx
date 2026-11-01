@@ -1,10 +1,11 @@
 import { ArrowLeft } from 'lucide-react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { BrandIcon } from '../components/BrandIcon'
 import { Alert, Spinner } from '../components/ui'
 import { authErrorMessage, isGoogleEnabled, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../lib/config'
+import { renderGoogleButton } from '../lib/googleSignIn'
 import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 
@@ -177,11 +178,18 @@ export function Login() {
   )
 }
 
-/** "Google ile devam et": one tap instead of a form. Hidden until Google is switched on in Supabase. */
+/**
+ * "Google ile devam et". Google's own button, drawn on studymode.fun, so the account chooser names
+ * studymode.fun. If Google's script is blocked, falls back to the redirect flow (which names the
+ * Supabase address but still works). Hidden until Google is switched on in Supabase.
+ */
 function GoogleButton() {
+  const navigate = useNavigate()
   const [enabled, setEnabled] = useState(false)
+  const [mode, setMode] = useState<'gsi' | 'redirect'>('gsi')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const slot = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let alive = true
@@ -191,25 +199,43 @@ function GoogleButton() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!enabled || mode !== 'gsi' || !slot.current) return
+    const el = slot.current
+    const dark = getComputedStyle(document.documentElement).colorScheme === 'dark'
+    renderGoogleButton(el, {
+      dark,
+      width: el.clientWidth || 360,
+      onDone: (message) => {
+        if (message) setError(message)
+        else navigate('/', { replace: true })
+      },
+    }).catch(() => setMode('redirect'))
+  }, [enabled, mode, navigate])
+
   if (!enabled) return null
   return (
     <div className="google-auth">
-      <button
-        type="button"
-        className="btn btn-lg google-btn"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true)
-          setError('')
-          const { error: e } = await supabase!.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
-          if (e) {
-            setError('Google ile giriş başlatılamadı. Biraz sonra yeniden dene ya da e-postanla devam et.')
-            setBusy(false)
-          }
-        }}
-      >
-        {busy ? <Spinner size={16} /> : <BrandIcon brand="google" size={18} />} Google ile devam et
-      </button>
+      {mode === 'gsi' ? (
+        <div ref={slot} className="google-slot" aria-label="Google ile devam et" />
+      ) : (
+        <button
+          type="button"
+          className="btn btn-lg google-btn"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true)
+            setError('')
+            const { error: e } = await supabase!.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
+            if (e) {
+              setError('Google ile giriş başlatılamadı. Biraz sonra yeniden dene ya da e-postanla devam et.')
+              setBusy(false)
+            }
+          }}
+        >
+          {busy ? <Spinner size={16} /> : <BrandIcon brand="google" size={18} />} Google ile devam et
+        </button>
+      )}
       {error && <Alert tone="danger">{error}</Alert>}
       <div className="auth-divider" role="separator">
         <span>ya da e-postayla</span>

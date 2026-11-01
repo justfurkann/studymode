@@ -1910,10 +1910,11 @@ test.describe('roles, daily AI allowance and the admin page', () => {
   })
 })
 
-test('"Google ile devam et" appears only when Google sign-in is switched on, and goes to Google', async ({ page }) => {
+test('"Google ile devam et" appears only when Google sign-in is switched on, and falls back to the redirect if Google’s script is blocked', async ({ page }) => {
   const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
   let google = false
   await page.route(`${SUPABASE}/auth/v1/settings**`, (route) => route.fulfill({ json: { external: { email: true, google } } }))
+  await page.route('https://accounts.google.com/gsi/client**', (route) => route.abort())
   await page.goto('/giris')
   await expect(page.getByRole('heading', { level: 1, name: 'Giriş yap' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Google ile devam et' })).toHaveCount(0)
@@ -1928,4 +1929,40 @@ test('"Google ile devam et" appears only when Google sign-in is switched on, and
   await page.getByRole('button', { name: 'Google ile devam et' }).click()
   await expect.poll(() => authorize).toContain('provider=google')
   expect(decodeURIComponent(authorize)).toContain('redirect_to=http://127.0.0.1:5173')
+})
+
+test('Google’s own button signs in on studymode.fun with a checked token and nonce', async ({ page }) => {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  await page.route(`${SUPABASE}/auth/v1/settings**`, (route) => route.fulfill({ json: { external: { email: true, google: true } } }))
+  // A stand-in for Google's script: records initialize() and draws a button that "signs in".
+  await page.route('https://accounts.google.com/gsi/client**', (route) =>
+    route.fulfill({
+      contentType: 'text/javascript',
+      body: `window.google = { accounts: { id: {
+        initialize(o) { window.__gsi = o },
+        renderButton(el, o) { window.__gsiButton = o; const b = document.createElement('button'); b.textContent = 'Google ile devam et (Google)'; b.onclick = () => window.__gsi.callback({ credential: 'header.payload.signature' }); el.appendChild(b) },
+        cancel() {} } } }`,
+    }),
+  )
+  const user = { id: 'gggggggg-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'g@example.com', user_metadata: { full_name: 'Gülşen Kaya', email_verified: true }, app_metadata: { provider: 'google' }, created_at: '2026-11-01T00:00:00Z' }
+  let tokenBody: Record<string, string> | null = null
+  await page.route(`${SUPABASE}/auth/v1/token**`, async (route) => {
+    tokenBody = route.request().postDataJSON()
+    await route.fulfill({ json: { access_token: 'a', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user } })
+  })
+  await page.route(`${SUPABASE}/auth/v1/user**`, (route) => route.fulfill({ json: user }))
+  await page.route(`${SUPABASE}/rest/v1/**`, (route) => route.fulfill({ json: route.request().method() === 'GET' ? [] : null }))
+
+  await page.goto('/giris')
+  await page.getByRole('button', { name: 'Google ile devam et (Google)' }).click()
+  await expect.poll(() => tokenBody).not.toBeNull()
+  await expect(page).toHaveURL(/127\.0\.0\.1:5173\/$/)
+  const init = await page.evaluate(() => ({ ...(window as unknown as { __gsi: Record<string, unknown> }).__gsi, callback: undefined }))
+  expect(init.client_id).toBe('189951485932-ginghsotdhaj3amtm0fek00efbgsi7iu.apps.googleusercontent.com')
+  expect(init.ux_mode).toBe('popup')
+  expect(tokenBody!.provider).toBe('google')
+  expect(tokenBody!.id_token).toBe('header.payload.signature')
+  // Google got the SHA-256 of the nonce; Supabase gets the nonce itself to compare.
+  const hashed = await page.evaluate(async (n) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(n))), (b) => b.toString(16).padStart(2, '0')).join(''), tokenBody!.nonce)
+  expect(init.nonce).toBe(hashed)
 })
