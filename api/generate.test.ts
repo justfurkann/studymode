@@ -280,6 +280,22 @@ describe('Free+ on Vertex AI', () => {
     expect((await n.json()).engine).toBeUndefined()
   })
 
+  it('gives paid Premium (a redeemed code) Free+ by default too, though the role stays normal', async () => {
+    resetVertexToken()
+    const f = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const href = String(url)
+      if (href.includes('/rpc/ai_quota')) return new Response(JSON.stringify({ role: 'normal', used: 0, limit: 150, allowed: true, premium_until: '2027-01-01T00:00:00Z' }))
+      return (plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 } }) as unknown as (u: string | URL | Request, i?: RequestInit) => Promise<Response>)(url, init)
+    }) as unknown as typeof fetch
+    const req = new Request('https://studymode.fun/api/generate', {
+      method: 'POST',
+      headers: { authorization: 'Bearer user-token', 'content-type': 'application/json', 'x-vercel-oidc-token': 'vercel-oidc' },
+      body: JSON.stringify({ task: 'study', input: { title: 't', text: 'x' } }),
+    })
+    const out = await (await handleGenerate(req, plusEnv, f)).json()
+    expect(out.engine).toBe('plus')
+  })
+
   it('falls back to the free AI when the Free+ cap is reached, without touching Google Cloud', async () => {
     resetVertexToken()
     const f = plusFetch({ plus: { eligible: true, allowed: false, used: 30, limit: 30, site_used: 30, site_limit: 300 } })

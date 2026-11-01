@@ -662,6 +662,20 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Filigran (`imageStore.drawWatermark`) koyu hapta sarı S (`symbol-yellow.svg`, bir kez yüklenir; yüklenemezse yalnız yazı). Fosforlu poster aynı S'yi SVG içine gömer (`?raw` import, visualTools).
 - `og.png` ve Rehber ekran görüntüleri (`public/rehber`) yeni logoyla yeniden üretildi.
 
+### Aşama 31 — Premium kodları (Shopier) — veritabanı ve sunucu (1 Kasım 2026, `dreamy-sagan`)
+
+**Canlıya uygulandı** (Supabase migration `premium_codes`, yerel Postgres 16'da senaryolarla denendi; SQL schema.sql sonunda). Arayüz henüz yok (keen-albattani yapacak).
+
+- **Tablolar:** `premium_access(user_id, until)` (kullanıcı kendi satırını okuyabilir, yazamaz), `premium_codes(id, code_hash, hint, days, label, created_at, created_by, redeemed_by, redeemed_at, revoked_at)` (doğrudan erişim yok), `premium_redeem_failures` (yanlış deneme sayacı).
+- **Kod:** `SM-XXXX-XXXX-XXXX`, alfabe `23456789ABCDEFGHJKLMNPQRSTUVWXYZ` (0/O/1/I yok), 12 rastgele karakter. Yalnızca SHA-256 özeti saklanır; düz kod sadece üretilirken bir kez döner. Büyük/küçük harf, tire ve boşluk fark etmez; "SM" yazılmasa da olur.
+- **Etkisi:** Kodu kullanan hesaba `days` gün Premium eklenir (süre bitmemişse üstüne). Premium süresince **sınırlar VIP gibi** (`limit_role`): günde 150 ücretsiz istek, Free+ 30, Premium özellikleri. **Rol değişmez** (VIP rozeti çıkmaz). Süre bitince kendiliğinden normal.
+- **RPC'ler (hepsi `supabase.rpc`):**
+  - `ai_quota()` / `plus_quota()` → artık `premium_until` (ISO tarih ya da null) da döner. `plus_quota().eligible` Premium'da true olur, sunucu Premium görevlerini buna göre açar.
+  - `redeem_code({ code })` → `{ ok: true, days, premium_until }` ya da `{ ok: false, error }`; `error`: `not_signed_in` | `too_many` (saatte 10 yanlıştan sonra) | `invalid` (yok ya da iptal) | `used` (başkası kullandı) | `already_yours`. Hata fırlatmaz.
+  - Yönetici: `admin_create_codes({ how_many 1-200, days 1-400, label? })` → `[{ code, hint }]` (düz kodlar yalnızca burada); `admin_codes()` → `[{ id, hint, days, label, created_at, redeemed_at, redeemed_email, revoked_at }]` (son 500); `admin_revoke_code({ code_id })` (yalnızca kullanılmamış; yoksa hata 'already used or revoked'); `admin_premium()` → `[{ id, email, until }]`.
+- **Sunucu:** `api/generate.ts` kota cevabındaki `premium_until`'i okur; Premium'u olan da (rolü normal olsa bile) VIP gibi varsayılan olarak Free+'a gider.
+- **Arayüzde yapılacaklar (keen-albattani):** `parseQuota`/`usePremium` `premium_until`'i okusun (Premium açık sayılsın); Ayarlar ve Premium sayfasında "Kodum var" alanı + hata mesajları; Premium bitiş tarihi ve bitmesine birkaç gün kala hatırlatma; Yönetim'de kod üretici (adet, gün, etiket → kopyalanabilir liste, CSV indir), kod listesi, iptal düğmesi, Premium kullanıcılar listesi; gizlilik/koşullar metni (ücretli Premium, iade = kullanılmamış kod iptali).
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
