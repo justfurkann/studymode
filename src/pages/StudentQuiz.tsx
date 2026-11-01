@@ -244,7 +244,7 @@ function Intro({ onStart }: { onStart: () => void }) {
       <h1>
         Hangi <span className="hl">öğrenci</span> tipisin?
       </h1>
-      <p className="quiz-lead">Başlamak, odaklanmak, yetiştirmek… Çalışırken sana tanıdık gelen 10 küçük durum. Bu aralar hangisine daha yakınsın?</p>
+      <p className="quiz-lead">Grupta biriken mesajlar, ertelenen alarmlar, “bir bölüm daha”lar… 10 soru, 8 öğrenci tipi. Bakalım sana hangisi çıkacak.</p>
       <p className="quiz-meta">
         <Timer size={15} aria-hidden /> 2 dakika <span aria-hidden>·</span> <Heart size={15} aria-hidden /> Sonucunu arkadaşlarına at
       </p>
@@ -375,7 +375,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
   async function shareStory() {
     if (!file) return
     try {
-      await navigator.share({ files: [file], text: `Bu aralar ben: ${type.name}. Sana hangisi yakın? ${window.location.origin}/ogrenci-tipi` })
+      await navigator.share({ files: [file], text: `Bana “${type.name}” çıktı. Sende ne çıkacak? ${window.location.origin}/ogrenci-tipi` })
     } catch {
       // Share sheet closed.
     }
@@ -407,7 +407,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
           </div>
           <div>
             {where && <span className="chip">{where}</span>}
-            <p className="quiz-kicker">{visitor ? 'Arkadaşının sonucu' : 'Bu aralar sana yakın gelen'}</p>
+            <p className="quiz-kicker">{visitor ? 'Arkadaşına çıkan tip' : 'Sana çıkan tip'}</p>
             <h1>
               <span className="hl">{type.name}</span>
             </h1>
@@ -416,7 +416,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
           </div>
         </div>
 
-        <p className="subtle">Derse, döneme ve o günkü hâline göre değişebilir. Bu, kişiliğini veya öğrenme becerini ölçen bir test değil; cevaplarına yakın bir çalışma kartı.</p>
+        <p className="subtle">Bugün böyle çıktın; final haftası tekrar bakarız. Eğlencesine, üstüne alınmak serbest.</p>
         <div className="quiz-you">
           <h2>{visitor ? 'Ona tanıdık gelmiş olabilir' : 'Bunlar tanıdık geliyor mu?'}</h2>
           <ul>
@@ -432,7 +432,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
 
         <div className="quiz-facts">
           <div>
-            <h3>İşine yarayabilen tarafı</h3>
+            <h3>İyi olduğun işler</h3>
             <ul>
               {type.strengths.map((s) => (
                 <li key={s}>
@@ -442,7 +442,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
             </ul>
           </div>
           <div>
-            <h3>Bazen takıldığın yer</h3>
+            <h3>Yakalandığın yer</h3>
             <p>{type.blindSpot}</p>
           </div>
         </div>
@@ -450,7 +450,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
         <div className="quiz-tactic">
           <Sparkles size={18} aria-hidden />
           <p>
-            <strong>Denemek istersen: </strong>
+            <strong>Ufak bir not: </strong>
             {type.tactic}
           </p>
         </div>
@@ -458,7 +458,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
         <div className="quiz-buddy">
           <StudentCharacter id={buddy.id} size={56} still />
           <p>
-            <strong>Başka bir yaklaşım da var:</strong> {buddy.name}. {buddy.tagline}
+            <strong>Şu tiple de tanış:</strong> {buddy.name}. {buddy.tagline}
           </p>
         </div>
 
@@ -617,7 +617,7 @@ async function drawStory(shared: Shared, svg: SVGSVGElement): Promise<Blob | nul
 
   g.fillStyle = 'rgba(255,255,255,0.8)'
   g.font = `600 44px ${BODY}`
-  g.fillText('Bu aralar ben', W / 2, 950)
+  g.fillText('Benden bu çıktı', W / 2, 950)
 
   // The type name, highlighted like the app's headings.
   g.font = `800 82px ${DISPLAY}`
