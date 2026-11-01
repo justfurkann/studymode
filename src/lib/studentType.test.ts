@@ -64,10 +64,10 @@ describe('which student type are you', () => {
 
   it('speaks each level’s language where the exam comes up, and every option has a picture and a reaction', () => {
     const morning = QUESTIONS.find((q) => q.id === 'sabah')!
-    expect(morning.text(examWord('universite'))).toBe('Vize sabahı. Neredesin?')
-    expect(morning.text(examWord('lise'))).toBe('Yazılı sabahı. Neredesin?')
-    expect(morning.text(examWord('mezun'))).toBe('Sınav sabahı. Neredesin?')
-    expect(optionText(QUESTIONS[0].options[1], examWord('lise'))).toBe('Plan mı? Kalkınca bakarız')
+    expect(morning.text(examWord('universite'))).toBe('Vize sabahı. Sana en yakın olan hangisi?')
+    expect(morning.text(examWord('lise'))).toBe('Yazılı sabahı. Sana en yakın olan hangisi?')
+    expect(morning.text(examWord('mezun'))).toBe('Sınav sabahı. Sana en yakın olan hangisi?')
+    expect(optionText(QUESTIONS[0].options[1], examWord('lise'))).toBe('Birini açarım; başlayınca gerisi biraz şekillenir')
     for (const q of QUESTIONS) for (const o of q.options) expect(o.react.length).toBeGreaterThan(3)
     for (const id of TYPE_ORDER) expect(TYPES[id].you).toHaveLength(3)
   })

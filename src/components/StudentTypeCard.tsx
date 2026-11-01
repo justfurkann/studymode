@@ -13,7 +13,7 @@ export function StudentTypeLink({ className = 'side-quiz' }: { className?: strin
         <StudentCharacter id="gecekusu" size={44} />
         <span className="side-quiz-text">
           <strong>Hangi öğrenci tipisin?</strong>
-          <span>1 dakikada öğren, sonucunu paylaş</span>
+          <span>2 dakikada öğren, sonucunu paylaş</span>
         </span>
       </Link>
     )
@@ -39,7 +39,7 @@ export function StudentTypeSection() {
         <StudentCharacter id="kasif" size={64} still />
         <div>
           <strong>Henüz testi çözmedin</strong>
-          <p className="subtle">10 soruda nasıl çalıştığını bul; sonucun profiline kaydedilir.</p>
+          <p className="subtle">10 küçük durumda sana yakın olanı seç; sonuç kartın burada kalsın.</p>
         </div>
         <Link to="/ogrenci-tipi" className="btn btn-primary btn-sm">
           Testi çöz <ArrowRight size={16} />

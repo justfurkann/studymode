@@ -214,10 +214,10 @@ test('Hangi öğrenci tipisin: no account, level (no school step), 10 questions,
   await page.getByRole('button', { name: /Teste başla/ }).click()
   await page.getByRole('button', { name: /^Üniversite/ }).click()
   // The school is no longer asked here (it comes from the profile).
-  await expect(page.getByRole('heading', { name: 'Cuma akşamı. Hafta sonu planın?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Önünde birkaç konu birikti. Çalışmaya nereden başlarsın?' })).toBeVisible()
   // Back on the first question goes to the level step; forward again.
-  await page.getByRole('button', { name: 'Geri' }).click()
-  await expect(page.getByRole('heading', { name: /nerede okuyorsun/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Geri', exact: true }).click()
+  await expect(page.getByRole('heading', { name: /hangi aşamadasın/ })).toBeVisible()
   await page.getByRole('button', { name: /^Üniversite/ }).click()
   // A night owl who studies alone to understand.
   const picks = [3, 3, 0, 1, 3, 1, 1, 0, 1, 3]
@@ -225,10 +225,10 @@ test('Hangi öğrenci tipisin: no account, level (no school step), 10 questions,
     await expect(page.getByText(`${i + 1} / 10`)).toBeVisible()
     await page.locator('.quiz-option').nth(picks[i]).click()
   }
-  await expect(page.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Bu tam sen' })).toBeVisible()
-  await expect(page.getByText(/02\.00'de, herkes uyurken/)).toBeVisible()
-  await expect(page.getByText('Sana özel taktik:')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Ortalık Sessizleşince' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Bunlar tanıdık geliyor mu?' })).toBeVisible()
+  await expect(page.getByText('Gündüz bölündüğün bir konuya akşam daha rahat dönebiliyorsun.')).toBeVisible()
+  await expect(page.getByText('Denemek istersen:')).toBeVisible()
   await expect(page.getByLabel('Çalışma profilin')).toContainText('Gece kuşu')
   const story = page.getByRole('img', { name: /Hikâye görseli/ })
   await expect(story).toBeVisible()
@@ -245,11 +245,11 @@ test('Hangi öğrenci tipisin: no account, level (no school step), 10 questions,
   const friend = await (await browser.newContext()).newPage()
   await friend.goto(page.url())
   await expect(friend.getByText('Arkadaşın bu testi çözdü')).toBeVisible()
-  await expect(friend.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
+  await expect(friend.getByRole('heading', { level: 1, name: 'Ortalık Sessizleşince' })).toBeVisible()
   await friend.getByRole('button', { name: /Sen de çöz/ }).click()
-  await expect(friend.getByRole('heading', { name: /nerede okuyorsun/ })).toBeVisible()
+  await expect(friend.getByRole('heading', { name: /hangi aşamadasın/ })).toBeVisible()
   await friend.getByRole('button', { name: /^Lise/ }).click()
-  await expect(friend.getByRole('heading', { name: 'Cuma akşamı. Hafta sonu planın?' })).toBeVisible()
+  await expect(friend.getByRole('heading', { name: 'Önünde birkaç konu birikti. Çalışmaya nereden başlarsın?' })).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -332,17 +332,17 @@ test('Öğrenci tipi profilde kalır: misafirde bu tarayıcıda, Ayarlar ve yan 
     await expect(page.getByText(`${i + 1} / 10`)).toBeVisible()
     await page.locator('.quiz-option').nth(picks[i]).click()
   }
-  await expect(page.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Ortalık Sessizleşince' })).toBeVisible()
   // Leave and come back: still there.
   await page.goto('/ayarlar')
   await page.reload()
-  await expect(page.locator('.student-type-panel')).toContainText('Gece Kuşu Düşünür')
+  await expect(page.locator('.student-type-panel')).toContainText('Ortalık Sessizleşince')
   await page.locator('.sidebar').getByRole('button', { name: 'Daha fazla' }).click()
-  await expect(page.locator('.sidebar .side-quiz')).toContainText('Gece Kuşu Düşünür')
+  await expect(page.locator('.sidebar .side-quiz')).toContainText('Ortalık Sessizleşince')
   await page.goto('/ogrenci-tipi')
-  await expect(page.getByRole('link', { name: /Son sonucun/ })).toContainText('Gece Kuşu Düşünür')
+  await expect(page.getByRole('link', { name: /Son sonucun/ })).toContainText('Ortalık Sessizleşince')
   await page.getByRole('link', { name: /Son sonucun/ }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Ortalık Sessizleşince' })).toBeVisible()
 })
 
 test('Öğrenci tipi ve başarımlar hesaba yazılır; başka cihazdaki sonuç ve başarımlar gelir', async ({ page }) => {
@@ -372,7 +372,7 @@ test('Öğrenci tipi ve başarımlar hesaba yazılır; başka cihazdaki sonuç v
   await page.route(`${SUPABASE}/rest/v1/**`, (route) => route.fulfill({ json: route.request().method() === 'GET' ? [] : [] }))
 
   await page.goto('/ayarlar')
-  await expect(page.locator('.student-type-panel')).toContainText('Meraklı Kaşif')
+  await expect(page.locator('.student-type-panel')).toContainText('Bir Şey Takıldı Aklıma')
   await expect(page.locator('.student-type-panel')).toContainText('Ege')
   await page.goto('/basarimlar')
   await expect(page.locator('#basarim-dedektif')).toHaveClass(/is-open/)
@@ -388,7 +388,7 @@ test('Öğrenci tipi ve başarımlar hesaba yazılır; başka cihazdaki sonuç v
     await expect(page.getByText(`${i + 1} / 10`)).toBeVisible()
     await page.locator('.quiz-option').nth([3, 3, 0, 1, 3, 1, 1, 0, 1, 3][i]).click()
   }
-  await expect(page.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Ortalık Sessizleşince' })).toBeVisible()
   await expect.poll(() => JSON.stringify(updates)).toContain('"type":"gecekusu"')
 })
 
@@ -846,7 +846,7 @@ test('Okul bilgisi: üye olunca bir kez sorulur, profile yazılır, Ayarlar’da
   await page.locator('.sidebar').getByRole('button', { name: 'Daha fazla' }).click()
   await page.locator('.sidebar .side-quiz').click()
   await page.getByRole('button', { name: /Teste başla/ }).click()
-  await expect(page.getByRole('heading', { name: 'Cuma akşamı. Hafta sonu planın?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Önünde birkaç konu birikti. Çalışmaya nereden başlarsın?' })).toBeVisible()
 })
 
 test('Okul bilgisi: "Şimdi değil" denince bu cihazda birkaç gün sorulmaz', async ({ page }) => {

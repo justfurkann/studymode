@@ -244,9 +244,9 @@ function Intro({ onStart }: { onStart: () => void }) {
       <h1>
         Hangi <span className="hl">öğrenci</span> tipisin?
       </h1>
-      <p className="quiz-lead">Hafta sonu planın, alarmın, telefonunun ana ekranı… 10 soruda seni 8 karakterden birine benzetiyoruz. Sıkıcı ders soruları yok, söz.</p>
+      <p className="quiz-lead">Başlamak, odaklanmak, yetiştirmek… Çalışırken sana tanıdık gelen 10 küçük durum. Bu aralar hangisine daha yakınsın?</p>
       <p className="quiz-meta">
-        <Timer size={15} aria-hidden /> 1 dakika <span aria-hidden>·</span> <Heart size={15} aria-hidden /> Sonucunu arkadaşlarına at
+        <Timer size={15} aria-hidden /> 2 dakika <span aria-hidden>·</span> <Heart size={15} aria-hidden /> Sonucunu arkadaşlarına at
       </p>
       {last && (
         <Link to={resultPath(last)} className="quiz-last">
@@ -261,7 +261,7 @@ function Intro({ onStart }: { onStart: () => void }) {
       <button className="btn btn-primary btn-lg" onClick={onStart}>
         Teste başla <ArrowRight size={18} />
       </button>
-      <p className="subtle">Hesap gerekmez. Cevapların hiçbir yere kaydedilmez.</p>
+      <p className="subtle">Hesap gerekmez. Cevaplarını tek tek saklamıyoruz; sonuç kartın bu tarayıcıda kalır.</p>
     </section>
   )
 }
@@ -270,7 +270,7 @@ function LevelStep({ onPick, onBack }: { onPick: (level: Level) => void; onBack:
   return (
     <section className="quiz-card">
       <BackButton onClick={onBack} />
-      <h2>Önce seni tanıyalım: nerede okuyorsun?</h2>
+      <h2>Sorulardaki dili sana uyduralım: şu an hangi aşamadasın?</h2>
       <div className="quiz-options">
         {LEVELS.map((l) => (
           <button key={l.id} className="quiz-option" onClick={() => onPick(l.id)}>
@@ -375,7 +375,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
   async function shareStory() {
     if (!file) return
     try {
-      await navigator.share({ files: [file], text: `Ben bir ${type.name}! Sen hangi öğrenci tipisin? ${window.location.origin}/ogrenci-tipi` })
+      await navigator.share({ files: [file], text: `Bu aralar ben: ${type.name}. Sana hangisi yakın? ${window.location.origin}/ogrenci-tipi` })
     } catch {
       // Share sheet closed.
     }
@@ -407,17 +407,18 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
           </div>
           <div>
             {where && <span className="chip">{where}</span>}
-            <p className="quiz-kicker">{visitor ? 'Arkadaşın bir' : 'Sen bir'}</p>
+            <p className="quiz-kicker">{visitor ? 'Arkadaşının sonucu' : 'Bu aralar sana yakın gelen'}</p>
             <h1>
               <span className="hl">{type.name}</span>
             </h1>
             <p className="quiz-tagline">{type.tagline}</p>
-            {percent > 0 && <p className="subtle">Uyum: %{percent}{runnerUp ? ` · Yakın ikinci: ${runnerUp.name}` : ''}</p>}
+            {percent > 0 && <p className="subtle">Kart benzerliği: %{percent}{runnerUp ? ` · Yakın ikinci: ${runnerUp.name}` : ''}</p>}
           </div>
         </div>
 
+        <p className="subtle">Derse, döneme ve o günkü hâline göre değişebilir. Bu, kişiliğini veya öğrenme becerini ölçen bir test değil; cevaplarına yakın bir çalışma kartı.</p>
         <div className="quiz-you">
-          <h2>{visitor ? 'Arkadaşın tam olarak böyle' : 'Bu tam sen'}</h2>
+          <h2>{visitor ? 'Ona tanıdık gelmiş olabilir' : 'Bunlar tanıdık geliyor mu?'}</h2>
           <ul>
             {type.you.map((line) => (
               <li key={line}>
@@ -431,7 +432,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
 
         <div className="quiz-facts">
           <div>
-            <h3>Süper gücün</h3>
+            <h3>İşine yarayabilen tarafı</h3>
             <ul>
               {type.strengths.map((s) => (
                 <li key={s}>
@@ -441,7 +442,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
             </ul>
           </div>
           <div>
-            <h3>Zayıf noktan</h3>
+            <h3>Bazen takıldığın yer</h3>
             <p>{type.blindSpot}</p>
           </div>
         </div>
@@ -449,7 +450,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
         <div className="quiz-tactic">
           <Sparkles size={18} aria-hidden />
           <p>
-            <strong>Sana özel taktik: </strong>
+            <strong>Denemek istersen: </strong>
             {type.tactic}
           </p>
         </div>
@@ -457,12 +458,12 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
         <div className="quiz-buddy">
           <StudentCharacter id={buddy.id} size={56} still />
           <p>
-            <strong>En iyi çalışma arkadaşın:</strong> {buddy.name}. {buddy.tagline}
+            <strong>Başka bir yaklaşım da var:</strong> {buddy.name}. {buddy.tagline}
           </p>
         </div>
 
         <details className="quiz-all">
-          <summary>Neden bu sonuç?</summary>
+          <summary>Cevapların hangi tarafa yakın?</summary>
           <div className="quiz-bars" aria-label="Çalışma profilin">
             {bars.map((b) => (
               <div key={b.label} className="quiz-bar">
@@ -616,10 +617,10 @@ async function drawStory(shared: Shared, svg: SVGSVGElement): Promise<Blob | nul
 
   g.fillStyle = 'rgba(255,255,255,0.8)'
   g.font = `600 44px ${BODY}`
-  g.fillText('Ben bir', W / 2, 950)
+  g.fillText('Bu aralar ben', W / 2, 950)
 
   // The type name, highlighted like the app's headings.
-  g.font = `800 96px ${DISPLAY}`
+  g.font = `800 82px ${DISPLAY}`
   const nameLines = wrapLines(g, type.name, W - 140)
   let y = 1050
   for (const line of nameLines) {
@@ -630,16 +631,19 @@ async function drawStory(shared: Shared, svg: SVGSVGElement): Promise<Blob | nul
     g.fill()
     g.fillStyle = '#1b2250'
     g.fillText(line, W / 2, y)
-    y += 112
+    y += 100
   }
   g.fillStyle = '#ffffff'
-  g.font = `600 46px ${BODY}`
-  g.fillText(type.tagline, W / 2, y + 10)
-  y += 70
+  g.font = `600 36px ${BODY}`
+  for (const line of wrapLines(g, type.tagline, W - 180)) {
+    g.fillText(line, W / 2, y + 10)
+    y += 44
+  }
+  y += 20
   if (percent > 0) {
     g.fillStyle = 'rgba(255,255,255,0.65)'
     g.font = `600 34px ${BODY}`
-    g.fillText(`Uyum %${percent}`, W / 2, y + 6)
+    g.fillText(`Kart benzerliği %${percent}`, W / 2, y + 6)
     y += 40
   }
 
@@ -661,13 +665,13 @@ async function drawStory(shared: Shared, svg: SVGSVGElement): Promise<Blob | nul
     g.beginPath()
     g.roundRect(120, y + 16, ((W - 240) * b.percent) / 100, 22, 11)
     g.fill()
-    y += 92
+    y += 76
   }
 
   // One line of what makes this type good, if there is room above the footer.
   g.textAlign = 'center'
   g.font = `600 36px ${BODY}`
-  const power = wrapLines(g, `Süper gücüm: ${type.strengths[0]}`, W - 200)
+  const power = wrapLines(g, `Bana iyi gelen: ${type.strengths[0]}`, W - 200)
   if (y + power.length * 48 < H - 220) {
     g.fillStyle = 'rgba(255,255,255,0.88)'
     power.forEach((line, i) => g.fillText(line, W / 2, y + 30 + i * 48))
