@@ -311,40 +311,40 @@ button {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.3rem;
-  letter-spacing: -0.035em;
-  color: var(--text);
-  line-height: 1;
+  line-height: 0;
 }
 
+/* The logo files keep their own proportions and padding: height comes from the attributes. */
+.brand-logo,
 .brand-mark {
+  display: block;
   flex-shrink: 0;
+  max-width: none;
+  height: auto;
 }
 
-.brand-mark rect {
-  fill: var(--brand-bg);
+/* Light logo by default; the dark one (light letters) on the dark theme. */
+.brand-logo.is-dark {
+  display: none;
 }
-
-.brand-mark path {
-  fill: var(--brand-fg);
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .brand-logo.is-light {
+    display: none;
+  }
+  :root:not([data-theme='light']) .brand-logo.is-dark {
+    display: block;
+  }
 }
-
-.brand-mark .brand-mark-line {
-  fill: none;
-  stroke: var(--brand-fg);
+:root[data-theme='dark'] .brand-logo.is-light {
+  display: none;
+}
+:root[data-theme='dark'] .brand-logo.is-dark {
+  display: block;
 }
 
 .brand-link {
   width: fit-content;
   border-radius: var(--radius-sm);
-}
-
-.brand-word .hl {
-  margin-left: 1px;
-  padding: 0.04em 0.16em 0.1em;
 }
 
 .sidebar .brand-link {

@@ -496,13 +496,24 @@ test('Yapay zekâ görseline studymode.fun filigranı basılır; poster de etike
     c.height = el.naturalHeight
     const g = c.getContext('2d')!
     g.drawImage(el, 0, 0)
-    const corner = g.getImageData(el.naturalWidth - 40, el.naturalHeight - 22, 1, 1).data
+    // The label's area in the bottom-right corner: mostly dark, with the yellow "S" in it.
+    const W = el.naturalWidth
+    const H = el.naturalHeight
+    const area = g.getImageData(W - 138, H - 34, 126, 20).data
+    let dark = 0
+    let yellow = 0
+    for (let i = 0; i < area.length; i += 4) {
+      const [r, gg, b] = [area[i], area[i + 1], area[i + 2]]
+      if (Math.max(r, gg, b) < 140) dark++
+      if (r > 200 && gg > 170 && b < 130) yellow++
+    }
     const middle = g.getImageData(400, 200, 1, 1).data
-    return { src: el.src.slice(0, 23), corner: [...corner].slice(0, 3), middle: [...middle].slice(0, 3) }
+    return { src: el.src.slice(0, 23), dark: dark / (area.length / 4), yellow, middle: [...middle].slice(0, 3) }
   })
   expect(info.src).toBe('data:image/jpeg;base64,')
-  // The corner sits on the dark label; the middle is still the picture.
-  expect(Math.max(...info.corner)).toBeLessThan(140)
+  // The corner sits on the dark label with the brand "S"; the middle is still the picture.
+  expect(info.dark).toBeGreaterThan(0.3)
+  expect(info.yellow).toBeGreaterThan(8)
   expect(Math.min(...info.middle)).toBeGreaterThan(180)
 
   // The poster carries the label inside the SVG and downloads as .svg.
