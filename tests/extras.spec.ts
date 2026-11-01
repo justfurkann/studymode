@@ -562,6 +562,13 @@ test('Rehber: Daha fazla menüsünden ve Ayarlar’dan açılır; Premium bölü
   await page.getByRole('link', { name: 'Rehber' }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Rehber' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Nasıl ilerlemeli?' })).toBeVisible()
+  // Every step shows the real screen (in the current theme) and links there.
+  const shots = page.locator('.guide-flow .guide-shot img')
+  await expect(shots).toHaveCount(5)
+  await shots.first().scrollIntoViewIfNeeded()
+  await expect.poll(() => shots.first().evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(520)
+  expect(await shots.first().getAttribute('src')).toMatch(/^\/rehber\/adim-1-(light|dark)\.webp$/)
+  await expect(page.locator('.guide-flow').getByRole('link', { name: 'Sınavlara git' })).toHaveAttribute('href', '/sinav')
   await expect(page.getByRole('heading', { name: 'Kartlar ve aralıklı tekrar' })).toBeVisible()
   await expect(page.getByRole('heading', { name: /Premium’u en iyi nasıl kullanırsın/ })).toBeVisible()
   await expect(page.locator('#premium')).toContainText('Akıllı arama hakkından düşmez')

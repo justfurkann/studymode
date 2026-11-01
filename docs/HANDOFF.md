@@ -599,6 +599,11 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Testler: 246 birim, 98 tarayıcı. Yeniler: sıralı çalma (sahte Audio), birleştirme yardımcıları, Ayarlar sırası, telefonda dişli ve 360 px, dosya birleştirme, ders sayfasında birleştirme, stüdyo sesinin 2. ve 3. parça gelmeden başlaması.
 - **SQL yok, Vercel/Supabase ayarı yok.**
 
+### Aşama 24 — Rehber'e ekran görüntüleri (1 Kasım 2026, `dreamy-sagan`)
+
+- "Nasıl ilerlemeli?" adımlarının her birinde gerçek ekranın telefon görüntüsü (dokununca büyür, `ZoomableImage`) ve "git" bağlantısı. Dosyalar `public/rehber/adim-{1..5}-{light,dark}.webp` (520×960, ~30 KB); o anki temaya göre seçilir (`useDarkTheme` Guide.tsx içinde: `data-theme`, yoksa sistem).
+- Görüntüler örnek dersle (Örnek notla dene), 390×720 telefon, 2x, saat sabit alınır. Ekranlar değişirse yeniden üret: dev sunucu açıkken örnek notu aç; sırasıyla `/sinav`, `/not-ekle`, not sayfası, `/`, `/ders/<id>/sinav` ekranlarını iki temada çek, 520 genişliğe WebP (q78).
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
