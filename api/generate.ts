@@ -147,8 +147,8 @@ export async function handleGenerate(
   // Audio, images and the long detailed summary take longer than other text.
   const slow = task === 'tts' || task === 'image' || task === 'detail'
   const timing = slow ? { timeoutMs: 45_000, deadlineMs: 55_000 } : {}
-  // One time budget for the whole request, so the answer reaches the browser before it gives up
-  // (55 s, 62 s for slow tasks) and before Vercel stops the function (60 s). Free+ and the free AI
+  // One time budget for the whole request, so the answer is sent before Vercel stops the function
+  // (60 s; the browser waits 65 s). Free+ and the free AI
   // used to get a full budget each: a slow Free+ then left the free AI running past both limits,
   // and the student saw "Fetch is aborted" after 55 s instead of an answer or a clear message.
   const budgetMs = slow ? 57_000 : 52_000
