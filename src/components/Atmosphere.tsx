@@ -22,7 +22,7 @@ function Reel({ spinning }: { spinning: boolean }) {
   )
 }
 
-export function AmbientPlayer() {
+export function AmbientPlayer({ inHeader = false }: { inHeader?: boolean }) {
   const { playing, volumes } = useAmbience()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -42,8 +42,17 @@ export function AmbientPlayer() {
   }, [open])
 
   return (
-    <div className="ambient" ref={ref}>
-      {open && (
+    <div className={inHeader ? 'ambient-in-header' : 'ambient ambient-floating'} ref={ref}>
+      {/* In the phone top bar the panel opens below the button; elsewhere above it. */}
+      {open && !inHeader && cassette()}
+      {inHeader && toggleButton()}
+      {open && inHeader && cassette()}
+      {!inHeader && toggleButton()}
+    </div>
+  )
+
+  function cassette() {
+    return (
         <div className="cassette" role="dialog" aria-label="Gece kütüphanesi">
           <div className="cassette-head">
             <strong>Gece kütüphanesi</strong>
@@ -86,7 +95,11 @@ export function AmbientPlayer() {
             Sayfalar arasında gezerken de çalmaya devam eder.
           </p>
         </div>
-      )}
+    )
+  }
+
+  function toggleButton() {
+    return (
       <button
         className={`ambient-toggle ${playing ? 'is-playing' : ''}`}
         aria-label={playing ? 'Ortam sesi çalıyor, ayarları aç' : 'Ortam sesleri: yağmur, kafe, şömine'}
@@ -103,8 +116,8 @@ export function AmbientPlayer() {
           <Headphones size={20} aria-hidden />
         )}
       </button>
-    </div>
-  )
+    )
+  }
 }
 
 const OWL_KEY = 'studymode.nightOwl'
@@ -137,7 +150,7 @@ export function NightOwl() {
   // A greeting, not a banner: it steps aside on its own after a while (the stars stay).
   useEffect(() => {
     if (!night) return
-    const id = window.setTimeout(() => setShown(false), 15_000)
+    const id = window.setTimeout(() => setShown(false), 10_000)
     return () => window.clearTimeout(id)
   }, [night])
 

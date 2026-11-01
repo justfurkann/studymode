@@ -1,3 +1,4 @@
+import { saveList, type SaveResult } from './imageStore'
 import type { Card, Note } from './types'
 
 export interface ConceptNode {
@@ -196,11 +197,12 @@ export function readStoredVisuals(noteId: string): GeneratedVisualItem[] {
   }
 }
 
-export function saveStoredVisuals(noteId: string, items: GeneratedVisualItem[]): void {
+/** Keeps the newest 8; if the browser is out of space, older ones go first (see imageStore). */
+export function saveStoredVisuals(noteId: string, items: GeneratedVisualItem[]): SaveResult {
   try {
-    localStorage.setItem(`${VISUAL_STORAGE_PREFIX}${noteId}`, JSON.stringify(items.slice(0, 8)))
+    return saveList(`${VISUAL_STORAGE_PREFIX}${noteId}`, items.slice(0, 8))
   } catch {
-    // Ignore storage quota issues
+    return 'failed'
   }
 }
 

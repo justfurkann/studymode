@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, CircleAlert, FileText, FileUp, Plus, Sparkles, Wand2, X } from 'lucide-react'
-import { useRef, useState, type DragEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../components/ui'
@@ -148,6 +148,25 @@ export function AddNote() {
     return { set, warning: partialChunkMessage(set) }
   }
 
+  // Preparing can take a minute. Closing the tab meanwhile loses the work, so the browser asks first;
+  // and if the student moved to another page, the result is saved without pulling them back.
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  useEffect(() => {
+    if (!busy) return
+    const onUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onUnload)
+    return () => window.removeEventListener('beforeunload', onUnload)
+  }, [busy])
+
   async function generate(noteId: string, generator: Generator) {
     setBusy(true)
     setError('')
@@ -156,7 +175,8 @@ export function AddNote() {
       const { set, warning } = await buildSet(content, title, generator, setChunkStatus)
       store.applyGenerated(noteId, set, generator)
       if (warning) toast(warning)
-      navigate(`/not/${noteId}`, { replace: true })
+      if (mounted.current) navigate(`/not/${noteId}`, { replace: true })
+      else toast(`"${title.trim() || 'Not'}" hazır; Dersler'den açabilirsin.`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Çalışma seti oluşturulamadı.')
       setBusy(false)
@@ -199,7 +219,7 @@ export function AddNote() {
     setBatchFinished(true)
     if (!failed) {
       toast('Tüm notlar hazır')
-      navigate(`/ders/${target}`, { replace: true })
+      if (mounted.current) navigate(`/ders/${target}`, { replace: true })
     }
   }
 

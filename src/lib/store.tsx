@@ -111,16 +111,72 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [backend, authReady, loadCount])
 
+  // Changes that could not be saved (usually no connection). They are sent again, in order, before the
+  // next change and whenever the connection comes back, so nothing done offline is silently lost.
+  const unsaved = useRef<Change[]>([])
+  const pending = useRef(0)
+
+  const save = useCallback(
+    (changes: Change[]) => {
+      pending.current += 1
+      queue.current = queue.current
+        .then(async () => {
+          const batch = [...unsaved.current, ...changes]
+          unsaved.current = []
+          try {
+            if (batch.length) await backend.apply(batch, dataRef.current)
+          } catch (e) {
+            const message = e instanceof Error ? e.message : 'Değişiklik kaydedilemedi.'
+            // Only a lost connection is worth retrying; a rejected row would fail forever and block every later save.
+            const network = (typeof navigator !== 'undefined' && navigator.onLine === false) || /fetch|network|load failed|timed? ?out/i.test(message)
+            if (network) {
+              unsaved.current = batch
+              setSaveError('Bağlantı koptu. Değişikliklerin bu sekmede duruyor; internet gelince kendiliğinden kaydedilecek. Sekmeyi kapatma.')
+            } else {
+              setSaveError(message)
+            }
+            return
+          }
+          if (batch.length > changes.length) setSaveError('')
+        })
+        .finally(() => {
+          pending.current -= 1
+        })
+    },
+    [backend],
+  )
+
   const commit = useCallback(
     (next: StudyData, changes: Change[]) => {
       dataRef.current = next
       setData(next)
-      queue.current = queue.current
-        .then(() => backend.apply(changes, next))
-        .catch((e: unknown) => setSaveError(e instanceof Error ? e.message : 'Değişiklik kaydedilemedi.'))
+      save(changes)
     },
-    [backend],
+    [save],
   )
+
+  useEffect(() => {
+    const retry = () => {
+      if (unsaved.current.length) save([])
+    }
+    // Leaving with unsaved work: the browser asks first.
+    const onUnload = (event: BeforeUnloadEvent) => {
+      if (!pending.current && !unsaved.current.length) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('online', retry)
+    window.addEventListener('beforeunload', onUnload)
+    return () => {
+      window.removeEventListener('online', retry)
+      window.removeEventListener('beforeunload', onUnload)
+    }
+  }, [save])
+
+  // A different account or the local store: what failed for the previous one must not go to this one.
+  useEffect(() => {
+    unsaved.current = []
+  }, [backend])
 
   const value = useMemo<StoreValue>(() => {
     const current = () => dataRef.current

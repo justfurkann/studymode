@@ -197,7 +197,7 @@ export function QuizTab({
           <span className="subtle">
             Soru {index + 1} / {questions.length}
           </span>
-          <span className="subtle">
+          <span className="subtle kbd-hint">
             <span className="kbd">A–D</span> seç · <span className="kbd">Enter</span> devam
           </span>
         </div>
