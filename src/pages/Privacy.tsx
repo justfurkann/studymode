@@ -108,7 +108,7 @@ export function Privacy() {
               içerikleri kendi ürünlerini geliştirmek için kullanabilir; bu yüzden kişisel ya da gizli bilgi içeren notları yükleme. Google ile giriş yaparsan girişini de Google doğrular.
             </li>
             <li>
-              <strong>Google Cloud (Vertex AI) — Free+:</strong> VIP ve yöneticiler Free+ seçerse notun metni Google Cloud üzerindeki ücretli Gemini modellerine gider. Bu kullanımda
+              <strong>Google Cloud (Vertex AI) — Free+:</strong> VIP ve yönetici hesaplarında notun metni Google Cloud üzerindeki ücretli Gemini modellerine gider. Bu kullanımda
               Google içerikleri kendi ürünlerini geliştirmek için kullanmaz. Premium özellikleri (sesli not, görsel, akıllı arama) de aynı yoldan çalışır: seslendirilecek
               metin, çizilecek kavram ya da aranan cümle bu modellere gider.
             </li>
