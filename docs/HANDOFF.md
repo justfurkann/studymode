@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (1 Kasım 2026, Aşama 33 sonrası, `main` üzerinde): 269 birim testi, 114 tarayıcı testi.
+Son yeşil durum (1 Kasım 2026, Aşama 34 sonrası, `main` üzerinde): 271 birim testi, 114 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -710,6 +710,12 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Aşama 33'teki yöntem (sarı logonun üstüne maskeyle kesilmiş renk katmanı) kenarlarda sarı hale bırakıyordu ve maske tekniği Safari'de farklı davranabiliyor; kullanıcı "logolar kötü duruyor" dedi.
 - Şimdi: varsayılan sarıda marka dosyası `<img>` olarak birebir. Başka bir kalem renginde (`data-pen`) aynı SVG dosyası bir kez indirilip (önbellekten) satır içine çizilir ve yalnızca `fill="#FFE34F"` olan şekiller `var(--hi)` olur (şerit S ve "mode" vurgusu). Katman yok, hale yok. Koyu tema için logo-dark.svg aynı şekilde.
 - `logo-tint.svg` ve `logo-dark-tint.svg` silindi; `.brand-tint` CSS'i kaldırıldı. Test: nanede satır içi logonun dolgularında nane ve lacivert var, marka sarısı yok; sarıya dönünce yine `<img>`.
+
+### Aşama 34 — PDF'de "55 sn sonra: Fetch is aborted" ve şıkka birkaç kez basma (1 Kasım 2026, `keen-albattani`)
+
+- **Kopma:** `api/generate.ts` Free+ ve ücretsiz yola ayrı ayrı tam süre veriyordu. VIP/Premium uzun bir notta Free+ (22 sn'de kesilip öbür modelde baştan, ~50 sn) yavaş kalınca ücretsiz yol da kendi 50 sn'siyle başlıyordu; tarayıcı 55. saniyede vazgeçiyordu. Artık isteğin tek bir süre bütçesi var (52 sn, yavaş işlerde 57 sn). Free+ bunun 14 sn dışındakini tek uzun denemede kullanır; kalan süreyle ücretsiz yol dener. Süre yetmezse `too_slow` döner ve öğrenci "zamanında bitiremedi, tekrar dene / notu böl" mesajını görür. `handleGenerate`'e test için `now` parametresi eklendi; iki yeni birim testi var.
+- **Şıklar:** Demo notta, işlemci 6 kat kısılmışken tek dokunuşta işaretleniyor (~0,1 sn); gerçek telefonda tekrar üretilemedi. En olası sebep iOS'un çift dokunuşla yakınlaştırmayı beklerken hızlı dokunuşu yutması. Düğme, bağlantı, sekme ve radyo öğelerine `touch-action: manipulation` eklendi (iki parmakla yakınlaştırma çalışmaya devam ediyor). **Canlıda iPhone'da doğrulanmalı.**
+- **Henüz yapılmadı:** Free+ uzun notu 38 sn içinde bitiremezse ücretsiz modelin cevabı gelir; bu durum sık olursa Free+ için not parçası küçültülebilir (`STUDY_CHUNK_CHARS` 20000).
 
 ## Tasarım dili ("Fosforlu")
 

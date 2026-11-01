@@ -315,6 +315,34 @@ describe('Free+ on Vertex AI', () => {
     expect(calls(f).some((u) => u.includes('consume_plus'))).toBe(false)
   })
 
+  it('keeps one time budget: a slow Free+ never leaves the free AI running past the browser limit', async () => {
+    resetVertexToken()
+    let clock = 1_000_000
+    const base = plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 }, vertex: new Response('bad', { status: 400 }) })
+    const f = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      // Free+ "takes" 47 s before failing.
+      if (String(url).includes('aiplatform')) clock += 47_000
+      return (base as unknown as (u: string | URL | Request, i?: RequestInit) => Promise<Response>)(url, init)
+    }) as unknown as typeof fetch
+    const res = await handleGenerate(plusRequest(), plusEnv, f, undefined, () => clock)
+    expect(res.status).toBe(504)
+    expect(await res.json()).toEqual({ error: 'too_slow' })
+    expect(calls(f).some((u) => u.includes('generativelanguage'))).toBe(false)
+  })
+
+  it('after a 30 s Free+ failure there is still time for the free AI', async () => {
+    resetVertexToken()
+    let clock = 1_000_000
+    const base = plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 }, vertex: new Response('bad', { status: 400 }) })
+    const f = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).includes('aiplatform')) clock += 30_000
+      return (base as unknown as (u: string | URL | Request, i?: RequestInit) => Promise<Response>)(url, init)
+    }) as unknown as typeof fetch
+    const res = await handleGenerate(plusRequest(), plusEnv, f, undefined, () => clock)
+    expect(res.status).toBe(200)
+    expect(calls(f).some((u) => u.includes('generativelanguage'))).toBe(true)
+  })
+
   it('ignores Free+ for normal accounts and when Vertex is not set up', async () => {
     resetVertexToken()
     const f = plusFetch({ plus: { eligible: false, allowed: false, used: 0, limit: 0, site_used: 0, site_limit: 300 } })

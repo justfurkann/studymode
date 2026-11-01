@@ -99,12 +99,20 @@ async function plusCall(name: 'plus_quota' | 'consume_plus', auth: string, fetch
   }
 }
 
+/** Time kept for the free AI when Free+ fails; the free model answers in 4-8 s on most notes. */
+const FREE_RESERVE_MS = 14_000
+/** The free AI's usual limits (the defaults of callGeminiWithFallback). */
+const FREE_ATTEMPT_MS = 22_000
+const DEFAULT_FREE_DEADLINE_MS = 50_000
+
 export async function handleGenerate(
   request: Request,
   env: Env,
   fetchImpl: typeof fetch = fetch,
   sleep?: (ms: number) => Promise<unknown>,
+  now: () => number = Date.now,
 ): Promise<Response> {
+  const requestStarted = now()
   const apiKey = env.GEMINI_API_KEY
   if (!apiKey) return json(503, { error: 'not_configured' })
 
@@ -139,6 +147,12 @@ export async function handleGenerate(
   // Audio, images and the long detailed summary take longer than other text.
   const slow = task === 'tts' || task === 'image' || task === 'detail'
   const timing = slow ? { timeoutMs: 45_000, deadlineMs: 55_000 } : {}
+  // One time budget for the whole request, so the answer reaches the browser before it gives up
+  // (55 s, 62 s for slow tasks) and before Vercel stops the function (60 s). Free+ and the free AI
+  // used to get a full budget each: a slow Free+ then left the free AI running past both limits,
+  // and the student saw "Fetch is aborted" after 55 s instead of an answer or a clear message.
+  const budgetMs = slow ? 57_000 : 52_000
+  const left = () => budgetMs - (now() - requestStarted)
 
   // The caller's role and free allowance; read once, used for both paths below.
   const before = await quotaCall('ai_quota', auth, fetchImpl)
@@ -156,7 +170,12 @@ export async function handleGenerate(
       try {
         const target = vertexTarget(env, await vertexAccessToken(env, oidc, fetchImpl))
         for (let attempt = 0; attempt < 2; attempt += 1) {
-          const { text, model } = await callGeminiWithFallback({ target, models: vertexModels(env, task), system: jsonModeSystem(task), user, fetchImpl, sleep, ...timing })
+          // Free+ may use the budget except a reserve for the free AI. A long note on the stronger
+          // model can take 30-40 s, so one attempt gets that whole share instead of being cut at
+          // 22 s and started again from scratch on the next model.
+          const plusLeft = left() - FREE_RESERVE_MS
+          if (plusLeft < 8_000) break
+          const { text, model } = await callGeminiWithFallback({ target, models: vertexModels(env, task), system: jsonModeSystem(task), user, fetchImpl, sleep, timeoutMs: plusLeft, deadlineMs: plusLeft })
           const result = parseTaskOutput(task, text)
           // Embeddings cost next to nothing and a search needs many; they do not use up Free+.
           const counted = task === 'embed' ? undefined : ((await plusCall('consume_plus', auth, fetchImpl)) ?? undefined)
@@ -174,7 +193,10 @@ export async function handleGenerate(
   try {
     // One retry if the model returns JSON in the wrong shape.
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const { text } = await callGeminiWithFallback({ apiKey, models, system: jsonModeSystem(task), user, fetchImpl, sleep, ...timing })
+      // Not enough time left for a real try: say so now rather than be cut off mid-answer.
+      if (left() < 6_000) return json(504, { error: 'too_slow' })
+      const deadlineMs = Math.min(timing.deadlineMs ?? DEFAULT_FREE_DEADLINE_MS, left())
+      const { text } = await callGeminiWithFallback({ apiKey, models, system: jsonModeSystem(task), user, fetchImpl, sleep, timeoutMs: Math.min(timing.timeoutMs ?? FREE_ATTEMPT_MS, deadlineMs), deadlineMs })
       const result = parseTaskOutput(task, text)
       // Only a successful answer is counted.
       if (result) return json(200, { result, quota: (await quotaCall('consume_ai', auth, fetchImpl)) ?? undefined })
@@ -183,6 +205,7 @@ export async function handleGenerate(
   } catch (error) {
     if (error instanceof GeminiError) {
       if (error.status === 429) return json(429, { error: 'quota' })
+      if (error.status === 504 && left() < 6_000) return json(504, { error: 'too_slow' })
       if (error.status === 503 || error.status === 504) return json(503, { error: 'busy' })
       if (error.status === 413) return json(413, { error: 'too_large' })
       console.error('Gemini error', error.status, error.message)
