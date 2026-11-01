@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (model listesi sonrası): 159 birim testi, 57 tarayıcı testi.
+Son yeşil durum (Aşama 11 sonrası): 167 birim testi, 61 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -75,7 +75,9 @@ Tablolar: `courses`, `notes`, `cards`, `quiz_attempts`, `exam_results`, `study_d
 
 **Aşama 9 SQL'i de çalıştırıldı (1 Kasım 2026):** `course_shares` + `get_course_share`; Claude Supabase üzerinden teyit etti (tablo, RLS, politika, fonksiyon yerinde).
 
-**Aşama 10 SQL'i (`feedback`, `client_errors`) Claude tarafından kullanıcının isteğiyle canlıya uygulandı (1 Kasım 2026, migration `feedback_and_client_errors`).** Bekleyen SQL yok.
+**Aşama 10 SQL'i (`feedback`, `client_errors`) Claude tarafından kullanıcının isteğiyle canlıya uygulandı (1 Kasım 2026, migration `feedback_and_client_errors`).**
+
+**Aşama 11 SQL'i (`user_roles`, `ai_usage`, kota ve yönetim fonksiyonları; kurucu hesabı yönetici) canlıya uygulandı (1 Kasım 2026, migration `roles_ai_quota_admin`).** Bekleyen SQL yok.
 
 **Kayıt için (artık çalıştırıldı):**
 ```sql
@@ -294,6 +296,133 @@ grant insert on public.feedback, public.client_errors to anon, authenticated;
 ```
 
 **Yayından sonra eski sekme ("Failed to fetch dynamically imported module"):** Her yayında dosya adları değişir, eskiler silinir; yayından önce açılmış bir sekme, tembel yüklenen parçayı (yapay zekâ kodu, PDF okuyucu, Office okuyucu) eski adla ister ve 404 alır. Kullanıcı ilk kez kendi anahtarını doğrularken bu hatayı gördü (1 Kasım 2026). Çözüm `src/lib/version.ts`: bütün dinamik `import()`'lar `freshImport` içinden geçer; eksik parça Türkçe `StaleVersionError` olur ("Uygulamanın yeni bir sürümü yayınlandı. Sayfayı yenileyip tekrar dene"). Ayrıca sekme yeniden görünür olunca ve 10 dakikada bir `/` sayfasının ana betiği karşılaştırılır; yeni sürüm varsa üstte fosforlu "Uygulamanın yeni sürümü hazır · Yenile" çubuğu (`UpdateWatcher.tsx`) çıkar ve kullanıcı **başka sayfaya geçtiği an** kendiliğinden yenilenir (yazılanlar kaybolmasın diye o sayfadayken zorla yenilemez). Yeni bir dinamik import eklenirse `freshImport(() => import(...))` ile yazılmalı.
+
+**Aşama 11 — Roller, kişi başı günlük yapay zekâ hakkı, yönetim sayfası: ✅ TAMAM** — kullanıcı isteği: VIP/hesaplara özel ayrıcalık, hesapları görmek; arkadaşlara açmadan önce kota.
+- **Roller:** `user_roles` (yalnızca `vip` / `admin`; satır yoksa normal). Kullanıcı yalnızca kendi rolünü okuyabilir; rol veren tek yol `admin_set_role` (yönetici kontrolü fonksiyonun içinde) ya da Supabase panelinde SQL. Kurucu hesabı (justfurkan42@gmail.com) yönetici. Yönetici kendi yöneticiliğini kaldıramaz.
+- **Günlük hak:** normal 40, VIP 150, yönetici sınırsız; İstanbul gününe göre (`istanbul_today`), sayıları `ai_limit_for` içinde değiştir. `api/generate.ts` Gemini'den önce `ai_quota`yı (kullanıcının kendi token'ıyla) çağırır; dolmuşsa 429 `daily_limit`; **yalnızca başarılı cevaptan sonra** `consume_ai` ile sayar. Fonksiyonlar yoksa ya da Supabase cevap vermezse **açık kalır** (herkesi durdurmaz). Kendi anahtarını bağlayanlar sayılmaz.
+- **Uygulama:** `src/lib/account.ts` (`useQuota`), Ayarlar'da ücretsiz yapay zekâ bölümünde rol rozeti + "Bugün 12/40 istek" çubuğu; hak dolunca "Bugünkü ücretsiz yapay zekâ hakkın doldu (40/40). Gece yarısı yenilenir…".
+- **Yönetim sayfası** `/yonetim` (`src/pages/Admin.tsx`, Ayarlar'da yalnızca yöneticiye "Yönetim paneli" düğmesi): özet (hesap, bugün kullanan, bugünkü istek, VIP), hesap listesi (e-posta, katılım, son giriş, not sayısı, bugünkü istek, son çalışma; rol seçimi), geri bildirimler, son 30 günün telefon hataları. Not içerikleri gösterilmez. Her fonksiyon yöneticiliği kendisi tekrar denetler.
+- Yerel Postgres'te sahte auth ile denendi (normal kullanıcı rol ekleyemez, sayacı değiştiremez, yönetim fonksiyonlarını çalıştıramaz; anon hiçbirini çalıştıramaz; VIP 150, normal 40'ta durur; şema iki kez çalışır).
+- SQL (`schema.sql` sonunda da var; kurucuyu yönetici yapan satır ayrıca: `insert into public.user_roles (user_id, role) select id, 'admin' from auth.users where lower(email) = 'justfurkan42@gmail.com' on conflict (user_id) do update set role = 'admin';`):
+```sql
+-- Roles, daily AI quota and the founder's admin tools (Aşama 11).
+-- user_roles: only an admin (or SQL in the dashboard) can give a role; users can only read their own.
+-- ai_usage: the shared free AI counts requests per user per Istanbul day; users can read theirs,
+-- only the server's functions below write it.
+create table if not exists public.user_roles (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  role text not null check (role in ('vip', 'admin')),
+  granted_at timestamptz not null default now()
+);
+create table if not exists public.ai_usage (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  day date not null,
+  count integer not null default 0 check (count >= 0),
+  primary key (user_id, day)
+);
+alter table public.user_roles enable row level security;
+alter table public.ai_usage enable row level security;
+drop policy if exists "read own role" on public.user_roles;
+create policy "read own role" on public.user_roles for select to authenticated using ((select auth.uid()) = user_id);
+drop policy if exists "read own usage" on public.ai_usage;
+create policy "read own usage" on public.ai_usage for select to authenticated using ((select auth.uid()) = user_id);
+revoke insert, update, delete on public.user_roles, public.ai_usage from anon, authenticated;
+
+create or replace function public.istanbul_today() returns date
+language sql stable set search_path = '' as $$ select (now() at time zone 'Europe/Istanbul')::date $$;
+
+-- Daily limits per role; null = no limit. Change the numbers here to adjust.
+create or replace function public.ai_limit_for(r text) returns integer
+language sql immutable set search_path = '' as $$
+  select case r when 'admin' then null when 'vip' then 150 else 40 end
+$$;
+
+-- The caller's quota status: role, used today, limit, allowed.
+create or replace function public.ai_quota() returns json
+language sql stable security definer set search_path = '' as $$
+  select json_build_object(
+    'role', coalesce(r.role, 'normal'),
+    'used', coalesce(u.count, 0),
+    'limit', public.ai_limit_for(coalesce(r.role, 'normal')),
+    'allowed', public.ai_limit_for(coalesce(r.role, 'normal')) is null or coalesce(u.count, 0) < public.ai_limit_for(coalesce(r.role, 'normal'))
+  )
+  from (select (select auth.uid()) as id) me
+  left join public.user_roles r on r.user_id = me.id
+  left join public.ai_usage u on u.user_id = me.id and u.day = public.istanbul_today()
+  where me.id is not null
+$$;
+
+-- Counts one successful AI request for the caller. Only ever adds one.
+create or replace function public.consume_ai() returns json
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then return null; end if;
+  insert into public.ai_usage (user_id, day, count) values (auth.uid(), public.istanbul_today(), 1)
+  on conflict (user_id, day) do update set count = public.ai_usage.count + 1;
+  return public.ai_quota();
+end $$;
+
+create or replace function public.is_admin() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.user_roles where user_id = (select auth.uid()) and role = 'admin')
+$$;
+
+-- Admin: every account with its role and activity (no note contents).
+drop function if exists public.admin_users();
+create or replace function public.admin_users()
+returns table (id uuid, email text, name text, created_at timestamptz, last_sign_in_at timestamptz, role text, ai_today integer, notes bigint, last_study text)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed' using errcode = '42501'; end if;
+  return query
+  select u.id, u.email::text, coalesce(u.raw_user_meta_data ->> 'full_name', '')::text, u.created_at, u.last_sign_in_at,
+         coalesce(r.role, 'normal')::text,
+         coalesce((select a.count from public.ai_usage a where a.user_id = u.id and a.day = public.istanbul_today()), 0)::integer,
+         (select count(*) from public.notes n where n.user_id = u.id),
+         (select max(s.day)::text from public.study_days s where s.user_id = u.id)
+  from auth.users u left join public.user_roles r on r.user_id = u.id
+  order by u.created_at desc;
+end $$;
+
+-- Admin: give or take a role ('normal' removes it). An admin cannot demote themselves by accident.
+create or replace function public.admin_set_role(target uuid, new_role text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed' using errcode = '42501'; end if;
+  if new_role not in ('normal', 'vip', 'admin') then raise exception 'bad role' using errcode = '22023'; end if;
+  if target = auth.uid() and new_role <> 'admin' then raise exception 'cannot demote yourself' using errcode = '22023'; end if;
+  if new_role = 'normal' then delete from public.user_roles where user_id = target;
+  else insert into public.user_roles (user_id, role) values (target, new_role) on conflict (user_id) do update set role = excluded.role, granted_at = now();
+  end if;
+end $$;
+
+-- Admin: the latest feedback and browser errors.
+create or replace function public.admin_feedback()
+returns table (kind text, message text, contact text, page text, email text, created_at timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed' using errcode = '42501'; end if;
+  return query select f.kind, f.message, f.contact, f.page, u.email::text, f.created_at
+  from public.feedback f left join auth.users u on u.id = f.user_id order by f.created_at desc limit 100;
+end $$;
+
+create or replace function public.admin_errors()
+returns table (message text, page text, times bigint, last_at timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed' using errcode = '42501'; end if;
+  return query select e.message, e.page, count(*), max(e.created_at)
+  from public.client_errors e where e.created_at > now() - interval '30 days'
+  group by e.message, e.page order by max(e.created_at) desc limit 50;
+end $$;
+
+revoke all on function public.ai_quota(), public.consume_ai(), public.is_admin(), public.admin_users(),
+  public.admin_set_role(uuid, text), public.admin_feedback(), public.admin_errors() from public, anon;
+grant execute on function public.ai_quota(), public.consume_ai(), public.is_admin(), public.admin_users(),
+  public.admin_set_role(uuid, text), public.admin_feedback(), public.admin_errors() to authenticated;
+```
+- **Test hesabı:** Claude için ayrı bir hesap var (Gmail + adresi); bilgiler oturum ortamında `STUDYMODE_TEST_EMAIL` / `STUDYMODE_TEST_PASSWORD` değişkenlerinde (değerleri asla yazdırma). Canlı sitede gerçek tarayıcıyla giriş 1 Kasım'da doğrulandı. Raporlarda gerçek kullanıcı sayılarından ayrı tut.
+- **Ortak not defteri (Claude Docs):** "StudyMode · Fikir defteri" — https://claude.ai/artifact/UkjEttyZqSAekHkWW9bPqw (şimdi sırada, düşünülen fikirler, rafa kalkanlar, kalıcı kurallar). Yeni fikirler oraya yazılır.
 
 ## Tasarım dili ("Fosforlu")
 

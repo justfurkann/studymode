@@ -24,6 +24,7 @@ import {
   type TranscribeImage,
   type TranscribeInput,
 } from './tasks'
+import { setQuota } from '../account'
 
 export { contextAround, MAX_PROMPT_NOTE_CHARS, splitNoteIntoChunks } from './tasks'
 export type {
@@ -184,8 +185,15 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>): Prom
       `Sunucuya bağlanılamadı (${seconds} sn sonra: ${detail}). İşlem sürerken sayfadan ayrılma veya ekranı kapatma; bağlantını kontrol edip tekrar dene.`,
     )
   }
-  const body = (await response.json().catch(() => ({}))) as { result?: unknown; error?: string }
+  const body = (await response.json().catch(() => ({}))) as { result?: unknown; error?: string; quota?: unknown }
+  if (body.quota) setQuota(body.quota)
   if (!response.ok) {
+    if (body.error === 'daily_limit') {
+      const q = body.quota as { used?: number; limit?: number } | undefined
+      throw new AiError(
+        `Bugünkü ücretsiz yapay zekâ hakkın doldu${q?.limit ? ` (${q.used}/${q.limit})` : ''}. Gece yarısı yenilenir. Acelen varsa Ayarlar'dan kendi anahtarını bağlayabilirsin.`,
+      )
+    }
     const messages: Record<string, string> = {
       not_configured: 'Ücretsiz yapay zekâ henüz kurulmadı. Ayarlardan kendi anahtarını bağlayabilir ya da basit modu kullanabilirsin.',
       unauthorized: 'Oturumun sona ermiş. Çıkış yapıp tekrar giriş yap.',

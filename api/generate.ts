@@ -31,6 +31,35 @@ async function isSignedIn(request: Request, fetchImpl: typeof fetch): Promise<bo
   return response.ok
 }
 
+export interface Quota {
+  role: 'normal' | 'vip' | 'admin'
+  used: number
+  limit: number | null
+  allowed: boolean
+}
+
+/**
+ * Calls one of the quota functions in Supabase as the signed-in user (their own token), so the
+ * database decides the role and the count. Fails open (null) when the functions are not there yet
+ * or Supabase hiccups: a quota problem should never take the free AI down for everyone.
+ */
+async function quotaCall(name: 'ai_quota' | 'consume_ai', auth: string, fetchImpl: typeof fetch): Promise<Quota | null> {
+  try {
+    const response = await fetchImpl(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_PUBLISHABLE_KEY, authorization: auth, 'content-type': 'application/json' },
+      body: '{}',
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!response.ok) return null
+    const body = (await response.json()) as Partial<Quota> | null
+    if (!body || typeof body.allowed !== 'boolean' || typeof body.used !== 'number') return null
+    return { role: body.role === 'vip' || body.role === 'admin' ? body.role : 'normal', used: body.used, limit: typeof body.limit === 'number' ? body.limit : null, allowed: body.allowed }
+  } catch {
+    return null
+  }
+}
+
 export async function handleGenerate(
   request: Request,
   env: Env,
@@ -61,12 +90,18 @@ export async function handleGenerate(
   }
   const models = geminiModels(env)
 
+  // Daily allowance per person (normal 40, VIP 150, admin unlimited), checked before calling Gemini.
+  const auth = request.headers.get('authorization')!
+  const before = await quotaCall('ai_quota', auth, fetchImpl)
+  if (before && !before.allowed) return json(429, { error: 'daily_limit', quota: before })
+
   try {
     // One retry if the model returns JSON in the wrong shape.
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const { text } = await callGeminiWithFallback({ apiKey, models, system: jsonModeSystem(task), user, fetchImpl, sleep })
       const result = parseTaskOutput(task, text)
-      if (result) return json(200, { result })
+      // Only a successful answer is counted.
+      if (result) return json(200, { result, quota: (await quotaCall('consume_ai', auth, fetchImpl)) ?? undefined })
     }
     return json(502, { error: 'bad_output' })
   } catch (error) {

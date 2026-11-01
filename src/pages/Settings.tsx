@@ -8,6 +8,7 @@ import { authErrorMessage, MIN_PASSWORD, nameMetadata, passwordProblem } from '.
 import { hasLocalData, parseData } from '../lib/backend'
 import { PROVIDERS, updateSettings, useSettings, type AiProvider, type KeyProvider, type Theme } from '../lib/settings'
 import { migrateLocalToCloud, useStore } from '../lib/store'
+import { quotaText, ROLE_LABEL, useQuota } from '../lib/account'
 import { clampDailyGoal } from '../lib/streak'
 import { supabase } from '../lib/supabase'
 import { emptyData } from '../lib/types'
@@ -233,6 +234,7 @@ function AiSection() {
               Ücretsiz yapay zekâ yalnızca giriş yapmış kullanıcılara açık.
             </Alert>
           )}
+          <QuotaLine />
           <p className="subtle">
             Google Gemini’nin ücretsiz katmanını kullanır. Google ücretsiz kullanımdaki içerikleri ürünlerini geliştirmek için kullanabilir; kişisel ya da gizli bilgi içeren notları
             yükleme. Çok kullanıldığı saatlerde kota dolabilir; o zaman biraz bekle ya da kendi anahtarını bağla.
@@ -377,6 +379,7 @@ export function Settings() {
         <div>
           <h1>Ayarlar</h1>
         </div>
+        <AdminLink />
       </div>
 
       <section className="section">
@@ -495,5 +498,39 @@ function ModelPicker({ models, value, onChange }: { models: Array<{ id: string; 
         </label>
       )}
     </div>
+  )
+}
+
+/** "Bugün 12/40 istek" with the role, for the free AI. */
+function QuotaLine() {
+  const store = useStore()
+  const quota = useQuota(store.session?.user.id ?? null)
+  if (!quota) return null
+  const percent = quota.limit ? Math.min(100, (quota.used / quota.limit) * 100) : 0
+  return (
+    <div className="quota" aria-label="Günlük ücretsiz yapay zekâ hakkı">
+      <div className="quota-head">
+        <span className={`chip role-chip is-${quota.role}`}>{ROLE_LABEL[quota.role]}</span>
+        <strong>{quotaText(quota)}</strong>
+      </div>
+      {quota.limit !== null && (
+        <div className="progress" role="progressbar" aria-valuenow={quota.used} aria-valuemin={0} aria-valuemax={quota.limit}>
+          <div style={{ width: `${percent}%`, background: quota.allowed ? undefined : 'var(--danger)' }} />
+        </div>
+      )}
+      <p className="subtle">Her başarılı yapay zekâ işlemi (not hazırlama, test, puanlama, açıklama) bir istek sayılır. Hak her gece yarısı (Türkiye saati) yenilenir.</p>
+    </div>
+  )
+}
+
+/** Shown only to the admin. */
+function AdminLink() {
+  const store = useStore()
+  const quota = useQuota(store.session?.user.id ?? null)
+  if (quota?.role !== 'admin') return null
+  return (
+    <Link to="/yonetim" className="btn btn-sm">
+      Yönetim paneli
+    </Link>
   )
 }

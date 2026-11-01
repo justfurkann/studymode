@@ -4563,3 +4563,85 @@ a.list-item:hover {
   }
 }
 
+
+/* ============ Roller, günlük hak, yönetim ============ */
+
+.quota {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quota-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.role-chip {
+  font-weight: 700;
+}
+
+.role-chip.is-vip {
+  background: var(--hi);
+  color: var(--on-hi);
+  border-color: var(--ink-line);
+}
+
+.role-chip.is-admin {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-stats .panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+}
+
+.admin-stats strong {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.admin .section h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-user {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.admin-role .select {
+  min-width: 190px;
+}
+
+.admin-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .admin-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-role,
+  .admin-role .select {
+    width: 100%;
+  }
+}
