@@ -5459,3 +5459,159 @@ a.prem-hit:hover {
     animation: none;
   }
 }
+
+/* ============ Sidebar: short menu with a "Daha fazla" fold ============ */
+/* On a short screen the menu scrolls instead of squeezing its items. */
+.sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sidebar > * {
+  flex-shrink: 0;
+}
+.nav-link.nav-more {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+}
+.nav-more-chev {
+  margin-left: auto;
+  color: var(--text-3);
+  transition: transform 0.2s ease;
+}
+.nav-more.is-open .nav-more-chev {
+  transform: rotate(180deg);
+}
+.nav-more-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 4px 14px;
+  padding-left: 8px;
+  border-left: 1.5px solid var(--border);
+  animation: nav-more-in 0.18s ease-out;
+}
+@keyframes nav-more-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+/* The quiz card becomes one menu row in here. */
+.side-quiz.is-compact {
+  margin-top: 0;
+  padding: 6px 12px 6px 8px;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  box-shadow: none;
+  color: var(--text-2);
+}
+.side-quiz.is-compact:hover {
+  transform: none;
+  background: var(--surface-2);
+  color: var(--text);
+}
+.side-quiz.is-compact svg {
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+.side-quiz.is-compact .side-quiz-text strong {
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: inherit;
+}
+.side-quiz.is-compact .side-quiz-text span:last-child {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-more-group { animation: none; }
+}
+
+/* ============ Note steps: "Araçlar" menu ============ */
+.summary-steps {
+  position: relative;
+}
+/* The menu hangs from the whole bar, so on a phone it never runs off the right edge. */
+.step-tools {
+  display: inline-flex;
+}
+.step-tools > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.step-tools-chev {
+  color: var(--text-3);
+  transition: transform 0.2s ease;
+}
+.step-tools > button[aria-expanded='true'] .step-tools-chev {
+  transform: rotate(180deg);
+}
+.step-tools-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: min(320px, 100%);
+  min-width: min(280px, calc(100vw - 32px));
+  padding: 6px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  box-shadow: 0 16px 36px -16px var(--ink-line);
+  animation: nav-more-in 0.15s ease-out;
+}
+.segmented .step-tools-menu button {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+}
+.segmented .step-tools-menu button:hover,
+.segmented .step-tools-menu button[aria-pressed='true'] {
+  background: var(--surface-2);
+}
+.step-tools-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+.step-tools-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.step-tools-text strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 650;
+}
+.step-tools-text span {
+  font-size: 0.8rem;
+  font-weight: 450;
+  color: var(--text-2);
+  white-space: normal;
+}

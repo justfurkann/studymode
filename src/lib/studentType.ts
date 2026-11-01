@@ -50,111 +50,136 @@ export interface Option {
   delta: Partial<Vector>
 }
 
+/** Picture for an option; the page maps it to an icon. */
+export type OptionIcon =
+  | 'calendar' | 'shuffle' | 'search' | 'chat'
+  | 'sunrise' | 'coffee' | 'snooze' | 'moon'
+  | 'theory' | 'fastforward' | 'ask' | 'headphones'
+  | 'palette' | 'bell' | 'minimal' | 'folders'
+  | 'lamp' | 'swap' | 'users' | 'window'
+  | 'mic' | 'ghost' | 'clock' | 'early'
+  | 'bed' | 'zap' | 'bus' | 'target'
+  | 'gear' | 'play' | 'friends' | 'brush'
+  | 'list' | 'book' | 'scale' | 'wave'
+  | 'stop' | 'tv' | 'send' | 'walk'
+
 export interface Question {
   id: string
   text: (w: ExamWords) => string
-  options: Array<Omit<Option, 'text'> & { text: string | ((w: ExamWords) => string) }>
+  options: Array<
+    Omit<Option, 'text'> & {
+      text: string | ((w: ExamWords) => string)
+      icon: OptionIcon
+      /** A one-line reaction shown for a moment after picking it. */
+      react: string
+    }
+  >
 }
 
+/*
+ * Questions from everyday life, not from the classroom: a quiz people take for fun and recognise
+ * themselves in. Each option keeps the axis weights the scoring was balanced with, so only the
+ * situations changed: "plans the weekend to the hour" moves "plan" exactly like "plans study days" did.
+ */
 export const QUESTIONS: Question[] = [
   {
-    id: 'hafta',
-    text: (w) => `${cap(w.toExam)} bir hafta var. İlk hamlen?`,
+    id: 'haftasonu',
+    text: () => 'Cuma akşamı. Hafta sonu planın?',
     options: [
-      { text: 'Takvime gün gün plan yaparım, her konuya bir gün', delta: { plan: 2, social: -0.5 } },
-      { text: '"Daha bir hafta var" deyip diziye dönerim', delta: { plan: -2 } },
-      { text: 'Konuları açıp neyi bilmediğimi çıkarırım', delta: { depth: 1.5, social: -1 } },
-      { text: 'Gruba "toplanıp çalışalım mı?" yazarım', delta: { social: 2 } },
+      { text: "Cumartesi 10'da kahvaltı, 2'de sinema; hepsi notlarda", delta: { plan: 2, social: -0.5 }, icon: 'calendar', react: 'Saat saat. Saygı duyduk.' },
+      { text: 'Plan mı? Kalkınca bakarız', delta: { plan: -2 }, icon: 'shuffle', react: 'Özgür ruh tespit edildi.' },
+      { text: 'Merak ettiğim bir belgeseli baştan sona izlerim', delta: { depth: 1.5, social: -1 }, icon: 'search', react: 'Bir bölüm, üç Wikipedia sekmesi.' },
+      { text: 'Gruba "kim ne yapıyor?" diye ilk ben yazarım', delta: { social: 2 }, icon: 'chat', react: 'Grubun motoru sensin.' },
     ],
   },
   {
-    id: 'saat',
-    text: () => 'Beynin en iyi hangi saatte çalışıyor?',
+    id: 'alarm',
+    text: () => 'Sabah alarm çaldı. Sen?',
     options: [
-      { text: 'Sabah 7. Kahve, sessizlik, boş masa', delta: { night: -2 } },
-      { text: 'Öğleden sonra, kafede, biraz uğultu iyi gelir', delta: { night: -0.5, social: 1 } },
-      { text: "Gece 23.00'ten sonra kafam açılıyor", delta: { night: 1 } },
-      { text: 'Gece 3. Panik ve odak aynı anda geliyor', delta: { night: 1.5, plan: -1 } },
+      { text: 'Alarmdan önce uyandım zaten, güne hazırım', delta: { night: -2 }, icon: 'sunrise', react: 'Güneşle yarışan biri.' },
+      { text: 'Kalkıyorum ama ilk iş gruba "günaydın"', delta: { night: -0.5, social: 1 }, icon: 'coffee', react: 'Günaydın mesajları kutsaldır.' },
+      { text: 'Üç kez erteliyorum; gece daha verimliydim', delta: { night: 1 }, icon: 'snooze', react: '"5 dakika daha" klasiği.' },
+      { text: 'Alarm mı? Ben daha yatmadım ki', delta: { night: 1.5, plan: -1 }, icon: 'moon', react: 'Gece vardiyası onaylandı.' },
     ],
   },
   {
-    id: 'anlamadim',
-    text: (w) => `${cap(w.teacher)} yeni bir konu anlattı, hiçbir şey anlamadın. Ne yaparsın?`,
+    id: 'dizi',
+    text: () => 'İzlediğin dizide olayı kaçırdın. Ne yaparsın?',
     options: [
-      { text: '"Neden böyle?" çözülene kadar kaynağına inerim', delta: { depth: 2, social: -1 } },
-      { text: (w) => `${cap(w.inExam)} nasıl soruluyor, ona bakarım`, delta: { depth: -2 } },
-      { text: 'Bilen birine sorarım, konuşurken anlarım', delta: { social: 1.5, depth: 0.5 } },
-      { text: 'YouTube’da 10 dakikalık bir anlatım bulurum', delta: { social: -0.5 } },
+      { text: 'Fan teorilerini okurum, her detayı çözene kadar', delta: { depth: 2, social: -1 }, icon: 'theory', react: 'Dedektif modu açıldı.' },
+      { text: 'Özet videosunu 2x hızda izlerim, bitsin', delta: { depth: -2 }, icon: 'fastforward', react: 'Verimlilik budur.' },
+      { text: 'Arkadaşa "ne oldu şimdi?" diye yazarım', delta: { social: 1.5, depth: 0.5 }, icon: 'ask', react: 'O arkadaş seni seviyor.' },
+      { text: 'Kulaklığı takar, kendi başıma geri sararım', delta: { social: -0.5 }, icon: 'headphones', react: 'Sen ve dizi, baş başa.' },
     ],
   },
   {
-    id: 'notlar',
-    text: () => 'Defterin nasıl görünüyor?',
+    id: 'anaekran',
+    text: () => 'Telefonunun ana ekranı nasıl?',
     options: [
-      { text: 'Renk renk başlıklar, fosforlu kalem, minik çizimler', delta: { style: 2, plan: 0.5 } },
-      { text: 'Yarım cümleler, oklar; sadece ben anlarım', delta: { plan: -1, style: -0.5 } },
-      { text: 'Not tutmam, slaytlar ve çıkmış sorular yeter', delta: { depth: -1.5, style: -1 } },
-      { text: 'Kendi cümlelerimle özet ve şemalar', delta: { depth: 1.5, plan: 0.5 } },
+      { text: 'Renk temalı ikonlar, widget’lar; her şey estetik', delta: { style: 2, plan: 0.5 }, icon: 'palette', react: 'Pinterest seni takip ediyor.' },
+      { text: '120 bildirim, dağınık klasörler; ama ben bulurum', delta: { plan: -1, style: -0.5 }, icon: 'bell', react: 'Düzenli kaos.' },
+      { text: 'Varsayılan duvar kâğıdı, ne lazımsa o', delta: { depth: -1.5, style: -1 }, icon: 'minimal', react: 'İş görsün yeter.' },
+      { text: 'Klasörler konu konu, her şeyin bir mantığı var', delta: { depth: 1.5, plan: 0.5 }, icon: 'folders', react: 'Kütüphaneci ruhlu.' },
     ],
   },
   {
-    id: 'telefon',
-    text: () => 'Çalışırken telefon nerede?',
+    id: 'kafe',
+    text: () => 'Kafeye girdin. Hangi masa?',
     options: [
-      { text: 'Başka odada. Odak modu açık.', delta: { plan: 1.5, social: -0.5 } },
-      { text: 'Yanımda. "Bir bakayım" derken 40 dakika gidiyor.', delta: { plan: -1.5 } },
-      { text: 'Görüntülü aramada, arkadaşlarla birlikte çalışıyoruz', delta: { social: 2 } },
-      { text: 'Lazım: yağmur sesi ve lo-fi ondan çalıyor', delta: { night: 1, social: -1 } },
+      { text: 'Köşedeki tek kişilik masa; kahve, ajanda, düzen', delta: { plan: 1.5, social: -0.5 }, icon: 'lamp', react: 'Senin masan hep boş bekler.' },
+      { text: 'Gelince karar veririm, üç kez yer değiştiririm', delta: { plan: -1.5 }, icon: 'swap', react: 'Garson seni tanıyor artık.' },
+      { text: 'En büyük masa; kim gelirse otursun', delta: { social: 2 }, icon: 'users', react: 'Masa senden sorulur.' },
+      { text: 'Cam kenarı, kulaklık takılı, akşamüstü', delta: { night: 1, social: -1 }, icon: 'window', react: 'Film sahnesi gibi.' },
     ],
   },
   {
     id: 'grup',
-    text: () => 'Grupla çalışmak senin için ne demek?',
+    text: () => 'Arkadaş grubunda sen hangisisin?',
     options: [
-      { text: 'Ben anlatırım, herkes anlar; ben de pekişmiş olurum', delta: { social: 2, depth: 1 } },
-      { text: 'Sohbete dönüyor. Yalnız çalışırım.', delta: { social: -2 } },
-      { text: 'Sadece son gün, soru çözmek için', delta: { social: 0.5, depth: -1 } },
-      { text: 'Kimse benim temposuma yetişemiyor', delta: { social: -1.5, plan: 0.5, night: -0.5 } },
+      { text: 'Bir konu açıp herkese anlatan', delta: { social: 2, depth: 1 }, icon: 'mic', react: 'Podcast açsan dinlerler.' },
+      { text: 'Sessizce okuyan, ayda bir "haha" atan', delta: { social: -2 }, icon: 'ghost', react: 'Gizli izleyici.' },
+      { text: 'Sadece "ne zaman, nerede?" kısmında ortaya çıkan', delta: { social: 0.5, depth: -1 }, icon: 'clock', react: 'Lojistik müdürü.' },
+      { text: 'Hep erkenden gelip herkesi bekleyen', delta: { social: -1.5, plan: 0.5, night: -0.5 }, icon: 'early', react: 'Bir gün biri de seni bekleyecek.' },
     ],
   },
   {
     id: 'sabah',
-    text: (w) => `${cap(w.exam)} sabahı neredesin?`,
+    text: (w) => `${cap(w.exam)} sabahı. Neredesin?`,
     options: [
-      { text: 'Uyumuşum, kahvaltıda son bir göz gezdiriyorum', delta: { plan: 1.5, night: -0.5 } },
-      { text: 'Hiç uyumadım, son üç konuyu yetiştiriyorum', delta: { plan: -2, night: 1.5 } },
-      { text: 'Yolda arkadaşlara soru soruyorum, onlar bana', delta: { social: 1.5 } },
-      { text: 'Çıkmış sorulara son kez bakıyorum', delta: { depth: -1.5, plan: 0.5 } },
+      { text: 'Uyumuşum, kahvaltıda son bir göz gezdiriyorum', delta: { plan: 1.5, night: -0.5 }, icon: 'bed', react: 'Sakinlik sende doğuştan.' },
+      { text: 'Hiç uyumadım, son üç konuyu yetiştiriyorum', delta: { plan: -2, night: 1.5 }, icon: 'zap', react: 'Adrenalin, en iyi kahve.' },
+      { text: 'Yolda arkadaşlara soru soruyorum, onlar bana', delta: { social: 1.5 }, icon: 'bus', react: 'Otobüs bir sınıf oldu.' },
+      { text: 'Çıkmış sorulara son kez bakıyorum', delta: { depth: -1.5, plan: 0.5 }, icon: 'target', react: 'Hedef belli.' },
     ],
   },
   {
-    id: 'bildim',
-    text: () => 'Bir konuyu gerçekten bildiğini nasıl anlarsın?',
+    id: 'oyun',
+    text: () => 'Yeni bir oyun indirdin. İlk ne yaparsın?',
     options: [
-      { text: 'Kitabı kapatıp baştan anlatabiliyorsam', delta: { depth: 2, social: -0.5 } },
-      { text: 'Soruları doğru çözüyorsam', delta: { depth: -1.5 } },
-      { text: 'Birine anlatıp onu da anlatabiliyorsam', delta: { social: 1.5, depth: 0.5 } },
-      { text: 'Her yerinin altını çizdiysem', delta: { style: 1.5, depth: -1 } },
+      { text: 'Nasıl çalıştığını çözene kadar her menüyü kurcalarım', delta: { depth: 2, social: -0.5 }, icon: 'gear', react: 'Kılavuzu yazan sen olabilirsin.' },
+      { text: 'Hemen oynamaya başlarım, gerisi gelir', delta: { depth: -1.5 }, icon: 'play', react: 'Eğitim bölümü? Geç.' },
+      { text: 'Arkadaşları da indirtirim, birlikte oynarız', delta: { social: 1.5, depth: 0.5 }, icon: 'friends', react: 'Lobi doldu.' },
+      { text: 'Önce karakterimi ve temayı ayarlarım', delta: { style: 1.5, depth: -1 }, icon: 'brush', react: 'Görünüş her şeydir.' },
     ],
   },
   {
-    id: 'donem',
-    text: () => 'Dönem başı moodun?',
+    id: 'yilbasi',
+    text: () => 'Yeni yıl kararın?',
     options: [
-      { text: 'Bu dönem her şey planlı olacak. (Gerçekten.)', delta: { plan: 1.5, style: 0.5 } },
-      { text: 'Merak ettiğim derse fazladan kaynak okurum', delta: { depth: 2 } },
-      { text: 'Geçeyim yeter; ortalamayı çoktan hesapladım', delta: { depth: -2, plan: 0.5 } },
-      { text: 'Bakarız, akışına bırakırım', delta: { plan: -2 } },
+      { text: 'Liste hazır, ajanda bile aldım. (Bu sefer gerçekten.)', delta: { plan: 1.5, style: 0.5 }, icon: 'list', react: 'Ajanda sana güveniyor.' },
+      { text: 'Yeni bir şey öğreneceğim: dil, enstrüman, ne olursa', delta: { depth: 2 }, icon: 'book', react: 'Merak bitmez.' },
+      { text: 'Gerçekçi olalım: ne lazımsa o, fazlası değil', delta: { depth: -2, plan: 0.5 }, icon: 'scale', react: 'Ayakları yere basan biri.' },
+      { text: 'Karar mı? Akışına bırakırım', delta: { plan: -2 }, icon: 'wave', react: 'Dalgayla birlikte.' },
     ],
   },
   {
-    id: 'mola',
-    text: () => 'Mola deyince?',
+    id: 'bolum',
+    text: () => 'Saat 01.00. Ekranda "Sonraki bölüm" geri sayıyor.',
     options: [
-      { text: '25 dakika çalış, 5 dakika mola. Saatle.', delta: { plan: 2 } },
-      { text: '"Bir bölüm" dedim, sezon bitti', delta: { plan: -2, night: 1 } },
-      { text: 'Mutfağa gidip ev ahalisiyle sohbet', delta: { social: 1.5 } },
-      { text: 'Gece yürüyüşü, kafa toplama', delta: { night: 1, social: -1.5 } },
+      { text: 'Kapatırım. Yarın da gün var.', delta: { plan: 2 }, icon: 'stop', react: 'İrade abidesi.' },
+      { text: 'Tabii ki izlerim. Sezon bitti, güneş doğdu.', delta: { plan: -2, night: 1 }, icon: 'tv', react: 'Klasik. Biz de öyleyiz.' },
+      { text: 'Durdurup arkadaşa "bu sahneyi gördün mü" yazarım', delta: { social: 1.5 }, icon: 'send', react: 'Spoiler’a dikkat.' },
+      { text: 'Kapatıp gece yürüyüşüne çıkarım', delta: { night: 1, social: -1.5 }, icon: 'walk', react: 'Gece senin.' },
     ],
   },
 ]
@@ -169,6 +194,8 @@ export interface StudentType {
   id: TypeId
   name: string
   tagline: string
+  /** "Bu tam sen": three things this type will recognise right away. */
+  you: [string, string, string]
   /** Profile on the axes, each −1..1. */
   profile: Vector
   description: string
@@ -186,6 +213,7 @@ export const TYPES: Record<TypeId, StudentType> = {
     id: 'ajanda',
     name: 'Ajanda Stratejisti',
     tagline: 'Plan yoksa panik var.',
+    you: ['Telefonunda en az üç farklı yapılacaklar uygulaması var.', 'Bir planın iptal olunca yeni bir plan yapmak için plan yaparsın.', 'Listedeki bir maddeyi çizmek sana kahveden daha çok enerji verir.'],
     profile: { plan: 1, depth: 0.3, social: 0.15, night: 0, style: 0.25 },
     description:
       'Sınav tarihini öğrendiğin gün geri sayım başlıyor. Konuları günlere böler, listedeki her maddeyi çizmenin keyfini yaşarsın. Sürprizleri sevmezsin; o yüzden sürpriz de yaşamazsın.',
@@ -199,6 +227,7 @@ export const TYPES: Record<TypeId, StudentType> = {
     id: 'sondakika',
     name: 'Son Dakika Kahramanı',
     tagline: 'Baskı altında parlayan elmas.',
+    you: ['"Yarın başlarım" senin en uzun soluklu ilişkin.', 'Sınavdan önceki gece gözlerinde bir film kahramanı ışıltısı var.', 'Teslim saatinden 3 dakika önce gönder tuşuna basmak senin sporun.'],
     profile: { plan: -1, depth: -0.5, social: 0, night: 0.7, style: -0.2 },
     description:
       'Bir hafta boyunca "yarın başlarım" dersin, son 24 saatte bir dönemi bitirirsin. Adrenalin senin kahven. İşin ilginci, çoğu zaman da geçersin; sistemi çökertmeyen bir kaosun var.',
@@ -212,6 +241,7 @@ export const TYPES: Record<TypeId, StudentType> = {
     id: 'gecekusu',
     name: 'Gece Kuşu Düşünür',
     tagline: 'Dünya uyurken sen anlıyorsun.',
+    you: ['En güzel fikirlerin saat 02.00\'de, herkes uyurken geliyor.', 'Sabah derslerinde bedenin orada, ruhun hâlâ yatakta.', 'Gece sessizliği senin için en iyi çalışma müziği.'],
     profile: { plan: -0.2, depth: 0.7, social: -0.7, night: 1, style: 0 },
     description:
       'Gün boyu zihnin dağınık, ama ev sessizleşince bir şey açılıyor. Gece yalnız ve derin çalışırsın; sabaha karşı bir konuyu nihayet "çözdüğün" o an için yaşarsın.',
@@ -225,6 +255,7 @@ export const TYPES: Record<TypeId, StudentType> = {
     id: 'kasif',
     name: 'Meraklı Kaşif',
     tagline: 'Bir konu açtın, üç konu çıktı.',
+    you: ['Bir soruyu araştırırken kendini 40 sekme sonra bambaşka bir konuda bulursun.', '"Bu sınavda çıkmaz" dense bile merak ettiysen okursun.', 'En sevdiğin cümle: "Peki ama neden?"'],
     profile: { plan: -0.5, depth: 1, social: -0.1, night: 0.2, style: 0 },
     description:
       '"Bu neden böyle?" sorusu seni ders kitabının dışına çıkarır. Bir kavramı gerçekten anladığında başkalarının ezberlediği yerde sen bağlantıları görürsün. Ama müfredat seni pek ilgilendirmez.',
@@ -238,6 +269,7 @@ export const TYPES: Record<TypeId, StudentType> = {
     id: 'anlatici',
     name: 'Sınıfın Anlatıcısı',
     tagline: 'Anlatırken öğreniyorsun.',
+    you: ['Sınavdan önce telefonun "bunu bir anlatır mısın?" mesajlarıyla dolar.', 'Bir şeyi anladığında birine anlatmadan içine sinmez.', 'Grup çalışması senin evin, sen de ev sahibisin.'],
     profile: { plan: 0.2, depth: 0.5, social: 1, night: -0.2, style: 0 },
     description:
       'Sınav öncesi grubun herkesi sana sorar, sen de anlatırken konuyu kendin pekiştirirsin. Bir şeyi başkasına anlatabiliyorsan onu bildiğini bilirsin. Sınıfın gayriresmî asistanısın.',
@@ -251,6 +283,7 @@ export const TYPES: Record<TypeId, StudentType> = {
     id: 'fosforlu',
     name: 'Fosforlu Kalem Sanatçısı',
     tagline: 'Defterin Pinterest’e layık.',
+    you: ['Kalemliğinde en az beş farklı renk fosforlu kalem var.', 'Güzel bir defter almak sana bir hafta motivasyon verir.', 'Arkadaşların sınavdan önce notlarının fotoğrafını ister.'],
     profile: { plan: 0.3, depth: -0.2, social: -0.1, night: 0, style: 1 },
     description:
       'Başlıklar renk kodlu, kenarlarda minik çizimler, beş farklı fosforlu kalem. Güzel bir sayfa sana çalışma isteği verir; arkadaşların sınavdan önce fotokopi için seni arar.',
@@ -264,6 +297,7 @@ export const TYPES: Record<TypeId, StudentType> = {
     id: 'avci',
     name: 'Verimlilik Avcısı',
     tagline: 'Minimum emek, maksimum not.',
+    you: ['Hangi hocanın neyi sorduğunu herkesten önce sen bilirsin.', '"Çıkmış sorular" klasörün altın değerinde.', 'Gereksiz tek bir sayfa okumak sana fiziksel acı verir.'],
     profile: { plan: 0.4, depth: -1, social: 0, night: -0.2, style: -0.3 },
     description:
       'Hangi konudan kaç soru çıkıyor, hangi hoca neyi seviyor, hepsi kafanda. Çıkmış sorular senin hazine haritan. Hedef belli, rota kısa; gereksiz tek bir sayfa okumazsın.',
@@ -277,6 +311,7 @@ export const TYPES: Record<TypeId, StudentType> = {
     id: 'maratoncu',
     name: 'Sessiz Maratoncu',
     tagline: 'Her gün biraz, hiç durmadan.',
+    you: ['Herkes panikteyken sen sakin sakin tekrar yaparsın.', 'Her gün aynı saatte, aynı yerde, aynı kahveyle.', 'Kimse fark etmeden dönemi bitirmiş olursun.'],
     profile: { plan: 0.35, depth: 0.35, social: -0.8, night: -1, style: 0 },
     description:
       'Gösterişsiz ama istikrarlısın. Sabah erken, her gün aynı saatte, sessizce. Sınav haftası herkes panikteyken sen tekrar yapıyorsun, çünkü öğrenme kısmını çoktan bitirdin.',

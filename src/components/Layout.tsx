@@ -1,4 +1,4 @@
-import { BookOpen, Brain, ClipboardList, Gem, House, Plus, Settings, Trophy } from 'lucide-react'
+import { BookOpen, Brain, ChevronDown, ClipboardList, Gem, House, Info, MoreHorizontal, Plus, Settings, Trophy } from 'lucide-react'
 import { StudentTypeLink } from './StudentTypeCard'
 import { triggerGlitch } from './Achievements'
 import { ACHIEVEMENTS, unlock, useAchievements } from '../lib/achievements'
@@ -21,6 +21,9 @@ function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] ?? '?').slice(0, 2)).toLocaleUpperCase('tr-TR')
 }
+
+const MORE_KEY = 'studymode.navMore'
+const MORE_ROUTES = ['/basarimlar', '/ogrenci-tipi']
 
 // The reset link should open the new-password screen once, not on every later visit to the layout.
 let recoveryHandled = false
@@ -46,6 +49,13 @@ export function Layout() {
   }
   const [linkError, setLinkError] = useState(authLinkError)
   const name = displayName(session?.user)
+  const [moreOpen, setMoreOpen] = useState(() => {
+    try {
+      return localStorage.getItem(MORE_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
 
   // A password reset link signs the user in; send them straight to the new-password form.
   useEffect(() => {
@@ -73,6 +83,19 @@ export function Layout() {
 
   // Logged-out first visitors get the marketing page instead of an empty app. A link error still needs the app shell to explain itself.
   if (pathname === '/' && !session && !data.courses.length && !linkError) return <Landing />
+
+  // "Daha fazla": the extras fold away so the menu stays short; it opens by itself on its own pages.
+  const inMore = MORE_ROUTES.some((r) => pathname.startsWith(r))
+  const showMore = moreOpen || inMore
+  function toggleMore() {
+    const next = !showMore
+    setMoreOpen(next)
+    try {
+      localStorage.setItem(MORE_KEY, next ? '1' : '0')
+    } catch {
+      // Remembering is a convenience only.
+    }
+  }
 
   const links = [
     { to: '/', label: 'Bugün', icon: House, end: true },
@@ -106,14 +129,33 @@ export function Layout() {
           Premium
           <span className="prem-nav-shine" aria-hidden />
         </NavLink>
-        <NavLink to="/basarimlar" className={navClass('nav-link', '/basarimlar')}>
-          <Trophy size={18} />
-          Başarımlar
-          <span className="nav-count">
-            {found}/{ACHIEVEMENTS.length}
-          </span>
-        </NavLink>
-        <StudentTypeLink className="side-quiz" />
+        <button
+          type="button"
+          className={`nav-link nav-more${showMore ? ' is-open' : ''}`}
+          aria-expanded={showMore}
+          aria-controls="nav-more"
+          onClick={toggleMore}
+        >
+          <MoreHorizontal size={18} />
+          Daha fazla
+          <ChevronDown size={16} className="nav-more-chev" aria-hidden />
+        </button>
+        {showMore && (
+          <div id="nav-more" className="nav-more-group">
+            <NavLink to="/basarimlar" className={navClass('nav-link', '/basarimlar')}>
+              <Trophy size={18} />
+              Başarımlar
+              <span className="nav-count">
+                {found}/{ACHIEVEMENTS.length}
+              </span>
+            </NavLink>
+            <StudentTypeLink className="side-quiz is-compact" />
+            <NavLink to="/hakkinda" className="nav-link">
+              <Info size={18} />
+              Hakkında
+            </NavLink>
+          </div>
+        )}
         <div className="sidebar-footer">
           <span className={`status-dot ${mode === 'cloud' ? 'cloud' : ''}`} />
           <span title={session?.user.email} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

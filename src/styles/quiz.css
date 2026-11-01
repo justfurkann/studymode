@@ -590,3 +590,132 @@
   display: flex;
   flex-direction: column;
 }
+
+/* ---------- Everyday-style questions: picture tiles and a reaction ---------- */
+.quiz-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.quiz-tile {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 118px;
+  padding: 14px;
+}
+.quiz-tile > strong {
+  font-size: 0.975rem;
+}
+.quiz-tile-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  color: var(--text);
+  background: var(--hi-soft);
+  transition: transform 0.2s ease;
+}
+/* Each tile its own soft colour, so a question reads like a set of cards, not a form. */
+.quiz-tile:nth-child(2) .quiz-tile-icon { background: var(--accent-soft); }
+.quiz-tile:nth-child(3) .quiz-tile-icon { background: var(--vip-soft); }
+.quiz-tile:nth-child(4) .quiz-tile-icon { background: var(--prem-soft); }
+.quiz-tile:hover .quiz-tile-icon {
+  transform: rotate(-6deg) scale(1.06);
+}
+.quiz-tile.is-picked {
+  transform: scale(1.02);
+}
+.quiz-tile.is-picked .quiz-tile-icon {
+  background: var(--on-hi);
+  color: var(--hi);
+  transform: rotate(-6deg) scale(1.1);
+}
+.quiz-tile.is-dim {
+  opacity: 0.45;
+}
+.quiz-react {
+  min-height: 1.6em;
+  margin: 2px 0 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.quiz-react.is-on {
+  opacity: 1;
+  transform: none;
+}
+.quiz-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* "Bu tam sen": the lines people screenshot. */
+.quiz-you {
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--type) 16%, var(--surface));
+  border: 1.5px solid color-mix(in srgb, var(--type) 45%, var(--border));
+}
+.quiz-you h2 {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+}
+.quiz-you ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.quiz-you li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+.quiz-you li svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--text);
+}
+.quiz-all .quiz-bars {
+  margin-top: 12px;
+}
+
+@media (max-width: 420px) {
+  .quiz-tile {
+    min-height: 108px;
+    padding: 12px;
+  }
+  .quiz-tile > strong {
+    font-size: 0.92rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quiz-tile-icon, .quiz-react { transition: none; }
+}
+/* The older rule pushes a trailing hint span to the right; the tile icon sits on the left. */
+.quiz-option.quiz-tile > .quiz-tile-icon {
+  margin-left: 0;
+  color: var(--text);
+  font-size: inherit;
+  text-align: center;
+}
+.quiz-option.quiz-tile.is-picked > .quiz-tile-icon {
+  color: var(--hi);
+}

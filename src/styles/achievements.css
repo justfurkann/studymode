@@ -101,34 +101,62 @@
 
 .ach-ring {
   flex-shrink: 0;
+  position: relative;
   display: grid;
   place-items: center;
-  width: 112px;
-  height: 112px;
+  width: 124px;
+  height: 124px;
   border-radius: 50%;
-  background: conic-gradient(var(--hi) var(--p), var(--surface-2) 0);
-  border: 1.5px solid var(--ink-line);
+  /* Progress in the highlighter colour on a soft track; the inner disc makes it a ring. */
+  background: conic-gradient(from -90deg, var(--hi) 0 var(--p), var(--surface-2) var(--p) 100%);
+  box-shadow: inset 0 0 0 1.5px var(--ink-line);
 }
 
-.ach-ring span {
+.ach-ring-inner {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   gap: 1px;
-  width: 84px;
-  height: 84px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
   background: var(--surface);
-  border: 1.5px solid var(--ink-line);
-  font-weight: 700;
+  box-shadow: 0 0 0 1.5px var(--ink-line), 0 6px 16px -10px var(--ink-line);
   color: var(--text-2);
+}
+
+.ach-ring-inner svg {
+  color: var(--text-2);
+  margin-bottom: 2px;
 }
 
 .ach-ring strong {
   font-family: var(--font-display);
-  font-size: 1.75rem;
+  font-size: 2rem;
   color: var(--text);
   line-height: 1;
+}
+
+.ach-ring small {
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.ach-next {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 0.9rem;
+}
+
+.ach-next .progress {
+  flex: 1 1 80px;
+  min-width: 80px;
 }
 
 .ach-summary-text {

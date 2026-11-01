@@ -212,7 +212,7 @@ test('Hangi öğrenci tipisin: no account, level and school, 10 questions, a sha
   await page.getByRole('button', { name: /^Üniversite/ }).click()
   await page.getByLabel('Üniversite ara').fill('odtu')
   await page.getByRole('listitem').filter({ hasText: 'Orta Doğu Teknik Üniversitesi' }).first().click()
-  await expect(page.getByRole('heading', { name: 'Vizeye bir hafta var. İlk hamlen?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Cuma akşamı. Hafta sonu planın?' })).toBeVisible()
   // Back on the first question goes to the school step; forward again.
   await page.getByRole('button', { name: 'Geri' }).click()
   await expect(page.getByRole('heading', { name: 'Hangi üniversitedesin?' })).toBeVisible()
@@ -224,6 +224,8 @@ test('Hangi öğrenci tipisin: no account, level and school, 10 questions, a sha
     await page.locator('.quiz-option').nth(picks[i]).click()
   }
   await expect(page.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Bu tam sen' })).toBeVisible()
+  await expect(page.getByText(/02\.00'de, herkes uyurken/)).toBeVisible()
   await expect(page.getByText('Sana özel taktik:')).toBeVisible()
   await expect(page.getByLabel('Çalışma profilin')).toContainText('Gece kuşu')
   const story = page.getByRole('img', { name: /Hikâye görseli/ })
@@ -245,7 +247,7 @@ test('Hangi öğrenci tipisin: no account, level and school, 10 questions, a sha
   await friend.getByRole('button', { name: /Sen de çöz/ }).click()
   await expect(friend.getByRole('heading', { name: /nerede okuyorsun/ })).toBeVisible()
   await friend.getByRole('button', { name: /^Lise/ }).click()
-  await expect(friend.getByRole('heading', { name: 'Yazılıya bir hafta var. İlk hamlen?' })).toBeVisible()
+  await expect(friend.getByRole('heading', { name: 'Cuma akşamı. Hafta sonu planın?' })).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -301,7 +303,9 @@ test('Başarımlar: the keyboard code and the quiz count too; the sidebar shows 
   await startDemo(page)
   for (const key of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a']) await page.keyboard.press(key)
   await expect(page.locator('.ach-toast')).toContainText('Glitch Hunter')
-  await page.getByRole('link', { name: /Hangi öğrenci tipisin\? 1 dakikada öğren/ }).first().click()
+  // The quiz lives under "Daha fazla" in the sidebar.
+  await page.locator('.sidebar').getByRole('button', { name: 'Daha fazla' }).click()
+  await page.locator('.sidebar .side-quiz').click()
   await expect(page).toHaveURL(/\/ogrenci-tipi$/)
   await page.getByRole('button', { name: /Teste başla/ }).click()
   await page.getByRole('button', { name: /^Lise/ }).click()
@@ -331,6 +335,7 @@ test('Öğrenci tipi profilde kalır: misafirde bu tarayıcıda, Ayarlar ve yan 
   await page.goto('/ayarlar')
   await page.reload()
   await expect(page.locator('.student-type-panel')).toContainText('Gece Kuşu Düşünür')
+  await page.locator('.sidebar').getByRole('button', { name: 'Daha fazla' }).click()
   await expect(page.locator('.sidebar .side-quiz')).toContainText('Gece Kuşu Düşünür')
   await page.goto('/ogrenci-tipi')
   await expect(page.getByRole('link', { name: /Son sonucun/ })).toContainText('Gece Kuşu Düşünür')
