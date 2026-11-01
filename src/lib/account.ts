@@ -13,6 +13,8 @@ export interface Quota {
   used: number
   limit: number | null
   allowed: boolean
+  /** Paid Premium from a code (ISO date), or null. The role stays as it is. */
+  premiumUntil: string | null
 }
 
 let quota: Quota | null = null
@@ -24,16 +26,27 @@ const emit = () => listeners.forEach((l) => l())
 
 export function parseQuota(value: unknown): Quota | null {
   if (!value || typeof value !== 'object') return null
-  const v = value as Partial<Quota>
+  const v = value as Partial<Quota> & { premium_until?: unknown }
   if (typeof v.used !== 'number' || typeof v.allowed !== 'boolean') return null
-  return { role: v.role === 'vip' || v.role === 'admin' ? v.role : 'normal', used: v.used, limit: typeof v.limit === 'number' ? v.limit : null, allowed: v.allowed }
+  return {
+    role: v.role === 'vip' || v.role === 'admin' ? v.role : 'normal',
+    used: v.used,
+    limit: typeof v.limit === 'number' ? v.limit : null,
+    allowed: v.allowed,
+    premiumUntil: typeof v.premium_until === 'string' ? v.premium_until : null,
+  }
 }
+
+/** The allowance as last known (for code outside React, and tests). */
+export const currentQuota = () => quota
 
 /** The server sends the new count with every free-AI answer. */
 export function setQuota(next: unknown) {
   const parsed = parseQuota(next)
   if (!parsed) return
-  quota = parsed
+  // An answer without the Premium date must not close Premium in the middle of a session.
+  const hasDate = typeof next === 'object' && next !== null && 'premium_until' in next
+  quota = hasDate || !quota ? parsed : { ...parsed, premiumUntil: quota.premiumUntil }
   emit()
 }
 

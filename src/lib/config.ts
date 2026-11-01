@@ -27,3 +27,9 @@ export const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite'
  * The server can override the list with GEMINI_FALLBACK_MODELS (comma separated).
  */
 export const DEFAULT_GEMINI_FALLBACKS = ['gemini-flash-lite-latest', 'gemini-3.1-flash-lite']
+
+/**
+ * Where Premium codes are sold (Shopier product page). Empty until the owner gives it: then the
+ * "Satın al" / "Yenile" buttons stay hidden and only "Kodum var" shows.
+ */
+export const SHOPIER_URL = ''

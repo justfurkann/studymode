@@ -1,4 +1,7 @@
-import { ArrowRight, AudioLines, FileText, Gem, Headphones, Image as ImageIcon, KeyRound, Lock, Search, Sparkles } from 'lucide-react'
+import { ArrowRight, AudioLines, FileText, Gem, Headphones, Image as ImageIcon, KeyRound, Lock, Search, Sparkles, Ticket } from 'lucide-react'
+import { RedeemCode } from '../components/PremiumCode'
+import { SHOPIER_URL } from '../lib/config'
+import { formatUntil } from '../lib/premiumCodes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { BrandIcon } from '../components/BrandIcon'
@@ -124,14 +127,20 @@ function PremiumStatus() {
   if (premium.state === 'locked') {
     return (
       <p className="prem-status">
-        <Lock size={15} aria-hidden /> Kilitli · VIP hesaplarda açık
+        <Lock size={15} aria-hidden /> Kilitli · Premium kodu ya da VIP hesapla açılır
       </p>
     )
   }
   return (
     <p className="prem-status is-open">
       <Sparkles size={15} aria-hidden /> Premium açık
-      {premium.viaKey ? ' · kendi Gemini anahtarınla' : premium.role ? ` · ${ROLE_LABEL[premium.role]}` : ''}
+      {premium.viaKey
+        ? ' · kendi Gemini anahtarınla'
+        : premium.until && premium.role === 'normal'
+          ? ` · ${formatUntil(premium.until)} tarihine kadar`
+          : premium.role
+            ? ` · ${ROLE_LABEL[premium.role]}`
+            : ''}
       {plus && (
         <span className="prem-status-quota">
           Bugün {plus.used}/{plus.limit} hak · arama sayılmaz
@@ -196,6 +205,19 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
           </>
         ) : (
           <ul className="prem-how-list">
+            <li className="prem-how-code">
+              <Ticket size={17} aria-hidden />
+              <span className="grow">
+                <strong>Premium kodu kullan.</strong> {SHOPIER_URL ? (
+                  <>
+                    Kodu <a href={SHOPIER_URL} target="_blank" rel="noopener noreferrer">Shopier’den</a> al, buraya gir. Süre bitince kendiliğinden kapanır, otomatik yenilenmez.
+                  </>
+                ) : (
+                  'Elinde bir Premium kodu varsa buraya gir. Süre bitince kendiliğinden kapanır, otomatik yenilenmez.'
+                )}
+                <RedeemCode compact />
+              </span>
+            </li>
             <li>
               <Gem size={17} aria-hidden />
               <span>

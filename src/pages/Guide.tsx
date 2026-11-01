@@ -159,7 +159,7 @@ export function Guide() {
         <h2 id="premium-baslik">
           <Gem size={20} aria-hidden /> Premium’u en iyi nasıl kullanırsın?
         </h2>
-        <p className="subtle">VIP hesaplarda açık. Notların Google’ın Gemini modelleriyle hazırlanır: metin için Gemini 3.8, ses için iki ayrı stüdyo sesi.</p>
+        <p className="subtle">Premium kodu kullananlarda ve VIP hesaplarda açık (kodu Ayarlar’dan girersin). Notların Google’ın Gemini modelleriyle hazırlanır: metin için Gemini 3.8, ses için iki ayrı stüdyo sesi.</p>
         <div className="guide-grid">
           {PREMIUM_TIPS.map(({ icon: Icon, title, text }) => (
             <article key={title} className="panel guide-card is-premium">

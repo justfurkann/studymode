@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (1 Kasım 2026, Aşama 30 sonrası, `main` üzerinde): 256 birim testi, 108 tarayıcı testi.
+Son yeşil durum (1 Kasım 2026, Aşama 32 sonrası, `main` üzerinde): 269 birim testi, 114 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -675,6 +675,27 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - Yönetici: `admin_create_codes({ how_many 1-200, days 1-400, label? })` → `[{ code, hint }]` (düz kodlar yalnızca burada); `admin_codes()` → `[{ id, hint, days, label, created_at, redeemed_at, redeemed_email, revoked_at }]` (son 500); `admin_revoke_code({ code_id })` (yalnızca kullanılmamış; yoksa hata 'already used or revoked'); `admin_premium()` → `[{ id, email, until }]`.
 - **Sunucu:** `api/generate.ts` kota cevabındaki `premium_until`'i okur; Premium'u olan da (rolü normal olsa bile) VIP gibi varsayılan olarak Free+'a gider.
 - **Arayüzde yapılacaklar (keen-albattani):** `parseQuota`/`usePremium` `premium_until`'i okusun (Premium açık sayılsın); Ayarlar ve Premium sayfasında "Kodum var" alanı + hata mesajları; Premium bitiş tarihi ve bitmesine birkaç gün kala hatırlatma; Yönetim'de kod üretici (adet, gün, etiket → kopyalanabilir liste, CSV indir), kod listesi, iptal düğmesi, Premium kullanıcılar listesi; gizlilik/koşullar metni (ücretli Premium, iade = kullanılmamış kod iptali).
+
+### Aşama 32 — Premium kodları: arayüz (1 Kasım 2026, `keen-albattani`)
+
+- **Premium durumu:** `parseQuota` artık `premium_until`'i okuyor (`Quota.premiumUntil`). `usePremium()` süresi bitmemiş kodu `open` sayıyor (`until` alanı); rol değişmiyor, VIP rozeti çıkmıyor. Premium sayfasındaki durum satırı "Premium açık · 2 Aralık 2026 tarihine kadar". Kilitliyken "Kilitli · Premium kodu ya da VIP hesapla açılır".
+  - Tarihlerde "… tarihine kadar" kullanılıyor; "Aralık'a / Ocak'a" gibi ek hatası olmasın diye.
+  - `setQuota`: sunucu cevabında `premium_until` alanı hiç yoksa önceki tarih korunuyor, Premium istek ortasında kapanmıyor. Alan `null` gelirse kapanıyor.
+- **"Kodum var"** (`components/PremiumCode.tsx` → `RedeemCode`):
+  - Yerleri: Ayarlar'da yeni "Premium" bölümü (`PremiumAccessSection`: bitiş tarihi, kalan gün, alan, Shopier bağlantısı) ve Premium sayfasının kilitli görünümünde "Nasıl açılır?" listesinin başı.
+  - `redeem_code` cevapları `lib/premiumCodes.ts`'te Türkçe mesaja dönüyor (`REDEEM_MESSAGES`; ağ hatası için ayrıca `network`).
+  - Başarıda: kutlama, bildirim (Premium sayfasında kilitli görünüm hemen kapandığı için) ve `refreshQuota(userId)`. Premium yeniden yükleme gerekmeden açılıyor.
+- **Bitiş hatırlatması:** Bugün'de `PremiumReminder`: son 3 gün, kapatılabilir; kapatılınca o bitiş tarihi için bir daha çıkmıyor, yeni kodla yeni tarih gelirse yine çıkıyor.
+- **`SHOPIER_URL`** (`src/lib/config.ts`) şimdilik `''`: "Kod satın al", "Süreyi uzat" ve "Yenile" düğmeleri gizli. **Kullanıcı Shopier ürün bağlantısını verince yalnızca bu satır doldurulacak.**
+- **Yönetim** (`PremiumCodesAdmin`, `/yonetim`'de Hesaplar'ın üstünde):
+  - Kod üretici: adet 1-200; gün 30 / 120 / özel 1-400; etiket.
+  - Üretilen kodlar "yalnızca şimdi görünür" uyarısıyla: hepsini kopyala, CSV indir (`premium-kodlari-<gün>-gun.csv`), "Kaydettim, kapat".
+  - Kod listesi: ipucu, gün, etiket, durum (bekliyor / kullanıldı · e-posta / iptal); bekleyende "İptal et". Premium kullanıcılar listesi.
+  - `admin_codes` hata verirse bölüm hiç görünmüyor.
+- **Metinler:** Kullanım koşulları "Ücretsiz hizmet, ücretli Premium ve VIP": Shopier ödemeyi alır, kart bilgisi bize gelmez; kod tek kullanımlık, süre kodla, üstüne eklenir; otomatik yenileme yok; iade = kullanılmamış kodun iptali; kullanılmış kod iade edilmez (yasal haklar saklı). Gizlilik: Shopier işleyen olarak eklendi, Free+ satırına "Premium kodu olan hesaplar" eklendi. Rehber'in Premium bölümü güncellendi.
+  - **Not:** Hukuki metin taslaktır; bir muhasebeci ya da avukat bakmalı.
+- Testler: 269 birim, 114 tarayıcı. Yeniler: dört hata mesajı ve başarı, Premium'un hemen açılması, Ayarlar'da bitiş, hatırlatma ve kapatma, yönetimde üret / CSV / iptal, normal kullanıcı bölümü görmüyor.
+- **SQL yok** (Aşama 31'deki fonksiyonlar kullanıldı).
 
 ## Tasarım dili ("Fosforlu")
 
