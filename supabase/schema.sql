@@ -372,3 +372,18 @@ end $$;
 
 revoke all on function public.plus_quota(), public.consume_plus() from public, anon;
 grant execute on function public.plus_quota(), public.consume_plus() to authenticated;
+
+-- Aşama 27: where each student studies (user_metadata.education: level, school), for the admin page.
+-- A separate function so admin_users keeps its shape; the app works without this one too.
+create or replace function public.admin_schools()
+returns table (id uuid, level text, school text)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed' using errcode = '42501'; end if;
+  return query
+  select u.id, (u.raw_user_meta_data -> 'education' ->> 'level')::text, (u.raw_user_meta_data -> 'education' ->> 'school')::text
+  from auth.users u
+  where u.raw_user_meta_data ? 'education';
+end $$;
+revoke all on function public.admin_schools() from public, anon;
+grant execute on function public.admin_schools() to authenticated;

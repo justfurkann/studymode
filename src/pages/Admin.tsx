@@ -1,8 +1,9 @@
-import { ArrowLeft, Bug, Lightbulb, RefreshCw, ShieldCheck, Users } from 'lucide-react'
+import { ArrowLeft, Bug, GraduationCap, Lightbulb, RefreshCw, ShieldCheck, Users } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Empty, Spinner, useToast } from '../components/ui'
 import { ROLE_LABEL, useQuota, type Role } from '../lib/account'
+import { LEVELS } from '../lib/studentType'
 import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 
@@ -16,6 +17,9 @@ interface AdminUser {
   ai_today: number
   notes: number
   last_study: string | null
+  /** From admin_schools (profile.education); missing until that database function exists. */
+  level?: string | null
+  school?: string | null
 }
 interface AdminFeedback {
   kind: string
@@ -31,6 +35,8 @@ interface AdminError {
   times: number
   last_at: string
 }
+
+const LEVEL_LABEL = Object.fromEntries(LEVELS.map((l) => [l.id, l.label])) as Record<string, string>
 
 const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—')
 const KIND = { fikir: 'Fikir', hata: 'Hata', diger: 'Diğer' } as Record<string, string>
@@ -50,12 +56,15 @@ export function Admin() {
   const load = useCallback(async () => {
     if (!supabase) return
     setError('')
-    const [u, f, e] = await Promise.all([supabase.rpc('admin_users'), supabase.rpc('admin_feedback'), supabase.rpc('admin_errors')])
+    const [u, f, e, sc] = await Promise.all([supabase.rpc('admin_users'), supabase.rpc('admin_feedback'), supabase.rpc('admin_errors'), supabase.rpc('admin_schools')])
     if (u.error) {
       setError('Hesaplar yüklenemedi.')
       return
     }
-    setUsers((u.data ?? []) as AdminUser[])
+    // Schools are optional: without the admin_schools function the list simply has no school column.
+    type SchoolRow = { id: string; level: string | null; school: string | null }
+    const schools = new Map<string, SchoolRow>(((sc.error ? [] : sc.data) as SchoolRow[] | null ?? []).map((r) => [r.id, r]))
+    setUsers(((u.data ?? []) as AdminUser[]).map((x) => ({ ...x, level: schools.get(x.id)?.level ?? null, school: schools.get(x.id)?.school ?? null })))
     setFeedback((f.data ?? []) as AdminFeedback[])
     setErrors((e.data ?? []) as AdminError[])
   }, [])
@@ -113,6 +122,13 @@ export function Admin() {
   const activeToday = today.filter((u) => u.ai_today > 0).length
   const requestsToday = today.reduce((n, u) => n + u.ai_today, 0)
   const vips = today.filter((u) => u.role === 'vip').length
+  // Where people study: universities by name, other levels by level.
+  const schoolCounts = [...today.reduce((m, u) => {
+    const key = u.school || (u.level ? LEVEL_LABEL[u.level] ?? u.level : '')
+    if (key) m.set(key, (m.get(key) ?? 0) + 1)
+    return m
+  }, new Map<string, number>())].sort((a, b) => b[1] - a[1])
+  const answered = today.filter((u) => u.level).length
 
   return (
     <div className="page admin">
@@ -150,6 +166,21 @@ export function Admin() {
         </div>
       </div>
 
+      {schoolCounts.length > 0 && (
+        <section className="section" aria-label="Okullar">
+          <h2>
+            <GraduationCap size={18} aria-hidden /> Okullar <span className="subtle">({answered}/{today.length} kişi söyledi)</span>
+          </h2>
+          <div className="admin-schools">
+            {schoolCounts.slice(0, 12).map(([name, n]) => (
+              <span key={name} className="chip">
+                {name} · {n}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="section" aria-label="Hesaplar">
         <h2>
           <Users size={18} aria-hidden /> Hesaplar
@@ -169,6 +200,11 @@ export function Admin() {
                   <div className="subtle">
                     {u.name ? `${u.email} · ` : ''}Katıldı: {date(u.created_at)} · Son giriş: {date(u.last_sign_in_at)}
                   </div>
+                  {(u.school || u.level) && (
+                    <div className="subtle admin-school">
+                      <GraduationCap size={13} aria-hidden /> {[u.school, u.level ? LEVEL_LABEL[u.level] : ''].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
                   <div className="subtle">
                     {u.notes} not · Bugün {u.ai_today} istek{u.last_study ? ` · Son çalışma: ${u.last_study}` : ''}
                   </div>

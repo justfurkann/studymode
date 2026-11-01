@@ -58,7 +58,7 @@ export function Privacy() {
           <h2>Hangi bilgileri tutuyoruz?</h2>
           <ul>
             <li>
-              <strong>Hesap bilgileri:</strong> ad, soyad ve e-posta adresi. Google ile giriş yaparsan Google'ın bize verdiği ad, e-posta ve profil fotoğrafı bağlantısı. Şifren Supabase
+              <strong>Hesap bilgileri:</strong> ad, soyad ve e-posta adresi. Google ile giriş yaparsan Google'ın bize verdiği ad, e-posta ve profil fotoğrafı bağlantısı. Söylersen okuduğun seviye ve okul (ör. Üniversite, ODTÜ); profilinde görünür, Ayarlar'dan değiştirebilirsin. Şifren Supabase
               tarafından şifrelenmiş (hash) olarak saklanır; biz göremeyiz.
             </li>
             <li>

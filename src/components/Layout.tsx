@@ -4,6 +4,7 @@ import { StudentTypeLink } from './StudentTypeCard'
 import { triggerGlitch } from './Achievements'
 import { ACHIEVEMENTS, unlock, useAchievements } from '../lib/achievements'
 import { RoleBadge, VipWelcome } from './RoleBadge'
+import { EducationPrompt } from './EducationPrompt'
 import { FeedbackLink } from './Feedback'
 import { FocusEngine } from './mola/FocusEngine'
 import { AmbientPlayer, Atmosphere } from './Atmosphere'
@@ -265,6 +266,7 @@ export function Layout() {
       <FocusEngine />
       <Atmosphere />
       <VipWelcome />
+      <EducationPrompt />
       <Tour />
 
       <nav className="mobile-bar" aria-label="Alt menü">

@@ -205,18 +205,17 @@ test('Tam özet: a signed-in student has the AI write the detailed summary, part
   await expect(page.getByRole('button', { name: 'Ayrıntılı özeti yeniden yaz' })).toBeVisible()
 })
 
-test('Hangi öğrenci tipisin: no account, level and school, 10 questions, a shareable result and story image', async ({ page, browser }) => {
+test('Hangi öğrenci tipisin: no account, level (no school step), 10 questions, a shareable result and story image', async ({ page, browser }) => {
   const errors = watchErrors(page)
   await page.goto('/ogrenci-tipi')
   await page.getByRole('button', { name: /Teste başla/ }).click()
   await page.getByRole('button', { name: /^Üniversite/ }).click()
-  await page.getByLabel('Üniversite ara').fill('odtu')
-  await page.getByRole('listitem').filter({ hasText: 'Orta Doğu Teknik Üniversitesi' }).first().click()
+  // The school is no longer asked here (it comes from the profile).
   await expect(page.getByRole('heading', { name: 'Cuma akşamı. Hafta sonu planın?' })).toBeVisible()
-  // Back on the first question goes to the school step; forward again.
+  // Back on the first question goes to the level step; forward again.
   await page.getByRole('button', { name: 'Geri' }).click()
-  await expect(page.getByRole('heading', { name: 'Hangi üniversitedesin?' })).toBeVisible()
-  await page.getByRole('button', { name: /Atla/ }).click()
+  await expect(page.getByRole('heading', { name: /nerede okuyorsun/ })).toBeVisible()
+  await page.getByRole('button', { name: /^Üniversite/ }).click()
   // A night owl who studies alone to understand.
   const picks = [3, 3, 0, 1, 3, 1, 1, 0, 1, 3]
   for (let i = 0; i < picks.length; i++) {
@@ -799,4 +798,81 @@ test('Bot doğrulaması localhost’ta kapalı: giriş ekranı eskisi gibi, Clou
   await expect(page.getByRole('heading', { level: 1, name: 'Giriş yap' })).toBeVisible()
   await expect(page.locator('.captcha')).toHaveCount(0)
   expect(loaded).toBe(false)
+})
+
+test('Okul bilgisi: üye olunca bir kez sorulur, profile yazılır, Ayarlar’da görünür; test okul sormaz', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await page.addInitScript(() => localStorage.setItem('studymode.education.force', '1'))
+  const { user, updates } = await signedInAs(page, 'normal')
+  await page.goto('/')
+  const dialog = page.getByRole('dialog', { name: 'Seni biraz tanıyalım' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: /^Üniversite/ }).click()
+  await dialog.getByLabel('Üniversite ara').fill('odtu')
+  await dialog.getByRole('listitem').filter({ hasText: 'Orta Doğu Teknik Üniversitesi' }).first().click()
+  await expect(dialog).toHaveCount(0)
+  expect(updates.at(-1)?.education).toMatchObject({ level: 'universite', school: 'ODTÜ' })
+  // Other profile fields stay.
+  expect(user.user_metadata.first_name).toBe('Furkan')
+
+  // Not asked again; shown and changeable in Settings. (Moves inside the app: this fake session is
+  // re-seeded on every full page load, while the real one keeps what was saved.)
+  await page.waitForTimeout(2500)
+  await expect(page.getByRole('dialog', { name: 'Seni biraz tanıyalım' })).toHaveCount(0)
+  await page.locator('.sidebar').getByRole('link', { name: 'Ayarlar' }).click()
+  await expect(page.locator('.edu-current')).toContainText('ODTÜ · Üniversite')
+  await page.locator('.edu-current').getByRole('button', { name: 'Değiştir' }).click()
+  await page.getByRole('button', { name: /^Lise/ }).click()
+  await expect(page.locator('.edu-current')).toContainText('Lise')
+  expect(updates.at(-1)?.education).toMatchObject({ level: 'lise', school: '' })
+
+  // The quiz takes level and school from the profile: straight to the first question.
+  await page.locator('.sidebar').getByRole('button', { name: 'Daha fazla' }).click()
+  await page.locator('.sidebar .side-quiz').click()
+  await page.getByRole('button', { name: /Teste başla/ }).click()
+  await expect(page.getByRole('heading', { name: 'Cuma akşamı. Hafta sonu planın?' })).toBeVisible()
+})
+
+test('Okul bilgisi: "Şimdi değil" denince bu cihazda birkaç gün sorulmaz', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await page.addInitScript(() => localStorage.setItem('studymode.education.force', '1'))
+  const { updates } = await signedInAs(page, 'normal')
+  await page.goto('/')
+  const dialog = page.getByRole('dialog', { name: 'Seni biraz tanıyalım' })
+  await dialog.getByRole('button', { name: 'Şimdi değil' }).click()
+  await expect(dialog).toHaveCount(0)
+  await page.reload()
+  await page.waitForTimeout(2500)
+  await expect(page.getByRole('dialog', { name: 'Seni biraz tanıyalım' })).toHaveCount(0)
+  expect(updates.filter((u) => 'education' in u)).toHaveLength(0)
+})
+
+test('Yönetim: kullanıcıların okulu ve okullar özeti görünür; veritabanı fonksiyonu yoksa liste yine açılır', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await signedInAs(page, 'admin')
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  const T = '2026-10-01T00:00:00Z'
+  const users = [
+    { id: 'u1', email: 'ayse@example.com', name: 'Ayşe', created_at: T, last_sign_in_at: T, role: 'normal', ai_today: 0, notes: 3, last_study: null },
+    { id: 'u2', email: 'can@example.com', name: 'Can', created_at: T, last_sign_in_at: T, role: 'normal', ai_today: 1, notes: 0, last_study: null },
+    { id: 'u3', email: 'ece@example.com', name: 'Ece', created_at: T, last_sign_in_at: T, role: 'vip', ai_today: 0, notes: 1, last_study: null },
+  ]
+  let schoolsReady = true
+  await page.route(`${SUPABASE}/rest/v1/rpc/admin_*`, (route) => {
+    const name = new URL(route.request().url()).pathname.split('/').pop()
+    if (name === 'admin_users') return route.fulfill({ json: users })
+    if (name === 'admin_schools')
+      return schoolsReady
+        ? route.fulfill({ json: [{ id: 'u1', level: 'universite', school: 'ODTÜ' }, { id: 'u3', level: 'universite', school: 'ODTÜ' }, { id: 'u2', level: 'lise', school: '' }] })
+        : route.fulfill({ status: 404, json: { code: 'PGRST202' } })
+    return route.fulfill({ json: [] })
+  })
+  await page.goto('/yonetim')
+  await expect(page.getByRole('region', { name: 'Okullar' })).toContainText('ODTÜ · 2')
+  await expect(page.getByRole('region', { name: 'Okullar' })).toContainText('Lise · 1')
+  await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).toContainText('ODTÜ · Üniversite')
+  schoolsReady = false
+  await page.reload()
+  await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Okullar' })).toHaveCount(0)
 })

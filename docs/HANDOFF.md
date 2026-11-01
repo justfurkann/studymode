@@ -619,6 +619,13 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Claude ortamı:** `STUDYMODE_TEST_SESSION_SECRET` (Vercel'deki ile aynı). Kullanım: `scripts/live-login.cjs` → `await liveLogin(page)` sonra `page.goto(...)`. Sırrı asla yazdırma.
 - Sızarsa etkisi: yalnızca test hesabı (şu an VIP; istenirse normale düşürülür).
 
+### Aşama 27 — Okul bilgisi profilde (1 Kasım 2026, `dreamy-sagan`)
+
+- **Ne:** Giriş yapmış kullanıcıya bir kez "Seni biraz tanıyalım" penceresi (`EducationPrompt`, Layout'ta): seviye (ortaokul…mezun), üniversite/yüksek lisanssa okul araması (`searchUniversities`, listede yoksa elle). Hesapta `user_metadata.education = { level, school, at }`. "Şimdi değil" → bu cihazda 3 gün sorulmaz. Başka pencere ya da tur açıkken bekler; otomatik tarayıcıda kendiliğinden açılmaz (`studymode.education.force` ile açılır).
+- **Ayarlar → Okulun:** gösterir, "Değiştir". **Test:** okul adımı kaldırıldı; profilde bilgi varsa seviye adımı da atlanır, okul sonuç kartına profilden gelir. Misafir yalnızca seviyeyi seçer.
+- **Yönetim:** kullanıcı satırında okul · seviye, üstte "Okullar" özeti (en çok 12). Veri `admin_schools()` veritabanı fonksiyonundan (schema.sql sonu; `admin_users` değişmedi). Fonksiyon yoksa liste okulsuz açılır.
+- **SQL:** `admin_schools` yerel Postgres 16'da denendi (yönetici görür, normal kullanıcı `not allowed`, anon `permission denied`). Supabase MCP bu oturumda bağlı değildi; kullanıcı SQL Editor'den çalıştırdı/çalıştıracak.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

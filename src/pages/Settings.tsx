@@ -1,6 +1,8 @@
 import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, LifeBuoy, PlayCircle, Trash2, Trophy, Upload } from 'lucide-react'
 import { requestTour } from '../lib/tour'
 import { StudentTypeSection } from '../components/StudentTypeCard'
+import { EducationForm } from '../components/EducationForm'
+import { educationLabel, useEducation } from '../lib/education'
 import { FeedbackLink } from '../components/Feedback'
 import { MakerCard } from '../components/MadeBy'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
@@ -387,6 +389,7 @@ const THEMES: Array<{ id: Theme; label: string; icon: typeof Sun }> = [
 
 export function Settings() {
   const settings = useSettings()
+  const store = useStore()
 
   return (
     <div className="page page-narrow">
@@ -430,6 +433,13 @@ export function Settings() {
           </p>
         </div>
       </section>
+
+      {store.session && (
+        <section className="section">
+          <h2>Okulun</h2>
+          <EducationSection />
+        </section>
+      )}
 
       <section className="section">
         <h2>Öğrenci tipin</h2>
@@ -616,6 +626,40 @@ function PlusPanel({ eligible }: { eligible: boolean }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/** Where the student studies, from the profile; asked once after sign-up, changeable here. */
+function EducationSection() {
+  const education = useEducation()
+  const [editing, setEditing] = useState(false)
+  const toast = useToast()
+  if (!education || editing) {
+    return (
+      <div className="panel">
+        {!education && <p className="muted" style={{ marginTop: 0 }}>Nerede okuduğunu ekle; profilinde görünür.</p>}
+        <EducationForm
+          initial={education}
+          onSaved={() => {
+            setEditing(false)
+            toast('Okul bilgin kaydedildi')
+          }}
+        />
+        {editing && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>
+            Vazgeç
+          </button>
+        )}
+      </div>
+    )
+  }
+  return (
+    <div className="panel edu-current">
+      <strong>{educationLabel(education)}</strong>
+      <button type="button" className="btn btn-sm" onClick={() => setEditing(true)}>
+        Değiştir
+      </button>
     </div>
   )
 }
