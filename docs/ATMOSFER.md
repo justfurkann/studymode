@@ -38,3 +38,12 @@ Ayrı bir oturumda eklendi; Premium çalışmasıyla çakışmasın diye kod ayr
 - Üniversite listesi `src/lib/universities.ts` (sabit, ~208 okul, kısaltmalarla arama). YÖK değişince elle güncellenmeli.
 - Girişler: tanıtım sayfasında "Hangi öğrenci tipisin?" bağlantısı, Mola'da kart. Sayfa ayrı yüklenir (lazy).
 - Cevaplar hiçbir yere kaydedilmiyor. İstenirse sonuçlar (tip, seviye, okul) Supabase'de sayılabilir ("ODTÜ'de en çok Gece Kuşu var") ama bu yeni bir tablo ve SQL onayı ister.
+
+## Başarımlar (/basarimlar, 1 Kasım 2026)
+
+- 20 başarım, 4 nadirlik: Yaygın, Nadir, Destansı, Efsanevi (`src/lib/achievements.ts`). Görünür hedefler ilerleme çubuğuyla; 11 gizli keşif koleksiyonda "???" ve bilmece ipucuyla görünür.
+- Gizliler: Gece Kuşu (03.xx), Erkenci Kuş (04.00-05.59), Gün Dönümü (tam 00.00), Dedektif (Gizlilik sayfasındaki son nokta bir düğme), Glitch Hunter (logoya 2,5 sn içinde 7 dokunuş ya da klavyede ↑↑↓↓←→←→BA; ekran bozuluyor), Kurcalamacı (Hakkında'da fotoğrafa 5 dokunuş), Kayıp Sayfa (olmayan adres), Işık DJ'i (1 dakikada 10 tema değişikliği), Kalem Kutusu (5 kalem rengi), Ses Mühendisi (4 ortam sesi birlikte), Çok Yüzlü (testte 3 farklı tip).
+- Hedefler: İlk Adım, Isınma Turu (3 gün seri), Bir Haftalık Ateş (7), Yüz Kart, Kusursuz (hatasız test), Odak Ustası (günde 4 odak turu), Kendini Tanı (test), Kasadan Geçti (çalışma fişi), Koleksiyoncu (10 başarım).
+- `AchievementWatcher` kökte: saat, veri, tema, kalem, ses ve klavyeyi izler; yeni başarım için nadirliğe göre parlayan bildirim (dokununca koleksiyonda o kart). İlk ziyarette, önceden ulaşılmış hedefler sessizce açılır.
+- Yalnızca bu tarayıcıda (`studymode.achievements.v1`); cihazlar arası eşitleme ve "oyuncuların %X'i" için Supabase tablosu gerekir.
+- Girişler: yan menüde "Başarımlar x/20", Bugün başlığında kupa, Ayarlar. Yan menüde ve telefonda Bugün sayfasında "Hangi öğrenci tipisin? 1 dakikada öğren, sonucunu paylaş" kartı.

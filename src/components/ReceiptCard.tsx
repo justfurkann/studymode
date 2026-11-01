@@ -4,6 +4,7 @@ import { readRecords } from '../lib/mola'
 import { buildReceipt, formatLine, type Receipt, type ReceiptPeriod } from '../lib/receipt'
 import { useStore } from '../lib/store'
 import { Modal } from './ui'
+import { unlock } from '../lib/achievements'
 
 /*
  * "Çalışma fişi": a thermal till receipt of the student's day or week, drawn on a canvas at story
@@ -242,6 +243,9 @@ export default function ReceiptDialog({ onClose }: { onClose: () => void }) {
   const { data } = useStore()
   const [period, setPeriod] = useState<ReceiptPeriod>('gun')
   const receipt = useMemo(() => buildReceipt(data, period, readRecords()), [data, period])
+  useEffect(() => {
+    unlock('fis')
+  }, [])
   const [image, setImage] = useState<{ url: string; blob: Blob } | null>(null)
 
   useEffect(() => {

@@ -9,6 +9,7 @@ import { PixelSky } from '../components/PixelSky'
 import { Celebrate } from '../components/ui'
 import { playSound } from '../lib/sound'
 import { useStore } from '../lib/store'
+import { unlock } from '../lib/achievements'
 
 /** Answers to "Burayı nasıl buldun?" — a small easter egg at the bottom of the page. */
 const HOW = [
@@ -41,7 +42,10 @@ export function About() {
     if (found) return
     const next = taps + 1
     setTaps(next)
-    if (next === SECRET_TAPS) playSound('done')
+    if (next === SECRET_TAPS) {
+      playSound('done')
+      unlock('kurcalamaci')
+    }
   }
 
   const answer = HOW.find((h) => h.id === how)
@@ -127,7 +131,7 @@ export function About() {
 
           {found && (
             <p className="about-secret" role="status">
-              <Sparkles size={18} aria-hidden /> <Celebrate>Gizli başarım açıldı:</Celebrate> Kurcalamacı. Fotoğrafa beş kez dokunan çok az kişi var.
+              <Sparkles size={18} aria-hidden /> <Celebrate>Gizli başarım açıldı:</Celebrate> Kurcalamacı. Fotoğrafa beş kez dokunan çok az kişi var. <Link to="/basarimlar">Koleksiyonuna bak</Link>
             </p>
           )}
 

@@ -256,3 +256,58 @@ test('Hangi öğrenci tipisin: reachable from the landing page and from Mola', a
   await page.getByRole('button', { name: 'Hangi öğrenci tipisin?' }).click()
   await expect(page.getByRole('heading', { level: 1, name: /öğrenci\s*tipisin/ })).toBeVisible()
 })
+
+test('Başarımlar: hidden discoveries across the site, a toast, and the collection', async ({ page }) => {
+  const errors = watchErrors(page)
+  // Mid-afternoon, so no clock achievement gets in the way.
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  await page.goto('/basarimlar')
+  await expect(page.getByRole('heading', { level: 1, name: 'Başarımlar' })).toBeVisible()
+  await page.getByRole('button', { name: 'Gizliler' }).click()
+  await expect(page.getByText('Kimsenin sonuna kadar okumadığı o sayfa.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dedektif' })).toHaveCount(0)
+
+  // Dedektif: the last full stop of the privacy policy.
+  await page.goto('/gizlilik')
+  await page.getByRole('button', { name: 'Nokta' }).click()
+  const toast = page.locator('.ach-toast')
+  await expect(toast).toContainText('Dedektif')
+  await expect(toast).toContainText('Destansı')
+  await toast.getByRole('button', { name: /Dedektif/ }).click()
+  await expect(page).toHaveURL(/\/basarimlar#dedektif$/)
+  await expect(page.locator('#basarim-dedektif')).toContainText('Gizlilik politikasının sonundaki')
+
+  // Glitch Hunter: seven quick taps on the logo; the page glitches.
+  await page.locator('.sidebar .brand-link').click({ clickCount: 1 })
+  for (let i = 0; i < 6; i++) await page.locator('.sidebar .brand-link').click()
+  await expect(page.locator('html')).toHaveClass(/is-glitching/)
+  await expect(page.locator('.ach-toast')).toContainText('Glitch Hunter')
+
+  // Kayıp Sayfa: an address that does not exist still shows today's page.
+  await page.goto('/burasi-yok')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await page.goto('/basarimlar')
+  for (const name of ['Dedektif', 'Glitch Hunter', 'Kayıp Sayfa']) await expect(page.getByRole('heading', { name })).toBeVisible()
+  await expect(page.getByRole('link', { name: /Başarımlar/ }).first()).toContainText(/[3-9]\/20/)
+  expect(errors).toEqual([])
+})
+
+test('Başarımlar: the keyboard code and the quiz count too; the sidebar shows the quiz card', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  for (const key of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a']) await page.keyboard.press(key)
+  await expect(page.locator('.ach-toast')).toContainText('Glitch Hunter')
+  await page.getByRole('link', { name: /Hangi öğrenci tipisin\? 1 dakikada öğren/ }).first().click()
+  await expect(page).toHaveURL(/\/ogrenci-tipi$/)
+  await page.getByRole('button', { name: /Teste başla/ }).click()
+  await page.getByRole('button', { name: /^Lise/ }).click()
+  for (let i = 0; i < 10; i++) {
+    await expect(page.getByText(`${i + 1} / 10`)).toBeVisible()
+    await page.locator('.quiz-option').first().click()
+  }
+  await expect(page.locator('.quiz-result-card h1')).toBeVisible()
+  await page.goto('/basarimlar')
+  await expect(page.getByRole('heading', { name: 'Kendini Tanı' })).toBeVisible()
+  await expect(page.locator('#basarim-kendini-tani')).toHaveClass(/is-open/)
+})

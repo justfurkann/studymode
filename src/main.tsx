@@ -11,6 +11,7 @@ import { applyTheme } from './lib/settings'
 import { applyDecor } from './lib/decor'
 import './styles/global.css'
 import './styles/extras.css'
+import './styles/achievements.css'
 
 applyTheme()
 applyDecor()

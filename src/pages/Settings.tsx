@@ -1,4 +1,4 @@
-import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, Trash2, Upload } from 'lucide-react'
+import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, Trash2, Trophy, Upload } from 'lucide-react'
 import { FeedbackLink } from '../components/Feedback'
 import { MakerCard } from '../components/MadeBy'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
@@ -426,6 +426,9 @@ export function Settings() {
 
       <section className="section">
         <h2>Görünüm ve ses</h2>
+        <Link to="/basarimlar" className="btn btn-sm trophy-link" style={{ alignSelf: 'flex-start' }}>
+          <Trophy size={16} /> Başarımlarım
+        </Link>
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'flex-start' }}>
           <div className="segmented" role="group" aria-label="Tema">
             {THEMES.map(({ id, label, icon: Icon }) => (
