@@ -15,7 +15,8 @@ import {
   saveCourseEmbeddings,
   searchNotesSemantic,
 } from '../lib/semanticSearch'
-import { aiAvailability, useSettings } from '../lib/settings'
+import { usePremium } from '../lib/premium'
+import { useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import { freshImport } from '../lib/version'
 
@@ -34,7 +35,8 @@ export function CourseDetail() {
   const [queryVector, setQueryVector] = useState<number[] | undefined>(undefined)
   const [indexing, setIndexing] = useState(false)
   const course = store.data.courses.find((c) => c.id === id)
-  const hasAi = aiAvailability(settings, !!store.session).ok
+  // Meaning-based search uses embeddings, a Premium feature; ordinary search works for everyone.
+  const hasAi = usePremium().state === 'open'
 
   useEffect(() => {
     if (id) setEmbeddings(readCourseEmbeddings(id))
@@ -177,14 +179,14 @@ export function CourseDetail() {
               className="btn btn-ghost btn-sm"
               disabled={indexing}
               onClick={indexNotesWithAi}
-              title="Gemini Embedding ile tüm notları anlamsal vektör uzayında indeksle"
+              title="Notlarını anlamına göre aranabilir yap (Premium)"
             >
               <Sparkles size={14} />{' '}
               {indexing
                 ? 'İndeksleniyor...'
                 : indexedCount === notes.length && notes.length > 0
-                  ? 'Anlamsal indeks güncel'
-                  : 'Anlamsal indeksle'}
+                  ? 'Akıllı arama hazır'
+                  : 'Akıllı aramayı aç'}
             </button>
           )}
         </div>

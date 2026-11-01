@@ -495,6 +495,16 @@ revoke all on function public.plus_quota(), public.consume_plus() from public, a
 grant execute on function public.plus_quota(), public.consume_plus() to authenticated;
 ```
 
+### Aşama 13 — Premium sekmesi (/premium)
+
+- **Ne:** VIP/yöneticiye özel parlak sekme. Üç araç: **Sesli not** (iki kişilik podcast, Gemini TTS, Kore/Puck sesleri), **Akıllı arama** (tüm notlarda anlamsal arama, gemini-embedding-001), **Görsel** (gemini-3.1-flash-lite-image). Hepsi Free+ yolundan (Vertex) gider; kendi Gemini anahtarı olan ve Gemini'yi seçen herkes de kullanabilir.
+- **Kim görür:** `src/lib/premium.ts` → `usePremium()` (`open` / `locked` / `loading`). Kilitli hesaplar sayfada önizleme + "Nasıl açılır?" görür. Notun içindeki AI görsel / stüdyo sesi / AI senaryo / akıllı arama düğmeleri de kilitli; yerine `PremiumLock` (`src/components/Premium.tsx`) çıkar. Sunucu zaten `premium_only` (403) döner.
+- **Giriş noktaları:** kenar çubuğunda parlayan "Premium" bağlantısı; telefonda üst barda elmas düğmesi (yalnızca giriş yapmışken, misafirde yer yok).
+- **Canlı test (1 Kasım 2026, test hesabı VIP):** podcast 7 sn / 10 satır; TTS 12 sn, 1,5 MB WAV; görsel 4,5 sn JPEG; embedding 2,4 sn, 3072 boyut.
+- **Embedding ayarı:** vektörler 768 sayıya kısaltılıp 5 basamağa yuvarlanır (`compactVector`; not başına ~6 KB, localStorage dolmasın). Ölçüm: ilgili not–soru benzerliği 0,76–0,83, ilgisiz 0,64–0,72 → eşik `VECTOR_MATCH_AT = 0.74`, en iyiye 0,06 yakın olanlar gösterilir (`rankNotesByMeaning`). Embedding Free+ hakkından düşmez; podcast/TTS/görsel düşer.
+- **Renk tokenları:** `--prem-1/2/3`, `--prem-deep`, `--prem-soft`, `--prem-text` (yalnızca arka plan/ışıltı; metin değil). `prefers-reduced-motion` ile animasyonlar durur.
+- **Not:** Bu aşama sırasında başka bir Claude oturumu (#49–#53: başarımlar, öğrenci tipi testi, tam özet, ortam sesleri) main'e iş birleştirdi; Premium onun üstüne rebase edildi. İki oturumu aynı anda çalıştırmamak gerekiyor.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

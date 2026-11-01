@@ -295,6 +295,25 @@ export interface EmbeddingMap {
 
 const EMBED_STORAGE_PREFIX = 'studymode.embeddings.v1.'
 
+/**
+ * Vectors are kept at 768 numbers (the model ranks by the first ones, so shortening keeps the
+ * ordering) and 5 decimals: about 6 KB a note instead of 60 KB, so a whole term fits in storage.
+ */
+export const EMBED_DIMS = 768
+export function compactVector(v: readonly number[]): number[] {
+  return v.slice(0, EMBED_DIMS).map((x) => Math.round(x * 1e5) / 1e5)
+}
+
+/**
+ * Turns a cosine similarity into a 0..1 match score. Measured on gemini-embedding-001 with Turkish
+ * notes: a related note scores about 0.76-0.83 against a short question, an unrelated one 0.64-0.72.
+ * Below 0.74 counts as no match.
+ */
+export const VECTOR_MATCH_AT = 0.74
+export function vectorMatchScore(sim: number): number {
+  return sim < VECTOR_MATCH_AT ? 0 : Math.min(1, 0.45 + ((sim - VECTOR_MATCH_AT) / 0.1) * 0.55)
+}
+
 export function readCourseEmbeddings(courseId: string): Record<string, number[]> {
   try {
     const raw = localStorage.getItem(`${EMBED_STORAGE_PREFIX}${courseId}`)
@@ -314,7 +333,7 @@ export function saveCourseEmbeddings(courseId: string, map: Record<string, numbe
   }
 }
 
-/** Builds a compact text representation of a note for `gemini-embedding-2-preview`. */
+/** Builds a compact text representation of a note for the embedding model. */
 export function buildNoteEmbeddingText(note: Note): string {
   const parts = [
     note.title,
@@ -369,11 +388,7 @@ export function searchNotesSemantic(
     const noteVec = embeddings?.noteVectors?.[note.id]
     const queryVec = embeddings?.queryVector
     if (noteVec && queryVec && noteVec.length === queryVec.length) {
-      // Normalize cosine similarity above 0.45 threshold into 0..1 range
-      const sim = cosineSimilarity(noteVec, queryVec)
-      if (sim > 0.48) {
-        vectorScore = Math.min(1, (sim - 0.45) / 0.45)
-      }
+      vectorScore = vectorMatchScore(cosineSimilarity(noteVec, queryVec))
     }
 
     const combinedSemantic = Math.max(localScore, vectorScore)
@@ -429,8 +444,7 @@ export function matchQuestionToNote(
     let vectorScore = 0
     const noteVec = noteVectors?.[note.id]
     if (noteVec && questionVector && noteVec.length === questionVector.length) {
-      const sim = cosineSimilarity(noteVec, questionVector)
-      if (sim > 0.45) vectorScore = (sim - 0.4) / 0.5
+      vectorScore = vectorMatchScore(cosineSimilarity(noteVec, questionVector))
     }
     const score = Math.max(localScore, vectorScore)
     if (score >= 0.2 && snippet && (!best || score > best.score)) {
@@ -444,4 +458,29 @@ export function matchQuestionToNote(
   }
 
   return best
+}
+
+/** How many notes one search shows. */
+const MAX_HITS = 8
+/** Notes within this much of the best match are shown with it. */
+const NEAR_BEST = 0.06
+
+/**
+ * Notes that contain the words come first; then notes close in meaning, but only those near the best
+ * match and above the "related" line, so an unrelated search shows nothing instead of everything.
+ */
+export function rankNotesByMeaning(notes: Note[], vectors: Record<string, number[]>, query: string, queryVector: number[] | null) {
+  const q = query.toLocaleLowerCase('tr-TR')
+  const scored = notes.map((note) => {
+    const text = [note.title, note.content, note.summary?.overview ?? ''].join(' ').toLocaleLowerCase('tr-TR')
+    const v = vectors[note.id]
+    const sim = queryVector && v?.length === queryVector.length ? cosineSimilarity(v, queryVector) : 0
+    return { note, exact: text.includes(q), sim }
+  })
+  const best = Math.max(0, ...scored.map((s) => s.sim))
+  return scored
+    .filter((s) => s.exact || (s.sim >= VECTOR_MATCH_AT && s.sim >= best - NEAR_BEST))
+    .sort((a, b) => Number(b.exact) - Number(a.exact) || b.sim - a.sim)
+    .slice(0, MAX_HITS)
+    .map((s) => ({ ...s, snippet: findBestNoteSnippet(s.note, query).snippet }))
 }

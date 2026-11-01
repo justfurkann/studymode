@@ -1814,6 +1814,75 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     })
   }
 
+  const course = { id: 'c1', name: 'Biyoloji', color: '#4f46e5', exam_date: null, created_at: T, updated_at: T }
+  const noteRow = (id: string, title: string, content: string) => ({ id, course_id: 'c1', title, content, summary: null, questions: [], practice: [], generator: null, created_at: T, updated_at: T })
+  const premiumData = {
+    courses: [course],
+    notes: [
+      noteRow('n1', 'Hücresel solunum', 'Mitokondride glikoz oksijenle yıkılarak ATP elde edilir. Krebs döngüsü matrikste gerçekleşir.'),
+      noteRow('n2', 'Osmanlı kuruluşu', 'Osman Bey 1299da beylik kurdu. Orhan Bey Bursayı aldı.'),
+    ],
+  }
+
+  test('Premium: VIPs get two-voice audio and smart search; others see what it is and how to get it', async ({ page }) => {
+    const errors = watchErrors(page)
+    let role = 'normal'
+    await signedIn(page, { ai_quota: () => ({ role, used: 1, limit: role === 'vip' ? 150 : 40, allowed: true }), plus_quota: () => ({ role, eligible: role !== 'normal', used: 2, limit: 30, allowed: true }) }, premiumData)
+    await page.addInitScript((id) => localStorage.setItem('studymode.vipWelcomed.' + id, '1'), me.id)
+    const tasks: string[] = []
+    // Vectors: the respiration note and the "organel" question point the same way; the other note does not.
+    const vec = (a: number, b: number) => Array.from({ length: 768 }, (_, i) => (i === 0 ? a : i === 1 ? b : 0))
+    await page.route('**/api/generate', async (route) => {
+      const body = route.request().postDataJSON() as { task: string; engine?: string; input: { texts?: string[] } }
+      tasks.push(`${body.task}:${body.engine}`)
+      if (body.task === 'tts') return route.fulfill({ json: { result: { audioBase64: 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=', mimeType: 'audio/wav' }, engine: 'plus' } })
+      if (body.task === 'embed') {
+        const texts = body.input.texts ?? []
+        return route.fulfill({ json: { result: { embeddings: texts.map((t) => (/Mitokondri|organel/.test(t) ? vec(0.99, 0.1) : vec(0.1, 0.99))) }, engine: 'plus' } })
+      }
+      return route.fulfill({ status: 500, json: { error: 'unexpected' } })
+    })
+
+    // A normal account: the tab is there, locked, with the way in.
+    await page.goto('/premium')
+    await expect(page.getByRole('heading', { level: 1, name: /konuşsun/ })).toBeVisible()
+    await expect(page.getByText('Kilitli · VIP hesaplarda açık')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Nasıl açılır?' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Stüdyo Sesi Üret/ })).toHaveCount(0)
+    // VIP: open, with today's allowance, and the studio works from the Premium tab.
+    role = 'vip'
+    await page.reload()
+    await expect(page.getByText('Premium açık · VIP')).toBeVisible()
+    await expect(page.getByText('Bugün 2/30 hak · arama sayılmaz')).toBeVisible()
+    await page.getByRole('button', { name: /Sesli not/ }).click()
+    await expect(page.getByLabel('Hangi not?')).toBeVisible()
+    await page.getByRole('button', { name: /Stüdyo Sesi Üret/ }).click()
+    await expect(page.getByRole('link', { name: /WAV İndir/ })).toBeVisible()
+    expect(tasks).toContain('tts:plus')
+
+    // Smart search: prepare the notes once, then a question without the note's words finds it.
+    await page.getByRole('button', { name: /Akıllı arama/ }).click()
+    await page.getByRole('button', { name: 'Notlarımı hazırla' }).click()
+    await expect(page.getByText('Notların akıllı aramaya hazır')).toBeVisible()
+    await page.getByLabel('Ne arıyorsun?').fill('enerji üreten organel')
+    const hits = page.locator('.prem-hits')
+    await expect(hits.getByRole('link', { name: /Hücresel solunum/ })).toBeVisible()
+    await expect(hits.getByText('Anlamca yakın')).toBeVisible()
+    await expect(hits.getByRole('link', { name: /Osmanlı/ })).toHaveCount(0)
+    expect(errors).toEqual([])
+  })
+
+  test('Premium fits a phone and is one tap away from the top bar', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 760 })
+    await signedIn(page, { ai_quota: () => ({ role: 'vip', used: 1, limit: 150, allowed: true }), plus_quota: () => ({ used: 0, limit: 30 }) }, premiumData)
+    await page.addInitScript((id) => localStorage.setItem('studymode.vipWelcomed.' + id, '1'), me.id)
+    await page.goto('/')
+    await page.locator('.mobile-top').getByRole('link', { name: 'Premium' }).click()
+    await expect(page).toHaveURL(/\/premium$/)
+    await expect(page.getByText('Premium açık · VIP')).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+  })
+
   test('Settings shows today’s free AI use and the role', async ({ page }) => {
     await signedIn(page, { ai_quota: () => ({ role: 'vip', used: 12, limit: 150, allowed: true }) })
     await page.goto('/ayarlar')
@@ -2051,6 +2120,10 @@ test('visual concept map, 2-speaker podcast, and semantic search across notes', 
   const transcript = page.getByRole('list', { name: 'Podcast diyalog metni' })
   await expect(transcript.getByText('Deniz').first()).toBeVisible()
   await expect(transcript.getByText('Mert').first()).toBeVisible()
+  // The studio voice and AI script are Premium: a guest sees the lock and the way to it, not a failing button.
+  await expect(page.getByText(/Gerçek insan sesiyle iki kişilik podcast/)).toBeVisible()
+  await expect(page.getByRole('button', { name: /Stüdyo Sesi Üret/ })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: "Premium'u gör" })).toHaveAttribute('href', '/premium')
 
   const cardsTab = page.getByRole('tablist', { name: 'Çalışma adımları' }).getByRole('tab', { name: /Kartlar/ })
   const cardsBefore = Number(await cardsTab.locator('.tab-count').textContent())

@@ -76,7 +76,8 @@ export function Privacy() {
             </li>
             <li>
               <strong>Cihazında kalanlar:</strong> tema, ses, odak sayacı ve oyun rekorları gibi tercihler; hesapsız kullanıyorsan çalışma içeriğinin tamamı. Kendi yapay zekâ anahtarını
-              bağlarsan o anahtar yalnızca senin tarayıcında saklanır, sunucumuza hiç gelmez.
+              bağlarsan o anahtar yalnızca senin tarayıcında saklanır, sunucumuza hiç gelmez. Premium'daki akıllı arama için notlarının anlamını gösteren sayı dizileri
+              ve hazırlanan podcast senaryoları da yalnızca bu cihazda tutulur.
             </li>
           </ul>
         </section>
@@ -108,7 +109,8 @@ export function Privacy() {
             </li>
             <li>
               <strong>Google Cloud (Vertex AI) — Free+:</strong> VIP ve yöneticiler Free+ seçerse notun metni Google Cloud üzerindeki ücretli Gemini modellerine gider. Bu kullanımda
-              Google içerikleri kendi ürünlerini geliştirmek için kullanmaz.
+              Google içerikleri kendi ürünlerini geliştirmek için kullanmaz. Premium özellikleri (sesli not, görsel, akıllı arama) de aynı yoldan çalışır: seslendirilecek
+              metin, çizilecek kavram ya da aranan cümle bu modellere gider.
             </li>
             <li>
               <strong>Resend:</strong> hesap onayı ve şifre sıfırlama e-postalarının gönderimi.
