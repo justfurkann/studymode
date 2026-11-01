@@ -209,6 +209,7 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
       quota: 'Ücretsiz yapay zekânın kotası şu an dolu. Biraz sonra tekrar dene ya da ayarlardan kendi anahtarını bağla.',
       busy: 'Google’ın ücretsiz modelleri şu an çok yoğun. Birkaç dakika sonra tekrar dene ya da ayarlardan kendi anahtarını bağla.',
       too_large: 'İçerik çok uzun. Daha az not seçerek ya da notu bölerek dene.',
+      premium_only: 'Bu özellik Premium (VIP) üyelere özel.',
       bad_output: FORMAT_ERROR,
     }
     const extra = body as { status?: number; detail?: string }
@@ -222,11 +223,13 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
 
 export async function runTask<T extends TaskName>(task: T, input: TaskInput<T>, settings: Settings): Promise<TaskOutput<T>> {
   // Gemini-native media/vector tasks (TTS, Image generation, Embeddings) run via Google key or Shared/Vertex Free+ server
-  if (task === 'tts' || task === 'image' || task === 'embed') {
+  // Premium (VIP/admin) features: podcast script and audio, images, semantic search. They always go
+  // through Free+ on our server (or the student's own Gemini key); the server refuses non-VIPs.
+  if (task === 'tts' || task === 'image' || task === 'embed' || task === 'podcast') {
     if (settings.provider === 'google' && settings.keys.google) {
       return viaGoogle(task, input, settings.keys.google, settings.models.google)
     }
-    return viaShared(task, input, settings.provider === 'plus' ? 'plus' : undefined)
+    return viaShared(task, input, 'plus')
   }
   switch (settings.provider) {
     case 'anthropic':
@@ -465,7 +468,8 @@ export async function synthesizePodcastTts(
   settings: Settings,
   onProgress?: (done: number, total: number) => void,
 ): Promise<{ audioDataUrl: string; mimeType: string }> {
-  const chunks = splitScriptForTts(lines, 1100)
+  // ~600 characters ≈ 40 s of speech ≈ 2 MB of WAV, safely under the 4.5 MB response limit.
+  const chunks = splitScriptForTts(lines, 600)
   if (!chunks.length) throw new AiError('Seslendirilecek metin bulunamadı.')
   const wavChunks: string[] = []
   let mimeType = 'audio/wav'

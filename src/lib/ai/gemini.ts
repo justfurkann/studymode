@@ -65,11 +65,11 @@ export async function callGemini(options: {
   const baseUrl = target ? target.url(model) : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
   const headers: Record<string, string> = target ? { 'content-type': 'application/json', ...target.headers } : { 'content-type': 'application/json', 'x-goog-api-key': apiKey ?? '' }
 
-  // 1. Semantic Embeddings (:embedContent)
+  // 1. Semantic embeddings. The public API takes :embedContent; Vertex AI takes :predict.
   if (user.startsWith('<embed_texts>')) {
     const rawJson = user.replace(/^<embed_texts>/, '').replace(/<\/embed_texts>$/, '').trim()
     const texts = JSON.parse(rawJson) as string[]
-    const embedUrl = baseUrl.replace(':generateContent', ':embedContent')
+    const embedUrl = baseUrl.replace(':generateContent', target ? ':predict' : ':embedContent')
     const vectors: number[][] = []
     for (const itemText of texts) {
       let response: Response
@@ -77,9 +77,7 @@ export async function callGemini(options: {
         response = await fetchImpl(embedUrl, {
           method: 'POST',
           headers,
-          body: JSON.stringify({
-            content: { parts: [{ text: itemText || ' ' }] },
-          }),
+          body: JSON.stringify(target ? { instances: [{ content: itemText || ' ', task_type: 'RETRIEVAL_DOCUMENT' }] } : { content: { parts: [{ text: itemText || ' ' }] } }),
           signal: AbortSignal.timeout(timeoutMs),
         })
       } catch (error) {
@@ -90,8 +88,8 @@ export async function callGemini(options: {
         const detail = await response.text().catch(() => '')
         throw new GeminiError(detail.slice(0, 500) || response.statusText, response.status)
       }
-      const data = (await response.json()) as GeminiResponse
-      const values = data.embedding?.values ?? data.embeddings?.[0]?.values
+      const data = (await response.json()) as GeminiResponse & { predictions?: Array<{ embeddings?: { values?: number[] } }> }
+      const values = data.embedding?.values ?? data.embeddings?.[0]?.values ?? data.predictions?.[0]?.embeddings?.values
       if (!values || !values.length) throw new GeminiError('empty embedding', 502)
       vectors.push(values)
     }
@@ -102,47 +100,36 @@ export async function callGemini(options: {
   if (user.startsWith('<tts_dialogue>')) {
     const rawJson = user.replace(/^<tts_dialogue>/, '').replace(/<\/tts_dialogue>$/, '').trim()
     const turns = JSON.parse(rawJson) as Array<{ speaker: 'Deniz' | 'Mert'; text: string }>
-    const useMultiSpeaker = !model.includes('lite-tts') && turns.length > 1
-    const body = useMultiSpeaker
-      ? {
-          contents: [
+    const useMultiSpeaker = !model.includes('lite-tts') && new Set(turns.map((t) => t.speaker)).size > 1
+    const dialogue = turns.map((t) => `${t.speaker}: ${t.text}`).join('\n')
+    // The speakers are named in the text; multiSpeakerVoiceConfig gives each name its own voice.
+    const body = {
+      contents: [
+        {
+          role: 'user',
+          parts: [
             {
-              role: 'user',
-              parts: turns.map((t) => ({
-                text: `${t.speaker}: ${t.text}`,
-                speechMetadata: {
-                  speaker: t.speaker,
-                  style: t.speaker === 'Deniz' ? 'Warm, articulate university tutor' : 'Curious, engaged university student',
-                },
-              })),
+              text: useMultiSpeaker
+                ? `Read this study podcast aloud in natural Turkish. Deniz is a warm, clear teaching assistant; Mert is a curious student.\n${dialogue}`
+                : `Read this aloud in natural Turkish:\n${dialogue}`,
             },
           ],
-          generationConfig: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
+        },
+      ],
+      generationConfig: {
+        responseModalities: ['AUDIO'],
+        speechConfig: useMultiSpeaker
+          ? {
               multiSpeakerVoiceConfig: {
                 speakerVoiceConfigs: [
                   { speaker: 'Deniz', voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
                   { speaker: 'Mert', voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } },
                 ],
               },
-            },
-          },
-        }
-      : {
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: turns.map((t) => `${t.speaker}: ${t.text}`).join('\n') }],
-            },
-          ],
-          generationConfig: {
-            responseModalities: ['AUDIO'],
-            speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
-            },
-          },
-        }
+            }
+          : { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
+      },
+    }
 
     let response: Response
     try {
@@ -183,6 +170,7 @@ export async function callGemini(options: {
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: promptText }] }],
           generationConfig: {
+            responseModalities: ['TEXT', 'IMAGE'],
             imageConfig: { aspectRatio },
           },
         }),
@@ -285,7 +273,7 @@ export async function callGeminiWithFallback(options: {
   } else if (call.user.startsWith('<image_prompt') && !models.some((m) => m.includes('image') || m.includes('banana'))) {
     models = ['gemini-3.1-flash-lite-image', 'gemini-nano-banana-2.1']
   } else if (call.user.startsWith('<embed_texts>') && !models.some((m) => m.includes('embedding'))) {
-    models = ['gemini-embedding-2-preview', 'gemini-embedding-001']
+    models = ['gemini-embedding-001']
   }
 
   const started = Date.now()

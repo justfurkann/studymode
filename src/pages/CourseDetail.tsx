@@ -5,7 +5,6 @@ import { CourseForm } from '../components/CourseForm'
 import { ShareCourse } from '../components/ShareCourse'
 import { examFormatLabel, examPercent } from '../components/ExamReview'
 import { Empty, useConfirm, useToast } from '../components/ui'
-import { embedTexts } from '../lib/ai'
 import { examCountdown, examDateText, examName, examsForCourse } from '../lib/courseExams'
 import { cardMastery, courseStats, relativeDate } from '../lib/format'
 import { daysUntil } from '../lib/srs'
@@ -18,6 +17,7 @@ import {
 } from '../lib/semanticSearch'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
+import { freshImport } from '../lib/version'
 
 export function CourseDetail() {
   const { id } = useParams()
@@ -48,7 +48,7 @@ export function CourseDetail() {
     }
     const timer = window.setTimeout(async () => {
       try {
-        const vectors = await embedTexts([trimmed], settings)
+        const vectors = await (await freshImport(() => import('../lib/ai'))).embedTexts([trimmed], settings)
         if (vectors[0]?.length) setQueryVector(vectors[0])
       } catch {
         setQueryVector(undefined)
@@ -84,7 +84,7 @@ export function CourseDetail() {
     setIndexing(true)
     try {
       const texts = notes.map((n) => buildNoteEmbeddingText(n))
-      const vectors = await embedTexts(texts, settings)
+      const vectors = await (await freshImport(() => import('../lib/ai'))).embedTexts(texts, settings)
       const next: Record<string, number[]> = { ...embeddings }
       notes.forEach((n, idx) => {
         if (vectors[idx]?.length) next[n.id] = vectors[idx]
@@ -92,7 +92,7 @@ export function CourseDetail() {
       setEmbeddings(next)
       saveCourseEmbeddings(course.id, next)
       if (query.trim().length >= 2) {
-        const qVectors = await embedTexts([query.trim()], settings)
+        const qVectors = await (await freshImport(() => import('../lib/ai'))).embedTexts([query.trim()], settings)
         if (qVectors[0]?.length) setQueryVector(qVectors[0])
       }
       toast('Notlar anlamsal arama için indekslendi')
