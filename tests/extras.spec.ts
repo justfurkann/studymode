@@ -904,3 +904,24 @@ test('Yönetim: kullanıcıların okulu ve okullar özeti görünür; veritaban�
   await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Okullar' })).toHaveCount(0)
 })
+
+test('Tanıtım turu kayıt ekranının önüne geçmez: tanıtımdan kayda giden yeni ziyaretçi formu doldurabilir', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await page.addInitScript(() => localStorage.setItem('studymode.tour.force', '1'))
+  await page.goto('/')
+  await page.locator('a[href="/giris?mod=kayit"]').first().click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Hesap oluştur' })).toBeVisible()
+  await page.waitForTimeout(3000)
+  await expect(page.getByRole('dialog', { name: /Tanıtım/ })).toHaveCount(0)
+  await page.getByLabel('Ad', { exact: true }).fill('Ali')
+  await expect(page.getByLabel('Ad', { exact: true })).toHaveValue('Ali')
+
+  // A tour already open closes when the sign-in page opens, and is not counted as seen.
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+  await expect(page.getByRole('dialog', { name: /Tanıtım/ })).toBeVisible()
+  await page.goto('/giris')
+  await page.waitForTimeout(2500)
+  await expect(page.getByRole('dialog', { name: /Tanıtım/ })).toHaveCount(0)
+  expect(await page.evaluate(() => localStorage.getItem('studymode.tour.v1'))).toBeNull()
+})

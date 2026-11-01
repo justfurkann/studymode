@@ -632,6 +632,10 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Kullanıcı tam doğum tarihi + cinsiyet istedi; **doğum yılı** ve "Belirtmek istemiyorum" seçenekli cinsiyet olarak yapıldı (veri azaltma, reşit olmayanlar). Yönetim panelinde yaş/cinsiyet **yalnızca toplu** (yaş grupları, sayılar); kişi satırında okul · bölüm · sınıf.
 - `admin_schools()` genişledi (drop + create; yeni sütunlar department, class_year, birth_year, gender, heard_from). Yerel Postgres'te denendi; bozuk doğum yılı boş döner. Gizlilik sayfası güncellendi.
 
+### Aşama 29 — Tur kayıt ekranını kapatmasın (1 Kasım 2026)
+
+- Hata: tanıtımdan "Ücretsiz başla" → `/giris?mod=kayit`; ilk ziyaret sayıldığı için tanıtım turu formun üstüne açılıyordu. Artık tur yalnızca uygulamanın içindeyken (giriş yapmış ya da misafir olarak bir dersi olan) ve `/giris`, `/sifre-yenile`, `/paylas/…` dışında kendiliğinden başlar. Açıkken bu sayfalara geçilirse sessizce kapanır ve "görüldü" sayılmaz; kayıttan sonra uygulamada gösterilir.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
