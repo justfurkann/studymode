@@ -577,6 +577,13 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Testler: 239 birim, 93 tarayıcı. Yeniler: yönetici ver/geri al ve yeni cihaz, normal kullanıcı görmez, filigran piksel kontrolü, tur, bildirimin turu beklemesi, Rehber. Premium testi yeni tek düğme akışına güncellendi (`podcast` → `tts` sırası).
 - **SQL yok, Vercel/Supabase ayarı yok.**
 
+### Aşama 22 — VIP'e Free+ varsayılan (1 Kasım 2026, `dreamy-sagan`)
+
+- **Sorun:** VIP/yönetici, Ayarlar'da elle "Free+" seçmedikçe notları ücretsiz Flash-Lite ile hazırlanıyordu (sunucu Free+'ı yalnızca `engine: 'plus'` gelirse deniyordu). Kullanıcının "VIP olsa da free'de kalıyor gibi" hissinin asıl nedeni buydu.
+- **Şimdi:** `api/generate.ts` önce `ai_quota` okur (rol için; ücretsiz yol da aynı sonucu kullanır). VIP/admin ise `engine` gönderilmese de Free+ (Vertex) denenir; yalnızca açıkça `engine: 'free'` gelirse atlanır. Free+ hakkı biter ya da Google hata verirse eskisi gibi ücretsize düşer. Normal hesaplarda ek bir çağrı yok.
+- **Ayarlar:** VIP/admin tek "Free+" seçeneği görür (varsayılan seçili; "Ücretsiz" düğmesi gizli), altında Free+ hakkı ve yedek ücretsiz hak (`QuotaLine`). Gizlilik: "Free+ seçerse" → "VIP ve yönetici hesaplarında".
+- **Canlı kontroller (#57, keen-albattani):** gerçek AI görselde filigran sağ altta okunur, indirilen JPEG'de de var; VIP'te "Stüdyo sesiyle dinle" tek basışta senaryo + 3 parça ses, toplam ~53 sn, bitince çalıyor; telefonda tur 6 adım, alt bar ve avatar doğru vurgulanıyor. Yönetici "geri al" canlıda denenmedi (test hesabı VIP, yönetici değil).
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

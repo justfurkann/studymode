@@ -212,9 +212,10 @@ function AiSection() {
 
   const role = useQuota(store.session?.user.id ?? null)?.role
   const canPlus = role === 'vip' || role === 'admin'
+  // VIPs and admins always get Free+ from the server, so for them the free option is Free+ itself.
   const options: Array<{ id: AiProvider; label: string }> = [
-    { id: 'shared', label: 'Ücretsiz' },
-    ...(canPlus || provider === 'plus' ? [{ id: 'plus' as const, label: 'Free+' }] : []),
+    ...(canPlus ? [{ id: 'plus' as const, label: 'Free+' }] : [{ id: 'shared' as const, label: 'Ücretsiz' }]),
+    ...(!canPlus && provider === 'plus' ? [{ id: 'plus' as const, label: 'Free+' }] : []),
     { id: 'anthropic', label: 'Claude' },
     { id: 'openai', label: 'ChatGPT' },
     { id: 'google', label: 'Gemini' },
@@ -225,14 +226,18 @@ function AiSection() {
       <p className="muted">Yapay zekâ notlarından özet, kart, test ve sınav provası hazırlar. Hangi servisin kullanılacağını seç:</p>
       <div className="segmented" role="group" aria-label="Yapay zekâ servisi">
         {options.map((o) => (
-          <button key={o.id} aria-pressed={provider === o.id} onClick={() => choose(o.id)}>
+          <button key={o.id} aria-pressed={provider === o.id || (canPlus && o.id === 'plus' && provider === 'shared')} onClick={() => choose(o.id)}>
             {o.label}
           </button>
         ))}
       </div>
 
-      {provider === 'plus' ? (
-        <PlusPanel eligible={canPlus} />
+      {provider === 'plus' || (canPlus && provider === 'shared') ? (
+        <>
+          <PlusPanel eligible={canPlus} />
+          {/* When Free+ runs out for the day, requests continue on this allowance. */}
+          <QuotaLine />
+        </>
       ) : provider === 'shared' ? (
         <>
           <p>
@@ -591,7 +596,7 @@ function PlusPanel({ eligible }: { eligible: boolean }) {
   return (
     <div className="plus-panel">
       <p>
-        <strong>Free+</strong> <span className="muted">— Google'ın daha güçlü Gemini modeli, VIP'lere özel.</span>
+        <strong>Free+</strong> <span className="muted">— Google'ın daha güçlü Gemini modeli, VIP'lere özel. Hesabında otomatik açık; bir şey seçmene gerek yok.</span>
       </p>
       <ul className="plus-perks">
         <li>Notlarını Gemini 3.8 Flash ile hazırlar (ücretside hafif "Flash-Lite" model çalışır); yazılı cevap puanlamada ve hafıza tekniklerinde Google'ın en güçlü modeli Gemini 4 kullanılır.</li>

@@ -132,9 +132,15 @@ export async function handleGenerate(
   const slow = task === 'tts' || task === 'image' || task === 'detail'
   const timing = slow ? { timeoutMs: 45_000, deadlineMs: 55_000 } : {}
 
-  // Free+ (VIP/admin): Gemini on Vertex AI, within its own daily caps. Any problem (not set up, cap
-  // reached, Google error) falls through to the normal free AI below, so nobody is left without an answer.
-  if ((body.engine === 'plus' || premium) && vertexConfigured(env)) {
+  // The caller's role and free allowance; read once, used for both paths below.
+  const before = await quotaCall('ai_quota', auth, fetchImpl)
+
+  // Free+ (VIP/admin): Gemini on Vertex AI, within its own daily caps. VIPs and admins get it by default,
+  // without choosing it in Settings; only an explicit engine "free" skips it. Any problem (not set up,
+  // cap reached, Google error) falls through to the normal free AI below, so nobody is left without an answer.
+  const plusRole = before?.role === 'vip' || before?.role === 'admin'
+  const wantsPlus = body.engine === 'plus' || premium || (plusRole && body.engine !== 'free')
+  if (wantsPlus && vertexConfigured(env)) {
     const plus = await plusCall('plus_quota', auth, fetchImpl)
     const oidc = request.headers.get('x-vercel-oidc-token') ?? env.VERCEL_OIDC_TOKEN
     if (plus?.eligible && plus.allowed && oidc) {
@@ -154,7 +160,6 @@ export async function handleGenerate(
   }
 
   // Daily allowance per person (normal 40, VIP 150, admin unlimited), checked before calling Gemini.
-  const before = await quotaCall('ai_quota', auth, fetchImpl)
   if (before && !before.allowed) return json(429, { error: 'daily_limit', quota: before })
 
   try {

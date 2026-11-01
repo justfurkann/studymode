@@ -250,6 +250,36 @@ describe('Free+ on Vertex AI', () => {
     expect(calls(f).some((u) => u.includes('consume_ai'))).toBe(false)
   })
 
+  it('gives a VIP Free+ by default, without the engine flag; a normal account stays on the free AI', async () => {
+    resetVertexToken()
+    const req = (engine?: string) =>
+      new Request('https://studymode.fun/api/generate', {
+        method: 'POST',
+        headers: { authorization: 'Bearer user-token', 'content-type': 'application/json', 'x-vercel-oidc-token': 'vercel-oidc' },
+        body: JSON.stringify({ task: 'study', input: { title: 't', text: 'x' }, ...(engine ? { engine } : {}) }),
+      })
+    const vip = plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 } })
+    const res = await handleGenerate(req(), plusEnv, vip)
+    expect((await res.json()).engine).toBe('plus')
+    // Asking for the free AI on purpose still works.
+    resetVertexToken()
+    const vipFree = plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 } })
+    expect((await (await handleGenerate(req('free'), plusEnv, vipFree)).json()).engine).toBeUndefined()
+    expect(calls(vipFree).some((u) => u.includes('aiplatform'))).toBe(false)
+    // A normal account: no Free+ check, no Google Cloud.
+    const normal = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url)
+      if (href.includes('/auth/v1/user')) return new Response('{}')
+      if (href.includes('/rpc/ai_quota')) return new Response(JSON.stringify({ role: 'normal', used: 0, limit: 40, allowed: true }))
+      if (href.includes('/rpc/consume_ai')) return new Response(JSON.stringify({ role: 'normal', used: 1, limit: 40, allowed: true }))
+      if (href.includes('generativelanguage.googleapis.com')) return gemini(JSON.stringify(studySet))
+      throw new Error(`unexpected fetch ${href}`)
+    }) as unknown as typeof fetch
+    const n = await handleGenerate(req(), plusEnv, normal)
+    expect(n.status).toBe(200)
+    expect((await n.json()).engine).toBeUndefined()
+  })
+
   it('falls back to the free AI when the Free+ cap is reached, without touching Google Cloud', async () => {
     resetVertexToken()
     const f = plusFetch({ plus: { eligible: true, allowed: false, used: 30, limit: 30, site_used: 30, site_limit: 300 } })
