@@ -1,4 +1,5 @@
 import { BookOpen, Brain, ClipboardList, House, Plus, Settings } from 'lucide-react'
+import { RoleBadge, VipWelcome } from './RoleBadge'
 import { FeedbackLink } from './Feedback'
 import { FocusEngine } from './mola/FocusEngine'
 import { MadeBy } from './MadeBy'
@@ -67,9 +68,12 @@ export function Layout() {
   return (
     <div className="shell">
       <aside className="sidebar" aria-label="Ana menü">
-        <Link to="/" className="brand-link">
-          <Brand />
-        </Link>
+        <div className="brand-row">
+          <Link to="/" className="brand-link">
+            <Brand />
+          </Link>
+          <RoleBadge />
+        </div>
         <NavLink to="/not-ekle" className="btn btn-primary" style={{ marginBottom: 16 }}>
           <Plus size={18} /> Not ekle
         </NavLink>
@@ -92,9 +96,12 @@ export function Layout() {
 
       <main className="main">
         <header className="mobile-top">
-          <Link to="/" className="brand-link">
-            <Brand size={26} />
-          </Link>
+          <div className="brand-row">
+            <Link to="/" className="brand-link">
+              <Brand size={26} />
+            </Link>
+            <RoleBadge />
+          </div>
           <div className="mobile-top-actions">
           {!session && (
             <NavLink to="/ayarlar" className="btn btn-ghost btn-icon" aria-label="Ayarlar">
@@ -157,6 +164,7 @@ export function Layout() {
         </div>
       </main>
       <FocusEngine />
+      <VipWelcome />
 
       <nav className="mobile-bar" aria-label="Alt menü">
         <NavLink to="/" end>
