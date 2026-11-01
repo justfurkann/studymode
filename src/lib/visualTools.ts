@@ -1,4 +1,5 @@
 import { saveList, type SaveResult } from './imageStore'
+import brandSymbol from '../../public/brand/svg/symbol-yellow.svg?raw'
 import type { Card, Note } from './types'
 
 export interface ConceptNode {
@@ -181,17 +182,16 @@ export function renderEducationalPosterDataUrl(
     <text x="52" y="${height - 32}" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="#52587a">${escapeXml(footer)}</text>
     <g transform="translate(${800 - 36 - 152}, ${height - 56})">
       <rect width="152" height="32" rx="16" fill="#11142a" fill-opacity="0.78" />
-      <g transform="translate(8, 5) scale(0.6875)">
-        <rect width="32" height="32" rx="8" fill="#1b2250" />
-        <path d="M7 22 22 7l3 3-15 15H7z" fill="#ffe14d" />
-        <path d="M7 25.4h18" stroke="#ffe14d" stroke-width="2.6" stroke-linecap="round" />
-      </g
-      ><text x="38" y="21" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" fill="#ffffff">studymode.fun</text>
+      <svg x="10" y="6" width="16" height="20" viewBox="0 0 176 221">${BRAND_S}</svg
+      ><text x="34" y="21" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" fill="#ffffff">studymode.fun</text>
     </g>
   </svg>`
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }
+
+/** The yellow brand "S" (public/brand/svg/symbol-yellow.svg) without its outer <svg>, to inline in posters. */
+const BRAND_S = brandSymbol.replace(/^[\s\S]*?<\/title>/, '').replace(/<\/svg>\s*$/, '').replace(/ id="[^"]*"/g, '')
 
 const VISUAL_STORAGE_PREFIX = 'studymode.visuals.v1.'
 

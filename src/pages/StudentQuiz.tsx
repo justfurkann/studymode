@@ -52,7 +52,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { BrandMark } from '../components/Brand'
+import { Brand } from '../components/Brand'
 import { StudentCharacter } from '../components/StudentCharacter'
 import { useToast } from '../components/ui'
 import { useStore } from '../lib/store'
@@ -205,10 +205,7 @@ export default function StudentQuiz() {
     <div className="quiz-page">
       <header className="quiz-top">
         <Link to="/tanitim" className="quiz-brand" aria-label="studymode tanıtım sayfası">
-          <BrandMark size={28} />
-          <span>
-            study<span className="hl">mode</span>
-          </span>
+          <Brand size={26} />
         </Link>
         <Link to="/" className="btn btn-sm">
           Uygulamayı aç

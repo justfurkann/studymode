@@ -654,6 +654,14 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Ek düzeltme:** Çalışma fişinin alt metninde fişe yazılan isim yoktu; `main`'deki fiş kişiselleştirme testi bu yüzden kırıktı. İsim artık alt metinde.
 - Testler: 256 birim, 108 tarayıcı. **SQL yok.**
 
+### Aşama 30 — Yeni logo (sarı S şerit) (1 Kasım 2026, `dreamy-sagan`)
+
+- Kaynak: kullanıcının Google AI Studio'da onaylattığı marka paketi. Kullanım kuralları `docs/BRAND-ASSETS.md`, renkler `docs/brand-colors.json` (lacivert #1B214D, sarı #FFE34F, kırık beyaz #F8F8F2). Dosyalar `public/brand/svg` (logo, logo-dark, icon, wordmark, symbol-*) ve `public/brand/favicon`.
+- `Brand` artık iki `<img>` (logo.svg / logo-dark.svg), tema CSS ile seçilir; yükseklik = size × 1.15, genişlik orana göre. `BrandMark` = icon.svg. Harfler path; font, yeniden çizim, esnetme, kırpma yok. Fosforlu kalem rengi artık logoyu boyamıyor (sabit marka rengi).
+- Favicon/ikonlar: `index.html` → brand favicon (svg, 32 png, ico, apple-touch 180); `public/favicon.svg`, `favicon.ico`, `icon-192.png`, `icon-512.png` yenileriyle değişti (manifest ve masaüstü bildirimi kendiliğinden yeni).
+- Filigran (`imageStore.drawWatermark`) koyu hapta sarı S (`symbol-yellow.svg`, bir kez yüklenir; yüklenemezse yalnız yazı). Fosforlu poster aynı S'yi SVG içine gömer (`?raw` import, visualTools).
+- `og.png` ve Rehber ekran görüntüleri (`public/rehber`) yeni logoyla yeniden üretildi.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
