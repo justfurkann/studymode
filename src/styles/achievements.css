@@ -556,3 +556,23 @@ html.is-glitching body::after {
   font-family: var(--font-display);
   font-size: 1.0625rem;
 }
+
+/* Admin: give / take back on the collection. */
+.ach-admin-toggle {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1.5px dashed var(--admin);
+  background: var(--surface);
+}
+
+.ach-admin-toggle svg {
+  vertical-align: -3px;
+  color: var(--admin);
+}
+
+.ach-admin-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+}

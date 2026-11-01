@@ -1837,6 +1837,20 @@ test.describe('roles, daily AI allowance and the admin page', () => {
       const body = route.request().postDataJSON() as { task: string; engine?: string; input: { texts?: string[] } }
       tasks.push(`${body.task}:${body.engine}`)
       if (body.task === 'tts') return route.fulfill({ json: { result: { audioBase64: 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=', mimeType: 'audio/wav' }, engine: 'plus' } })
+      if (body.task === 'podcast')
+        return route.fulfill({
+          json: {
+            result: {
+              title: 'Hücresel solunum · Sesli not',
+              summary: '',
+              lines: [
+                { speaker: 'Deniz', role: 'host', text: 'Bugün mitokondriyi konuşuyoruz.', highlight: 'Mitokondri' },
+                { speaker: 'Mert', role: 'student', text: 'ATP nerede üretiliyor?', highlight: '' },
+              ],
+            },
+            engine: 'plus',
+          },
+        })
       if (body.task === 'embed') {
         const texts = body.input.texts ?? []
         return route.fulfill({ json: { result: { embeddings: texts.map((t) => (/Mitokondri|organel/.test(t) ? vec(0.99, 0.1) : vec(0.1, 0.99))) }, engine: 'plus' } })
@@ -1849,7 +1863,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     await expect(page.getByRole('heading', { level: 1, name: /konuşsun/ })).toBeVisible()
     await expect(page.getByText('Kilitli · VIP hesaplarda açık')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Nasıl açılır?' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Stüdyo Sesi Üret/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Stüdyo sesiyle dinle/ })).toHaveCount(0)
     // VIP: open, with today's allowance, and the studio works from the Premium tab.
     role = 'vip'
     await page.reload()
@@ -1857,9 +1871,13 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     await expect(page.getByText('Bugün 2/30 hak · arama sayılmaz')).toBeVisible()
     await page.getByRole('button', { name: /Sesli not/ }).click()
     await expect(page.getByLabel('Hangi not?')).toBeVisible()
-    await page.getByRole('button', { name: /Stüdyo Sesi Üret/ }).click()
+    // Premium's main button: the AI writes the dialogue, then the two studio voices record it. One tap.
+    await expect(page.getByRole('button', { name: /Hızlı önizleme \(cihaz sesi\)/ })).toBeVisible()
+    await page.getByRole('button', { name: /Stüdyo sesiyle dinle/ }).click()
     await expect(page.getByRole('link', { name: /WAV İndir/ })).toBeVisible()
-    expect(tasks).toContain('tts:plus')
+    await expect(page.getByText('Bugün mitokondriyi konuşuyoruz.')).toBeVisible()
+    expect(tasks.indexOf('podcast:plus')).toBeGreaterThanOrEqual(0)
+    expect(tasks.indexOf('podcast:plus')).toBeLessThan(tasks.indexOf('tts:plus'))
 
     // Smart search: prepare the notes once, then a question without the note's words finds it.
     await page.getByRole('button', { name: /Akıllı arama/ }).click()
@@ -2124,7 +2142,8 @@ test('visual concept map, 2-speaker podcast, and semantic search across notes', 
   await expect(transcript.getByText('Mert').first()).toBeVisible()
   // The studio voice and AI script are Premium: a guest sees the lock and the way to it, not a failing button.
   await expect(page.getByText(/Gerçek insan sesiyle iki kişilik podcast/)).toBeVisible()
-  await expect(page.getByRole('button', { name: /Stüdyo Sesi Üret/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Stüdyo sesiyle dinle/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Hemen Dinle' })).toBeVisible()
   await expect(page.getByRole('link', { name: "Premium'u gör" })).toHaveAttribute('href', '/premium')
 
   const cardsTab = page.getByRole('tablist', { name: 'Çalışma adımları' }).getByRole('tab', { name: /Kartlar/ })

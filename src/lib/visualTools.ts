@@ -140,7 +140,7 @@ export function renderEducationalPosterDataUrl(
   title: string,
   subtitle: string,
   items: Array<{ key: string; meaning: string }>,
-  footer = 'studymode.fun · Görsel Çalışma Kartı',
+  footer = 'Görsel Çalışma Kartı',
 ): string {
   const safeTitle = title.trim() || 'Kavram Şeması'
   const safeSub = subtitle.trim() || 'Önemli Noktalar'
@@ -178,7 +178,16 @@ export function renderEducationalPosterDataUrl(
     <text x="52" y="96" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="800" fill="#ffffff">${escapeXml(safeTitle.slice(0, 48))}</text>
     <text x="748" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#ffe14d" text-anchor="end">${escapeXml(safeSub.slice(0, 40))}</text>
     ${rowBlocks}
-    <text x="400" y="${height - 30}" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="#52587a" text-anchor="middle">${escapeXml(footer)}</text>
+    <text x="52" y="${height - 32}" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="#52587a">${escapeXml(footer)}</text>
+    <g transform="translate(${800 - 36 - 152}, ${height - 56})">
+      <rect width="152" height="32" rx="16" fill="#11142a" fill-opacity="0.78" />
+      <g transform="translate(8, 5) scale(0.6875)">
+        <rect width="32" height="32" rx="8" fill="#1b2250" />
+        <path d="M7 22 22 7l3 3-15 15H7z" fill="#ffe14d" />
+        <path d="M7 25.4h18" stroke="#ffe14d" stroke-width="2.6" stroke-linecap="round" />
+      </g
+      ><text x="38" y="21" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" fill="#ffffff">studymode.fun</text>
+    </g>
   </svg>`
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`

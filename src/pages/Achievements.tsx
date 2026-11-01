@@ -1,8 +1,9 @@
-import { HelpCircle, Target, Trophy } from 'lucide-react'
+import { HelpCircle, RotateCcw, ShieldCheck, Target, Trophy } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { AchievementBadge } from '../components/Achievements'
-import { ACHIEVEMENTS, isHidden, RARITIES, studyProgress, useAchievements, type Achievement, type Rarity } from '../lib/achievements'
+import { ACHIEVEMENTS, isHidden, RARITIES, revoke, studyProgress, unlock, useAchievements, type Achievement, type Rarity } from '../lib/achievements'
+import { useQuota } from '../lib/account'
 import { readRecords } from '../lib/mola'
 import { useStore } from '../lib/store'
 import { localDayKey } from '../lib/streak'
@@ -17,8 +18,11 @@ type Filter = 'hepsi' | 'acik' | 'gizli'
 const RARITY_ORDER: Rarity[] = ['efsanevi', 'destansi', 'nadir', 'yaygin']
 
 export function Achievements() {
-  const { data } = useStore()
+  const { data, session } = useStore()
   const { unlocked } = useAchievements()
+  // Admins can give or take back any achievement on their own account, to test and to show.
+  const isAdmin = useQuota(session?.user.id ?? null)?.role === 'admin'
+  const [adminMode, setAdminMode] = useState(false)
   const [filter, setFilter] = useState<Filter>('hepsi')
   const { hash } = useLocation()
   const progress = useMemo(() => studyProgress(data, readRecords().rounds[localDayKey()] ?? 0), [data])
@@ -97,6 +101,16 @@ export function Achievements() {
         </div>
       </section>
 
+      {isAdmin && (
+        <label className="check-row ach-admin-toggle">
+          <input type="checkbox" checked={adminMode} onChange={(e) => setAdminMode(e.target.checked)} />
+          <span>
+            <ShieldCheck size={16} aria-hidden /> Yönetici modu
+            <span className="subtle"> · Başarımları kendi hesabında ver ya da geri al. Başka kullanıcıları etkilemez.</span>
+          </span>
+        </label>
+      )}
+
       <div className="segmented" role="group" aria-label="Başarım filtresi">
         {(
           [
@@ -113,7 +127,7 @@ export function Achievements() {
 
       <div className="ach-grid">
         {list.map((a) => (
-          <AchievementCard key={a.id} achievement={a} at={unlocked[a.id]} progress={goals[a.id as keyof typeof goals]} focused={hash === `#${a.id}`} />
+          <AchievementCard key={a.id} achievement={a} at={unlocked[a.id]} progress={goals[a.id as keyof typeof goals]} focused={hash === `#${a.id}`} admin={isAdmin && adminMode} />
         ))}
         {!list.length && <p className="subtle">Henüz açılan başarım yok. İlk kartını çevirmek iyi bir başlangıç.</p>}
       </div>
@@ -121,12 +135,23 @@ export function Achievements() {
   )
 }
 
-function AchievementCard({ achievement: a, at, progress, focused }: { achievement: Achievement; at?: string; progress?: { value: number; goal: number }; focused: boolean }) {
+function AchievementCard({ achievement: a, at, progress, focused, admin }: { achievement: Achievement; at?: string; progress?: { value: number; goal: number }; focused: boolean; admin: boolean }) {
   const open = !!at
-  const secret = isHidden(a) && !open
+  // In admin mode the real name shows, so the admin knows what they are giving.
+  const secret = isHidden(a) && !open && !admin
   return (
     <article id={`basarim-${a.id}`} className={`ach-card rarity-${a.rarity} ${open ? 'is-open' : 'is-locked'} ${focused ? 'is-focused' : ''}`}>
       <AchievementBadge achievement={a} locked={!open} size={60} />
+      {admin && (
+        <button
+          type="button"
+          className={`btn btn-sm ach-admin-btn ${open ? '' : 'btn-primary'}`}
+          onClick={() => (open ? revoke(a.id) : unlock(a.id, new Date(), { admin: true }))}
+          aria-label={`${a.name}: ${open ? 'geri al' : 'ver'}`}
+        >
+          {open ? <RotateCcw size={14} /> : <Trophy size={14} />} {open ? 'Geri al' : 'Ver'}
+        </button>
+      )}
       <div className="ach-card-body">
         <span className={`ach-rarity rarity-${a.rarity}`}>{RARITIES[a.rarity].label}</span>
         <h3>{secret ? '???' : a.name}</h3>

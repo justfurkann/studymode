@@ -1,0 +1,235 @@
+/* ============ Tanıtım turu ============ */
+
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+}
+
+/* The spotlight: a rounded window, everything around it dimmed. */
+.tour-spot {
+  position: fixed;
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 3px var(--hi),
+    0 0 0 9999px rgb(8 10 24 / 0.62);
+  transition: left 0.35s ease, top 0.35s ease, width 0.35s ease, height 0.35s ease;
+  pointer-events: none;
+  animation: tour-pulse 1.8s ease-in-out infinite;
+}
+
+.tour-dim {
+  position: fixed;
+  inset: 0;
+  background: rgb(8 10 24 / 0.62);
+}
+
+@keyframes tour-pulse {
+  50% {
+    box-shadow:
+      0 0 0 7px color-mix(in srgb, var(--hi) 55%, transparent),
+      0 0 0 9999px rgb(8 10 24 / 0.62);
+  }
+}
+
+.tour-bubble {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--card-line);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 4px 0 var(--card-drop), var(--shadow-lg);
+  animation: tour-in 0.3s cubic-bezier(0.2, 1.3, 0.4, 1);
+  outline: none;
+}
+
+@keyframes tour-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+}
+
+.tour-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tour-count {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--hi);
+  color: var(--on-hi);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.tour-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.tour-bubble p {
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.tour-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.tour-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  transition: width 0.2s ease;
+}
+
+.tour-dots span.is-on {
+  width: 20px;
+  background: var(--text);
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot,
+  .tour-bubble {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ============ Rehber ============ */
+
+.guide-flow {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.guide-flow li {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+}
+
+.guide-flow-n {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--hi);
+  color: var(--on-hi);
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+.guide-flow p,
+.guide-card p {
+  margin-top: 2px;
+  color: var(--text-2);
+  line-height: 1.55;
+  font-size: 0.9375rem;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.guide-card {
+  display: flex;
+  gap: 12px;
+}
+
+.guide-card h3 {
+  font-family: var(--font-display);
+}
+
+.guide-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--hi-soft);
+  color: var(--text);
+}
+
+.guide-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.guide-premium {
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: var(--prem-soft, var(--surface-2));
+  scroll-margin-top: 80px;
+}
+
+.guide-premium h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guide-premium h2 svg {
+  color: var(--prem-2, var(--accent));
+}
+
+.guide-card.is-premium .guide-icon {
+  background: linear-gradient(135deg, var(--prem-1, var(--hi)), var(--prem-2, var(--hi)));
+  color: var(--on-role);
+}
+
+.guide-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Premium hero: way to the Premium part of the guide. */
+.prem-guide-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  opacity: 0.9;
+}

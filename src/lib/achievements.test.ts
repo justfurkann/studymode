@@ -119,3 +119,52 @@ describe('achievements across devices', () => {
     expect(A.mergeRemote({ glitch: '2026-10-30T00:00:00Z', dedektif: '2026-11-01T00:00:00Z' })).toEqual([])
   })
 })
+
+describe('admin give and take back', () => {
+  beforeEach(() => {
+    store.clear()
+    A.resetAchievementsForTests()
+  })
+
+  it('takes back: leaves the collection and the toast queue; rules cannot bring it back, an admin can', () => {
+    A.unlock('gece-kusu')
+    expect(A.revoke('gece-kusu')).toBe(true)
+    expect(A.currentUnlocked()).not.toHaveProperty('gece-kusu')
+    expect(A.takeAnnouncement()).toBe(null)
+    // The clock rule fires again: stays locked.
+    expect(A.unlock('gece-kusu')).toBe(false)
+    expect(A.currentUnlocked()).not.toHaveProperty('gece-kusu')
+    // The admin gives it: back, and announced.
+    expect(A.unlock('gece-kusu', new Date(), { admin: true })).toBe(true)
+    expect(A.takeAnnouncement()).toBe('gece-kusu')
+    expect(A.currentHeld().ids).toEqual([])
+  })
+
+  it('Koleksiyoncu goes when fewer than 10 others remain, and comes back at 10', () => {
+    const others = A.ACHIEVEMENTS.map((a) => a.id).filter((id) => id !== 'koleksiyoncu').slice(0, 10)
+    others.forEach((id) => A.unlock(id))
+    expect(A.currentUnlocked()).toHaveProperty('koleksiyoncu')
+    A.revoke(others[0])
+    expect(A.currentUnlocked()).not.toHaveProperty('koleksiyoncu')
+    A.unlock(others[0], new Date(), { admin: true })
+    expect(A.currentUnlocked()).toHaveProperty('koleksiyoncu')
+  })
+
+  it('the account’s copy does not bring a taken-back one back; a newer held list from another device takes it away here', () => {
+    A.unlock('dedektif')
+    A.revoke('dedektif', new Date('2026-11-01T12:00:00Z'))
+    expect(A.mergeRemote({ dedektif: '2026-10-30T00:00:00Z' })).toEqual([])
+    expect(A.currentUnlocked()).not.toHaveProperty('dedektif')
+
+    A.resetAchievementsForTests()
+    A.unlock('glitch')
+    A.takeAnnouncement()
+    expect(A.applyRemoteHeld({ ids: ['glitch'], at: '2026-11-01T12:00:00Z' })).toBe(true)
+    expect(A.currentUnlocked()).not.toHaveProperty('glitch')
+    // An older list is ignored.
+    expect(A.applyRemoteHeld({ ids: [], at: '2026-10-01T00:00:00Z' })).toBe(false)
+    expect(A.currentHeld().ids).toEqual(['glitch'])
+    expect(A.parseHeld({ ids: ['glitch', 'yok'], at: 'x' })).toEqual({ ids: ['glitch'], at: 'x' })
+    expect(A.parseHeld('bozuk')).toBe(null)
+  })
+})

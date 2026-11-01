@@ -33,6 +33,9 @@ import {
   currentUnlocked,
   mergeRemote,
   parseUnlocked,
+  applyRemoteHeld,
+  currentHeld,
+  parseHeld,
   reachedGoals,
   RARITIES,
   recordPen,
@@ -50,6 +53,7 @@ import { readRecords } from '../lib/mola'
 import { useSettings } from '../lib/settings'
 import { playSound } from '../lib/sound'
 import { useStore } from '../lib/store'
+import { useTourActive } from '../lib/tour'
 import { pushIfNewer, useSyncStudentResult } from '../lib/studentProfile'
 import { supabase } from '../lib/supabase'
 import { localDayKey } from '../lib/streak'
@@ -164,20 +168,30 @@ export function AchievementWatcher() {
     pushIfNewer(!!session, mine, remote)
   }, [session, mine, remote])
 
-  // Achievements follow the account too (user_metadata.achievements, no table needed): what the
-  // account has comes here quietly, what only this browser has goes up.
+  // Achievements follow the account too (user_metadata, no table needed): what the account has comes
+  // here quietly, what only this browser has goes up. Ones an admin took back are kept in a dated
+  // "held" list next to them, so neither this device nor another brings them back; when the account
+  // still lists a taken-back one, the account's list is overwritten with the current one.
   const pushed = useRef('')
-  const remoteAchievements = (session?.user.user_metadata as Record<string, unknown> | undefined)?.achievements
+  const meta = session?.user.user_metadata as Record<string, unknown> | undefined
+  const remoteAchievements = meta?.achievements
+  const remoteHeld = meta?.achievements_held
   useEffect(() => {
     if (!session || !supabase) return
+    const accountHeld = parseHeld(remoteHeld)
+    applyRemoteHeld(accountHeld)
     const fromAccount = parseUnlocked(JSON.stringify(remoteAchievements ?? {}))
     const onlyHere = mergeRemote(fromAccount)
-    if (!onlyHere.length) return
-    const payload = JSON.stringify(currentUnlocked())
+    const local = currentUnlocked()
+    const held = currentHeld()
+    const takenBackHere = Object.keys(fromAccount).some((id) => !local[id as keyof typeof local])
+    const heldNewer = held.at > (accountHeld?.at ?? '')
+    if (!onlyHere.length && !takenBackHere && !heldNewer) return
+    const payload = JSON.stringify({ local, held })
     if (payload === pushed.current) return
     pushed.current = payload
-    void supabase.auth.updateUser({ data: { achievements: currentUnlocked() } }).catch(() => undefined)
-  }, [session, remoteAchievements, unlocked])
+    void supabase.auth.updateUser({ data: { achievements: local, achievements_held: held } }).catch(() => undefined)
+  }, [session, remoteAchievements, remoteHeld, unlocked])
 
   // The old cheat code.
   useEffect(() => {
@@ -202,13 +216,14 @@ function AchievementToasts({ pending }: { pending: number }) {
   const [current, setCurrent] = useState<AchievementId | null>(null)
   const navigate = useNavigate()
 
+  const touring = useTourActive()
   useEffect(() => {
-    if (current || !pending) return
+    if (current || !pending || touring) return
     const next = takeAnnouncement()
     if (!next) return
     setCurrent(next)
     playSound('done')
-  }, [pending, current])
+  }, [pending, current, touring])
 
   useEffect(() => {
     if (!current) return

@@ -1,4 +1,5 @@
-import { BookOpen, Brain, ChevronDown, ClipboardList, Gem, House, Info, MoreHorizontal, Plus, Settings, Trophy } from 'lucide-react'
+import { BookOpen, Brain, ChevronDown, ClipboardList, Gem, House, Info, LifeBuoy, MoreHorizontal, Plus, Settings, Trophy } from 'lucide-react'
+import { Tour } from './Tour'
 import { StudentTypeLink } from './StudentTypeCard'
 import { triggerGlitch } from './Achievements'
 import { ACHIEVEMENTS, unlock, useAchievements } from '../lib/achievements'
@@ -23,7 +24,7 @@ function initials(name: string): string {
 }
 
 const MORE_KEY = 'studymode.navMore'
-const MORE_ROUTES = ['/basarimlar', '/ogrenci-tipi']
+const MORE_ROUTES = ['/basarimlar', '/ogrenci-tipi', '/rehber']
 
 // The reset link should open the new-password screen once, not on every later visit to the layout.
 let recoveryHandled = false
@@ -98,10 +99,10 @@ export function Layout() {
   }
 
   const links = [
-    { to: '/', label: 'Bugün', icon: House, end: true },
+    { to: '/', label: 'Bugün', icon: House, end: true, tour: 'bugun' },
     { to: '/dersler', label: 'Dersler', icon: BookOpen },
-    { to: '/tekrar', label: 'Tekrar', icon: Brain, badge: due },
-    { to: '/sinav', label: 'Sınavlar', icon: ClipboardList },
+    { to: '/tekrar', label: 'Tekrar', icon: Brain, badge: due, tour: 'tekrar' },
+    { to: '/sinav', label: 'Sınavlar', icon: ClipboardList, tour: 'sinavlar' },
     { to: '/ayarlar', label: 'Ayarlar', icon: Settings },
   ]
 
@@ -114,17 +115,17 @@ export function Layout() {
           </Link>
           <RoleBadge />
         </div>
-        <NavLink to="/not-ekle" className="btn btn-primary" style={{ marginBottom: 16 }}>
+        <NavLink to="/not-ekle" className="btn btn-primary" style={{ marginBottom: 16 }} data-tour="ekle">
           <Plus size={18} /> Not ekle
         </NavLink>
-        {links.map(({ to, label, icon: Icon, end, badge }) => (
-          <NavLink key={to} to={to} end={end} className={navClass('nav-link', to)}>
+        {links.map(({ to, label, icon: Icon, end, badge, tour }) => (
+          <NavLink key={to} to={to} end={end} className={navClass('nav-link', to)} data-tour={tour}>
             <Icon size={18} />
             {label}
             {!!badge && <span className="nav-badge">{badge}</span>}
           </NavLink>
         ))}
-        <NavLink to="/premium" className={({ isActive }) => `nav-link prem-nav${isActive ? ' active' : ''}`}>
+        <NavLink to="/premium" className={({ isActive }) => `nav-link prem-nav${isActive ? ' active' : ''}`} data-tour="premium">
           <Gem size={18} />
           Premium
           <span className="prem-nav-shine" aria-hidden />
@@ -135,6 +136,7 @@ export function Layout() {
           aria-expanded={showMore}
           aria-controls="nav-more"
           onClick={toggleMore}
+          data-tour="daha"
         >
           <MoreHorizontal size={18} />
           Daha fazla
@@ -150,6 +152,10 @@ export function Layout() {
               </span>
             </NavLink>
             <StudentTypeLink className="side-quiz is-compact" />
+            <NavLink to="/rehber" className={navClass('nav-link', '/rehber')}>
+              <LifeBuoy size={18} />
+              Rehber
+            </NavLink>
             <NavLink to="/hakkinda" className="nav-link">
               <Info size={18} />
               Hakkında
@@ -178,17 +184,17 @@ export function Layout() {
           <AmbientPlayer inHeader />
           {/* Signed-out phones already carry settings and "Giriş yap" here; Premium needs an account anyway. */}
           {session && (
-            <NavLink to="/premium" className="prem-top" aria-label="Premium">
+            <NavLink to="/premium" className="prem-top" aria-label="Premium" data-tour="premium">
               <Gem size={18} aria-hidden />
             </NavLink>
           )}
           {!session && (
-            <NavLink to="/ayarlar" className="btn btn-ghost btn-icon" aria-label="Ayarlar">
+            <NavLink to="/ayarlar" className="btn btn-ghost btn-icon" aria-label="Ayarlar" data-tour="daha">
               <Settings size={20} />
             </NavLink>
           )}
           {session ? (
-            <Link to="/ayarlar" className="mobile-avatar" aria-label={`Hesap: ${name}`} title={session.user.email}>
+            <Link to="/ayarlar" className="mobile-avatar" aria-label={`Hesap: ${name}`} title={session.user.email} data-tour="daha">
               {initials(name)}
             </Link>
           ) : pathname === '/giris' ? null : (
@@ -248,9 +254,10 @@ export function Layout() {
       <FocusEngine />
       <Atmosphere />
       <VipWelcome />
+      <Tour />
 
       <nav className="mobile-bar" aria-label="Alt menü">
-        <NavLink to="/" end>
+        <NavLink to="/" end data-tour="bugun">
           <House size={20} />
           <span>Bugün</span>
         </NavLink>
@@ -258,18 +265,18 @@ export function Layout() {
           <BookOpen size={20} />
           <span>Dersler</span>
         </NavLink>
-        <NavLink to="/not-ekle" className="add" aria-label="Not ekle">
+        <NavLink to="/not-ekle" className="add" aria-label="Not ekle" data-tour="ekle">
           <span>
             <Plus size={20} />
           </span>
           <span>Ekle</span>
         </NavLink>
-        <NavLink to="/tekrar">
+        <NavLink to="/tekrar" data-tour="tekrar">
           <Brain size={20} />
           <span>Tekrar</span>
           {!!due && <span className="dot">{due > 99 ? '99+' : due}</span>}
         </NavLink>
-        <NavLink to="/sinav" className={navClass('', '/sinav')}>
+        <NavLink to="/sinav" className={navClass('', '/sinav')} data-tour="sinavlar">
           <ClipboardList size={20} />
           <span>Sınavlar</span>
         </NavLink>

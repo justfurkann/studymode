@@ -1,4 +1,5 @@
 import { Crown, ShieldCheck, Sparkles } from 'lucide-react'
+import { useTourActive } from '../lib/tour'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { quotaText, useQuota } from '../lib/account'
@@ -77,6 +78,7 @@ export function VipWelcome() {
   const userId = session?.user.id ?? null
   const quota = useQuota(userId)
   const [show, setShow] = useState(false)
+  const touring = useTourActive()
 
   useEffect(() => {
     if (quota?.role !== 'vip' || !userId) return
@@ -90,6 +92,7 @@ export function VipWelcome() {
     }
   }, [quota?.role, userId])
 
-  if (!show || !quota) return null
+  // The first-visit tour goes first; the welcome follows when it ends.
+  if (!show || !quota || touring) return null
   return <VipDialog title="Artık VIP’sin!" used={quota.used} text={quotaText(quota)} welcome onClose={() => setShow(false)} />
 }

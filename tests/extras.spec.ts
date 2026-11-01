@@ -90,7 +90,7 @@ test('study pictures: tap to enlarge, full size, download; kept after a reload',
   await expect(viewer.getByRole('button', { name: 'Ekrana sığdır' })).toBeVisible()
   const download = page.waitForEvent('download')
   await viewer.getByRole('link', { name: 'İndir' }).click()
-  expect((await download).suggestedFilename()).toMatch(/\.png$/)
+  expect((await download).suggestedFilename()).toMatch(/\.svg$/)
   await page.keyboard.press('Escape')
   await expect(viewer).toBeHidden()
   await page.reload()
@@ -388,4 +388,187 @@ test('Öğrenci tipi ve başarımlar hesaba yazılır; başka cihazdaki sonuç v
   }
   await expect(page.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
   await expect.poll(() => JSON.stringify(updates)).toContain('"type":"gecekusu"')
+})
+
+/** Signed in as `role`, with the account's metadata kept by the fake server (PUT /user merges into it). */
+async function signedInAs(page: Page, role: 'admin' | 'normal' | 'vip', metadata: Record<string, unknown> = {}, tables: Record<string, unknown[]> = {}) {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  const user = { id: `aaaaaaaa-0000-0000-0000-0000000000${role === 'admin' ? '10' : '11'}`, aud: 'authenticated', role: 'authenticated', email: `${role}@example.com`, app_metadata: {}, created_at: '2026-10-01T00:00:00Z', user_metadata: { first_name: 'Furkan', ...metadata } as Record<string, unknown> }
+  await page.addInitScript((u) => {
+    localStorage.setItem('sb-jpcatyopkpnudgdyncas-auth-token', JSON.stringify({ access_token: 'fake', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user: u }))
+    localStorage.setItem('studymode.vipWelcomed.' + u.id, '1')
+  }, user)
+  const updates: Array<Record<string, unknown>> = []
+  await page.route(`${SUPABASE}/auth/v1/**`, (route) => {
+    if (route.request().method() === 'PUT') {
+      const data = (route.request().postDataJSON() as { data?: Record<string, unknown> }).data ?? {}
+      updates.push(data)
+      user.user_metadata = { ...user.user_metadata, ...data }
+    }
+    return route.fulfill({ json: user })
+  })
+  await page.route(`${SUPABASE}/rest/v1/**`, (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/rpc/ai_quota')) return route.fulfill({ json: { role, used: 0, limit: role === 'admin' ? null : 40, allowed: true } })
+    if (path.endsWith('/rpc/plus_quota')) return route.fulfill({ json: { role, eligible: role !== 'normal', used: 2, limit: 30, allowed: true } })
+    if (path.includes('/rpc/')) return route.fulfill({ status: 404, json: { code: 'PGRST202' } })
+    const table = path.split('/').pop()!
+    if (route.request().method() === 'GET') return route.fulfill({ json: tables[table] ?? [] })
+    return route.fulfill({ status: 201, json: [] })
+  })
+  return { user, updates }
+}
+
+test('Yönetici: başarımı kendi hesabında verir ve geri alır; yenileyince durum korunur', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  const { user, updates } = await signedInAs(page, 'admin')
+  await page.goto('/basarimlar')
+  await page.getByLabel(/Yönetici modu/).check()
+  const card = page.locator('#basarim-dedektif')
+  // Admin mode shows the real name of a hidden one.
+  await expect(card.getByRole('heading', { name: 'Dedektif' })).toBeVisible()
+  await card.getByRole('button', { name: 'Dedektif: ver' }).click()
+  await expect(card).toHaveClass(/is-open/)
+  await expect.poll(() => JSON.stringify(user.user_metadata.achievements ?? {})).toContain('dedektif')
+
+  await page.reload()
+  await expect(page.locator('#basarim-dedektif')).toHaveClass(/is-open/)
+
+  await page.getByLabel(/Yönetici modu/).check()
+  await page.locator('#basarim-dedektif').getByRole('button', { name: 'Dedektif: geri al' }).click()
+  await expect(page.locator('#basarim-dedektif')).toHaveClass(/is-locked/)
+  // The account's list is overwritten, not merged: it no longer lists it, and remembers it was taken back.
+  await expect.poll(() => JSON.stringify(user.user_metadata.achievements ?? {})).not.toContain('dedektif')
+  expect(JSON.stringify(user.user_metadata.achievements_held)).toContain('dedektif')
+  expect(user.user_metadata.first_name).toBe('Furkan')
+
+  // A fresh device (empty browser storage) signs in: still taken back.
+  await page.evaluate(() => {
+    localStorage.removeItem('studymode.achievements.v1')
+    localStorage.removeItem('studymode.achievementData.v1')
+  })
+  await page.reload()
+  await expect(page.locator('#basarim-dedektif')).toHaveClass(/is-locked/)
+  expect(updates.length).toBeGreaterThan(1)
+})
+
+test('Yönetici: normal kullanıcı yönetici modunu görmez', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await signedInAs(page, 'normal')
+  await page.goto('/basarimlar')
+  await expect(page.getByRole('heading', { level: 1, name: 'Başarımlar' })).toBeVisible()
+  await expect(page.getByLabel(/Yönetici modu/)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /: ver$/ })).toHaveCount(0)
+})
+
+test('Yapay zekâ görseline studymode.fun filigranı basılır; poster de etiketli ve doğru uzantıyla iner', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  const T = '2026-10-01T00:00:00Z'
+  await signedInAs(page, 'admin', {}, {
+    courses: [{ id: 'c1', name: 'Biyoloji', color: '#4f46e5', exam_date: null, created_at: T, updated_at: T }],
+    notes: [{ id: 'n1', course_id: 'c1', title: 'Hücre', content: 'Mitokondri hücrenin enerji santralidir. Ribozom protein üretir.', summary: { overview: 'Hücre', points: ['Mitokondri enerji üretir.'], keyTerms: [{ term: 'Mitokondri', definition: 'Enerji üreten organel.' }] }, questions: [], practice: [], generator: 'ai', created_at: T, updated_at: T }],
+  })
+  // A plain light-blue 800×450 picture stands in for the model's answer.
+  const png = await page.evaluate(() => {
+    const c = document.createElement('canvas')
+    c.width = 800
+    c.height = 450
+    const g = c.getContext('2d')!
+    g.fillStyle = '#cfe8ff'
+    g.fillRect(0, 0, 800, 450)
+    return c.toDataURL('image/png').split(',')[1]
+  })
+  await page.route('**/api/generate', (route) => {
+    const body = route.request().postDataJSON() as { task: string }
+    if (body.task === 'image') return route.fulfill({ json: { result: { imageBase64: png, mimeType: 'image/png', caption: 'Mitokondri şeması' }, engine: 'plus' } })
+    return route.fulfill({ status: 404, json: { error: 'x' } })
+  })
+  await page.goto('/premium?arac=gorsel')
+  await page.getByRole('button', { name: /AI Görsel Üret/ }).click()
+  const img = page.locator('.visual-card-preview img').first()
+  await expect(img).toBeVisible()
+  const info = await img.evaluate(async (el: HTMLImageElement) => {
+    await el.decode()
+    const c = document.createElement('canvas')
+    c.width = el.naturalWidth
+    c.height = el.naturalHeight
+    const g = c.getContext('2d')!
+    g.drawImage(el, 0, 0)
+    const corner = g.getImageData(el.naturalWidth - 40, el.naturalHeight - 22, 1, 1).data
+    const middle = g.getImageData(400, 200, 1, 1).data
+    return { src: el.src.slice(0, 23), corner: [...corner].slice(0, 3), middle: [...middle].slice(0, 3) }
+  })
+  expect(info.src).toBe('data:image/jpeg;base64,')
+  // The corner sits on the dark label; the middle is still the picture.
+  expect(Math.max(...info.corner)).toBeLessThan(140)
+  expect(Math.min(...info.middle)).toBeGreaterThan(180)
+
+  // The poster carries the label inside the SVG and downloads as .svg.
+  await page.getByRole('button', { name: /Poster Oluştur/ }).click()
+  const poster = page.locator('.visual-card-preview img').first()
+  expect(decodeURIComponent((await poster.getAttribute('src')) ?? '')).toContain('studymode.fun')
+})
+
+test('Tanıtım turu: ilk girişte bir kez, atlanabilir, Ayarlar’dan yeniden; açıkken başarım bildirimi bekler', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await page.addInitScript(() => localStorage.setItem('studymode.tour.force', '1'))
+  await startDemo(page)
+  const bubble = page.getByRole('dialog', { name: /Tanıtım/ })
+  await expect(bubble).toContainText('Not ekle')
+  await expect(bubble).toContainText('1/5')
+  // An achievement found during the tour waits.
+  for (const key of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown']) await page.keyboard.press(key)
+  await page.getByRole('button', { name: /İleri/ }).click()
+  await expect(bubble).toContainText('Bugün')
+  await page.getByRole('button', { name: 'Önceki' }).click()
+  await expect(bubble).toContainText('Not ekle')
+  for (let i = 0; i < 4; i++) await page.getByRole('button', { name: /İleri/ }).click()
+  await expect(bubble).toContainText('Daha fazla')
+  await page.getByRole('button', { name: 'Başla' }).click()
+  await expect(bubble).toHaveCount(0)
+
+  // Seen: not again on reload.
+  await page.reload()
+  await page.waitForTimeout(2000)
+  await expect(page.getByRole('dialog', { name: /Tanıtım/ })).toHaveCount(0)
+
+  // Restart from Settings; Esc skips.
+  await page.goto('/ayarlar')
+  await page.getByRole('button', { name: 'Turu tekrar başlat' }).click()
+  await expect(page.getByRole('dialog', { name: /Tanıtım/ })).toContainText('1/5')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: /Tanıtım/ })).toHaveCount(0)
+})
+
+test('Tanıtım turu: bildirim tur bitene kadar bekler', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  await page.goto('/ayarlar')
+  await page.getByRole('button', { name: 'Turu tekrar başlat' }).click()
+  await expect(page.getByRole('dialog', { name: /Tanıtım/ })).toBeVisible()
+  await page.locator('.sidebar .brand-link').evaluate((el: HTMLElement) => {
+    for (let i = 0; i < 7; i++) el.click()
+  })
+  await page.waitForTimeout(400)
+  await expect(page.locator('.ach-toast')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Atla' }).click()
+  await expect(page.locator('.ach-toast')).toContainText('Glitch Hunter')
+})
+
+test('Rehber: Daha fazla menüsünden ve Ayarlar’dan açılır; Premium bölümü ve Premium sayfasından bağlantı', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  await page.getByRole('button', { name: 'Daha fazla' }).click()
+  await page.getByRole('link', { name: 'Rehber' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Rehber' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Nasıl ilerlemeli?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kartlar ve aralıklı tekrar' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Premium’u en iyi nasıl kullanırsın/ })).toBeVisible()
+  await expect(page.locator('#premium')).toContainText('Akıllı arama hakkından düşmez')
+  await page.goto('/premium')
+  await page.getByRole('link', { name: /Premium’u en iyi nasıl kullanırsın/ }).click()
+  await expect(page).toHaveURL(/\/rehber#premium$/)
+  await page.goto('/ayarlar')
+  await page.locator('main').getByRole('link', { name: 'Rehber' }).click()
+  await expect(page).toHaveURL(/\/rehber$/)
 })

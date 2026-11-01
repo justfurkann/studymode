@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (1 Kasım 2026, Aşama 14-19 ve Premium birlikte, `main` üzerinde): 236 birim testi, 87 tarayıcı testi.
+Son yeşil durum (1 Kasım 2026, Aşama 21 sonrası, `main` üzerinde): 239 birim testi, 93 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -107,7 +107,7 @@ alter table public.study_days add column if not exists actions integer not null 
 
 ## 7. Aşamalar ve durum
 
-**Şu an açık bir hedef yok.** Aşama 1-19 bitti, hepsi `main`de. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
+**Şu an açık bir hedef yok.** Aşama 1-21 bitti, hepsi `main`de. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
 
 **Aşama 1 — Doğrulama ve hatalar: ✅ TAMAM (#18)**
 - Uzun not: bölüm başına bir yeniden deneme, kısmi sonuç + uyarı, not eklemede bölüm ilerlemesi.
@@ -553,6 +553,29 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Başarımlar halkası:** sayı ortada (önce üst kenara yapışıyordu), kupa + "/20 açıldı"; özet kartında **"Sıradaki hedef"** (açılmamış görünür hedeflerden en yakını, ilerleme çubuğuyla).
 - **Öğrenci tipi testi Onedio tarzında:** 10 soru gündelik hayattan (hafta sonu, alarm, dizi, ana ekran, kafe, arkadaş grubu, sınav sabahı, oyun, yeni yıl, "sonraki bölüm"). Her şıkkın eksen ağırlıkları eskisiyle **birebir aynı** (denge testleri değişmeden geçiyor). Şıklar simgeli 2×2 kartlar; seçince bir satırlık tepki (`react`). Sonuç "Bu tam sen" (tip başına 3 cümle, `you`) ile açılır; eksen çubukları ve tüm tiplere uyum "Neden bu sonuç?" altında.
 - **Canlı kontroller (keen-albattani'nin istedikleri):** #49-#55 yayınları READY; son 24 saatte yalnızca 2 Free+ zaman aşımı (ücretsize düştü, sorun yok). og.png ve /ogrenci-tipi açılıyor. Test sonucu `user_metadata.student_type` ve `achievements` olarak yazılıyor, ad-soyad korunuyor (veritabanında doğrulandı). Ayrıntılı özet kısa notta ücretsiz 2,9 sn / Free+ 3,9 sn (DETAIL_CHUNK_CHARS değişmedi). AI görsel 4,8 sn, dokununca büyüyor, yenileyince duruyor.
+
+### Aşama 21 — Yönetici başarım kontrolü, görsel filigranı, Premium hissi, tanıtım turu ve Rehber (1 Kasım 2026, `keen-albattani`)
+
+- **Yönetici: başarımı ver / geri al.** `/basarimlar` sayfasında yalnızca `useQuota(...).role === 'admin'` iken "Yönetici modu" anahtarı. Açıkken her kartta "Ver" / "Geri al", gizlilerin gerçek adı görünür. Yalnızca yöneticinin kendi hesabını etkiler.
+  - `revoke(id)` (`achievements.ts`): başarımı koleksiyondan ve bildirim sırasından çıkarır, **tutulan** (`held`) listesine koyar. Diğer başarımlar 10'un altına düşerse Koleksiyoncu da gider.
+  - Tutulanı kurallar (saat, veri) yeniden açamaz; yalnızca `unlock(id, now, { admin: true })` açar.
+  - Eşitleme: hesapta `user_metadata.achievements` yanında `achievements_held: { ids, at }` var. Daha yeni olan liste geçerli. Hesap, geri alınmış bir başarımı hâlâ listeliyorsa `achievements` **üzerine yazılır** (birleştirilmez). Başka cihaz da geri alınanı siler, geri yükleyemez.
+- **Filigran.** `imageStore.ts` → `finishAiImage` (= `compressImage(..., watermark: true)`): sağ alt köşede yarı saydam koyu hap içinde logo ve beyaz "studymode.fun", boyutu görsele göre ölçekli. Kapsam: VisualTab (Premium Görsel aynı bileşeni kullanıyor) ve MemoryTabs. Fosforlu poster SVG; etiket SVG'nin içine aynı görünümde çiziliyor.
+  - Düzeltme: poster SVG olduğu hâlde ".png" adıyla iniyordu → `imageExtension()`.
+- **Premium hissi.** Podcast'te VIP için ana düğme "Stüdyo sesiyle dinle" (`.prem-btn`, `Gem`). Senaryo yapay zekâyla yazılmamışsa önce `generatePodcastScript`, sonra `synthesizePodcastTts`, ilerleme "Senaryo yazılıyor… / Sesler kaydediliyor (1/3)…", bitince çalar. "Hızlı önizleme (cihaz sesi)" ikincil; başlıkta küçük "Gemini 3.8" rozeti. Premium temalı düğmeler: "Diyaloğu AI ile yenile", "AI Görsel Üret", "Akıllı aramayı aç" (CourseDetail). Premium olmayanda değişiklik yok ("Hemen Dinle" + `PremiumLock`).
+- **Tanıtım turu** (`components/Tour.tsx`, `lib/tour.ts`):
+  - 5-6 adım: Not ekle, Bugün, Tekrar, Sınavlar, Premium (yalnızca açıksa), Daha fazla (telefonda "Hesap ve ayarlar"). Işık halkası ve balon; Geri / İleri / Atla, ← → Esc.
+  - Hedefler `data-tour="…"` (yan menü, telefonda alt ve üst bar). Bir kez görülünce `studymode.tour.v1`.
+  - Ayarlar ve Rehber'de "Turu tekrar başlat" (`requestTour()`).
+  - Açık bir pencere ya da bildirim varken başlamaz. Tur açıkken başarım bildirimi ve VIP karşılaması bekler.
+  - `prefers-reduced-motion`'da animasyon yok.
+  - **Otomatik testlerde (`navigator.webdriver`) kendiliğinden başlamaz**; test açmak isterse `studymode.tour.force` koyar.
+- **Rehber** (`/rehber`, `pages/Guide.tsx`):
+  - "Nasıl ilerlemeli?" (5 adım) ve 16 özellik kartı.
+  - VIP bölümü `#premium`: sesli not ne zaman, akıllı arama nasıl sorulur, görseli karta çevirmek, günlük 30 hak ve aramanın haktan düşmediği.
+  - Bağlantılar: "Daha fazla" menüsü, Ayarlar, Premium sayfası ("Premium'u en iyi nasıl kullanırsın?").
+- Testler: 239 birim, 93 tarayıcı. Yeniler: yönetici ver/geri al ve yeni cihaz, normal kullanıcı görmez, filigran piksel kontrolü, tur, bildirimin turu beklemesi, Rehber. Premium testi yeni tek düğme akışına güncellendi (`podcast` → `tts` sırası).
+- **SQL yok, Vercel/Supabase ayarı yok.**
 
 ## Tasarım dili ("Fosforlu")
 
