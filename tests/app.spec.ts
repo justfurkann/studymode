@@ -138,6 +138,20 @@ test('PDF upload fills the note text', async ({ page }) => {
   await expect(page.getByLabel('Not başlığı')).toHaveValue('hucre notlari')
 })
 
+test('a deploy while the add page is open does not stop a PDF from being added', async ({ page }) => {
+  await createCourse(page, 'Biyoloji 103')
+  const loaded: string[] = []
+  page.on('response', (r) => /pdfjs-dist|pdf\.worker/.test(r.url()) && loaded.push(r.url()))
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  // The page fetches the PDF reader by itself, before any file is chosen.
+  // (The worker file itself, not the small module that only holds its address.)
+  await expect.poll(() => loaded.some((u) => /pdf\.worker/.test(u) && !/[?&]url\b/.test(u)), { timeout: 15_000 }).toBe(true)
+  // Then a deploy removes this version's files.
+  await page.route(/pdfjs-dist|pdf\.worker/, (route) => route.abort())
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'hucre.pdf', mimeType: 'application/pdf', buffer: makePdf(biologyNotes.split('\n').filter(Boolean)) })
+  await expect(page.getByLabel('Ders notun')).toHaveValue(/Mitokondri/)
+})
+
 test('AI mode: key check and generation through the Claude API', async ({ page }) => {
   const errors = watchErrors(page)
   const requests: Array<{ method: string; url: string; body: unknown; headers: Record<string, string> }> = []
@@ -1726,6 +1740,21 @@ test('after a new deploy, a missing app file explains itself instead of a raw er
   await expect(page.getByText(/Failed to fetch dynamically imported module/)).toHaveCount(0)
   await expect(page.getByRole('status').filter({ hasText: 'Uygulamanın yeni sürümü hazır.' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Yenile' })).toBeVisible()
+  // On a phone it sits low, above the bottom bar, not over the logo and the top buttons.
+  await page.setViewportSize({ width: 375, height: 812 })
+  const bar = (await page.locator('.update-bar').boundingBox())!
+  const nav = (await page.locator('.mobile-bar').boundingBox())!
+  expect(bar.y).toBeGreaterThan(500)
+  expect(bar.y + bar.height).toBeLessThanOrEqual(nav.y + 1)
+  expect(bar.x).toBeGreaterThanOrEqual(0)
+  expect(bar.x + bar.width).toBeLessThanOrEqual(375)
+  // "Yenile" loads past the cache (a one-off mark in the address), and the mark is cleaned up.
+  await page.unroute('**/src/lib/ai/index.ts*')
+  const navigated = page.waitForURL(/surum=/)
+  await page.getByRole('button', { name: 'Yenile' }).click()
+  await navigated
+  await expect(page).toHaveURL(/\/ayarlar$/)
+  await expect(page.locator('.update-bar')).toHaveCount(0)
 })
 
 test('each service shows its full list of models, plus any other model by name', async ({ page }) => {

@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (1 Kasım 2026, Aşama 34 sonrası, `main` üzerinde): 271 birim testi, 114 tarayıcı testi.
+Son yeşil durum (1 Kasım 2026, Aşama 35 sonrası, `main` üzerinde): 271 birim testi, 115 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -716,6 +716,18 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Kopma:** `api/generate.ts` Free+ ve ücretsiz yola ayrı ayrı tam süre veriyordu. VIP/Premium uzun bir notta Free+ (22 sn'de kesilip öbür modelde baştan, ~50 sn) yavaş kalınca ücretsiz yol da kendi 50 sn'siyle başlıyordu; tarayıcı 55. saniyede vazgeçiyordu. Artık isteğin tek bir süre bütçesi var (52 sn, yavaş işlerde 57 sn). Free+ bunun 14 sn dışındakini tek uzun denemede kullanır; kalan süreyle ücretsiz yol dener. Süre yetmezse `too_slow` döner ve öğrenci "zamanında bitiremedi, tekrar dene / notu böl" mesajını görür. Tarayıcı artık her işte 65 sn bekler (sunucu sınırı 60 sn); yani cevabı ya da hatayı hep önce sunucu verir. `handleGenerate`'e test için `now` parametresi eklendi; iki yeni birim testi var.
 - **Şıklar:** Demo notta, işlemci 6 kat kısılmışken tek dokunuşta işaretleniyor (~0,1 sn); gerçek telefonda tekrar üretilemedi. En olası sebep iOS'un çift dokunuşla yakınlaştırmayı beklerken hızlı dokunuşu yutması. Düğme, bağlantı, sekme ve radyo öğelerine `touch-action: manipulation` eklendi (iki parmakla yakınlaştırma çalışmaya devam ediyor). **Canlıda iPhone'da doğrulanmalı.**
 - **Henüz yapılmadı:** Free+ uzun notu 38 sn içinde bitiremezse ücretsiz modelin cevabı gelir; bu durum sık olursa Free+ için not parçası küçültülebilir (`STUDY_CHUNK_CHARS` 20000).
+
+### Aşama 35 — Yayından sonra dosya eklenemiyordu (1 Kasım 2026, `keen-albattani`)
+
+- **Belirti:** Bir arkadaşın iPhone'unda dosya seçilince eklenmiyor, üstte "Uygulamanın yeni sürümü hazır" çıkıyordu; Yenile ve siteye girip çıkmak düzeltmedi.
+- **Sebep:** Her yayında parça dosyaların adı değişir, eskileri silinir. PDF okuyucu, Office okuyucu ve yapay zekâ kodu ihtiyaç anında indirilir; yayından önce açılmış sayfa eski adları ister ve bulamaz. Safari yenilemede eski sayfayı önbellekten verebiliyor.
+- **Düzeltme:**
+  - `vercel.json`: sayfalar `Cache-Control: no-cache` ile sunulur.
+  - `reloadFresh()` (`src/lib/version.ts`): Yenile düğmesi, sayfa değişince yapılan otomatik yenileme ve hata ekranı adrese tek seferlik `?surum=` ekleyip önbelleği atlar; başlangıçta bu işaret adresten silinir.
+  - Not ekle sayfası açılınca (`preloadNoteReaders`) PDF ve Office okuyucuyu ve yapay zekâ kodunu arka planda indirir. PDF işçisi bir kez başlatılıp her dosyada yeniden kullanılır (`GlobalWorkerOptions.workerPort`).
+  - Telefonda "yeni sürüm" bildirimi alt menünün üstüne taşındı; logo ve üst düğmelerin üstüne binmiyor.
+- **Testler:** Sayfa açıkken okuyucu dosyaları silinse de PDF eklenir. Yenile `?surum=` ile yükler ve işaret temizlenir. Telefonda bildirim altta durur.
+- **Canlıda doğrulanacak:** Arkadaşın telefonunda bu sürüm yayına girdikten sonra Safari sekmesini tamamen kapatıp siteyi yeniden açması yeterli.
 
 ## Tasarım dili ("Fosforlu")
 
