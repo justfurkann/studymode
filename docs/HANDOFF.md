@@ -705,6 +705,12 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Test: "stationery set" e2e'si nanede katmanın göründüğünü ve renginin `#7ff0b8` olduğunu, sarıya dönünce kaybolduğunu kontrol eder.
 - Not: bu ortamda e2e için `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` gerekebilir (kurulu Chromium sürümü Playwright'ınkiyle farklı).
 
+### Aşama 34 — Kalem renkli logo, katmansız (1 Kasım 2026, `dreamy-sagan`)
+
+- Aşama 33'teki yöntem (sarı logonun üstüne maskeyle kesilmiş renk katmanı) kenarlarda sarı hale bırakıyordu ve maske tekniği Safari'de farklı davranabiliyor; kullanıcı "logolar kötü duruyor" dedi.
+- Şimdi: varsayılan sarıda marka dosyası `<img>` olarak birebir. Başka bir kalem renginde (`data-pen`) aynı SVG dosyası bir kez indirilip (önbellekten) satır içine çizilir ve yalnızca `fill="#FFE34F"` olan şekiller `var(--hi)` olur (şerit S ve "mode" vurgusu). Katman yok, hale yok. Koyu tema için logo-dark.svg aynı şekilde.
+- `logo-tint.svg` ve `logo-dark-tint.svg` silindi; `.brand-tint` CSS'i kaldırıldı. Test: nanede satır içi logonun dolgularında nane ve lacivert var, marka sarısı yok; sarıya dönünce yine `<img>`.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

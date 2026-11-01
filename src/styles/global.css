@@ -343,37 +343,7 @@ button {
 }
 
 /* The pen colour over the logo's yellow parts; only with a pen other than yellow (data-pen). */
-.brand {
-  position: relative;
-}
-.brand-tint {
-  display: none;
-  position: absolute;
-  inset: 0;
-  background: var(--hi);
-  pointer-events: none;
-  -webkit-mask: url('/brand/svg/logo-tint.svg') center / 100% 100% no-repeat;
-  mask: url('/brand/svg/logo-tint.svg') center / 100% 100% no-repeat;
-}
-.brand-tint.is-dark {
-  -webkit-mask-image: url('/brand/svg/logo-dark-tint.svg');
-  mask-image: url('/brand/svg/logo-dark-tint.svg');
-}
-:root[data-pen] .brand-tint.is-light {
-  display: block;
-}
-@media (prefers-color-scheme: dark) {
-  :root[data-pen]:not([data-theme='light']) .brand-tint.is-light {
-    display: none;
-  }
-  :root[data-pen]:not([data-theme='light']) .brand-tint.is-dark {
-    display: block;
-  }
-}
-:root[data-pen][data-theme='dark'] .brand-tint.is-light {
-  display: none;
-}
-:root[data-pen][data-theme='dark'] .brand-tint.is-dark {
+.brand-logo.is-tinted svg {
   display: block;
 }
 
