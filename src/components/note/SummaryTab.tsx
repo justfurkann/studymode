@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, Headphones, HelpCircle, Image as ImageIcon, KeyRound, ListChecks, Scale } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, Gem, Headphones, HelpCircle, Image as ImageIcon, KeyRound, ListChecks, Scale } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { ExplainMode } from '../../lib/ai'
 import { toggleCheckedTerm, toggleCompletedStep } from '../../lib/learningPath'
@@ -231,10 +231,10 @@ export function SummaryTab({
           <Scale size={14} /> Karşılaştırma
         </button>
         <button type="button" aria-pressed={activeStep === 'gorsel'} onClick={() => onStep('gorsel')}>
-          <ImageIcon size={14} /> Görsel & Şema
+          <ImageIcon size={14} /> Görsel & Şema <Gem size={12} className="prem-gem" aria-label="Premium özellik içerir" />
         </button>
         <button type="button" aria-pressed={activeStep === 'podcast'} onClick={() => onStep('podcast')}>
-          <Headphones size={14} /> Podcast
+          <Headphones size={14} /> Podcast <Gem size={12} className="prem-gem" aria-label="Premium özellik içerir" />
         </button>
       </div>
 

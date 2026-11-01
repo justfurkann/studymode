@@ -208,3 +208,23 @@ describe('AI tasks & Vertex model routing for podcast, tts, image, embed', () =>
     expect(vertexModels({}, 'embed')).toEqual(['gemini-embedding-001'])
   })
 })
+
+describe('meaning-based search calibration', () => {
+  it('keeps vectors short and scores only related notes', async () => {
+    const { compactVector, vectorMatchScore, rankNotesByMeaning, EMBED_DIMS } = await import('./semanticSearch')
+    expect(compactVector(Array.from({ length: 3072 }, () => 0.123456789))).toHaveLength(EMBED_DIMS)
+    expect(compactVector([0.123456789])[0]).toBe(0.12346)
+    // Measured: related notes 0.76-0.83, unrelated 0.64-0.72.
+    expect(vectorMatchScore(0.7)).toBe(0)
+    expect(vectorMatchScore(0.8)).toBeGreaterThan(0.6)
+    const mk = (id: string, title: string) => ({ ...sampleNotes[0], id, title, content: title })
+    const notes = [mk('a', 'Solunum'), mk('b', 'Osmanlı'), mk('c', 'Fotosentez')]
+    const q = [1, 0]
+    const vectors = { a: [0.8, Math.sqrt(1 - 0.64)], b: [0.7, Math.sqrt(1 - 0.49)], c: [0.78, Math.sqrt(1 - 0.78 * 0.78)] }
+    expect(rankNotesByMeaning(notes, vectors, 'enerji', q).map((h) => h.note.id)).toEqual(['a', 'c'])
+    // Nothing related: nothing shown.
+    expect(rankNotesByMeaning(notes, { a: [0.7, 0.71] }, 'yapay zekâ', q)).toEqual([])
+    // A word in the note always counts.
+    expect(rankNotesByMeaning(notes, {}, 'osmanlı', null).map((h) => h.note.id)).toEqual(['b'])
+  })
+})
