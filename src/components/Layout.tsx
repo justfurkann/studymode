@@ -1,4 +1,4 @@
-import { BookOpen, Brain, ClipboardList, House, Plus, Settings, Trophy } from 'lucide-react'
+import { BookOpen, Brain, ClipboardList, Gem, House, Plus, Settings, Trophy } from 'lucide-react'
 import { triggerGlitch } from './Achievements'
 import { StudentCharacter } from './StudentCharacter'
 import { ACHIEVEMENTS, unlock, useAchievements } from '../lib/achievements'
@@ -101,6 +101,11 @@ export function Layout() {
             {!!badge && <span className="nav-badge">{badge}</span>}
           </NavLink>
         ))}
+        <NavLink to="/premium" className={({ isActive }) => `nav-link prem-nav${isActive ? ' active' : ''}`}>
+          <Gem size={18} />
+          Premium
+          <span className="prem-nav-shine" aria-hidden />
+        </NavLink>
         <NavLink to="/basarimlar" className={navClass('nav-link', '/basarimlar')}>
           <Trophy size={18} />
           Başarımlar
@@ -135,6 +140,9 @@ export function Layout() {
           </div>
           <div className="mobile-top-actions">
           <AmbientPlayer inHeader />
+          <NavLink to="/premium" className="prem-top" aria-label="Premium">
+            <Gem size={18} aria-hidden />
+          </NavLink>
           {!session && (
             <NavLink to="/ayarlar" className="btn btn-ghost btn-icon" aria-label="Ayarlar">
               <Settings size={20} />

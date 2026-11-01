@@ -10,6 +10,7 @@ import {
   mnemonicKindLabel,
   mnemonicToCard,
 } from '../../lib/memoryTools'
+import { usePremium } from '../../lib/premium'
 import { aiAvailability, useSettings } from '../../lib/settings'
 import { useStore } from '../../lib/store'
 import type { ConceptComparison, MnemonicItem, MnemonicKind, Note } from '../../lib/types'
@@ -51,6 +52,7 @@ export function MemoryCodingTab({
   const toast = useToast()
   const settings = useSettings()
   const ai = aiAvailability(settings, !!store.session)
+  const premium = usePremium().state === 'open'
 
   const summary = note.summary
   const fallback = buildLocalMemoryTools(note)
@@ -198,7 +200,7 @@ export function MemoryCodingTab({
       setHiddenVisuals((prev) => ({ ...prev, [item.id]: !prev[item.id] }))
       return
     }
-    if (ai.ok) {
+    if (premium) {
       setBusyVisualId(item.id)
       try {
         const { generateConceptImage } = await freshImport(() => import('../../lib/ai'))

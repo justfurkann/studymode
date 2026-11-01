@@ -21,7 +21,8 @@ import {
   type PodcastLine,
   type PodcastScript,
 } from '../../lib/podcastTools'
-import { aiAvailability, useSettings } from '../../lib/settings'
+import { usePremium } from '../../lib/premium'
+import { useSettings } from '../../lib/settings'
 import { useStore } from '../../lib/store'
 import type { Note } from '../../lib/types'
 import { freshImport } from '../../lib/version'
@@ -33,13 +34,13 @@ import {
   visualToCard,
   type GeneratedVisualItem,
 } from '../../lib/visualTools'
-import { AiSignupPrompt } from '../AiSignupPrompt'
 import { ZoomableImage } from '../ImageViewer'
 import { compressImage, saveMessage } from '../../lib/imageStore'
 import { safeFileName } from '../../lib/noteTools'
 
 /** Download names: browsers drop names with Turkish letters and save the file as "download". */
 const fileSafe = (title: string) => safeFileName(title.trim().replace(/\s+/g, '-').toLocaleLowerCase('tr-TR')) || 'gorsel'
+import { PremiumLock } from '../Premium'
 import { Alert, Spinner, useToast } from '../ui'
 
 const PODCAST_SCRIPT_PREFIX = 'studymode.podcast.v1.'
@@ -68,12 +69,12 @@ export function VisualTab({
   onGoPodcast,
 }: {
   note: Note
-  onGoPodcast: () => void
+  onGoPodcast?: () => void
 }) {
   const store = useStore()
   const toast = useToast()
   const settings = useSettings()
-  const ai = aiAvailability(settings, !!store.session)
+  const premium = usePremium().state === 'open'
 
   const diagram = buildConceptDiagram(note)
   const [selectedNodeId, setSelectedNodeId] = useState<string>(diagram.nodes[0]?.id ?? '')
@@ -128,7 +129,7 @@ export function VisualTab({
   }
 
   async function handleGenerateAiImage() {
-    if (!ai.ok) return
+    if (!premium) return
     setBusyAi(true)
     setError('')
     const targetTopic = topic.trim() || activeNode?.label || note.title
@@ -342,7 +343,7 @@ export function VisualTab({
               </select>
             </label>
             <div className="btn-row memory-builder-actions">
-              {ai.ok && (
+              {premium && (
                 <button
                   type="button"
                   className="btn btn-primary"
@@ -352,16 +353,14 @@ export function VisualTab({
                   {busyAi ? <Spinner size={15} /> : <Sparkles size={15} />} AI Görsel Üret
                 </button>
               )}
-              <button type="submit" className={`btn ${!ai.ok ? 'btn-primary' : ''}`} disabled={busyAi}>
+              <button type="submit" className={`btn ${!premium ? 'btn-primary' : ''}`} disabled={busyAi}>
                 <Wand2 size={15} /> Poster Oluştur
               </button>
             </div>
           </div>
         </form>
 
-        {!ai.ok && (
-          <AiSignupPrompt reason="Notuna özel şema ve çizimleri yapay zekâ ile üretmek için ücretsiz hesap aç ya da giriş yap." />
-        )}
+        {!premium && <PremiumLock>Notuna özel yapay zekâ görseli Premium'da.</PremiumLock>}
         {error && <Alert tone="danger">{error}</Alert>}
 
         {visuals.length > 0 && (
@@ -415,11 +414,13 @@ export function VisualTab({
         )}
       </div>
 
-      <div className="study-next">
-        <button type="button" className="btn btn-primary btn-lg" onClick={onGoPodcast}>
-          Devam: Podcast ile dinle <ArrowRight size={16} />
-        </button>
-      </div>
+      {onGoPodcast && (
+        <div className="study-next">
+          <button type="button" className="btn btn-primary btn-lg" onClick={onGoPodcast}>
+            Devam: Podcast ile dinle <ArrowRight size={16} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -429,12 +430,12 @@ export function PodcastTab({
   onNext,
 }: {
   note: Note
-  onNext: () => void
+  onNext?: () => void
 }) {
   const store = useStore()
   const toast = useToast()
   const settings = useSettings()
-  const ai = aiAvailability(settings, !!store.session)
+  const premium = usePremium().state === 'open'
 
   const [script, setScript] = useState<PodcastScript>(() => readSavedPodcast(note.id) ?? buildLocalPodcastScript(note))
   const [playingLineIdx, setPlayingLineIdx] = useState<number | null>(null)
@@ -519,7 +520,7 @@ export function PodcastTab({
   }
 
   async function handleGenerateAiScript() {
-    if (!ai.ok) return
+    if (!premium) return
     stopBrowserSpeech()
     setBusyScript(true)
     setError('')
@@ -539,7 +540,7 @@ export function PodcastTab({
   }
 
   async function handleSynthesizeStudioAudio() {
-    if (!ai.ok) return
+    if (!premium) return
     stopBrowserSpeech()
     setBusyTts(true)
     setTtsProgress(null)
@@ -586,7 +587,7 @@ export function PodcastTab({
           </div>
 
           <div className="btn-row">
-            {ai.ok && (
+            {premium && (
               <button
                 type="button"
                 className="btn btn-sm"
@@ -611,7 +612,7 @@ export function PodcastTab({
               {playingLineIdx !== null ? 'Duraklat' : 'Hemen Dinle'}
             </button>
 
-            {ai.ok && (
+            {premium && (
               <button
                 type="button"
                 className="btn"
@@ -655,9 +656,7 @@ export function PodcastTab({
           </div>
         )}
 
-        {!ai.ok && (
-          <AiSignupPrompt reason="Bu sohbeti iki farklı doğal sesle dinlemek için ücretsiz hesap aç ya da giriş yap." />
-        )}
+        {!premium && <PremiumLock>Gerçek insan sesiyle iki kişilik podcast ve yapay zekâ senaryosu Premium'da.</PremiumLock>}
         {error && <Alert tone="danger">{error}</Alert>}
       </div>
 
@@ -710,11 +709,13 @@ export function PodcastTab({
         })}
       </div>
 
-      <div className="study-next">
-        <button type="button" className="btn btn-primary btn-lg" onClick={onNext}>
-          Teste geç <ArrowRight size={16} />
-        </button>
-      </div>
+      {onNext && (
+        <div className="study-next">
+          <button type="button" className="btn btn-primary btn-lg" onClick={onNext}>
+            Teste geç <ArrowRight size={16} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

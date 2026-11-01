@@ -17,6 +17,8 @@ export interface Quota {
 
 let quota: Quota | null = null
 let loadedFor: string | null = null
+/** The account whose quota has finished loading (or failed to), so "unknown" can stop waiting. */
+let settledFor: string | null = null
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
 
@@ -46,6 +48,7 @@ export async function refreshQuota(userId: string | null) {
   const { data, error } = await supabase.rpc('ai_quota')
   if (loadedFor !== userId) return
   quota = error ? null : parseQuota(data)
+  settledFor = userId
   emit()
 }
 
@@ -63,6 +66,20 @@ export function useQuota(userId: string | null): Quota | null {
   }, [userId])
   return userId ? value : null
 }
+
+/** True once the quota request for this account has answered, even with an error. */
+export function useQuotaSettled(userId: string | null): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l)
+      return () => listeners.delete(l)
+    },
+    () => !!userId && settledFor === userId,
+  )
+}
+
+/** VIP and admin get the Premium tab. */
+export const isPremiumRole = (role: Role | undefined | null) => role === 'vip' || role === 'admin'
 
 export const ROLE_LABEL: Record<Role, string> = { normal: 'Normal', vip: 'VIP', admin: 'Yönetici' }
 

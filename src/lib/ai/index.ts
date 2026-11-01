@@ -30,6 +30,7 @@ import {
 } from './tasks'
 import { setQuota } from '../account'
 import { concatenateWavBase64, splitScriptForTts, type PodcastLine, type PodcastScript } from '../podcastTools'
+import { compactVector } from '../semanticSearch'
 
 export { contextAround, MAX_PROMPT_NOTE_CHARS, splitNoteIntoChunks } from './tasks'
 export type {
@@ -552,11 +553,16 @@ export async function generateConceptImage(
   }
 }
 
-/** Generates semantic embedding vectors via `gemini-embedding-2-preview` / `gemini-embedding-001`. */
+/** Embedding vectors (gemini-embedding-001), shortened to 768 numbers for storage. */
 export async function embedTexts(texts: string[], settings: Settings): Promise<number[][]> {
   if (!texts.length) return []
-  const res = await runTask('embed', { texts }, settings)
-  return res.embeddings
+  const out: number[][] = []
+  // The server takes 25 texts a request.
+  for (let i = 0; i < texts.length; i += 25) {
+    const res = await runTask('embed', { texts: texts.slice(i, i + 25) }, settings)
+    out.push(...res.embeddings.map(compactVector))
+  }
+  return out
 }
 
 /** Local fallback explanation when AI is not configured or unavailable. */

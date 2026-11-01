@@ -31,6 +31,13 @@
   /* Role badges: VIP violet, admin teal. Text on them is always white. */
   --vip: #6d28d9;
   --vip-soft: #ede9fe;
+  /* Premium: violet to fuchsia with a warm glint, only as backgrounds and glows (never text). */
+  --prem-1: #6d28d9;
+  --prem-2: #c026d3;
+  --prem-3: #f59e0b;
+  --prem-deep: #1e0b3a;
+  --prem-soft: #f5efff;
+  --prem-text: #5b21b6;
   --admin: #0f766e;
   --on-role: #ffffff;
   /* Pixel sky in the maker card: day. */
@@ -96,6 +103,12 @@
     --hero-line: #2c3156;
     --vip: #7c3aed;
     --vip-soft: #2e1f52;
+    --prem-1: #7c3aed;
+    --prem-2: #d946ef;
+    --prem-3: #fbbf24;
+    --prem-deep: #12062a;
+    --prem-soft: #241640;
+    --prem-text: #d8c8ff;
     --admin: #0d9488;
     /* Pixel sky in the maker card: night. */
     --sky-top: #141a4a;
@@ -144,6 +157,12 @@
   --hero-line: #2c3156;
   --vip: #7c3aed;
   --vip-soft: #2e1f52;
+  --prem-1: #7c3aed;
+  --prem-2: #d946ef;
+  --prem-3: #fbbf24;
+  --prem-deep: #12062a;
+  --prem-soft: #241640;
+  --prem-text: #d8c8ff;
   --admin: #0d9488;
   /* Pixel sky in the maker card: night. */
   --sky-top: #141a4a;
@@ -4989,9 +5008,13 @@ a.list-item:hover {
 
 .podcast-turn-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+.podcast-turn-head .btn-row {
+  flex-wrap: wrap;
 }
 
 .podcast-speaker-badge {
@@ -5036,3 +5059,403 @@ a.list-item:hover {
   gap: 6px;
 }
 
+
+/* ============ Premium ============ */
+@keyframes prem-sweep {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  55%, 100% { transform: translateX(260%) skewX(-18deg); }
+}
+@keyframes prem-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+@keyframes prem-hue {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.prem-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 28px 24px 24px;
+  margin-bottom: 18px;
+  border-radius: var(--radius-lg);
+  color: var(--on-role);
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--prem-2) 70%, transparent) 0%, transparent 55%),
+    radial-gradient(90% 80% at 0% 100%, color-mix(in srgb, var(--prem-3) 38%, transparent) 0%, transparent 60%),
+    linear-gradient(135deg, var(--prem-deep), var(--prem-1) 60%, var(--prem-2));
+  box-shadow:
+    0 18px 40px -18px color-mix(in srgb, var(--prem-1) 75%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--on-role) 18%, transparent);
+}
+/* A soft light that passes over the card every few seconds. */
+.prem-hero-shine,
+.prem-nav-shine {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  z-index: -1;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--on-role) 28%, transparent), transparent);
+  animation: prem-sweep 4.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.prem-hero::after {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: -40px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  z-index: -1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--prem-3) 50%, transparent), transparent 70%);
+  animation: prem-glow 3.6s ease-in-out infinite;
+}
+.prem-hero h1 {
+  margin: 0;
+  color: var(--on-role);
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
+  line-height: 1.12;
+}
+.prem-lead {
+  margin: 0;
+  max-width: 560px;
+  color: color-mix(in srgb, var(--on-role) 86%, transparent);
+}
+.prem-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--on-role);
+  background: color-mix(in srgb, var(--on-role) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-role) 30%, transparent);
+}
+.prem-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 4px 0 0;
+  padding: 7px 12px;
+  border-radius: 12px;
+  font-weight: 650;
+  font-size: 0.9rem;
+  background: color-mix(in srgb, var(--prem-deep) 45%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--on-role) 18%, transparent);
+}
+.prem-status.is-open {
+  background: color-mix(in srgb, var(--on-role) 16%, transparent);
+}
+.prem-status-quota {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.prem-tools {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.prem-tool {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  text-align: left;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  /* A gradient border: the card on top, the gradient behind its edge. */
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, color-mix(in srgb, var(--prem-1) 45%, var(--border)), color-mix(in srgb, var(--prem-2) 45%, var(--border))) border-box;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.prem-tool:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--prem-1) 70%, transparent);
+}
+.prem-tool[aria-pressed='true'] {
+  background:
+    linear-gradient(var(--prem-soft), var(--prem-soft)) padding-box,
+    linear-gradient(120deg, var(--prem-1), var(--prem-2), var(--prem-3), var(--prem-1)) border-box;
+  background-size: 100% 100%, 200% 100%;
+  animation: prem-hue 6s linear infinite;
+  box-shadow: 0 10px 28px -14px color-mix(in srgb, var(--prem-2) 80%, transparent);
+}
+.prem-tool-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: var(--on-role);
+  background: linear-gradient(135deg, var(--prem-1), var(--prem-2));
+  box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--prem-2) 80%, transparent);
+}
+.prem-tool-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.prem-tool-text strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+}
+.prem-tool-text span {
+  color: var(--text-2);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.btn.prem-btn {
+  color: var(--on-role);
+  border-color: transparent;
+  background: linear-gradient(120deg, var(--prem-1), var(--prem-2), var(--prem-1));
+  background-size: 200% 100%;
+  animation: prem-hue 5s linear infinite;
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--prem-2) 85%, transparent);
+}
+.btn.prem-btn:hover:not(:disabled) {
+  color: var(--on-role);
+  filter: brightness(1.08);
+}
+
+.prem-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--on-role);
+  background: linear-gradient(120deg, var(--prem-1), var(--prem-2));
+}
+.prem-gem {
+  color: var(--prem-2);
+  margin-left: 2px;
+}
+
+.prem-lock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.9rem;
+  background: var(--prem-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prem-1) 28%, transparent);
+}
+.prem-lock-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--on-role);
+  background: linear-gradient(135deg, var(--prem-1), var(--prem-2));
+}
+
+/* Sidebar entry: always a little bit special. */
+.nav-link.prem-nav {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  margin-top: 6px;
+  color: var(--prem-text);
+  font-weight: 700;
+  background: var(--prem-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prem-1) 26%, transparent);
+}
+.nav-link.prem-nav svg {
+  color: var(--prem-2);
+}
+.nav-link.prem-nav:hover {
+  color: var(--prem-text);
+  background: color-mix(in srgb, var(--prem-soft) 82%, var(--prem-2));
+}
+.nav-link.prem-nav.active {
+  color: var(--on-role);
+  background: linear-gradient(120deg, var(--prem-1), var(--prem-2));
+}
+.nav-link.prem-nav.active svg {
+  color: var(--on-role);
+}
+.prem-nav-shine {
+  animation-duration: 6s;
+}
+
+/* Phone: a glowing gem next to the avatar. */
+.prem-top {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--on-role);
+  background: linear-gradient(135deg, var(--prem-1), var(--prem-2));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--prem-2) 20%, transparent), 0 6px 14px -6px color-mix(in srgb, var(--prem-2) 90%, transparent);
+  animation: prem-glow 3.6s ease-in-out infinite;
+}
+.prem-top.active {
+  box-shadow: 0 0 0 3px var(--prem-3);
+  animation: none;
+}
+
+.prem-locked {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 14px;
+}
+.prem-peek {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.prem-peek-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.prem-peek-input {
+  display: flex;
+  align-items: center;
+  color: var(--text);
+}
+.prem-peek-image {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  color: var(--on-role);
+  background:
+    radial-gradient(60% 60% at 70% 30%, color-mix(in srgb, var(--prem-3) 55%, transparent), transparent),
+    linear-gradient(135deg, var(--prem-1), var(--prem-2));
+}
+.prem-how h2 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+.prem-how-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.prem-how-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.5;
+}
+.prem-how-list li > svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--prem-2);
+}
+.prem-how-list a {
+  font-weight: 650;
+  text-decoration: underline;
+}
+
+.prem-picker {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.prem-picker .field {
+  margin: 0;
+  min-width: 220px;
+}
+
+.prem-search-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.prem-search-box .field {
+  margin: 0;
+}
+.prem-index {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.prem-hits {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.prem-hit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  color: var(--text);
+}
+a.prem-hit:hover {
+  box-shadow: 0 10px 24px -16px color-mix(in srgb, var(--prem-1) 70%, transparent);
+}
+.prem-hit-snippet {
+  font-size: 0.9rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 760px) {
+  .prem-hero {
+    padding: 22px 18px 18px;
+  }
+  .prem-tools {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .prem-tool {
+    padding: 12px;
+  }
+  .prem-locked {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prem-hero-shine,
+  .prem-nav-shine,
+  .prem-hero::after,
+  .prem-top,
+  .btn.prem-btn,
+  .prem-tool[aria-pressed='true'] {
+    animation: none;
+  }
+}
