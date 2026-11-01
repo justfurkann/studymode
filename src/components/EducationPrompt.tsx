@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { askedRecently, askLater, useEducation } from '../lib/education'
+import { askedRecently, askLater, needsEducation, useEducation } from '../lib/education'
 import { useTourActive } from '../lib/tour'
 import { useStore } from '../lib/store'
 import { EducationForm } from './EducationForm'
@@ -29,7 +29,7 @@ export function EducationPrompt() {
   const userId = session?.user.id ?? null
   const [open, setOpen] = useState(false)
   const [done, setDone] = useState(false)
-  const due = !!userId && !education && !done && allowed() && !askedRecently(userId)
+  const due = !!userId && needsEducation(education) && !done && allowed() && !askedRecently(userId)
 
   useEffect(() => {
     if (!due || open || tour) return
@@ -55,9 +55,10 @@ export function EducationPrompt() {
     >
       <div className="edu-prompt">
         <p className="muted">
-          Nerede okuduğunu söyle, sana uygun sınav dilini kullanalım. <Celebrate>Tek soru</Celebrate>, profilinde görünür; istediğin zaman Ayarlar'dan değiştirebilirsin.
+          Birkaç kısa soru, <Celebrate>yarım dakika</Celebrate>. Okul bilgin profilinde görünür; istediğin zaman Ayarlar'dan değiştirebilirsin.
         </p>
         <EducationForm
+          initial={education}
           onSaved={() => {
             setOpen(false)
             setDone(true)

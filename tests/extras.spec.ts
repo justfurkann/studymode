@@ -810,8 +810,18 @@ test('Okul bilgisi: üye olunca bir kez sorulur, profile yazılır, Ayarlar’da
   await dialog.getByRole('button', { name: /^Üniversite/ }).click()
   await dialog.getByLabel('Üniversite ara').fill('odtu')
   await dialog.getByRole('listitem').filter({ hasText: 'Orta Doğu Teknik Üniversitesi' }).first().click()
+  // Department and year are required for university students.
+  await expect(dialog.getByRole('button', { name: /Devam/ })).toBeDisabled()
+  await dialog.getByLabel('Bölüm').fill('Bilgisayar Mühendisliği')
+  await dialog.getByRole('group', { name: 'Sınıf' }).getByRole('button', { name: '2. sınıf' }).click()
+  await dialog.getByRole('button', { name: /Devam/ }).click()
+  // The rest is optional.
+  await dialog.getByLabel('Doğum yılın').selectOption('2005')
+  await dialog.getByRole('group', { name: 'Cinsiyet' }).getByRole('button', { name: 'Kadın' }).click()
+  await dialog.getByRole('group', { name: 'Nereden duydun?' }).getByRole('button', { name: 'Instagram' }).click()
+  await dialog.getByRole('button', { name: 'Kaydet' }).click()
   await expect(dialog).toHaveCount(0)
-  expect(updates.at(-1)?.education).toMatchObject({ level: 'universite', school: 'ODTÜ' })
+  expect(updates.at(-1)?.education).toMatchObject({ level: 'universite', school: 'ODTÜ', department: 'Bilgisayar Mühendisliği', classYear: '2. sınıf', birthYear: 2005, gender: 'kadin', heardFrom: 'Instagram', v: 2 })
   // Other profile fields stay.
   expect(user.user_metadata.first_name).toBe('Furkan')
 
@@ -820,11 +830,14 @@ test('Okul bilgisi: üye olunca bir kez sorulur, profile yazılır, Ayarlar’da
   await page.waitForTimeout(2500)
   await expect(page.getByRole('dialog', { name: 'Seni biraz tanıyalım' })).toHaveCount(0)
   await page.locator('.sidebar').getByRole('link', { name: 'Ayarlar' }).click()
-  await expect(page.locator('.edu-current')).toContainText('ODTÜ · Üniversite')
+  await expect(page.locator('.edu-current')).toContainText('ODTÜ · Bilgisayar Mühendisliği · 2. sınıf')
   await page.locator('.edu-current').getByRole('button', { name: 'Değiştir' }).click()
   await page.getByRole('button', { name: /^Lise/ }).click()
+  // Earlier optional answers are kept; just save.
+  await expect(page.getByLabel('Doğum yılın')).toHaveValue('2005')
+  await page.locator('.edu-form').getByRole('button', { name: 'Kaydet' }).click()
   await expect(page.locator('.edu-current')).toContainText('Lise')
-  expect(updates.at(-1)?.education).toMatchObject({ level: 'lise', school: '' })
+  expect(updates.at(-1)?.education).toMatchObject({ level: 'lise', school: '', department: '', birthYear: 2005 })
 
   // The quiz takes level and school from the profile: straight to the first question.
   await page.locator('.sidebar').getByRole('button', { name: 'Daha fazla' }).click()
@@ -863,14 +876,29 @@ test('Yönetim: kullanıcıların okulu ve okullar özeti görünür; veritaban�
     if (name === 'admin_users') return route.fulfill({ json: users })
     if (name === 'admin_schools')
       return schoolsReady
-        ? route.fulfill({ json: [{ id: 'u1', level: 'universite', school: 'ODTÜ' }, { id: 'u3', level: 'universite', school: 'ODTÜ' }, { id: 'u2', level: 'lise', school: '' }] })
+        ? route.fulfill({
+            json: [
+              { id: 'u1', level: 'universite', school: 'ODTÜ', department: 'Fizik', class_year: '2. sınıf', birth_year: 2005, gender: 'kadin', heard_from: 'Instagram' },
+              { id: 'u3', level: 'universite', school: 'ODTÜ', department: 'Fizik', class_year: '3. sınıf', birth_year: 2003, gender: 'erkek', heard_from: 'Instagram' },
+              { id: 'u2', level: 'lise', school: '', department: '', class_year: '', birth_year: null, gender: null, heard_from: 'TikTok' },
+            ],
+          })
         : route.fulfill({ status: 404, json: { code: 'PGRST202' } })
     return route.fulfill({ json: [] })
   })
   await page.goto('/yonetim')
   await expect(page.getByRole('region', { name: 'Okullar' })).toContainText('ODTÜ · 2')
   await expect(page.getByRole('region', { name: 'Okullar' })).toContainText('Lise · 1')
-  await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).toContainText('ODTÜ · Üniversite')
+  await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).toContainText('ODTÜ · Fizik · 2. sınıf')
+  const region = page.getByRole('region', { name: 'Okullar' })
+  await expect(region).toContainText('Fizik · 2')
+  await expect(region).toContainText('Instagram · 2')
+  await expect(region).toContainText('TikTok · 1')
+  await expect(region).toContainText('Kadın · 1')
+  await expect(region).toContainText('19-22 · 1')
+  await expect(region).toContainText('23-26 · 1')
+  // Age and gender are never shown next to a person.
+  await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).not.toContainText('Kadın')
   schoolsReady = false
   await page.reload()
   await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).toBeVisible()

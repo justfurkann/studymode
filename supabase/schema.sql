@@ -373,15 +373,24 @@ end $$;
 revoke all on function public.plus_quota(), public.consume_plus() from public, anon;
 grant execute on function public.plus_quota(), public.consume_plus() to authenticated;
 
--- Aşama 27: where each student studies (user_metadata.education: level, school), for the admin page.
--- A separate function so admin_users keeps its shape; the app works without this one too.
+-- Aşama 27-28: who the students are (user_metadata.education: level, school, department, year, and the
+-- optional birth year, gender, "heard from"), for the admin page. A separate function so admin_users
+-- keeps its shape; the app works without this one too. Dropped first because its columns grew.
+drop function if exists public.admin_schools();
 create or replace function public.admin_schools()
-returns table (id uuid, level text, school text)
+returns table (id uuid, level text, school text, department text, class_year text, birth_year integer, gender text, heard_from text)
 language plpgsql stable security definer set search_path = '' as $$
 begin
   if not public.is_admin() then raise exception 'not allowed' using errcode = '42501'; end if;
   return query
-  select u.id, (u.raw_user_meta_data -> 'education' ->> 'level')::text, (u.raw_user_meta_data -> 'education' ->> 'school')::text
+  select u.id,
+         (u.raw_user_meta_data -> 'education' ->> 'level')::text,
+         (u.raw_user_meta_data -> 'education' ->> 'school')::text,
+         (u.raw_user_meta_data -> 'education' ->> 'department')::text,
+         (u.raw_user_meta_data -> 'education' ->> 'classYear')::text,
+         case when (u.raw_user_meta_data -> 'education' ->> 'birthYear') ~ '^[0-9]{4}$' then (u.raw_user_meta_data -> 'education' ->> 'birthYear')::integer end,
+         (u.raw_user_meta_data -> 'education' ->> 'gender')::text,
+         (u.raw_user_meta_data -> 'education' ->> 'heardFrom')::text
   from auth.users u
   where u.raw_user_meta_data ? 'education';
 end $$;
