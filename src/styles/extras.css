@@ -1066,3 +1066,138 @@
   font-weight: 600;
   font-size: 0.9375rem;
 }
+
+/* ============ Podcast as a conversation ============ */
+/* Deniz on the left, Mert on the right, like a chat; the line being heard is marked. */
+
+.podcast-transcript {
+  gap: 12px;
+}
+
+.podcast-turn {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: min(88%, 640px);
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.podcast-turn.is-host {
+  align-self: flex-start;
+}
+
+.podcast-turn.is-student {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.podcast-avatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 0.8125rem;
+  border: 1.5px solid var(--ink-line);
+}
+
+.is-host .podcast-avatar {
+  background: var(--hi);
+  color: var(--on-hi);
+}
+
+.is-student .podcast-avatar {
+  background: var(--text);
+  color: var(--surface);
+  border-color: var(--text);
+}
+
+.podcast-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 18px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.is-host .podcast-bubble {
+  border-bottom-left-radius: 6px;
+}
+
+.is-student .podcast-bubble {
+  border-bottom-right-radius: 6px;
+  background: var(--surface-2);
+}
+
+.podcast-turn.is-playing .podcast-bubble {
+  background: var(--hi-soft);
+  border-color: var(--ink-line);
+  box-shadow: 0 3px 0 var(--ink-line);
+}
+
+.podcast-turn-head {
+  justify-content: flex-start;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+
+.podcast-speaker-name {
+  font-weight: 800;
+}
+
+.podcast-turn-text {
+  margin: 0;
+}
+
+/* Actions stay out of the way: on hover, keyboard focus, the line being heard, or a tapped bubble. */
+.podcast-turn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.15s ease, max-height 0.15s ease;
+}
+
+.podcast-turn:hover .podcast-turn-actions,
+.podcast-turn:focus-within .podcast-turn-actions,
+.podcast-turn.is-playing .podcast-turn-actions,
+.podcast-turn.is-open .podcast-turn-actions {
+  max-height: 48px;
+  opacity: 1;
+}
+
+@media (max-width: 560px) {
+  .podcast-turn {
+    max-width: 94%;
+  }
+}
+
+/* "Replik 3 / 17" above the conversation while it plays. */
+.podcast-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.podcast-progress .progress {
+  flex: 1;
+}
+
+.podcast-progress .progress > div {
+  background: var(--hi);
+  transition: width 0.3s ease;
+}

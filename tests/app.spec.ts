@@ -75,9 +75,10 @@ test('demo note: summary, quiz, converting mistakes to cards', async ({ page }) 
   const cardsAfter = Number(await page.getByRole('tab', { name: /Kartlar/ }).locator('.tab-count').textContent())
   expect(cardsAfter).toBeGreaterThan(cardsBefore)
 
-  // The low score shows up on the Today page as a weak topic.
+  // Bugün sends the student back to this note, once (the focus card), not in four lists.
   await page.getByRole('link', { name: 'Bugün' }).first().click()
-  await expect(page.getByRole('heading', { name: 'Tekrar çalışman gereken konular' })).toBeVisible()
+  await expect(page.getByText('Şimdi bununla başla')).toBeVisible()
+  await expect(page.locator('main').getByText(/Öğrenme ve bellek/)).toHaveCount(1)
   expect(errors).toEqual([])
 })
 
@@ -104,7 +105,8 @@ test('course with exam, pasted note in simple mode, spaced review and persistenc
   await expect(page.getByText('ATP nerede üretilir?').first()).toBeVisible()
 
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Yaklaşan sınavlar' })).toBeVisible()
+  // The exam is either the focus card or in the list of exams.
+  await expect(page.getByText('Şimdi bununla başla').or(page.getByRole('heading', { name: 'Yaklaşan sınavlar' }))).toBeVisible()
   const due = Number(await page.locator('.hero .count').textContent())
   expect(due).toBeGreaterThan(1)
 
@@ -905,7 +907,7 @@ test.describe('study progress is kept', () => {
   test('the example course has an exam a week away', async ({ page }) => {
     await openDemo(page)
     await page.goto('/')
-    await expect(page.getByText('Vizeye 7 gün').first()).toBeVisible()
+    await expect(page.getByText(/vizesine 7 gün kaldı/).first()).toBeVisible()
   })
 
   test('an exam whose time ran out while away is submitted with the answers given', async ({ page }) => {
@@ -982,10 +984,12 @@ test.describe('midterms and finals', () => {
     await page.getByLabel('Hangi sınava hazırlanıyorsun?').selectOption({ label: 'Finale 40 gün' })
     await expect(page.getByRole('checkbox', { name: 'Böbrek' })).toBeChecked()
 
-    // Today lists each exam separately.
+    // Today: the nearest exam in the focus card, the other one in the list below (each once).
     await page.goto('/')
-    await expect(page.getByText('Fizyoloji · Vize', { exact: true })).toBeVisible()
+    await expect(page.getByText(/Fizyoloji vizesine \d+ gün kaldı/).first()).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Diğer sınavlar' })).toBeVisible()
     await expect(page.getByText('Fizyoloji · Final', { exact: true })).toBeVisible()
+    await expect(page.getByText('Fizyoloji · Vize', { exact: true })).toHaveCount(0)
     expect(errors).toEqual([])
   })
 
@@ -2148,6 +2152,8 @@ test('visual concept map, 2-speaker podcast, and semantic search across notes', 
 
   const cardsTab = page.getByRole('tablist', { name: 'Çalışma adımları' }).getByRole('tab', { name: /Kartlar/ })
   const cardsBefore = Number(await cardsTab.locator('.tab-count').textContent())
+  // Line actions show once the bubble is touched.
+  await transcript.locator('.podcast-turn.is-host .podcast-turn-text').first().click()
   await transcript.getByRole('button', { name: 'Karta çevir' }).first().click()
   await expect(transcript.getByRole('button', { name: 'Kartta' }).first()).toBeDisabled()
   const cardsAfter = Number(await cardsTab.locator('.tab-count').textContent())

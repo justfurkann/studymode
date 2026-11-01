@@ -1,4 +1,5 @@
 import { ArrowRight, Brain, Trophy, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
+import { LevelBadge } from '../components/Level'
 import { StudentTypeLink } from '../components/StudentTypeCard'
 import { Link } from 'react-router-dom'
 import { ExamFocusCard } from '../components/ExamFocusCard'
@@ -73,6 +74,21 @@ export function Today() {
     .filter(({ progress }) => !progress.isCompleted)
     .slice(0, 3)
 
+  // Each note shows up once on this page: the focus card first, then the plan, steps, weak topics,
+  // recent notes. A list left empty disappears (with one note, Bugün used to show it four times).
+  const shown = new Set<string>(focus?.noteId ? [focus.noteId] : [])
+  const take = <T,>(items: T[], id: (item: T) => string) => {
+    const out = items.filter((item) => !shown.has(id(item)))
+    out.forEach((item) => shown.add(id(item)))
+    return out
+  }
+  const planItems = take(smartPlan.items, (i) => i.note.id)
+  const stepNotes = take(inProgressNotes, (i) => i.note.id)
+  const weakNotes = take(weak, (w) => w.note!.id)
+  const recentNotes = take(recent, (n) => n.id)
+  // The focus card already names its exam; the list shows the others.
+  const otherExams = exams.filter((e) => e.exam.id !== focus?.exam.id)
+
   const nextDue = data.cards
     .filter((c) => Date.parse(c.due) > now.getTime())
     .sort((a, b) => a.due.localeCompare(b.due))[0]
@@ -87,6 +103,7 @@ export function Today() {
           <h1>{firstName(store.session?.user) ? `Merhaba ${firstName(store.session?.user)}` : 'Bugün'}</h1>
         </div>
         <div className="btn-row">
+          <LevelBadge />
           <Link to="/basarimlar" className="btn btn-sm trophy-link" aria-label={`Başarımlar: ${found}/${ACHIEVEMENTS.length}`}>
             <Trophy size={16} /> <b>{found}/{ACHIEVEMENTS.length}</b>
           </Link>
@@ -177,16 +194,17 @@ export function Today() {
         </div>
       </section>
 
-      {(exams.length > 0 || data.attempts.length > 0 || data.notes.length > 1) && smartPlan.items.length > 0 && (
+      {(exams.length > 0 || data.attempts.length > 0 || data.notes.length > 1) && planItems.length > 0 && (
         <section className="section" aria-label="Akıllı çalışma planı">
           <div className="section-head">
             <div>
-              <h2>{smartPlan.headline}</h2>
+              {/* Under a focus card the exam headline would say the same thing twice. */}
+              <h2>{focus ? 'Sırada bunlar da var' : smartPlan.headline}</h2>
               <span className="subtle">{smartPlan.subheadline}</span>
             </div>
           </div>
           <div className="panel panel-tight list">
-            {smartPlan.items.map((item, idx) => (
+            {planItems.map((item, idx) => (
               <Link key={item.note.id} to={item.targetUrl} className="list-item" aria-label={`${idx + 1}. ${item.note.title} — ${item.actionLabel}`}>
                 <Sparkles size={18} style={{ color: item.course?.color ?? 'var(--accent)' }} />
                 <div className="grow">
@@ -204,14 +222,14 @@ export function Today() {
         </section>
       )}
 
-      {inProgressNotes.length > 0 && (
+      {stepNotes.length > 0 && (
         <section className="section">
           <div className="section-head">
             <h2>Adım adım öğrenmeye devam et</h2>
             <span className="subtle">Sıfırdan 5 adımda konuyu tamamla</span>
           </div>
           <div className="panel panel-tight list">
-            {inProgressNotes.map(({ note, progress }) => {
+            {stepNotes.map(({ note, progress }) => {
               const course = courseOf(note.courseId)
               const target = stepUrl(note, progress.currentStep.id)
               return (
@@ -233,11 +251,11 @@ export function Today() {
         </section>
       )}
 
-      {exams.length > 0 && (
+      {otherExams.length > 0 && (
         <section className="section">
-          <h2>Yaklaşan sınavlar</h2>
+          <h2>{focus ? 'Diğer sınavlar' : 'Yaklaşan sınavlar'}</h2>
           <div className="panel panel-tight list">
-            {exams.map(({ course, exam }) => {
+            {otherExams.map(({ course, exam }) => {
               const label = examCountdown(exam, now)!
               const stats = courseStats(data, course, now)
               return (
@@ -261,11 +279,11 @@ export function Today() {
         </section>
       )}
 
-      {weak.length > 0 && (
+      {weakNotes.length > 0 && (
         <section className="section">
           <h2>Tekrar çalışman gereken konular</h2>
           <div className="panel panel-tight list">
-            {weak.map(({ attempt, note }) => (
+            {weakNotes.map(({ attempt, note }) => (
               <Link key={attempt.id} to={`/not/${note!.id}?sekme=test`} className="list-item" aria-label={note!.title}>
                 <Target size={18} style={{ color: 'var(--warning)' }} />
                 <div className="grow">
@@ -281,6 +299,7 @@ export function Today() {
         </section>
       )}
 
+      {(recentNotes.length > 0 || !data.notes.length) && (
       <section className="section">
         <div className="section-head">
           <h2>Son notlar</h2>
@@ -288,9 +307,9 @@ export function Today() {
             Tüm dersler
           </Link>
         </div>
-        {recent.length ? (
+        {recentNotes.length ? (
           <div className="panel panel-tight list">
-            {recent.map((note) => {
+            {recentNotes.map((note) => {
               const course = courseOf(note.courseId)
               const progress = note.generator ? computeNoteProgress(note, data.cards, data.attempts) : null
               return (
@@ -316,6 +335,7 @@ export function Today() {
           </div>
         )}
       </section>
+      )}
 
     </div>
   )

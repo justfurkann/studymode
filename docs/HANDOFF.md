@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (1 Kasım 2026, Aşama 23 sonrası, `main` üzerinde): 246 birim testi, 98 tarayıcı testi.
+Son yeşil durum (1 Kasım 2026, Aşama 30 sonrası, `main` üzerinde): 256 birim testi, 108 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -635,6 +635,24 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 ### Aşama 29 — Tur kayıt ekranını kapatmasın (1 Kasım 2026)
 
 - Hata: tanıtımdan "Ücretsiz başla" → `/giris?mod=kayit`; ilk ziyaret sayıldığı için tanıtım turu formun üstüne açılıyordu. Artık tur yalnızca uygulamanın içindeyken (giriş yapmış ya da misafir olarak bir dersi olan) ve `/giris`, `/sifre-yenile`, `/paylas/…` dışında kendiliğinden başlar. Açıkken bu sayfalara geçilirse sessizce kapanır ve "görüldü" sayılmaz; kayıttan sonra uygulamada gösterilir.
+
+### Aşama 30 — Sade Bugün, sohbet gibi podcast, XP ve seviye (1 Kasım 2026, `keen-albattani`)
+
+- **Bugün'de tekrar yok:** Tek notlu kullanıcıda aynı not 4 bölümde görünüyordu (öncelik kartı, "…bugün şu konuyu çalış", "Adım adım…", "Son notlar"). Artık sayfa yukarıdan aşağı bir "gösterildi" kümesiyle doluyor: bir not bir kez çıkar, boş kalan liste gizlenir.
+  - `ExamFocus.noteId` eklendi.
+  - Öncelik kartı varken akıllı planın başlığı "Sırada bunlar da var" oluyor; sınav listesi "Diğer sınavlar" adıyla yalnızca kartta olmayan sınavları gösteriyor.
+  - Eski testler bu davranışa güncellendi.
+- **Podcast sohbet gibi:** Deniz solda (sarı avatar), Mert sağda (koyu avatar, farklı zemin), balon köşeleri konuşan tarafa bakıyor.
+  - "Buradan dinle / Karta çevir" yalnızca üzerine gelince, klavye odağında, okunan replikte ya da dokunulan balonda görünüyor.
+  - Oynatıcının altında "Replik 3 / 17" ve ilerleme çubuğu: cihaz sesinde tam; stüdyo sesinde süreye göre yaklaşık (`lineAtFraction`, "yaklaşık" yazıyor); canlı parçalarda parçanın ilk repliği (`partStartLines`). Okunan replik vurgulanıp görünür alana kaydırılıyor.
+  - Eski hata: kod `is-playing`, CSS `is-active` diyordu; okunan replik hiç vurgulanmıyordu.
+- **XP ve seviye** (`src/lib/xp.ts`, `components/Level.tsx`):
+  - XP ayrı bir sayaç değil, mevcut veriden hesaplanıyor: kart 2, test/sınav 15, hatasız test +10, sınav provası +25, hazırlanan not 20, yazılı cevap/açıklama 3, çalışılan gün 10, başarım 20/50/100/250 (nadirliğe göre). Böylece cihazlar arası aynı, çifte sayım yok, tablo/SQL yok.
+  - Seviye eşiği toplamda 100, 300, 600, 1000… (`xpForLevel = 50·(L−1)·L`). Unvanlar: Çaylak (1), Not Avcısı (3), Kart Ustası (5), Fosforlu Kalem (8), Kütüphane Müdavimi (12), Vize Savaşçısı (16), Final Bükücü (20), Bölüm Birincisi (25), Profesör (30), Efsane (40).
+  - Bugün başlığında "Sv N" rozeti ve küçük çubuk. Başarımlar sayfasının en üstünde seviye kartı (`#seviye`): halka, unvan, kalan XP, sıradaki unvan, "XP nereden geldi?" dökümü.
+  - Seviye atlayınca kutlama (`LevelUpWatcher`, hesap başına `studymode.level.v1.<id>`). İlk ziyarette yalnızca kaydediyor; turu ve başarım bildirimlerini bekliyor. Rehber'e "Seviye ve XP" kartı eklendi.
+- **Ek düzeltme:** Çalışma fişinin alt metninde fişe yazılan isim yoktu; `main`'deki fiş kişiselleştirme testi bu yüzden kırıktı. İsim artık alt metinde.
+- Testler: 256 birim, 108 tarayıcı. **SQL yok.**
 
 ## Tasarım dili ("Fosforlu")
 

@@ -928,3 +928,76 @@ test('Tanıtım turu kayıt ekranının önüne geçmez: tanıtımdan kayda gide
   await expect(page.getByRole('dialog', { name: /Tanıtım/ })).toHaveCount(0)
   expect(await page.evaluate(() => localStorage.getItem('studymode.tour.v1'))).toBeNull()
 })
+
+test('Bugün: bir not yalnızca bir kez görünür; boş kalan listeler gizlenir', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  await page.goto('/')
+  await expect(page.getByText('Şimdi bununla başla')).toBeVisible()
+  const main = page.locator('main')
+  // The example note appears once (in the focus card), not in four lists.
+  await expect(main.getByText('Öğrenme ve bellek', { exact: false })).toHaveCount(1)
+  await expect(main.getByRole('heading', { name: 'Adım adım öğrenmeye devam et' })).toHaveCount(0)
+  await expect(main.getByRole('heading', { name: 'Son notlar' })).toHaveCount(0)
+  await expect(main.getByRole('heading', { name: /bugün şu konuyu çalış/ })).toHaveCount(0)
+  // The focus card names the exam: no separate list with the same exam.
+  await expect(main.getByRole('heading', { name: 'Yaklaşan sınavlar' })).toHaveCount(0)
+})
+
+test('Podcast: sohbet gibi (Deniz solda, Mert sağda); düğmeler dokununca; ilerleme "Replik x / y"', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  await page.goto(page.url().split('?')[0] + '?adim=podcast')
+  const turns = page.locator('.podcast-turn')
+  await expect(turns.first()).toHaveClass(/is-host/)
+  await expect(turns.nth(1)).toHaveClass(/is-student/)
+  const left = await turns.first().boundingBox()
+  const right = await turns.nth(1).boundingBox()
+  expect(right!.x + right!.width).toBeGreaterThan(left!.x + left!.width)
+  // Actions are tucked away until the bubble is touched.
+  const listen = turns.nth(2).locator('.podcast-turn-actions')
+  expect(await listen.evaluate((el) => getComputedStyle(el).opacity)).toBe('0')
+  await turns.nth(2).locator('.podcast-turn-text').click()
+  await expect(turns.nth(2)).toHaveClass(/is-open/)
+  await expect.poll(() => listen.evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
+  // Device voice on line 3: the line is marked and the progress says so (speech is faked here).
+  await page.evaluate(() => {
+    const synth = window.speechSynthesis
+    synth.speak = () => undefined
+    synth.cancel = () => undefined
+  })
+  await turns.nth(2).getByRole('button', { name: '3. repliği seslendir' }).click()
+  await expect(turns.nth(2)).toHaveClass(/is-playing/)
+  await expect(page.locator('.podcast-progress')).toContainText(/Replik 3 \/ \d+/)
+})
+
+test('Seviye ve XP: Bugün’de rozet, Başarımlar’da kart ve döküm; seviye atlayınca kutlama', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  // Nothing studied yet but the example note: level 1.
+  const setReviews = (n: number) =>
+    page.evaluate((reviews) => {
+      const d = JSON.parse(localStorage.getItem('studymode.data.v2')!)
+      d.studyDays = [{ id: 's1', day: '2026-11-02', reviews, quizzes: 0, actions: 0, createdAt: '', updatedAt: '' }]
+      localStorage.setItem('studymode.data.v2', JSON.stringify(d))
+      // Achievements already seen, so their toasts do not hold the level one.
+      localStorage.setItem('studymode.achievements.v1', JSON.stringify({ 'ilk-adim': '2026-11-02T10:00:00Z' }))
+    }, n)
+  await setReviews(10)
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: /^Seviye 1, Çaylak/ })).toBeVisible()
+  // First visit only remembers the level; then enough study to pass 100 XP.
+  await page.waitForTimeout(500)
+  await setReviews(40)
+  await page.reload()
+  const toast = page.locator('.level-toast')
+  await expect(toast).toContainText('Seviye atladın', { timeout: 10_000 })
+  await expect(toast).toContainText('Seviye 2')
+  await toast.getByRole('button', { name: /Seviye 2/ }).click()
+  await expect(page).toHaveURL(/\/basarimlar#seviye$/)
+  const card = page.getByRole('region', { name: 'Seviye' })
+  await expect(card).toContainText('Çaylak')
+  await card.getByText('XP nereden geldi?').click()
+  await expect(card).toContainText('Çevrilen kart')
+  await expect(card).toContainText('+80')
+})

@@ -243,3 +243,31 @@ export function podcastLineToCard(
     source: line.highlight || null,
   }
 }
+
+/**
+ * Which line is being spoken at a point of the recording (0..1), weighting lines by their length.
+ * The studio audio has no per-line timestamps; longer lines take longer to say, so this is close.
+ */
+export function lineAtFraction(lines: Pick<PodcastLine, 'text'>[], fraction: number): number {
+  if (!lines.length) return 0
+  const weights = lines.map((l) => Math.max(1, l.text.length))
+  const total = weights.reduce((s, w) => s + w, 0)
+  const target = Math.max(0, Math.min(1, fraction)) * total
+  let sum = 0
+  for (let i = 0; i < weights.length; i++) {
+    sum += weights[i]
+    if (target < sum) return i
+  }
+  return lines.length - 1
+}
+
+/** The first line of each studio-voice part (the same split synthesizePodcastTts uses). */
+export function partStartLines(lines: PodcastLine[], maxChars = 600): number[] {
+  const starts: number[] = []
+  let at = 0
+  for (const part of splitScriptForTts(lines, maxChars)) {
+    starts.push(at)
+    at += part.length
+  }
+  return starts
+}

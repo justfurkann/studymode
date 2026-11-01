@@ -1,4 +1,5 @@
 import { HelpCircle, RotateCcw, ShieldCheck, Target, Trophy } from 'lucide-react'
+import { LevelCard } from '../components/Level'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { AchievementBadge } from '../components/Achievements'
@@ -60,6 +61,8 @@ export function Achievements() {
           </h1>
         </div>
       </div>
+
+      <LevelCard />
 
       <section className="ach-summary panel" aria-label="Koleksiyon özeti">
         <div className="ach-ring" style={{ ['--p' as string]: `${(found / total) * 100}%` }} role="img" aria-label={`${total} başarımdan ${found} tanesi açıldı`}>
