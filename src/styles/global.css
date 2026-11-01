@@ -4752,6 +4752,14 @@ a.list-item:hover {
   width: 100%;
 }
 
+/* Google draws its own button in here; keep room so the card does not jump while it loads. */
+.google-slot {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+}
+
 .auth-divider {
   display: flex;
   align-items: center;
