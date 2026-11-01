@@ -175,7 +175,7 @@ export function NoteDetail() {
   }
   const requestedStep = params.get('adim')
   const isSummarySubTab = (v: string | null): v is SummarySubTab =>
-    v === 'tanis' || v === 'anla' || v === 'kodlama' || v === 'karsilastir' || v === 'gorsel' || v === 'podcast'
+    v === 'tanis' || v === 'anla' || v === 'kodlama' || v === 'karsilastir' || v === 'gorsel' || v === 'podcast' || v === 'tam'
   const tab: TabId =
     requested === 'kaynak' || VIEWS.some((v) => v.id === requested)
       ? (requested as TabId)

@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, Headphones, HelpCircle, Image as ImageIcon, KeyRound, ListChecks, Scale } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpenText, Check, ChevronRight, Headphones, HelpCircle, Image as ImageIcon, KeyRound, ListChecks, Scale } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import type { ExplainMode } from '../../lib/ai'
 import { toggleCheckedTerm, toggleCompletedStep } from '../../lib/learningPath'
@@ -10,6 +10,7 @@ import { Modal, Spinner } from '../ui'
 import { freshImport } from '../../lib/version'
 import { ComparisonTab, MemoryCodingTab } from './MemoryTabs'
 import { PodcastTab, VisualTab } from './VisualAndPodcastTabs'
+import { FullSummary } from './FullSummary'
 
 const EXPLAIN_MODES: Array<{ mode: ExplainMode; label: string }> = [
   { mode: 'simple', label: 'Daha basit anlat' },
@@ -181,7 +182,6 @@ export function SummaryTab({
   onNext: () => void
 }) {
   const store = useStore()
-  const [showFull, setShowFull] = useState(false)
   const [pointIndex, setPointIndex] = useState(0)
   const summary = note.summary
   if (!summary) return null
@@ -217,6 +217,16 @@ export function SummaryTab({
 
   return (
     <div className="section summary-print" style={{ gap: 20 }}>
+      {activeStep !== 'tam' && (
+        <button type="button" className="full-summary-open no-print" onClick={() => onStep('tam')}>
+          <BookOpenText size={22} aria-hidden />
+          <span>
+            <strong>Tam özet</strong>
+            <span>{summary.detailed ? 'Konunun ayrıntılı anlatımı tek sayfada' : 'Bütün özeti tek sayfada oku, istersen ayrıntılı anlatım hazırlat'}</span>
+          </span>
+          <ChevronRight size={20} aria-hidden />
+        </button>
+      )}
       <div className="segmented summary-steps no-print" role="group" aria-label="Özet adımları">
         <button type="button" aria-pressed={activeStep === 'tanis'} onClick={() => onStep('tanis')}>
           <span className={`step-dot ${tanisDone ? 'done' : ''}`}>{tanisDone ? <Check size={12} /> : '1'}</span> Kavramlar
@@ -236,9 +246,14 @@ export function SummaryTab({
         <button type="button" aria-pressed={activeStep === 'podcast'} onClick={() => onStep('podcast')}>
           <Headphones size={14} /> Podcast
         </button>
+        <button type="button" aria-pressed={activeStep === 'tam'} onClick={() => onStep('tam')}>
+          <BookOpenText size={14} /> Tam özet
+        </button>
       </div>
 
-      {activeStep === 'kodlama' ? (
+      {activeStep === 'tam' ? (
+        <FullSummary note={note} onBack={() => onStep(tanisDone ? 'anla' : 'tanis')} onTest={completeStep2} />
+      ) : activeStep === 'kodlama' ? (
         <MemoryCodingTab note={note} onGoCompare={() => onStep('karsilastir')} />
       ) : activeStep === 'karsilastir' ? (
         <ComparisonTab note={note} onNext={completeStep2} />
@@ -347,15 +362,10 @@ export function SummaryTab({
 
       {/* The steps above already walk through this content; the full summary stays one click away
           and is always included when printing. */}
-      <div className={`summary-reference ${showFull ? '' : 'collapsed'}`}>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm no-print"
-          aria-expanded={showFull}
-          onClick={() => setShowFull(!showFull)}
-          style={{ alignSelf: 'flex-start' }}
-        >
-          {showFull ? <ChevronUp size={16} /> : <ChevronDown size={16} />} {showFull ? 'Tam özeti gizle' : 'Tam özeti tek sayfada gör'}
+      {activeStep !== 'tam' && (
+      <div className="summary-reference collapsed">
+        <button type="button" className="btn btn-ghost btn-sm no-print" onClick={() => onStep('tam')} style={{ alignSelf: 'flex-start' }}>
+          <BookOpenText size={16} /> Tam özeti tek sayfada gör
         </button>
         <div className="summary-reference-body">
           {summary.overview && (
@@ -395,6 +405,7 @@ export function SummaryTab({
           )}
         </div>
       </div>
+      )}
 
       {note.generator === 'local' && summary.origin !== 'demo' && (
         <p className="subtle">Basit mod cümleleri notundan seçer; yeni bilgi eklemez. Daha iyi açıklamalar için yapay zekâ ile yeniden hazırlayabilirsin.</p>

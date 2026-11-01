@@ -40,7 +40,8 @@ export interface KeyTerm {
 
 export type LearningStepId = 'tanis' | 'anla' | 'pekistir' | 'sina' | 'anlat'
 
-export type SummarySubTab = 'tanis' | 'anla' | 'kodlama' | 'karsilastir' | 'gorsel' | 'podcast'
+/** 'tam': the whole summary on one page, with the detailed write-up. */
+export type SummarySubTab = 'tanis' | 'anla' | 'kodlama' | 'karsilastir' | 'gorsel' | 'podcast' | 'tam'
 
 export type MnemonicKind = 'akrostis' | 'tekerleme' | 'hikaye' | 'ipucu'
 
@@ -82,6 +83,17 @@ export interface Summary {
   keyTerms: KeyTerm[]
   mnemonics?: MnemonicItem[]
   comparisons?: ConceptComparison[]
+  /** The detailed write-up ("Tam özet"), made on request. Kept inside the summary JSON, so no new column. */
+  detailed?: DetailedSummary
+}
+
+export interface DetailedSummary {
+  intro: string
+  sections: Array<{ heading: string; paragraphs: string[]; bullets: string[]; example: string }>
+  takeaways: string[]
+  createdAt: string
+  /** Some parts of a long note could not be written. */
+  failedParts?: number
 }
 
 export interface Question {

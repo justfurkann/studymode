@@ -132,3 +132,75 @@ test('sign in: the password can be shown', async ({ page }) => {
   await page.getByLabel('Şifreyi göster').check()
   await expect(password).toHaveAttribute('type', 'text')
 })
+
+test('Tam özet: easy to find at the top of Özet; the example note shows a detailed write-up', async ({ page }) => {
+  const errors = watchErrors(page)
+  await startDemo(page)
+  await page.getByRole('button', { name: /^Tam özet Konunun ayrıntılı anlatımı/ }).click()
+  await expect(page).toHaveURL(/adim=tam/)
+  await expect(page.getByRole('heading', { level: 2, name: 'Öğrenme ve bellek' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'İçindekiler' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Bellek sistemleri/ })).toBeVisible()
+  await expect(page.getByText('Örnek:').first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sınavda dikkat' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Ana noktalar' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kavramlar' })).toBeVisible()
+  // Not signed in: no AI button, and the old bottom link leads here too.
+  await expect(page.getByRole('button', { name: /yeniden yaz/ })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Adım adım çalışmaya dön' }).click()
+  await expect(page).not.toHaveURL(/adim=tam/)
+  await page.getByRole('button', { name: 'Tam özeti tek sayfada gör' }).click()
+  await expect(page).toHaveURL(/adim=tam/)
+  await page.getByRole('button', { name: 'Okudum, teste geç' }).click()
+  await expect(page).toHaveURL(/sekme=test/)
+  expect(errors).toEqual([])
+})
+
+test('Tam özet: a signed-in student has the AI write the detailed summary, part by part for a long note, and it is saved', async ({ page }) => {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  const user = { id: 'aaaaaaaa-0000-0000-0000-000000000009', aud: 'authenticated', role: 'authenticated', email: 'ali@example.com', user_metadata: { first_name: 'Ali' }, app_metadata: {}, created_at: '2026-10-01T00:00:00Z' }
+  await page.addInitScript((u) => {
+    localStorage.setItem('sb-jpcatyopkpnudgdyncas-auth-token', JSON.stringify({ access_token: 'fake', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user: u }))
+  }, user)
+  const T = '2026-10-01T00:00:00Z'
+  const course = { id: 'cccccccc-0000-0000-0000-000000000009', user_id: user.id, name: 'Fizyoloji', color: '#e5484d', exam_date: null, created_at: T, updated_at: T }
+  // Long enough to be written in two parts.
+  const content = Array.from({ length: 40 }, (_, i) => `Bölüm ${i + 1}: ${'Kalp kası kasılır ve kanı pompalar. '.repeat(10)}`).join('\n\n')
+  const note = { id: 'dddddddd-0000-0000-0000-000000000009', user_id: user.id, course_id: course.id, title: 'Dolaşım', content, summary: { overview: 'Kısa özet', points: ['Kalp kanı pompalar.'], keyTerms: [{ term: 'Kalp', definition: 'Kanı pompalayan organ.' }] }, questions: [], practice: [], generator: 'ai', created_at: T, updated_at: T }
+  const saved: unknown[] = []
+  await page.route(`${SUPABASE}/auth/v1/**`, (route) => route.fulfill({ json: user }))
+  await page.route(`${SUPABASE}/rest/v1/**`, async (route) => {
+    const req = route.request()
+    const table = new URL(req.url()).pathname.split('/').pop()
+    if (req.method() === 'GET') return route.fulfill({ json: table === 'courses' ? [course] : table === 'notes' ? [note] : [] })
+    if (table === 'notes') saved.push(req.postDataJSON())
+    return route.fulfill({ status: 201, json: [] })
+  })
+  const parts: string[] = []
+  await page.route('**/api/generate', async (route) => {
+    const body = route.request().postDataJSON()
+    expect(body.task).toBe('detail')
+    parts.push(body.input.part)
+    const n = parts.length
+    await route.fulfill({
+      json: {
+        result: {
+          intro: n === 1 ? 'Dolaşım sistemi kalbin kanı vücuda pompalamasını anlatır.' : 'Devamı.',
+          sections: [{ heading: `Kalp ${n}`, paragraphs: [`Kalp kası bölüm ${n} açıklaması.`], bullets: ['Kalp kanı pompalar.'], example: n === 1 ? 'Koşarken nabız artar.' : '' }],
+          takeaways: ['Atardamar ile toplardamarı karıştırma.'],
+        },
+      },
+    })
+  })
+  await page.goto(`/not/${note.id}?adim=tam`)
+  await page.getByRole('button', { name: 'Ayrıntılı özet hazırla' }).click()
+  await expect(page.getByRole('heading', { name: /Kalp 1/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Kalp 2/ })).toBeVisible()
+  expect(parts).toEqual(['Bölüm 1/2', 'Bölüm 2/2'])
+  await expect(page.getByText('Dolaşım sistemi kalbin kanı vücuda pompalamasını anlatır.')).toBeVisible()
+  await expect(page.getByText('Koşarken nabız artar.')).toBeVisible()
+  // Same takeaway from both parts appears once.
+  await expect(page.getByText('Atardamar ile toplardamarı karıştırma.')).toHaveCount(1)
+  await expect.poll(() => JSON.stringify(saved)).toContain('"detailed"')
+  await expect(page.getByRole('button', { name: 'Ayrıntılı özeti yeniden yaz' })).toBeVisible()
+})

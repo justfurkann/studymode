@@ -20,3 +20,11 @@ Ayrı bir oturumda eklendi; Premium çalışmasıyla çakışmasın diye kod ayr
 - Yedek indirme: bağlantı hemen iptal edildiği için Safari/Firefox'ta inmeyebiliyordu; dosya adı yerel tarihle.
 - Link önizlemesi: `og:image` (public/og.png) ve Twitter kartı eklendi.
 - Giriş: "Şifreyi göster". Telefonda klavye kısayolu ipuçları gizli. Sınav takviminde uzun ders adı kesilmiyor. Tekrar ekranına ekran okuyucu başlığı. Telefonda ortam sesi düğmesi üst çubukta.
+
+## Tam özet (1 Kasım 2026)
+
+- Arkadaş geri bildirimi: "Özetin tamamını tek sayfada göreceğim bir yer yok mu?" Vardı ama en altta, katlı bir düğmenin arkasındaydı.
+- Özet sekmesinin en üstünde belirgin "Tam özet" kartı ve alt sekmelerde "Tam özet" (`?adim=tam`, `FullSummary.tsx`): içindekiler, bölümler, ezberlenecekler, nottaki örnekler, "Sınavda dikkat", ana noktalar, kavramlar; "Yazdır / PDF"; "Okudum, teste geç".
+- "Ayrıntılı özet hazırla": yeni `detail` görevi (`tasks.ts`, `generateDetailedSummary`). Uzun not 12.000 karakterlik bölümlerle yazılır, her bölüm bir istek (günlük haktan sayılır). Sonuç `summary.detailed` içinde saklanır (jsonb, veritabanı değişikliği yok). Not yeniden hazırlanırsa silinir; not düzenlenirse "yeniden yaz" uyarısı çıkar.
+- Sunucuda `detail` için deneme başına 45 sn, toplam 55 sn; tarayıcı 62 sn bekler. Free+'ta hızlı model (gemini-3.8-flash) kullanılır: Gemini 4 Argon kısa bir açıklamada bile ~19 sn sürdüğü için uzun bir anlatım 60 sn'lik Vercel sınırına sığmaz.
+- Örnek notta elle yazılmış bir ayrıntılı özet var; giriş yapmayan da sayfanın nasıl göründüğünü görür.
