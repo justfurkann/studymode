@@ -101,16 +101,45 @@ async function extractImageText(file: File, extension: string, options?: NoteImp
 async function extractOfficeText(file: File, extension: 'docx' | 'pptx'): Promise<string> {
   // Loaded on demand so the unzip code is only downloaded by people who upload Office files.
   const { docxText, pptxText } = await freshImport(() => import('./officeText'))
-  const data = new Uint8Array(await file.arrayBuffer())
+  const data = await readFileBytes(file)
   return extension === 'docx' ? docxText(data) : pptxText(data)
 }
 
+/**
+ * Reads a File into a Uint8Array with retry + FileReader fallback.
+ * On iOS Safari / WhatsApp in-app browser, files picked from iCloud Drive or external providers
+ * can briefly fail the first `file.arrayBuffer()` call while the OS materializes the file handle.
+ */
+async function readFileBytes(file: File): Promise<Uint8Array> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return new Uint8Array(await file.arrayBuffer())
+    } catch {
+      if (attempt === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      }
+    }
+  }
+  if (typeof FileReader !== 'undefined') {
+    const buffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (reader.result instanceof ArrayBuffer) resolve(reader.result)
+        else reject(new Error('FileReader did not return an ArrayBuffer'))
+      }
+      reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'))
+      reader.readAsArrayBuffer(file)
+    })
+    return new Uint8Array(buffer)
+  }
+  return new Uint8Array(await file.arrayBuffer())
+}
+
 /*
- * The readers are separate files that the app downloads when needed. Every deploy renames them and
- * removes the old ones, so a tab opened before a deploy could no longer read a PDF ("Uygulamanın
- * yeni sürümü hazır" and nothing added). The upload page now loads them as soon as it opens
- * (preloadNoteReaders) and keeps them in memory, the PDF worker too: one worker is started then and
- * reused for every file, instead of pdf.js fetching it again by address each time.
+ * The readers are separate files that the app downloads when needed. We preload the modules when
+ * the upload page opens, and configure `GlobalWorkerOptions.workerSrc` so pdf.js starts a fresh,
+ * isolated worker per document (never sharing a single `workerPort` that `loadingTask.destroy()`
+ * would terminate or that iOS Safari would abort while the native file picker is open).
  */
 let pdfLoad: Promise<typeof import('pdfjs-dist')> | null = null
 
@@ -121,13 +150,8 @@ function loadPdfReader(): Promise<typeof import('pdfjs-dist')> {
       freshImport(() => import('pdfjs-dist/build/pdf.worker.min.mjs?url')),
     ])
     pdfjs.GlobalWorkerOptions.workerSrc = worker.default
-    // One worker, started now and reused for every file (pdf.js keeps it alive between documents).
-    if (typeof Worker !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerPort) {
-      try {
-        pdfjs.GlobalWorkerOptions.workerPort = new Worker(worker.default, { type: 'module' })
-      } catch {
-        // pdf.js starts its own from workerSrc.
-      }
+    if ('workerPort' in pdfjs.GlobalWorkerOptions) {
+      pdfjs.GlobalWorkerOptions.workerPort = null
     }
     return pdfjs
   })().catch((error) => {
@@ -137,8 +161,9 @@ function loadPdfReader(): Promise<typeof import('pdfjs-dist')> {
   return pdfLoad
 }
 
-/** Downloads the PDF and Office readers in the background, so a later deploy cannot take them away. */
+/** Downloads the PDF and Office readers in the background when the tab is visible. */
 export function preloadNoteReaders() {
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
   void loadPdfReader().catch(() => {})
   void freshImport(() => import('./officeText')).catch(() => {})
 }
@@ -147,13 +172,37 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
   let loadingTask: import('pdfjs-dist').PDFDocumentLoadingTask | undefined
 
   try {
-    const pdfjs = await loadPdfReader()
-    loadingTask = pdfjs.getDocument({
-      data: new Uint8Array(await file.arrayBuffer()),
-      enableXfa: false,
-      useSystemFonts: true,
-    })
-    const document = await loadingTask.promise
+    const rawBytes = await readFileBytes(file)
+    let pdfjs = await loadPdfReader()
+    let document: import('pdfjs-dist').PDFDocumentProxy
+
+    try {
+      // Slice a copy so that if pdf.js transfers the ArrayBuffer to a worker and we need to retry,
+      // rawBytes remains intact and non-detached.
+      loadingTask = pdfjs.getDocument({
+        data: rawBytes.slice(0),
+        enableXfa: false,
+        useSystemFonts: true,
+      })
+      document = await loadingTask.promise
+    } catch (firstError) {
+      if (firstError instanceof Error && firstError.name === 'PasswordException') {
+        throw firstError
+      }
+      await loadingTask?.destroy().catch(() => undefined)
+      loadingTask = undefined
+      // Reset cached reader state and retry once after a short delay (handles iOS Safari waking up
+      // from the native file picker or a terminated worker).
+      pdfLoad = null
+      await new Promise((resolve) => setTimeout(resolve, 250))
+      pdfjs = await loadPdfReader()
+      loadingTask = pdfjs.getDocument({
+        data: rawBytes.slice(0),
+        enableXfa: false,
+        useSystemFonts: true,
+      })
+      document = await loadingTask.promise
+    }
 
     if (document.numPages > MAX_PDF_PAGES) {
       throw new NoteImportError('PDF en fazla 150 sayfa olabilir. Çalışacağın bölümü ayrı bir dosya olarak yükle.')
@@ -165,11 +214,17 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const page = await document.getPage(pageNumber)
       try {
-        const content = await page.getTextContent()
-        const pageText = content.items
-          .map((item) => ('str' in item ? `${item.str}${item.hasEOL ? '\n' : ' '}` : ''))
-          .join('')
-          .trim()
+        let pageText = ''
+        try {
+          const content = await page.getTextContent()
+          pageText = content.items
+            .map((item) => ('str' in item ? `${item.str}${item.hasEOL ? '\n' : ' '}` : ''))
+            .join('')
+            .trim()
+        } catch {
+          // If text extraction fails on a page with custom encodings/fonts, fall back to OCR for that page.
+          pageText = ''
+        }
         totalCharacters += pageText.length
         if (totalCharacters > MAX_TEXT_CHARACTERS) {
           throw new NoteImportError('Not çok uzun. Tek seferde en fazla 400.000 karakter yükleyebilirsin; notunu bölümlere ayır.')
@@ -180,6 +235,8 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
         page.cleanup()
       }
     }
+
+    const hasSelectableText = pages.some((p) => p.length > 0)
 
     // If the PDF has scanned (textless) pages and an AI transcriber is available, OCR those pages.
     if (scannedPageNumbers.length > 0 && options?.transcribe) {
@@ -196,7 +253,19 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
 
         while (index < totalScanned && batchNums.length < maxPerBatch) {
           const pageNum = scannedPageNumbers[index]
-          const img = await renderPdfPageToImage(document, pageNum)
+          let img: TranscribeImage | null = null
+          try {
+            img = await renderPdfPageToImage(document, pageNum)
+          } catch (renderErr) {
+            if (!hasSelectableText && scannedPageNumbers.length === 1) {
+              throw renderErr
+            }
+            // Skip decorative/unrenderable page if the PDF has other readable pages.
+            index += 1
+            doneCount += 1
+            options.onProgress?.(doneCount, totalScanned)
+            continue
+          }
           if (batchImages.length > 0 && batchChars + img.data.length > MAX_BATCH_BASE64_CHARS) {
             break
           }
@@ -206,11 +275,18 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
           index += 1
         }
 
-        let transcribed: string
+        if (batchImages.length === 0) continue
+
+        let transcribed = ''
         try {
           transcribed = await options.transcribe(batchImages)
         } catch (err) {
-          throw new NoteImportError(err instanceof Error ? err.message : 'Taranmış PDF sayfaları okunamadı.')
+          if (!hasSelectableText) {
+            throw new NoteImportError(err instanceof Error ? err.message : 'Taranmış PDF sayfaları okunamadı.')
+          }
+          // If the PDF already has selectable text on other pages, don't discard the whole document
+          // just because OCR failed on a blank/cover page.
+          transcribed = ''
         }
 
         pages[batchNums[0] - 1] = transcribed.trim()
@@ -245,6 +321,7 @@ async function renderPdfPageToImage(
   pageNumber: number,
 ): Promise<TranscribeImage> {
   const page = await document.getPage(pageNumber)
+  let canvas: HTMLCanvasElement | null = null
   try {
     const baseViewport = typeof page.getViewport === 'function' ? page.getViewport({ scale: 1 }) : { width: 800, height: 1100 }
     const longest = Math.max(baseViewport.width || 800, baseViewport.height || 1100, 1)
@@ -252,7 +329,7 @@ async function renderPdfPageToImage(
     const viewport = typeof page.getViewport === 'function' ? page.getViewport({ scale }) : baseViewport
 
     if (typeof globalThis.document !== 'undefined') {
-      const canvas = globalThis.document.createElement('canvas')
+      canvas = globalThis.document.createElement('canvas')
       canvas.width = Math.max(1, Math.round(viewport.width || 800))
       canvas.height = Math.max(1, Math.round(viewport.height || 1100))
       const context = canvas.getContext('2d')
@@ -271,6 +348,11 @@ async function renderPdfPageToImage(
     }
     return { mimeType: 'image/jpeg', data: bytesToBase64(new TextEncoder().encode(`pdf-page-${pageNumber}`)) }
   } finally {
+    if (canvas) {
+      // Release iOS Safari canvas backing store memory immediately.
+      canvas.width = 0
+      canvas.height = 0
+    }
     page.cleanup()
   }
 }
@@ -283,12 +365,13 @@ export async function compressImageFile(file: File, extension?: string): Promise
   if (typeof globalThis.document !== 'undefined' && typeof createImageBitmap === 'function') {
     try {
       const bitmap = await createImageBitmap(file)
+      let canvas: HTMLCanvasElement | null = null
       try {
         const longest = Math.max(bitmap.width, bitmap.height, 1)
         const scale = longest > MAX_IMAGE_EDGE ? MAX_IMAGE_EDGE / longest : 1
         const width = Math.max(1, Math.round(bitmap.width * scale))
         const height = Math.max(1, Math.round(bitmap.height * scale))
-        const canvas = globalThis.document.createElement('canvas')
+        canvas = globalThis.document.createElement('canvas')
         canvas.width = width
         canvas.height = height
         const ctx = canvas.getContext('2d')
@@ -301,6 +384,10 @@ export async function compressImageFile(file: File, extension?: string): Promise
           if (base64) return { mimeType: 'image/jpeg', data: base64 }
         }
       } finally {
+        if (canvas) {
+          canvas.width = 0
+          canvas.height = 0
+        }
         bitmap.close?.()
       }
     } catch {
@@ -308,7 +395,7 @@ export async function compressImageFile(file: File, extension?: string): Promise
     }
   }
 
-  const bytes = new Uint8Array(await file.arrayBuffer())
+  const bytes = await readFileBytes(file)
   return { mimeType: fallbackMime, data: bytesToBase64(bytes) }
 }
 

@@ -11,9 +11,22 @@ describe('stale version after a deploy', () => {
   })
 
   it('turns a missing file into a clear message and leaves other errors alone', async () => {
-    await expect(freshImport(() => Promise.reject(new TypeError('Failed to fetch dynamically imported module: /assets/x.js')))).rejects.toBeInstanceOf(StaleVersionError)
-    await expect(freshImport(() => Promise.reject(new Error('başka bir hata')))).rejects.toThrow('başka bir hata')
-    await expect(freshImport(() => Promise.resolve(42))).resolves.toBe(42)
+    await expect(freshImport(() => Promise.reject(new TypeError('Failed to fetch dynamically imported module: /assets/x.js')), 0)).rejects.toBeInstanceOf(StaleVersionError)
+    await expect(freshImport(() => Promise.reject(new Error('başka bir hata')), 0)).rejects.toThrow('başka bir hata')
+    await expect(freshImport(() => Promise.resolve(42), 0)).resolves.toBe(42)
+  })
+
+  it('retries transient mobile chunk errors (e.g. iOS file-picker wake-up) before failing', async () => {
+    let attempts = 0
+    const result = await freshImport(async () => {
+      attempts += 1
+      if (attempts === 1) {
+        throw new TypeError('Importing a module script failed.')
+      }
+      return 'ok'
+    }, 2)
+    expect(result).toBe('ok')
+    expect(attempts).toBe(2)
   })
 
   it('finds the main script of a built page', () => {
@@ -22,3 +35,4 @@ describe('stale version after a deploy', () => {
     expect(entryFromHtml('<script type="module" src="/src/main.tsx"></script>')).toBeNull()
   })
 })
+

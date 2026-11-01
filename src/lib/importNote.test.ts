@@ -164,7 +164,48 @@ describe('extractNoteText', () => {
   it('cleans up after corrupt PDFs and offers a useful recovery path', async () => {
     const { destroy } = fakePdf({ failure: new Error('Invalid PDF') })
     await expect(extractNoteText(new File(['invalid'], 'bozuk.pdf'))).rejects.toThrow('TXT olarak yükle')
-    expect(destroy).toHaveBeenCalledOnce()
+    expect(destroy).toHaveBeenCalledTimes(2)
+  })
+
+  it('retries PDF opening when the first worker attempt fails after returning from the mobile file picker', async () => {
+    const cleanup = vi.fn()
+    const destroy = vi.fn(async () => undefined)
+    let callCount = 0
+    pdfMocks.getDocument.mockImplementation(() => {
+      callCount += 1
+      if (callCount === 1) {
+        return {
+          promise: Promise.reject(new Error('Worker was destroyed')),
+          destroy,
+        }
+      }
+      return {
+        promise: Promise.resolve({
+          numPages: 1,
+          getPage: async () => ({
+            getTextContent: async () => ({ items: [{ str: 'İkinci denemede okunan PDF metni.', hasEOL: true }] }),
+            cleanup,
+          }),
+        }),
+        destroy,
+      }
+    })
+
+    await expect(extractNoteText(new File(['pdf bytes'], 'ikinci-dosya.pdf'))).resolves.toBe('İkinci denemede okunan PDF metni.')
+    expect(callCount).toBe(2)
+    expect(destroy).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps selectable text when a decorative/cover page has no text and OCR fails on that page', async () => {
+    fakePdf({ numPages: 2, pages: ['', 'Asıl ders içeriği burada yer alıyor.'] })
+    const transcribe = vi.fn(async () => {
+      throw new Error('Geçici ağ hatası')
+    })
+
+    await expect(
+      extractNoteText(new File(['mixed pdf'], 'sunum.pdf'), { transcribe }),
+    ).resolves.toBe('Asıl ders içeriği burada yer alıyor.')
   })
 })
+
 

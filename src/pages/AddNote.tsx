@@ -165,6 +165,7 @@ export function AddNote() {
   // while the student is filling the form must not stop them from adding a file.
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
       preloadNoteReaders()
       void freshImport(() => import('../lib/ai')).catch(() => {})
     }, 800)

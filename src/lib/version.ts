@@ -41,17 +41,30 @@ export function useUpdateAvailable(): boolean {
   )
 }
 
-/** Loads a lazily split part of the app; a part missing after a deploy becomes a clear message. */
-export async function freshImport<T>(load: () => Promise<T>): Promise<T> {
-  try {
-    return await load()
-  } catch (error) {
-    if (isChunkError(error)) {
-      markUpdateAvailable()
-      throw new StaleVersionError()
+/**
+ * Loads a lazily split part of the app.
+ * On mobile browsers (especially iOS Safari / WhatsApp in-app browser when returning from the
+ * native file picker), in-flight dynamic imports can transiently fail with "Importing a module
+ * script failed" while the network socket wakes up. We retry before assuming a deploy happened.
+ */
+export async function freshImport<T>(load: () => Promise<T>, retries = 2): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await load()
+    } catch (error) {
+      if (!isChunkError(error)) throw error
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)))
+      }
     }
-    throw error
   }
+  // Only mark the persistent update banner if we are in a built page Whose entry actually changed,
+  // or if we cannot verify the entry (e.g. offline/test environment).
+  const verified = await checkForUpdate()
+  if (verified !== false) {
+    markUpdateAvailable()
+  }
+  throw new StaleVersionError()
 }
 
 /** The main script of a built page, e.g. "/assets/index-AbC123.js"; null in development. */
@@ -60,20 +73,33 @@ export function entryFromHtml(html: string): string | null {
 }
 
 function currentEntry(): string | null {
+  if (typeof document === 'undefined') return null
   const script = document.querySelector<HTMLScriptElement>('script[type="module"][src*="/assets/index-"]')
   return script ? new URL(script.src).pathname : null
 }
 
-async function checkForUpdate() {
+/**
+ * Checks whether the server's index.html points to a different entry bundle than the running tab.
+ * Returns `true` if a newer build is live, `false` if the server still serves the exact same build,
+ * or `null` if the check could not be completed (dev mode, offline, or test environment).
+ */
+export async function checkForUpdate(): Promise<boolean | null> {
   try {
     const mine = currentEntry()
-    if (!mine || updateAvailable) return
-    const response = await fetch('/', { cache: 'no-store' })
-    if (!response.ok) return
+    if (!mine) return null
+    if (updateAvailable) return true
+    const response = await fetch(`/?_v=${Date.now()}`, { cache: 'no-store' })
+    if (!response.ok) return null
     const latest = entryFromHtml(await response.text())
-    if (latest && latest !== mine) markUpdateAvailable()
+    if (!latest) return null
+    if (latest !== mine) {
+      markUpdateAvailable()
+      return true
+    }
+    return false
   } catch {
     // Offline or blocked: try again later.
+    return null
   }
 }
 
@@ -100,9 +126,14 @@ export function startUpdateChecks() {
     window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
   }
   if (['localhost', '127.0.0.1'].includes(location.hostname)) return
-  window.addEventListener('vite:preloadError', () => markUpdateAvailable())
+  // Verify against the server before showing the update bar; iOS Safari can emit preloadError
+  // when a backgrounded tab or native file picker interrupts a preload request.
+  window.addEventListener('vite:preloadError', () => {
+    void checkForUpdate()
+  })
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') void checkForUpdate()
   })
   window.setInterval(() => void checkForUpdate(), 10 * 60_000)
 }
+
