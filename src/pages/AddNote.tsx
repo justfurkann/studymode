@@ -1,5 +1,6 @@
 import { ArrowLeft, Check, CircleAlert, FileText, FileUp, Plus, Sparkles, Wand2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
+import { checkMerged, mergeContents, mergedTitle, mergeMessage } from '../lib/mergeNotes'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../components/ui'
@@ -54,6 +55,9 @@ export function AddNote() {
   const [savedNoteId, setSavedNoteId] = useState<string | null>(null)
   const [batch, setBatch] = useState<BatchItem[] | null>(null)
   const [batchFinished, setBatchFinished] = useState(false)
+  // Several files: separate notes (default) or one note with each file under its own heading.
+  const [merge, setMerge] = useState(false)
+  const [mergeTitle, setMergeTitle] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
 
   const updateItem = (key: string, patch: Partial<BatchItem>) =>
@@ -196,9 +200,36 @@ export function AddNote() {
     return id
   }
 
+  /** "Tek not olarak birleştir": one note, each file under its own heading, prepared part by part if long. */
+  async function submitMerged(target: string, items: BatchItem[]) {
+    const text = mergeContents(items.map((i) => ({ title: i.title || titleFromFile(i.fileName), content: i.content })))
+    const noteTitle = mergeTitle.trim() || mergedTitle(items.map((i) => i.title))
+    setBusy(true)
+    setError('')
+    for (const item of items) updateItem(item.key, { status: 'working', message: '' })
+    const noteId = savedNoteId ?? store.addNote({ courseId: target, title: noteTitle, content: text }).id
+    setSavedNoteId(noteId)
+    try {
+      const { set, warning } = await buildSet(text, noteTitle, mode, setChunkStatus)
+      store.applyGenerated(noteId, set, mode)
+      for (const item of items) updateItem(item.key, { status: 'done', noteId, message: '' })
+      if (warning) toast(warning)
+      toast('Birleşik not hazır')
+      if (mounted.current) navigate(`/not/${noteId}`, { replace: true })
+    } catch (e) {
+      for (const item of items) updateItem(item.key, { status: 'failed', noteId, message: '' })
+      setError(e instanceof Error ? e.message : 'Birleşik not hazırlanamadı.')
+    } finally {
+      setBusy(false)
+      setChunkStatus('')
+    }
+  }
+
   async function submitBatch() {
     const target = resolveCourse()
     if (!target || !batch) return
+    const usable = batch.filter((i) => i.status === 'ready' || i.status === 'failed')
+    if (merge && usable.length > 1) return submitMerged(target, usable)
     setBusy(true)
     setError('')
     let failed = 0
@@ -238,8 +269,11 @@ export function AddNote() {
   const stillReading = batch?.some((i) => i.status === 'reading') ?? false
   const doneCount = batch?.filter((i) => i.status === 'done').length ?? 0
   const courseOk = courseId !== NEW_COURSE || !!newCourse.trim()
+  const mergeable = (batch?.filter((i) => i.status === 'ready' || i.status === 'failed' || i.status === 'reading').length ?? 0) > 1
+  const merging = merge && mergeable
+  const mergeCheck = merging && batch ? checkMerged(mergeContents(batch.filter((i) => i.status === 'ready' || i.status === 'failed').map((i) => ({ title: i.title, content: i.content })))) : null
   const canSubmit = batch
-    ? !busy && !stillReading && readyCount > 0 && courseOk
+    ? !busy && !stillReading && readyCount > 0 && courseOk && !mergeCheck?.tooLong
     : !busy && !reading && isLongEnough(content) && courseOk
 
   const fileInputEl = (
@@ -265,7 +299,7 @@ export function AddNote() {
       <div className="page-header">
         <div>
           <h1>Not ekle</h1>
-          <p className="muted">Notundan özet, çalışma kartları, test ve açık uçlu sorular hazırlayalım. Birden fazla dosya seçersen her biri ayrı not olur.</p>
+          <p className="muted">Notundan özet, çalışma kartları, test ve açık uçlu sorular hazırlayalım. Birden fazla dosya seçersen ayrı notlar ya da tek bir not olarak ekleyebilirsin.</p>
         </div>
       </div>
 
@@ -294,6 +328,38 @@ export function AddNote() {
 
         {batch ? (
           <div className="field">
+            {mergeable && !batchFinished && (
+              <div className="merge-choice">
+                <div className="segmented" role="group" aria-label="Dosyalar nasıl eklensin?">
+                  <button type="button" aria-pressed={!merge} disabled={busy} onClick={() => setMerge(false)}>
+                    Ayrı notlar (her dosya bir not)
+                  </button>
+                  <button type="button" aria-pressed={merge} disabled={busy} onClick={() => setMerge(true)}>
+                    Tek not olarak birleştir
+                  </button>
+                </div>
+                {merge && (
+                  <>
+                    <label className="field">
+                      <span>Birleşik notun başlığı</span>
+                      <input
+                        className="input"
+                        value={mergeTitle || mergedTitle(batch.map((i) => i.title))}
+                        onChange={(e) => setMergeTitle(e.target.value)}
+                        maxLength={200}
+                        disabled={busy}
+                      />
+                    </label>
+                    {mergeCheck && (
+                      <p className={mergeCheck.tooLong ? 'merge-note is-error' : 'merge-note'} role={mergeCheck.tooLong ? 'alert' : undefined}>
+                        {mergeMessage(mergeCheck, mode === 'ai')} Her dosya kendi başlığıyla sırayla eklenir.
+                      </p>
+                    )}
+                    {busy && chunkStatus && <p className="subtle">{chunkStatus}</p>}
+                  </>
+                )}
+              </div>
+            )}
             <span>
               {batch.length} dosya {busy ? `· ${doneCount}/${batch.filter((i) => i.status !== 'unreadable').length} hazırlandı` : ''}
             </span>
@@ -502,7 +568,7 @@ export function AddNote() {
                     : 'Hazırlanıyor…'}
               </>
             ) : batch ? (
-              batchFinished ? 'Kalanları tekrar dene' : `${readyCount} notu kaydet ve hazırla`
+              batchFinished ? 'Kalanları tekrar dene' : merging ? `${readyCount} dosyayı tek notta birleştir ve hazırla` : `${readyCount} notu kaydet ve hazırla`
             ) : savedNoteId ? (
               'Tekrar dene'
             ) : (

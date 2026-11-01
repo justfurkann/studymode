@@ -103,7 +103,6 @@ export function Layout() {
     { to: '/dersler', label: 'Dersler', icon: BookOpen },
     { to: '/tekrar', label: 'Tekrar', icon: Brain, badge: due, tour: 'tekrar' },
     { to: '/sinav', label: 'Sınavlar', icon: ClipboardList, tour: 'sinavlar' },
-    { to: '/ayarlar', label: 'Ayarlar', icon: Settings },
   ]
 
   return (
@@ -162,6 +161,11 @@ export function Layout() {
             </NavLink>
           </div>
         )}
+        {/* Settings belong with the account at the bottom, not between the study pages. */}
+        <NavLink to="/ayarlar" className={navClass('nav-link sidebar-settings', '/ayarlar')}>
+          <Settings size={18} />
+          Ayarlar
+        </NavLink>
         <div className="sidebar-footer">
           <span className={`status-dot ${mode === 'cloud' ? 'cloud' : ''}`} />
           <span title={session?.user.email} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -194,8 +198,12 @@ export function Layout() {
             </NavLink>
           )}
           {session ? (
-            <Link to="/ayarlar" className="mobile-avatar" aria-label={`Hesap: ${name}`} title={session.user.email} data-tour="daha">
+            <Link to="/ayarlar" className="mobile-avatar" aria-label="Ayarlar ve hesap" title={session.user.email} data-tour="daha">
               {initials(name)}
+              {/* The gear says "settings": the initials alone did not (a friend could not find Ayarlar). */}
+              <span className="mobile-avatar-gear" aria-hidden="true">
+                <Settings size={12} strokeWidth={2.4} />
+              </span>
             </Link>
           ) : pathname === '/giris' ? null : (
             <Link to="/giris" className="btn btn-sm">

@@ -572,3 +572,151 @@ test('Rehber: Daha fazla menüsünden ve Ayarlar’dan açılır; Premium bölü
   await page.locator('main').getByRole('link', { name: 'Rehber' }).click()
   await expect(page).toHaveURL(/\/rehber$/)
 })
+
+test('Masaüstü: Ayarlar menünün en altında, hesap bilgisinin üstünde', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  const order = await page.locator('.sidebar').evaluate((side) =>
+    [...side.querySelectorAll('a.nav-link, button.nav-link, .sidebar-footer')].map((el) => (el.classList.contains('sidebar-footer') ? 'FOOTER' : el.textContent!.trim())),
+  )
+  const settings = order.findIndex((t) => t.startsWith('Ayarlar'))
+  expect(settings).toBeGreaterThan(order.findIndex((t) => t.startsWith('Daha fazla')))
+  expect(settings).toBeGreaterThan(order.findIndex((t) => t.startsWith('Premium')))
+  expect(order[settings + 1]).toBe('FOOTER')
+})
+
+test('Telefon: avatarda dişli rozeti, "Ayarlar ve hesap"; 360 px’te üst bar taşmaz; Bugün’ün altında Ayarlar', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 760 })
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  const T = '2026-10-01T00:00:00Z'
+  await signedInAs(page, 'vip', {}, { courses: [{ id: 'c1', name: 'Biyoloji', color: '#4f46e5', exam_date: null, created_at: T, updated_at: T }] })
+  await page.goto('/')
+  const avatar = page.getByRole('link', { name: 'Ayarlar ve hesap' })
+  await expect(avatar).toBeVisible()
+  await expect(avatar.locator('.mobile-avatar-gear svg')).toBeVisible()
+  // Nothing in the top bar sticks out of the screen.
+  const overflow = await page.evaluate(() => {
+    const bar = document.querySelector('.mobile-top')!
+    const out = [...bar.querySelectorAll('*')].filter((el) => {
+      const r = el.getBoundingClientRect()
+      return r.width > 0 && (r.right > window.innerWidth + 0.5 || r.left < -0.5)
+    })
+    return { page: document.documentElement.scrollWidth - window.innerWidth, items: out.length }
+  })
+  expect(overflow).toEqual({ page: 0, items: 0 })
+  await avatar.click()
+  await expect(page).toHaveURL(/\/ayarlar$/)
+  await page.goto('/')
+  await expect(page.locator('main').getByRole('link', { name: 'Ayarlar', exact: true })).toBeVisible()
+})
+
+test('Birden fazla dosya: tek not olarak birleştir; her dosya kendi başlığıyla', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  await page.goto('/not-ekle')
+  const text = (topic: string) => Buffer.from(`${topic}\n\n${'Mitokondri hücrenin enerji santralidir. Ribozom protein üretir. Hücre zarı seçici geçirgendir. '.repeat(4)}`)
+  await page.getByLabel('Not dosyası').setInputFiles([
+    { name: 'hafta_1.txt', mimeType: 'text/plain', buffer: text('Hücre') },
+    { name: 'hafta_2.txt', mimeType: 'text/plain', buffer: text('Organeller') },
+    { name: 'hafta_3.txt', mimeType: 'text/plain', buffer: text('Zar') },
+  ])
+  await expect(page.getByText('3 dosya')).toBeVisible()
+  // Default: separate notes, as before.
+  await expect(page.getByRole('button', { name: 'Ayrı notlar (her dosya bir not)' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: '3 notu kaydet ve hazırla' })).toBeVisible()
+  await page.getByRole('button', { name: 'Tek not olarak birleştir' }).click()
+  const title = page.getByLabel('Birleşik notun başlığı')
+  await expect(title).toHaveValue('hafta 1 + 2 not daha')
+  await title.fill('Hücre: 1-3. haftalar')
+  await expect(page.getByText(/Toplam [\d.]+ karakter/)).toBeVisible()
+  await page.getByRole('button', { name: '3 dosyayı tek notta birleştir ve hazırla' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Hücre: 1-3. haftalar' })).toBeVisible()
+  const id = page.url().match(/\/not\/([^/?]+)/)![1]
+  const content = await page.evaluate((noteId) => JSON.parse(localStorage.getItem('studymode.data.v2')!).notes.find((n: { id: string }) => n.id === noteId).content, id)
+  expect(content).toMatch(/^# hafta 1\n\nHücre/)
+  expect(content.indexOf('# hafta 2')).toBeGreaterThan(0)
+  expect(content.indexOf('# hafta 3')).toBeGreaterThan(content.indexOf('# hafta 2'))
+  expect(errors).toEqual([])
+})
+
+test('Ders sayfası: notları seçip birleştir; eskiler kalır', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  // A second note in the example course.
+  await page.goto('/not-ekle')
+  await page.getByLabel('Not başlığı').fill('Bellek türleri')
+  await page.getByRole('tab', { name: 'Metin yapıştır' }).click()
+  await page.getByLabel('Ders notun').fill('Duyusal bellek çok kısa sürer. Kısa süreli bellek sınırlıdır. Uzun süreli bellek kalıcıdır ve anlamlı bağlarla güçlenir. '.repeat(3))
+  await page.getByRole('button', { name: /Kaydet ve hazırla/ }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Bellek türleri' })).toBeVisible()
+  await page.getByRole('link', { name: /Psikolojiye Giriş/ }).first().click()
+  await page.getByRole('button', { name: 'Birleştir' }).click()
+  await expect(page.getByRole('button', { name: 'En az 2 not seç' })).toBeDisabled()
+  await page.locator('.merge-pick').filter({ hasText: 'Öğrenme ve bellek' }).click()
+  await page.locator('.merge-pick').filter({ hasText: 'Bellek türleri' }).click()
+  await page.getByLabel('Yeni notun başlığı').fill('Bellek: hepsi bir arada')
+  await page.getByRole('button', { name: '2 notu birleştir' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Bellek: hepsi bir arada' })).toBeVisible()
+  await expect(page.getByText('Bu not için çalışma seti hazırlanmadı')).toBeVisible()
+  const notes = await page.evaluate(() => JSON.parse(localStorage.getItem('studymode.data.v2')!).notes.map((n: { title: string; content: string }) => ({ t: n.title, c: n.content })))
+  expect(notes.map((n: { t: string }) => n.t).sort()).toEqual(['Bellek türleri', 'Bellek: hepsi bir arada', 'Öğrenme ve bellek'])
+  const merged = notes.find((n: { t: string }) => n.t === 'Bellek: hepsi bir arada')!
+  // Oldest first: the example note, then the new one.
+  expect(merged.c.indexOf('# Öğrenme ve bellek')).toBe(0)
+  expect(merged.c.indexOf('# Bellek türleri')).toBeGreaterThan(0)
+})
+
+/** A playable silent WAV of `seconds`. */
+function wav(seconds: number) {
+  const rate = 8000
+  const n = Math.round(rate * seconds)
+  const b = Buffer.alloc(44 + n * 2)
+  b.write('RIFF', 0)
+  b.writeUInt32LE(36 + n * 2, 4)
+  b.write('WAVEfmt ', 8)
+  b.writeUInt32LE(16, 16)
+  b.writeUInt16LE(1, 20)
+  b.writeUInt16LE(1, 22)
+  b.writeUInt32LE(rate, 24)
+  b.writeUInt32LE(rate * 2, 28)
+  b.writeUInt16LE(2, 32)
+  b.writeUInt16LE(16, 34)
+  b.write('data', 36)
+  b.writeUInt32LE(n * 2, 40)
+  return b.toString('base64')
+}
+
+test('Stüdyo sesi: ilk parça gelince çalmaya başlar, kalanlar sıraya girer, en sonda indirilebilir', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  const T = '2026-10-01T00:00:00Z'
+  await signedInAs(page, 'vip', {}, {
+    courses: [{ id: 'c1', name: 'Biyoloji', color: '#4f46e5', exam_date: null, created_at: T, updated_at: T }],
+    notes: [{ id: 'n1', course_id: 'c1', title: 'Hücre', content: 'Mitokondri enerji üretir.', summary: { overview: 'x', points: ['a'], keyTerms: [{ term: 'Mitokondri', definition: 'Enerji' }] }, questions: [], practice: [], generator: 'ai', created_at: T, updated_at: T }],
+  })
+  const long = 'Mitokondri hücrenin enerji santralidir ve ATP üretir; Krebs döngüsü matrikste döner, elektron taşıma zinciri iç zardadır. '
+  const lines = Array.from({ length: 12 }, (_, i) => ({ speaker: i % 2 ? 'Mert' : 'Deniz', role: i % 2 ? 'student' : 'host', text: long.repeat(2), highlight: '' }))
+  let ttsCalls = 0
+  let ttsDone = 0
+  await page.route('**/api/generate', async (route) => {
+    const body = route.request().postDataJSON() as { task: string }
+    if (body.task === 'podcast') return route.fulfill({ json: { result: { title: 'Hücre · Sesli not', summary: '', lines }, engine: 'plus' } })
+    if (body.task === 'tts') {
+      ttsCalls += 1
+      // Later parts take a while, like the real voices do.
+      if (ttsCalls > 1) await new Promise((r) => setTimeout(r, 2500))
+      ttsDone += 1
+      return route.fulfill({ json: { result: { audioBase64: wav(0.4), mimeType: 'audio/wav' }, engine: 'plus' } })
+    }
+    return route.fulfill({ status: 500, json: { error: 'x' } })
+  })
+  await page.goto('/not/n1?adim=podcast')
+  await page.getByRole('button', { name: /Stüdyo sesiyle dinle/ }).click()
+  const live = page.locator('.podcast-live')
+  await expect(live).toBeVisible()
+  // Playing (or ready for a tap) while the other parts are still being recorded.
+  await expect(live).toContainText(/Çalıyor · bölüm 1\/\d|Başlatmak için dokun|kaydediliyor, hemen devam/)
+  expect(ttsDone).toBeLessThan(3)
+  await expect(page.getByRole('link', { name: /WAV İndir/ })).toBeVisible({ timeout: 15_000 })
+  expect(ttsCalls).toBeGreaterThanOrEqual(3)
+})

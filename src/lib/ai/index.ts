@@ -513,6 +513,8 @@ export async function synthesizePodcastTts(
   lines: PodcastLine[],
   settings: Settings,
   onProgress?: (done: number, total: number) => void,
+  /** Each part as soon as it is ready (a playable WAV), so playback can start before the rest arrive. */
+  onPart?: (audioDataUrl: string, index: number, total: number) => void,
 ): Promise<{ audioDataUrl: string; mimeType: string }> {
   // ~600 characters ≈ 40 s of speech ≈ 2 MB of WAV, safely under the 4.5 MB response limit.
   const chunks = splitScriptForTts(lines, 600)
@@ -529,6 +531,7 @@ export async function synthesizePodcastTts(
     if (res.audioBase64) {
       wavChunks.push(res.audioBase64)
       if (res.mimeType) mimeType = res.mimeType
+      onPart?.(`data:${mimeType};base64,${res.audioBase64}`, i, chunks.length)
     }
     onProgress?.(i + 1, chunks.length)
   }

@@ -56,7 +56,7 @@ const FEATURES: Array<{ icon: LucideIcon; title: string; text: string; to?: stri
   { icon: Trophy, title: 'Başarımlar', text: 'Çalıştıkça açılan hedefler ve sitenin köşelerinde saklı gizli keşifler. Gizliler yalnızca bir ipucu verir; kurcala.', to: '/basarimlar', link: 'Koleksiyona bak' },
   { icon: Sparkles, title: 'Hangi öğrenci tipisin?', text: '10 soruluk kısa test; nasıl çalıştığını, güçlü yanlarını ve sana özel bir taktiği söyler. Sonucun profiline kaydedilir.', to: '/ogrenci-tipi', link: 'Testi çöz' },
   { icon: Palette, title: 'Görünüm', text: 'Ayarlar’dan açık ya da koyu tema, defter kağıdı (kareli, noktalı, sarı defter…) ve fosforlu kalem rengini seçebilirsin.', to: '/ayarlar', link: 'Ayarlar' },
-  { icon: KeyRound, title: 'Yapay zekâ', text: 'Giriş yapınca yapay zekâ ücretsiz: günde 40 istek (VIP’te 150). İstersen Ayarlar’dan kendi Claude, ChatGPT ya da Gemini anahtarını bağlayabilirsin; o zaman hakkından düşmez.' },
+  { icon: KeyRound, title: 'Yapay zekâ', text: 'Giriş yapınca yapay zekâ ücretsiz: günde 40 istek (VIP’te 150). VIP ve yönetici hesaplarında notlar kendiliğinden daha güçlü Free+ ile hazırlanır, ayrıca seçmen gerekmez. İstersen Ayarlar’dan kendi Claude, ChatGPT ya da Gemini anahtarını bağlayabilirsin; o zaman hakkından düşmez.' },
 ]
 
 const PREMIUM_TIPS: Array<{ icon: LucideIcon; title: string; text: string }> = [

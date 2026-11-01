@@ -1,4 +1,6 @@
-import { ArrowLeft, Brain, CalendarClock, ClipboardList, FileText, Pencil, Plus, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { ArrowLeft, Brain, CalendarClock, ClipboardList, Combine, FileText, Pencil, Plus, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { checkMerged, mergeContents, mergedTitle, mergeMessage } from '../lib/mergeNotes'
+import type { Note } from '../lib/types'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CourseForm } from '../components/CourseForm'
@@ -28,6 +30,9 @@ export function CourseDetail() {
   const navigate = useNavigate()
   const [confirm, confirmation] = useConfirm()
   const [query, setQuery] = useState('')
+  // "Birleştir": pick notes, they become one new note (the old ones stay).
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<string[]>([])
   const [sharing, setSharing] = useState(false)
   const [tag, setTag] = useState('')
   const [editing, setEditing] = useState(false)
@@ -173,6 +178,11 @@ export function CourseDetail() {
       <section className="section">
         <div className="section-head">
           <h2>Notlar</h2>
+          {notes.length >= 2 && !selecting && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelecting(true)}>
+              <Combine size={14} /> Birleştir
+            </button>
+          )}
           {(notes.length >= 3 || tags.length > 0) && hasAi && (
             <button
               type="button"
@@ -212,12 +222,46 @@ export function CourseDetail() {
           </label>
         </div>
         )}
+        {selecting && (
+          <MergeNotesBar
+            notes={notes.filter((n) => selected.includes(n.id))}
+            onCancel={() => {
+              setSelecting(false)
+              setSelected([])
+            }}
+            onMerge={(title, content) => {
+              const note = store.addNote({ courseId: course.id, title, content })
+              setSelecting(false)
+              setSelected([])
+              toast('Birleşik not oluşturuldu; eski notlar yerinde duruyor')
+              navigate(`/not/${note.id}`)
+            }}
+          />
+        )}
         {notes.length > 0 && searchMatches.length === 0 && <p className="muted">Aramana uygun not bulunamadı.</p>}
         {notes.length ? (
           <div className="panel panel-tight list">
             {searchMatches.map((match) => {
                 const { note } = match
                 const progress = note.generator ? computeNoteProgress(note, store.data.cards, store.data.attempts) : null
+                if (selecting) {
+                  const on = selected.includes(note.id)
+                  return (
+                    <label key={note.id} className={`list-item merge-pick${on ? ' is-on' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={(e) => setSelected((ids) => (e.target.checked ? [...ids, note.id] : ids.filter((id) => id !== note.id)))}
+                      />
+                      <div className="grow">
+                        <div className="title">{note.title}</div>
+                        <div className="subtle">
+                          {relativeDate(note.createdAt)} · {note.content.length.toLocaleString('tr-TR')} karakter
+                        </div>
+                      </div>
+                    </label>
+                  )
+                }
                 return (
                   <Link key={note.id} to={`/not/${note.id}`} className="list-item">
                     <FileText size={18} style={{ color: course.color }} />
@@ -387,5 +431,39 @@ function CourseProgress({ courseId }: { courseId: string }) {
         )}
       </div>
     </section>
+  )
+}
+
+/** "Birleştir" bar on a course: the picked notes, oldest first, become one note; the old ones stay. */
+function MergeNotesBar({ notes, onCancel, onMerge }: { notes: Note[]; onCancel: () => void; onMerge: (title: string, content: string) => void }) {
+  const ordered = [...notes].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  const [title, setTitle] = useState('')
+  const content = mergeContents(ordered.map((n) => ({ title: n.title, content: n.content })))
+  const check = checkMerged(content)
+  const shownTitle = title || mergedTitle(ordered.map((n) => n.title))
+  return (
+    <div className="panel merge-bar" role="group" aria-label="Notları birleştir">
+      <strong>Birleştirilecek notları seç</strong>
+      <p className="subtle">Seçtiğin notlar eskiden yeniye, her biri kendi başlığıyla tek bir yeni nota toplanır. Eski notlar ve kartları olduğu gibi kalır.</p>
+      {ordered.length >= 2 && (
+        <>
+          <label className="field">
+            <span>Yeni notun başlığı</span>
+            <input className="input" value={shownTitle} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
+          </label>
+          <p className={check.tooLong ? 'merge-note is-error' : 'merge-note'} role={check.tooLong ? 'alert' : undefined}>
+            {mergeMessage(check, true)}
+          </p>
+        </>
+      )}
+      <div className="btn-row">
+        <button type="button" className="btn btn-primary btn-sm" disabled={ordered.length < 2 || check.tooLong} onClick={() => onMerge(shownTitle.trim() || 'Birleşik not', content)}>
+          <Combine size={15} /> {ordered.length < 2 ? 'En az 2 not seç' : `${ordered.length} notu birleştir`}
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
+          Vazgeç
+        </button>
+      </div>
+    </div>
   )
 }

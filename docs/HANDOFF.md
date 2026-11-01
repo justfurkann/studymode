@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (1 Kasım 2026, Aşama 21 sonrası, `main` üzerinde): 239 birim testi, 93 tarayıcı testi.
+Son yeşil durum (1 Kasım 2026, Aşama 23 sonrası, `main` üzerinde): 246 birim testi, 98 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -107,7 +107,7 @@ alter table public.study_days add column if not exists actions integer not null 
 
 ## 7. Aşamalar ve durum
 
-**Şu an açık bir hedef yok.** Aşama 1-21 bitti, hepsi `main`de. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
+**Şu an açık bir hedef yok.** Aşama 1-23 bitti, hepsi `main`de. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
 
 **Aşama 1 — Doğrulama ve hatalar: ✅ TAMAM (#18)**
 - Uzun not: bölüm başına bir yeniden deneme, kısmi sonuç + uyarı, not eklemede bölüm ilerlemesi.
@@ -583,6 +583,21 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Şimdi:** `api/generate.ts` önce `ai_quota` okur (rol için; ücretsiz yol da aynı sonucu kullanır). VIP/admin ise `engine` gönderilmese de Free+ (Vertex) denenir; yalnızca açıkça `engine: 'free'` gelirse atlanır. Free+ hakkı biter ya da Google hata verirse eskisi gibi ücretsize düşer. Normal hesaplarda ek bir çağrı yok.
 - **Ayarlar:** VIP/admin tek "Free+" seçeneği görür (varsayılan seçili; "Ücretsiz" düğmesi gizli), altında Free+ hakkı ve yedek ücretsiz hak (`QuotaLine`). Gizlilik: "Free+ seçerse" → "VIP ve yönetici hesaplarında".
 - **Canlı kontroller (#57, keen-albattani):** gerçek AI görselde filigran sağ altta okunur, indirilen JPEG'de de var; VIP'te "Stüdyo sesiyle dinle" tek basışta senaryo + 3 parça ses, toplam ~53 sn, bitince çalıyor; telefonda tur 6 adım, alt bar ve avatar doğru vurgulanıyor. Yönetici "geri al" canlıda denenmedi (test hesabı VIP, yönetici değil).
+
+### Aşama 23 — Ayarlar'ın yeri, telefonda Ayarlar, dosya/not birleştirme, erken başlayan stüdyo sesi (1 Kasım 2026, `keen-albattani`)
+
+- **Masaüstü yan menü:** Ayarlar ana listeden çıktı; menünün en altında, hesap bilgisinin hemen üstünde (`.sidebar-settings`, `margin-top: auto`). Kullanıcı: "Ayarlar niye onca şeyin yukarısında duruyor".
+- **Telefonda Ayarlar:** Üst bardaki baş harfli yuvarlağın köşesinde küçük dişli rozeti (`.mobile-avatar-gear`, yeni düğme yok), aria-label "Ayarlar ve hesap". Bugün sayfasının en altında küçük bir "Ayarlar" bağlantısı. 360 px'te üst bar taşma testi var.
+- **Birden fazla dosyayı tek not yapmak** (`src/lib/mergeNotes.ts`):
+  - **Not ekle:** 2+ dosyada "Ayrı notlar (her dosya bir not)" (varsayılan, eski davranış) / "Tek not olarak birleştir". Birleşikte her dosya `# dosya başlığı` ile sırayla gelir, not başlığı düzenlenebilir (öneri "hafta 1 + 2 not daha").
+  - **Ders sayfası:** 2+ notta "Birleştir" → seçim modu (onay kutuları) → "N notu birleştir". Eskiden yeniye yeni bir not oluşur, eski notlar ve kartları kalır. Yeni not hazırlanmamış açılır (not sayfasındaki hazırlama seçimiyle).
+  - **Uzunluk:** Hazırlama zaten 20.000 karakterlik parçalarla çalışıyor (`generateStudySet`), kesme yok; yazılamayan bölüm olursa uyarılıyor. Ekranda "Toplam X karakter · yaklaşık N bölümde hazırlar (N hak)". Veritabanı sınırı 400.000 karakter (`notes.content`); aşarsa düğme kapanır ve neden yazılır.
+- **Stüdyo sesi erken başlar:** `synthesizePodcastTts` her parçayı hazır olunca `onPart` ile verir. `src/lib/partPlayer.ts` (`PartPlayer`) tek bir Audio öğesiyle ilk parçayı hemen çalar, sonrakileri sıraya ekler; çalma kayıttan öndeyse bekleyip devam eder.
+  - Düğmeye basıldığı anda sessiz bir WAV çalınarak öğe "uyandırılır" (iPhone'un otomatik çalma kuralı). Yine engellenirse görünür bir "Çal" düğmesi çıkar.
+  - Canlı çubuk: "Çalıyor · bölüm 1/3 · 2/3 hazır". "WAV İndir" tüm ses hazır olunca; tam oynatıcı canlı çalma bitince.
+- **Rehber:** VIP/yönetici notlarının kendiliğinden Free+ ile hazırlandığı cümlesi eklendi (Aşama 22'ye uygun). "Free+ seç" gibi bir cümle yoktu.
+- Testler: 246 birim, 98 tarayıcı. Yeniler: sıralı çalma (sahte Audio), birleştirme yardımcıları, Ayarlar sırası, telefonda dişli ve 360 px, dosya birleştirme, ders sayfasında birleştirme, stüdyo sesinin 2. ve 3. parça gelmeden başlaması.
+- **SQL yok, Vercel/Supabase ayarı yok.**
 
 ## Tasarım dili ("Fosforlu")
 
