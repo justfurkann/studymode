@@ -592,7 +592,7 @@ test('Masaüstü: Ayarlar menünün en altında, hesap bilgisinin üstünde', as
   expect(order[settings + 1]).toBe('FOOTER')
 })
 
-test('Telefon: avatarda dişli rozeti, "Ayarlar ve hesap"; 360 px’te üst bar taşmaz; Bugün’ün altında Ayarlar', async ({ page }) => {
+test('Telefon: avatarda dişli rozeti, "Ayarlar ve hesap"; 360 px’te üst bar taşmaz', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 760 })
   await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
   const T = '2026-10-01T00:00:00Z'
@@ -613,8 +613,9 @@ test('Telefon: avatarda dişli rozeti, "Ayarlar ve hesap"; 360 px’te üst bar 
   expect(overflow).toEqual({ page: 0, items: 0 })
   await avatar.click()
   await expect(page).toHaveURL(/\/ayarlar$/)
+  // The gear is enough; no extra Ayarlar link at the end of Bugün.
   await page.goto('/')
-  await expect(page.locator('main').getByRole('link', { name: 'Ayarlar', exact: true })).toBeVisible()
+  await expect(page.locator('main').getByRole('link', { name: 'Ayarlar', exact: true })).toHaveCount(0)
 })
 
 test('Birden fazla dosya: tek not olarak birleştir; her dosya kendi başlığıyla', async ({ page }) => {
