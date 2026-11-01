@@ -54,6 +54,8 @@ export interface ExamFocus {
   reason: string
   actionLabel: string
   actionUrl: string
+  /** The note the action opens, when it is one note (so other lists on Bugün do not repeat it). */
+  noteId?: string
 }
 
 /** The one exam to start with now, and what to do for it. Null when nothing is close or everything is ready. */
@@ -95,6 +97,7 @@ export function pickExamFocus(data: StudyData, now = new Date()): ExamFocus | nu
       reason: `${ready} Sıradaki: ${item.note.title}.`,
       actionLabel: item.actionLabel,
       actionUrl: item.targetUrl,
+      noteId: item.note.id,
     }
   }
   return {

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation, useNavigationType, useParams } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { AchievementWatcher } from './components/Achievements'
+import { LevelUpWatcher } from './components/Level'
 import { Achievements } from './pages/Achievements'
 import { Guide } from './pages/Guide'
 import { unlock } from './lib/achievements'
@@ -132,6 +133,7 @@ export default function App() {
         <ToastProvider>
           <Routed />
           <AchievementWatcher />
+          <LevelUpWatcher />
         </ToastProvider>
       </StoreProvider>
     </BrowserRouter>

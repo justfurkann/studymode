@@ -18,6 +18,8 @@ import {
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   buildLocalPodcastScript,
+  lineAtFraction,
+  partStartLines,
   podcastLineToCard,
   type PodcastLine,
   type PodcastScript,
@@ -646,6 +648,17 @@ export function PodcastTab({
           : 'Stüdyo sesiyle dinle'
   const liveActive = !!liveState && !liveState.finished && (liveState.ready > 0 || liveState.blocked)
 
+  // Which line is being heard: exact for the device voice, by time for the studio recording, the
+  // first line of the part while parts are still arriving.
+  const [studioLine, setStudioLine] = useState<number | null>(null)
+  const [openTurn, setOpenTurn] = useState<number | null>(null)
+  const liveLine = liveActive && liveState?.playing ? (partStartLines(script.lines)[liveState.index] ?? null) : null
+  const activeLine = playingLineIdx ?? liveLine ?? studioLine
+  const activeTurnRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (activeLine !== null) activeTurnRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [activeLine])
+
   function handleConvertLineToCard(line: PodcastLine, idx: number) {
     const prev = idx > 0 ? script.lines[idx - 1] : undefined
     store.addCards([podcastLineToCard(line, prev, note.courseId, note.id)])
@@ -720,6 +733,18 @@ export function PodcastTab({
           </div>
         </div>
 
+        {activeLine !== null && (
+          <div className="podcast-progress" aria-label={`Replik ${activeLine + 1} / ${script.lines.length}`}>
+            <div className="progress">
+              <div style={{ width: `${((activeLine + 1) / script.lines.length) * 100}%` }} />
+            </div>
+            <span>
+              Replik {activeLine + 1} / {script.lines.length}
+              {studioLine !== null && playingLineIdx === null && !liveLine ? ' (yaklaşık)' : ''}
+            </span>
+          </div>
+        )}
+
         {liveActive && liveState && (
           <div className="podcast-live" role="status">
             {liveState.blocked ? (
@@ -747,7 +772,20 @@ export function PodcastTab({
         {studioAudioUrl && (
           <div className="podcast-studio-player">
             {/* While the parts are still playing, only the download; the full player comes after. */}
-            {!liveActive && <audio ref={audioRef} controls src={studioAudioUrl} style={{ width: '100%' }} />}
+            {!liveActive && (
+              <audio
+                ref={audioRef}
+                controls
+                src={studioAudioUrl}
+                style={{ width: '100%' }}
+                onTimeUpdate={(e) => {
+                  const a = e.currentTarget
+                  setStudioLine(a.duration > 0 && !a.paused ? lineAtFraction(script.lines, a.currentTime / a.duration) : null)
+                }}
+                onPause={() => setStudioLine(null)}
+                onEnded={() => setStudioLine(null)}
+              />
+            )}
             <a
               href={studioAudioUrl}
               download={`${fileSafe(note.title)}-podcast.wav`}
@@ -765,24 +803,28 @@ export function PodcastTab({
       <div className="podcast-transcript" role="list" aria-label="Podcast diyalog metni">
         {script.lines.map((line, idx) => {
           const isPlaying = playingLineIdx === idx
+          const isCurrent = activeLine === idx
           const isAdded = !!addedLineIds[line.id]
+          const host = line.speaker === 'Deniz'
           return (
             <div
               key={line.id}
+              ref={isCurrent ? activeTurnRef : undefined}
               role="listitem"
-              className={`podcast-turn ${line.speaker === 'Deniz' ? 'is-host' : 'is-student'} ${isPlaying ? 'is-playing' : ''}`}
+              className={`podcast-turn ${host ? 'is-host' : 'is-student'}${isCurrent ? ' is-playing' : ''}${openTurn === idx ? ' is-open' : ''}`}
             >
-              <div className="podcast-turn-head">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className={`podcast-speaker-badge ${line.speaker === 'Deniz' ? 'host' : 'student'}`}>
-                    {line.speaker}
-                  </span>
-                  <span className="subtle">
-                    {line.speaker === 'Deniz' ? 'Asistan' : 'Öğrenci'}
-                  </span>
+              <span className="podcast-avatar" aria-hidden="true">
+                {line.speaker.charAt(0)}
+              </span>
+              {/* Tapping a bubble shows its actions on a phone; on a computer they appear on hover. */}
+              <div className="podcast-bubble" onClick={() => setOpenTurn(idx)}>
+                <div className="podcast-turn-head">
+                  <span className="podcast-speaker-name">{line.speaker}</span>
+                  <span className="subtle">{host ? 'Asistan' : 'Öğrenci'}</span>
                   {line.highlight && <span className="chip">{line.highlight}</span>}
                 </div>
-                <div className="btn-row" style={{ gap: 6 }}>
+                <p className="podcast-turn-text">{line.text}</p>
+                <div className="podcast-turn-actions">
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
@@ -792,20 +834,14 @@ export function PodcastTab({
                     {isPlaying ? <Pause size={13} /> : <Play size={13} />}
                     {isPlaying ? 'Durdur' : 'Buradan dinle'}
                   </button>
-                  {line.speaker === 'Deniz' && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      disabled={isAdded}
-                      onClick={() => handleConvertLineToCard(line, idx)}
-                    >
+                  {host && (
+                    <button type="button" className="btn btn-ghost btn-sm" disabled={isAdded} onClick={() => handleConvertLineToCard(line, idx)}>
                       {isAdded ? <Check size={13} /> : <Layers size={13} />}
                       {isAdded ? 'Kartta' : 'Karta çevir'}
                     </button>
                   )}
                 </div>
               </div>
-              <p className="podcast-turn-text">{line.text}</p>
             </div>
           )
         })}

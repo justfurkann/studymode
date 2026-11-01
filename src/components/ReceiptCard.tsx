@@ -723,7 +723,7 @@ export default function ReceiptDialog({ onClose }: { onClose: () => void }) {
           {image ? (
             <img
               src={image.url}
-              alt={`${receipt.title}: ${receipt.lines.map((l) => `${l.qty} ${l.label} ${l.value}`).join(', ')}. ${receipt.verdict}`}
+              alt={`${prefs.studentName.trim() ? `${prefs.studentName.trim().toLocaleUpperCase('tr-TR')} · ` : ''}${receipt.title}: ${receipt.lines.map((l) => `${l.qty} ${l.label} ${l.value}`).join(', ')}. ${receipt.verdict}`}
             />
           ) : (
             <div className="receipt-loading" />

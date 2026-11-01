@@ -576,3 +576,161 @@ html.is-glitching body::after {
   right: 10px;
   z-index: 1;
 }
+
+/* ============ Seviye ve XP ============ */
+
+.level-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  min-width: 58px;
+  padding-block: 4px;
+}
+
+.level-badge-n {
+  font-weight: 800;
+  font-size: 0.8125rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.level-badge-bar {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.level-badge-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--hi);
+  border-right: 1px solid var(--ink-line);
+}
+
+.level-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  scroll-margin-top: 80px;
+}
+
+@media (max-width: 560px) {
+  .level-card {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+.level-ring {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  background: conic-gradient(var(--hi) var(--p), var(--surface-2) 0);
+  border: 1.5px solid var(--ink-line);
+}
+
+.level-ring > span {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1.5px solid var(--ink-line);
+  line-height: 1;
+}
+
+.level-ring small {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.level-ring strong {
+  font-family: var(--font-display);
+  font-size: 2rem;
+}
+
+.level-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.level-title {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  letter-spacing: -0.02em;
+}
+
+.level-progress > div {
+  background: var(--hi);
+}
+
+.level-parts summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.level-parts ul {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.level-parts li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.9375rem;
+}
+
+.level-parts > p {
+  font-size: 0.8125rem;
+  text-align: left;
+}
+
+.level-toast {
+  --frame-a: var(--r-efsanevi);
+  --frame-b: var(--r-efsanevi-2);
+}
+
+.level-toast-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--hi);
+  color: var(--on-hi);
+  flex-shrink: 0;
+}
+
+.level-toast .ach-toast-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Bugün header: the level, trophy and receipt buttons sit side by side (the header stacks its divs). */
+.page-header > .btn-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
