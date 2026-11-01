@@ -23,8 +23,9 @@ import {
   Trophy,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { ZoomableImage } from '../components/ImageViewer'
 import { requestTour } from '../lib/tour'
 
 /*
@@ -32,13 +33,35 @@ import { requestTour } from '../lib/tour'
  * most out of Premium. Short on purpose: a heading and two or three sentences each.
  */
 
-const FLOW: Array<{ title: string; text: string }> = [
-  { title: 'Dersini ve sınav tarihini gir', text: 'Sınavlar sekmesinden vize ve finallerini ekle. Uygulama tekrarları ve günlük planı bu tarihlere göre ayarlar.' },
-  { title: 'Notunu ekle', text: 'PDF, Word, slayt, fotoğraf ya da düz metin. Özet, test, kartlar ve açık uçlu sorular birkaç saniyede hazırlanır.' },
-  { title: 'Özeti oku, sonra kendini test et', text: 'Önce Kavramlar ve Ana noktalar; ardından Test. Yanlışların tek dokunuşla karta dönüşür.' },
-  { title: 'Her gün Bugün ekranına bak', text: 'Tekrar bekleyen kartları çevir, "Şimdi bununla başla" önerisine uy. Günde 10-15 dakika yeter.' },
-  { title: 'Sınava bir hafta kala prova yap', text: 'Sınav provası gerçek sınava benzeyen bir deneme hazırlar; klasik cevapların da puanlanır. Düşük çıkan konulara geri dön.' },
+/** Each step with a screenshot of the real screen (public/rehber, light and dark) and a way to go there. */
+const FLOW: Array<{ title: string; text: string; shot: number; alt: string; to: string; link: string }> = [
+  { title: 'Dersini ve sınav tarihini gir', text: 'Sınavlar sekmesinden vize ve finallerini ekle. Uygulama tekrarları ve günlük planı bu tarihlere göre ayarlar.', shot: 1, alt: 'Sınavlar ekranı: Şimdi bununla başla kartı ve takvim', to: '/sinav', link: 'Sınavlara git' },
+  { title: 'Notunu ekle', text: 'PDF, Word, slayt, fotoğraf ya da düz metin. Özet, test, kartlar ve açık uçlu sorular birkaç saniyede hazırlanır.', shot: 2, alt: 'Not ekle ekranı: ders seçimi, başlık ve dosya yükleme', to: '/not-ekle', link: 'Not ekle' },
+  { title: 'Özeti oku, sonra kendini test et', text: 'Önce Kavramlar ve Ana noktalar; ardından Test. Yanlışların tek dokunuşla karta dönüşür.', shot: 3, alt: 'Not sayfası: Özet, Test, Kartlar, Anlat adımları ve Tam özet kartı', to: '/dersler', link: 'Notlarıma git' },
+  { title: 'Her gün Bugün ekranına bak', text: 'Tekrar bekleyen kartları çevir, "Şimdi bununla başla" önerisine uy. Günde 10-15 dakika yeter.', shot: 4, alt: 'Bugün ekranı: tekrar bekleyen kartlar ve sıradaki adım', to: '/', link: 'Bugün’e git' },
+  { title: 'Sınava bir hafta kala prova yap', text: 'Sınav provası gerçek sınava benzeyen bir deneme hazırlar; klasik cevapların da puanlanır. Düşük çıkan konulara geri dön.', shot: 5, alt: 'Sınav provası ekranı: sınav, konular ve soru kaynağı seçimi', to: '/sinav', link: 'Provaya başla' },
 ]
+
+/** Whether the app is showing its dark theme right now (Settings choice, or the phone's when "system"). */
+function useDarkTheme(): boolean {
+  const read = () => {
+    const forced = document.documentElement.getAttribute('data-theme')
+    return forced ? forced === 'dark' : window.matchMedia?.('(prefers-color-scheme: dark)').matches === true
+  }
+  const [dark, setDark] = useState(read)
+  useEffect(() => {
+    const update = () => setDark(read())
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)')
+    media?.addEventListener('change', update)
+    const observer = new MutationObserver(update)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => {
+      media?.removeEventListener('change', update)
+      observer.disconnect()
+    }
+  }, [])
+  return dark
+}
 
 const FEATURES: Array<{ icon: LucideIcon; title: string; text: string; to?: string; link?: string }> = [
   { icon: FilePlus2, title: 'Not ekle', text: 'Birden fazla dosyayı tek seferde ekleyebilirsin; her biri ayrı not olur. Taranmış PDF ve fotoğraflardaki yazı da okunur.', to: '/not-ekle', link: 'Not ekle' },
@@ -68,6 +91,7 @@ const PREMIUM_TIPS: Array<{ icon: LucideIcon; title: string; text: string }> = [
 
 export function Guide() {
   const { hash } = useLocation()
+  const dark = useDarkTheme()
 
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
@@ -93,9 +117,15 @@ export function Guide() {
           {FLOW.map((s, i) => (
             <li key={s.title}>
               <span className="guide-flow-n">{i + 1}</span>
-              <div>
+              <div className="guide-flow-body">
                 <strong>{s.title}</strong>
                 <p>{s.text}</p>
+                <Link to={s.to} className="guide-link">
+                  {s.link} <ArrowRight size={14} />
+                </Link>
+              </div>
+              <div className="guide-shot">
+                <ZoomableImage src={`/rehber/adim-${s.shot}-${dark ? 'dark' : 'light'}.webp`} alt={s.alt} loading="lazy" />
               </div>
             </li>
           ))}

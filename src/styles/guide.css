@@ -233,3 +233,46 @@
   text-underline-offset: 3px;
   opacity: 0.9;
 }
+
+/* ---------- Steps with a screenshot of the real screen ---------- */
+.guide-flow li {
+  align-items: flex-start;
+}
+.guide-flow-body {
+  flex: 1;
+  min-width: 0;
+}
+.guide-shot {
+  flex: none;
+  width: 200px;
+}
+.guide-shot .zoomable-image {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--surface-2);
+  box-shadow: 0 10px 24px -16px var(--ink-line);
+}
+.guide-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 520 / 960;
+  object-fit: cover;
+  object-position: top;
+}
+@media (max-width: 600px) {
+  .guide-flow li {
+    flex-wrap: wrap;
+  }
+  .guide-flow-body {
+    flex-basis: calc(100% - 46px);
+  }
+  .guide-shot {
+    width: min(240px, 100%);
+    margin: 4px auto 0;
+  }
+}
