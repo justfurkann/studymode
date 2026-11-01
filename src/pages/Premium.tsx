@@ -147,11 +147,15 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
         {tool === 'ses' ? (
           <>
             <div className="podcast-turn is-host">
-              <span className="podcast-speaker-badge host">Deniz</span>
+              <div className="podcast-turn-head">
+                <span className="podcast-speaker-badge host">Deniz</span>
+              </div>
               <p className="podcast-turn-text">Selam Mert! Bugün fotosentezi beş dakikada konuşuyoruz. İlk soru: ışık enerjisi nerede yakalanıyor?</p>
             </div>
             <div className="podcast-turn is-student">
-              <span className="podcast-speaker-badge student">Mert</span>
+              <div className="podcast-turn-head">
+                <span className="podcast-speaker-badge student">Mert</span>
+              </div>
               <p className="podcast-turn-text">Kloroplastta, tilakoit zarında. Peki Calvin döngüsü neden ışık olmadan da dönebiliyor?</p>
             </div>
             <p className="subtle prem-peek-note">

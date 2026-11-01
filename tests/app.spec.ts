@@ -1828,6 +1828,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     const errors = watchErrors(page)
     let role = 'normal'
     await signedIn(page, { ai_quota: () => ({ role, used: 1, limit: role === 'vip' ? 150 : 40, allowed: true }), plus_quota: () => ({ role, eligible: role !== 'normal', used: 2, limit: 30, allowed: true }) }, premiumData)
+    await page.addInitScript((id) => localStorage.setItem('studymode.vipWelcomed.' + id, '1'), me.id)
     const tasks: string[] = []
     // Vectors: the respiration note and the "organel" question point the same way; the other note does not.
     const vec = (a: number, b: number) => Array.from({ length: 768 }, (_, i) => (i === 0 ? a : i === 1 ? b : 0))

@@ -140,9 +140,12 @@ export function Layout() {
           </div>
           <div className="mobile-top-actions">
           <AmbientPlayer inHeader />
-          <NavLink to="/premium" className="prem-top" aria-label="Premium">
-            <Gem size={18} aria-hidden />
-          </NavLink>
+          {/* Signed-out phones already carry settings and "Giriş yap" here; Premium needs an account anyway. */}
+          {session && (
+            <NavLink to="/premium" className="prem-top" aria-label="Premium">
+              <Gem size={18} aria-hidden />
+            </NavLink>
+          )}
           {!session && (
             <NavLink to="/ayarlar" className="btn btn-ghost btn-icon" aria-label="Ayarlar">
               <Settings size={20} />
