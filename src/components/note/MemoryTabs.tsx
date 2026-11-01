@@ -17,6 +17,28 @@ import { freshImport } from '../../lib/version'
 import { renderEducationalPosterDataUrl } from '../../lib/visualTools'
 import { AiSignupPrompt } from '../AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../ui'
+import { ZoomableImage } from '../ImageViewer'
+import { compressImage } from '../../lib/imageStore'
+
+const MNEMONIC_VISUALS = 'studymode.mnemonicVisuals.v1.'
+
+function readMnemonicVisuals(noteId: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(MNEMONIC_VISUALS + noteId) ?? '{}') as unknown
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, string>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeMnemonicVisuals(noteId: string, urls: Record<string, string>): boolean {
+  try {
+    localStorage.setItem(MNEMONIC_VISUALS + noteId, JSON.stringify(urls))
+    return true
+  } catch {
+    return false
+  }
+}
 
 export function MemoryCodingTab({
   note,
@@ -43,7 +65,9 @@ export function MemoryCodingTab({
   const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({})
   const [addedCardIds, setAddedCardIds] = useState<Record<string, boolean>>({})
   const [speakingId, setSpeakingId] = useState<string | null>(null)
-  const [visualUrls, setVisualUrls] = useState<Record<string, string>>({})
+  // Pictures are kept on this device, so hiding one (or leaving the page) does not throw away an AI request.
+  const [visualUrls, setVisualUrls] = useState<Record<string, string>>(() => readMnemonicVisuals(note.id))
+  const [hiddenVisuals, setHiddenVisuals] = useState<Record<string, boolean>>({})
   const [busyVisualId, setBusyVisualId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -158,13 +182,20 @@ export function MemoryCodingTab({
     setRevealedKeys((prev) => ({ ...prev, [rowKey]: !prev[rowKey] }))
   }
 
+  useEffect(() => {
+    setVisualUrls(readMnemonicVisuals(note.id))
+    setHiddenVisuals({})
+  }, [note.id])
+
+  function keepVisual(id: string, url: string) {
+    const next = { ...readMnemonicVisuals(note.id), [id]: url }
+    setVisualUrls(next)
+    if (!writeMnemonicVisuals(note.id, next)) setError('Görsel bu cihaza kaydedilemedi (tarayıcı alanı dolu). Kaybolmaması için büyütüp indir.')
+  }
+
   async function handleVisualizeMnemonic(item: MnemonicItem) {
     if (visualUrls[item.id]) {
-      setVisualUrls((prev) => {
-        const next = { ...prev }
-        delete next[item.id]
-        return next
-      })
+      setHiddenVisuals((prev) => ({ ...prev, [item.id]: !prev[item.id] }))
       return
     }
     if (ai.ok) {
@@ -180,7 +211,7 @@ export function MemoryCodingTab({
           },
           settings,
         )
-        setVisualUrls((prev) => ({ ...prev, [item.id]: res.imageUrl }))
+        keepVisual(item.id, await compressImage(res.imageUrl))
         store.recordActivity()
         return
       } catch {
@@ -189,8 +220,7 @@ export function MemoryCodingTab({
         setBusyVisualId(null)
       }
     }
-    const posterUrl = renderEducationalPosterDataUrl(item.title, item.code, item.breakdown)
-    setVisualUrls((prev) => ({ ...prev, [item.id]: posterUrl }))
+    keepVisual(item.id, renderEducationalPosterDataUrl(item.title, item.code, item.breakdown))
   }
 
   return (
@@ -305,7 +335,7 @@ export function MemoryCodingTab({
                     onClick={() => handleVisualizeMnemonic(item)}
                   >
                     {busyVisualId === item.id ? <Spinner size={14} /> : <ImageIcon size={15} />}
-                    {visualUrls[item.id] ? 'Görseli gizle' : 'Görselleştir'}
+                    {visualUrls[item.id] ? (hiddenVisuals[item.id] ? 'Görseli göster' : 'Görseli gizle') : 'Görselleştir'}
                   </button>
                   <button
                     type="button"
@@ -329,9 +359,9 @@ export function MemoryCodingTab({
                 </div>
               </div>
 
-              {visualUrls[item.id] && (
+              {visualUrls[item.id] && !hiddenVisuals[item.id] && (
                 <div className="visual-card-preview">
-                  <img src={visualUrls[item.id]} alt={`${item.title} görsel şeması`} />
+                  <ZoomableImage src={visualUrls[item.id]} alt={`${item.title} görsel şeması`} fileName={`${item.title.trim().replace(/\s+/g, '-').toLocaleLowerCase('tr-TR') || 'sema'}.${visualUrls[item.id].startsWith('data:image/jpeg') ? 'jpg' : 'png'}`} />
                 </div>
               )}
 

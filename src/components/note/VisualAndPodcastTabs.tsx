@@ -34,6 +34,12 @@ import {
   type GeneratedVisualItem,
 } from '../../lib/visualTools'
 import { AiSignupPrompt } from '../AiSignupPrompt'
+import { ZoomableImage } from '../ImageViewer'
+import { compressImage, saveMessage } from '../../lib/imageStore'
+import { safeFileName } from '../../lib/noteTools'
+
+/** Download names: browsers drop names with Turkish letters and save the file as "download". */
+const fileSafe = (title: string) => safeFileName(title.trim().replace(/\s+/g, '-').toLocaleLowerCase('tr-TR')) || 'gorsel'
 import { Alert, Spinner, useToast } from '../ui'
 
 const PODCAST_SCRIPT_PREFIX = 'studymode.podcast.v1.'
@@ -89,8 +95,11 @@ export function VisualTab({
   const activeNode = diagram.nodes.find((n) => n.id === selectedNodeId) ?? diagram.nodes[0] ?? null
 
   function updateVisuals(next: GeneratedVisualItem[]) {
-    setVisuals(next)
-    saveStoredVisuals(note.id, next)
+    const result = saveStoredVisuals(note.id, next)
+    // What the device kept is what the student will see next time; show the same now.
+    setVisuals(result === 'trimmed' ? readStoredVisuals(note.id) : next)
+    const message = saveMessage(result)
+    if (message) setError(message)
   }
 
   function handleCreatePoster(e?: FormEvent) {
@@ -138,7 +147,7 @@ export function VisualTab({
         id: crypto.randomUUID(),
         title: targetTopic,
         prompt: `${targetTopic} (${aspectRatio})`,
-        imageUrl: res.imageUrl,
+        imageUrl: await compressImage(res.imageUrl),
         caption: res.caption || `${targetTopic} — ${note.title} görsel özeti`,
         kind: 'ai_image',
         createdAt: new Date().toISOString(),
@@ -193,6 +202,8 @@ export function VisualTab({
         </div>
 
         <div className="concept-map-box">
+          {/* On a phone the map keeps a readable size and scrolls sideways. */}
+          <div className="concept-map-scroll">
           <svg
             viewBox="0 0 760 440"
             className="concept-map-svg"
@@ -206,7 +217,7 @@ export function VisualTab({
                   y1={220}
                   x2={node.x}
                   y2={node.y}
-                  stroke="var(--ink)"
+                  stroke="var(--text-3)"
                   strokeWidth={selectedNodeId === node.id ? 3 : 1.75}
                   strokeDasharray={selectedNodeId === node.id ? undefined : '5 4'}
                 />
@@ -222,7 +233,7 @@ export function VisualTab({
                 height={72}
                 rx={14}
                 fill="var(--hi)"
-                stroke="var(--ink)"
+                stroke="var(--ink-line)"
                 strokeWidth={2.5}
               />
               <text
@@ -266,19 +277,20 @@ export function VisualTab({
                     height={60}
                     rx={12}
                     fill={isSelected ? 'var(--surface-2)' : 'var(--surface)'}
-                    stroke="var(--ink)"
+                    stroke="var(--text-3)"
                     strokeWidth={isSelected ? 2.5 : 1.75}
                   />
-                  <text x={0} y={-6} textAnchor="middle" fill="var(--ink)" fontWeight={700} fontSize={13}>
+                  <text x={0} y={-6} textAnchor="middle" fill="var(--text)" fontWeight={700} fontSize={13}>
                     {isHidden ? `? · ${idx + 1}. Kavramı Tahmin Et` : node.label}
                   </text>
-                  <text x={0} y={14} textAnchor="middle" fill="var(--muted)" fontSize={11}>
+                  <text x={0} y={14} textAnchor="middle" fill="var(--text-3)" fontSize={11}>
                     {isHidden ? 'Açmak için dokun' : node.relation}
                   </text>
                 </g>
               )
             })}
           </svg>
+          </div>
 
           {activeNode && (
             <div className="concept-node-detail">
@@ -348,7 +360,7 @@ export function VisualTab({
         </form>
 
         {!ai.ok && (
-          <AiSignupPrompt reason="Gemini görsel modelleriyle (nano-banana / flash-image) notlarına özel şema ve illüstrasyon üretmek için ücretsiz giriş yap veya anahtarını bağla." />
+          <AiSignupPrompt reason="Notuna özel şema ve çizimleri yapay zekâ ile üretmek için ücretsiz hesap aç ya da giriş yap." />
         )}
         {error && <Alert tone="danger">{error}</Alert>}
 
@@ -373,7 +385,7 @@ export function VisualTab({
                     </button>
                   </div>
                   <div className="visual-card-preview">
-                    <img src={item.imageUrl} alt={item.title} loading="lazy" />
+                    <ZoomableImage src={item.imageUrl} alt={item.title} fileName={`${fileSafe(item.title)}.${item.imageUrl.startsWith('data:image/jpeg') ? 'jpg' : 'png'}`} loading="lazy" />
                   </div>
                   <p className="subtle" style={{ margin: 0 }}>
                     {item.caption}
@@ -390,7 +402,7 @@ export function VisualTab({
                     </button>
                     <a
                       href={item.imageUrl}
-                      download={`${item.title.replace(/\s+/g, '-').toLowerCase()}.png`}
+                      download={`${fileSafe(item.title)}.${item.imageUrl.startsWith('data:image/jpeg') ? 'jpg' : 'png'}`}
                       className="btn btn-ghost btn-sm"
                     >
                       <Download size={14} /> İndir
@@ -635,7 +647,7 @@ export function PodcastTab({
             <audio ref={audioRef} controls src={studioAudioUrl} style={{ width: '100%' }} />
             <a
               href={studioAudioUrl}
-              download={`${note.title.replace(/\s+/g, '-').toLowerCase()}-podcast.wav`}
+              download={`${fileSafe(note.title)}-podcast.wav`}
               className="btn btn-ghost btn-sm"
             >
               <Download size={14} /> WAV İndir
@@ -644,7 +656,7 @@ export function PodcastTab({
         )}
 
         {!ai.ok && (
-          <AiSignupPrompt reason="Gemini 3.8 TTS ile stüdyo kalitesinde iki kişilik doğal insan sesi üretmek için ücretsiz giriş yap veya kendi anahtarını bağla." />
+          <AiSignupPrompt reason="Bu sohbeti iki farklı doğal sesle dinlemek için ücretsiz hesap aç ya da giriş yap." />
         )}
         {error && <Alert tone="danger">{error}</Alert>}
       </div>

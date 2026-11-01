@@ -2,7 +2,7 @@ import { BookOpen, Brain, ClipboardList, House, Plus, Settings } from 'lucide-re
 import { RoleBadge, VipWelcome } from './RoleBadge'
 import { FeedbackLink } from './Feedback'
 import { FocusEngine } from './mola/FocusEngine'
-import { Atmosphere } from './Atmosphere'
+import { AmbientPlayer, Atmosphere } from './Atmosphere'
 import { MadeBy } from './MadeBy'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -104,6 +104,7 @@ export function Layout() {
             <RoleBadge />
           </div>
           <div className="mobile-top-actions">
+          <AmbientPlayer inHeader />
           {!session && (
             <NavLink to="/ayarlar" className="btn btn-ghost btn-icon" aria-label="Ayarlar">
               <Settings size={20} />

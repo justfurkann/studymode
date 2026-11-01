@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase'
 import { emptyData } from '../lib/types'
 import { freshImport } from '../lib/version'
 import { DecorSettings } from '../components/DecorSettings'
+import { localDayKey } from '../lib/streak'
 
 function AccountSection() {
   const store = useStore()
@@ -311,9 +312,10 @@ function DataSection() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `studymode-yedek-${new Date().toISOString().slice(0, 10)}.json`
+    link.download = `studymode-yedek-${localDayKey()}.json`
     link.click()
-    URL.revokeObjectURL(url)
+    // Revoking right away cancels the download in Safari and Firefox.
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   async function importData(file: File) {

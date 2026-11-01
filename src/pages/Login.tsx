@@ -22,6 +22,7 @@ export function Login() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [repeat, setRepeat] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -119,7 +120,7 @@ export function Login() {
               <span>Şifre</span>
               <input
                 className="input"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
                 minLength={mode === 'up' ? MIN_PASSWORD : undefined}
                 value={password}
@@ -127,6 +128,12 @@ export function Login() {
                 aria-describedby={mode === 'up' ? 'password-hint' : undefined}
                 required
               />
+            </label>
+          )}
+          {mode !== 'forgot' && (
+            <label className="check-row" style={{ marginTop: -8 }}>
+              <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
+              <span>Şifreyi göster</span>
             </label>
           )}
           {mode === 'up' && (
@@ -139,7 +146,7 @@ export function Login() {
               <span>Şifre (tekrar)</span>
               <input
                 className="input"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 value={repeat}
                 onChange={(e) => (setRepeat(e.target.value), setError(''))}

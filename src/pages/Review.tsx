@@ -170,6 +170,7 @@ function ReviewSession({ showSwitch }: { showSwitch: boolean }) {
   return (
     <div className="page">
       <div className="review">
+        <h1 className="sr-only">Kart tekrarı</h1>
         {showSwitch && <ReviewSwitch active="tekrar" />}
         <div className="section-head">
           <Link to={back} className="back-link">
