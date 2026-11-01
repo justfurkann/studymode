@@ -4361,6 +4361,15 @@ a.list-item:hover {
   border-color: var(--ink-line);
 }
 
+/* Phones: low on the screen like the toasts, above the bottom bar, so it never covers the logo and the top buttons. */
+@media (max-width: 860px) {
+  .update-bar {
+    top: auto;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    width: max-content;
+  }
+}
+
 /* ============ Hafıza Kodlaması & Karşılaştırma (MemoryTabs) ============ */
 
 .memory-intro-panel {

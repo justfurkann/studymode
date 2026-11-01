@@ -105,15 +105,49 @@ async function extractOfficeText(file: File, extension: 'docx' | 'pptx'): Promis
   return extension === 'docx' ? docxText(data) : pptxText(data)
 }
 
-async function extractPdfText(file: File, options?: NoteImportOptions): Promise<string> {
-  let loadingTask: import('pdfjs-dist').PDFDocumentLoadingTask | undefined
+/*
+ * The readers are separate files that the app downloads when needed. Every deploy renames them and
+ * removes the old ones, so a tab opened before a deploy could no longer read a PDF ("Uygulamanın
+ * yeni sürümü hazır" and nothing added). The upload page now loads them as soon as it opens
+ * (preloadNoteReaders) and keeps them in memory, the PDF worker too: one worker is started then and
+ * reused for every file, instead of pdf.js fetching it again by address each time.
+ */
+let pdfLoad: Promise<typeof import('pdfjs-dist')> | null = null
 
-  try {
+function loadPdfReader(): Promise<typeof import('pdfjs-dist')> {
+  pdfLoad ??= (async () => {
     const [pdfjs, worker] = await Promise.all([
       freshImport(() => import('pdfjs-dist')),
       freshImport(() => import('pdfjs-dist/build/pdf.worker.min.mjs?url')),
     ])
     pdfjs.GlobalWorkerOptions.workerSrc = worker.default
+    // One worker, started now and reused for every file (pdf.js keeps it alive between documents).
+    if (typeof Worker !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerPort) {
+      try {
+        pdfjs.GlobalWorkerOptions.workerPort = new Worker(worker.default, { type: 'module' })
+      } catch {
+        // pdf.js starts its own from workerSrc.
+      }
+    }
+    return pdfjs
+  })().catch((error) => {
+    pdfLoad = null
+    throw error
+  })
+  return pdfLoad
+}
+
+/** Downloads the PDF and Office readers in the background, so a later deploy cannot take them away. */
+export function preloadNoteReaders() {
+  void loadPdfReader().catch(() => {})
+  void freshImport(() => import('./officeText')).catch(() => {})
+}
+
+async function extractPdfText(file: File, options?: NoteImportOptions): Promise<string> {
+  let loadingTask: import('pdfjs-dist').PDFDocumentLoadingTask | undefined
+
+  try {
+    const pdfjs = await loadPdfReader()
     loadingTask = pdfjs.getDocument({
       data: new Uint8Array(await file.arrayBuffer()),
       enableXfa: false,

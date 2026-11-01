@@ -1,7 +1,7 @@
 import { RefreshCw } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
-import { useUpdateAvailable } from '../lib/version'
+import { reloadFresh, useUpdateAvailable } from '../lib/version'
 
 /**
  * When a newer version is out: reload by itself as soon as the student moves to another page
@@ -13,7 +13,7 @@ export function UpdateWatcher() {
   const first = useRef(pathname)
 
   useEffect(() => {
-    if (available && pathname !== first.current) window.location.reload()
+    if (available && pathname !== first.current) reloadFresh()
     first.current = pathname
   }, [available, pathname])
 
@@ -21,7 +21,7 @@ export function UpdateWatcher() {
   return (
     <div className="update-bar" role="status">
       <span>Uygulamanın yeni sürümü hazır.</span>
-      <button className="btn btn-sm" onClick={() => window.location.reload()}>
+      <button className="btn btn-sm" onClick={reloadFresh}>
         <RefreshCw size={14} /> Yenile
       </button>
     </div>

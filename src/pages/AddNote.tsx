@@ -4,7 +4,7 @@ import { checkMerged, mergeContents, mergedTitle, mergeMessage } from '../lib/me
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../components/ui'
-import { ACCEPTED_NOTE_EXTENSIONS, extractNoteText } from '../lib/importNote'
+import { ACCEPTED_NOTE_EXTENSIONS, extractNoteText, preloadNoteReaders } from '../lib/importNote'
 import { generateLocally } from '../lib/localGenerator'
 import { aiAvailability, useSettings, isServerAi } from '../lib/settings'
 import { useStore } from '../lib/store'
@@ -160,6 +160,15 @@ export function AddNote() {
     return () => {
       mounted.current = false
     }
+  }, [])
+  // Get the file readers and the AI code now, while this version's files still exist: a deploy
+  // while the student is filling the form must not stop them from adding a file.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      preloadNoteReaders()
+      void freshImport(() => import('../lib/ai')).catch(() => {})
+    }, 800)
+    return () => window.clearTimeout(timer)
   }, [])
   useEffect(() => {
     if (!busy) return

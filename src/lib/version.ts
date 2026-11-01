@@ -77,9 +77,29 @@ async function checkForUpdate() {
   }
 }
 
+/** Marks a reload that must not come from the browser's cache. */
+const FRESH_PARAM = 'surum'
+
+/**
+ * Reloads the newest version. A plain reload could hand back the old page from the cache (seen on
+ * an iPhone: "Yenile" kept showing the old version, which could not read files any more), so the
+ * address gets a one-off mark the cache has never seen; it is removed again on start.
+ */
+export function reloadFresh() {
+  const url = new URL(window.location.href)
+  url.searchParams.set(FRESH_PARAM, Date.now().toString(36))
+  window.location.replace(url.toString())
+}
+
 /** Looks for a newer version when the tab comes back into view and every 10 minutes. */
 export function startUpdateChecks() {
-  if (typeof window === 'undefined' || ['localhost', '127.0.0.1'].includes(location.hostname)) return
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  if (url.searchParams.has(FRESH_PARAM)) {
+    url.searchParams.delete(FRESH_PARAM)
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
+  }
+  if (['localhost', '127.0.0.1'].includes(location.hostname)) return
   window.addEventListener('vite:preloadError', () => markUpdateAvailable())
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') void checkForUpdate()
