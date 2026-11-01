@@ -4,6 +4,7 @@ import { Brand } from '../components/Brand'
 import { FeedbackLink } from '../components/Feedback'
 import { MAKER, SOCIALS } from '../components/MadeBy'
 import { useStore } from '../lib/store'
+import { unlock } from '../lib/achievements'
 
 export const PRIVACY_UPDATED = '1 Kasım 2026'
 
@@ -158,7 +159,13 @@ export function Privacy() {
 
         <section>
           <h2>Değişiklikler</h2>
-          <p>Bu politikayı değiştirirsek tarihi güncelleriz; önemli bir değişiklik olursa uygulamada da duyururuz.</p>
+          <p>
+            Bu politikayı değiştirirsek tarihi güncelleriz; önemli bir değişiklik olursa uygulamada da duyururuz
+            {/* Dedektif: the last full stop of the policy is a button. Nobody reads this far. */}
+            <button type="button" className="privacy-dot" aria-label="Nokta" onClick={() => unlock('dedektif')}>
+              .
+            </button>
+          </p>
         </section>
       </main>
 

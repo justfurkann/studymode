@@ -1,4 +1,4 @@
-import { ArrowRight, Brain, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
+import { ArrowRight, Brain, Trophy, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ExamFocusCard } from '../components/ExamFocusCard'
 import { ReceiptButton } from '../components/ReceiptButton'
@@ -14,6 +14,8 @@ import { useStore } from '../lib/store'
 import { computeStreakSummary, isDayStudied, localDayKey, mergeStudyDays, shiftLocalDay } from '../lib/streak'
 import { buildSmartStudyPlan } from '../lib/studyPlan'
 import type { LearningStepId, Note } from '../lib/types'
+import { StudentCharacter } from '../components/StudentCharacter'
+import { ACHIEVEMENTS, useAchievements } from '../lib/achievements'
 
 function stepUrl(note: Note, stepId: LearningStepId): string {
   if (stepId === 'tanis' || stepId === 'anla') return `/not/${note.id}?adim=${stepId}`
@@ -25,6 +27,7 @@ function stepUrl(note: Note, stepId: LearningStepId): string {
 export function Today() {
   const store = useStore()
   const settings = useSettings()
+  const found = Object.keys(useAchievements().unlocked).length
   const { data } = store
   const now = new Date()
   const due = dueCards(data.cards, now)
@@ -83,7 +86,12 @@ export function Today() {
           </p>
           <h1>{firstName(store.session?.user) ? `Merhaba ${firstName(store.session?.user)}` : 'Bugün'}</h1>
         </div>
-        <ReceiptButton className="btn btn-sm" />
+        <div className="btn-row">
+          <Link to="/basarimlar" className="btn btn-sm trophy-link" aria-label={`Başarımlar: ${found}/${ACHIEVEMENTS.length}`}>
+            <Trophy size={16} /> <b>{found}/{ACHIEVEMENTS.length}</b>
+          </Link>
+          <ReceiptButton className="btn btn-sm" />
+        </div>
       </div>
 
       {due.length > 0 ? (
@@ -115,6 +123,15 @@ export function Today() {
       )}
 
       {focus && <ExamFocusCard focus={focus} />}
+
+      {/* Phones have no sidebar; the quiz card sits here instead. */}
+      <Link to="/ogrenci-tipi" className="side-quiz home-quiz">
+        <StudentCharacter id="gecekusu" size={44} />
+        <span className="side-quiz-text">
+          <strong>Hangi öğrenci tipisin?</strong>
+          <span>1 dakikada öğren, sonucunu paylaş</span>
+        </span>
+      </Link>
 
       <section className="panel streak-panel" aria-label="Günlük hedef ve seri">
         <div className="streak-goal">

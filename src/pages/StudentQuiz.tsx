@@ -22,6 +22,7 @@ import {
 } from '../lib/studentType'
 import { searchUniversities } from '../lib/universities'
 import '../styles/quiz.css'
+import { recordQuizType } from '../lib/achievements'
 
 /*
  * "Hangi öğrenci tipisin?" at /ogrenci-tipi. No account needed. Level, then (for university
@@ -113,6 +114,7 @@ export default function StudentQuiz() {
     setAnswers(next)
     if (next.length === QUESTIONS.length) {
       const r = resultOf(next)
+      recordQuizType(r.type.id)
       setResult(r)
       setStep('result')
       setParams(resultParams({ type: r.type, bars: [], percent: r.matches[0].percent, runnerUp: r.runnerUp, level, school }, r.profile), { replace: true })
@@ -171,7 +173,7 @@ function Intro({ onStart }: { onStart: () => void }) {
       <h1>
         Hangi <span className="hl">öğrenci</span> tipisin?
       </h1>
-      <p className="quiz-lead">10 soru, 2 dakika. Nasıl plan yaptığına, nasıl öğrendiğine, kiminle ve ne zaman çalıştığına bakıp 8 tipten sana en yakın olanı buluyoruz. Sonunda karakterin, güçlü yanların ve sana özel bir çalışma taktiği var.</p>
+      <p className="quiz-lead">10 soru, bir dakika. Nasıl plan yaptığına, nasıl öğrendiğine, kiminle ve ne zaman çalıştığına bakıp 8 tipten sana en yakın olanı buluyoruz. Sonunda karakterin, güçlü yanların ve sana özel bir çalışma taktiği var.</p>
       <button className="btn btn-primary btn-lg" onClick={onStart}>
         Teste başla <ArrowRight size={18} />
       </button>

@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation, useNavigationType, useParams } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { AchievementWatcher } from './components/Achievements'
+import { Achievements } from './pages/Achievements'
+import { unlock } from './lib/achievements'
 import { UpdateWatcher } from './components/UpdateWatcher'
 import { Alert, Spinner, ToastProvider } from './components/ui'
 import { StoreProvider, useStore } from './lib/store'
@@ -41,6 +44,14 @@ function ScrollToTop() {
 function ExamForCourse() {
   const { id } = useParams()
   return <Exam key={id} />
+}
+
+/** An address that does not exist: today's page, and a small discovery for finding nowhere. */
+function LostPage() {
+  useEffect(() => {
+    unlock('kayip-sayfa')
+  }, [])
+  return <Today />
 }
 
 // The quiz is a marketing page in its own chunk, so the app does not load it.
@@ -99,7 +110,8 @@ function Routed() {
         <Route path="paylas/:token" element={<SharedCourse />} />
         <Route path="giris" element={<Login />} />
         <Route path="sifre-yenile" element={<ResetPassword />} />
-        <Route path="*" element={<Today />} />
+        <Route path="basarimlar" element={<Achievements />} />
+        <Route path="*" element={<LostPage />} />
       </Route>
     </Routes>
   )
@@ -113,6 +125,7 @@ export default function App() {
       <StoreProvider>
         <ToastProvider>
           <Routed />
+          <AchievementWatcher />
         </ToastProvider>
       </StoreProvider>
     </BrowserRouter>

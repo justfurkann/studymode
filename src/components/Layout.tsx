@@ -1,10 +1,13 @@
-import { BookOpen, Brain, ClipboardList, House, Plus, Settings } from 'lucide-react'
+import { BookOpen, Brain, ClipboardList, House, Plus, Settings, Trophy } from 'lucide-react'
+import { triggerGlitch } from './Achievements'
+import { StudentCharacter } from './StudentCharacter'
+import { ACHIEVEMENTS, unlock, useAchievements } from '../lib/achievements'
 import { RoleBadge, VipWelcome } from './RoleBadge'
 import { FeedbackLink } from './Feedback'
 import { FocusEngine } from './mola/FocusEngine'
 import { AmbientPlayer, Atmosphere } from './Atmosphere'
 import { MadeBy } from './MadeBy'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { authErrorMessage, displayName } from '../lib/auth'
 import { dueCards } from '../lib/format'
@@ -28,6 +31,19 @@ export function Layout() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [confirmed, setConfirmed] = useState(openedFromConfirmationEmail)
+  const { unlocked } = useAchievements()
+  const found = Object.keys(unlocked).length
+  // Glitch Hunter: seven quick taps on the logo.
+  const logoTaps = useRef<number[]>([])
+  const tapLogo = () => {
+    const now = Date.now()
+    logoTaps.current = [...logoTaps.current.filter((t) => now - t < 2500), now]
+    if (logoTaps.current.length >= 7) {
+      logoTaps.current = []
+      triggerGlitch()
+      unlock('glitch')
+    }
+  }
   const [linkError, setLinkError] = useState(authLinkError)
   const name = displayName(session?.user)
 
@@ -70,7 +86,7 @@ export function Layout() {
     <div className="shell">
       <aside className="sidebar" aria-label="Ana menü">
         <div className="brand-row">
-          <Link to="/" className="brand-link">
+          <Link to="/" className="brand-link" onClick={tapLogo}>
             <Brand />
           </Link>
           <RoleBadge />
@@ -85,6 +101,20 @@ export function Layout() {
             {!!badge && <span className="nav-badge">{badge}</span>}
           </NavLink>
         ))}
+        <NavLink to="/basarimlar" className={navClass('nav-link', '/basarimlar')}>
+          <Trophy size={18} />
+          Başarımlar
+          <span className="nav-count">
+            {found}/{ACHIEVEMENTS.length}
+          </span>
+        </NavLink>
+        <Link to="/ogrenci-tipi" className="side-quiz">
+          <StudentCharacter id="gecekusu" size={44} />
+          <span className="side-quiz-text">
+            <strong>Hangi öğrenci tipisin?</strong>
+            <span>1 dakikada öğren, sonucunu paylaş</span>
+          </span>
+        </Link>
         <div className="sidebar-footer">
           <span className={`status-dot ${mode === 'cloud' ? 'cloud' : ''}`} />
           <span title={session?.user.email} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -98,7 +128,7 @@ export function Layout() {
       <main className="main">
         <header className="mobile-top">
           <div className="brand-row">
-            <Link to="/" className="brand-link">
+            <Link to="/" className="brand-link" onClick={tapLogo}>
               <Brand size={26} />
             </Link>
             <RoleBadge />
