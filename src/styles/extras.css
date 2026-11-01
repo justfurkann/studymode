@@ -829,3 +829,23 @@
     break-inside: avoid-page;
   }
 }
+
+/* Landing: the way into "Hangi öğrenci tipisin?" */
+.lp-quiz-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink-line);
+  background: var(--surface);
+  font-weight: 700;
+  box-shadow: 0 3px 0 var(--card-drop);
+}
+
+.lp-quiz-link span {
+  color: var(--text-3);
+  font-weight: 600;
+}

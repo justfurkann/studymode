@@ -1,4 +1,4 @@
-import { Grid2x2Check, Timer, Zap } from 'lucide-react'
+import { Grid2x2Check, Sparkles, Timer, Zap } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { FocusTimer } from '../components/mola/FocusTimer'
@@ -38,6 +38,7 @@ function readScope(): string | null {
 
 export function Mola() {
   const store = useStore()
+  const navigate = useNavigate()
   const loadDemo = useLoadDemo()
   const [params, setParams] = useSearchParams()
   const game = GAMES.find((g) => g === params.get('oyun')) ?? null
@@ -145,6 +146,14 @@ export function Mola() {
           }
           locked={null}
           onOpen={() => open('odak')}
+        />
+        <MolaTile
+          icon={<Sparkles size={22} />}
+          title="Hangi öğrenci tipisin?"
+          text="10 soruluk test: karakterin, güçlü yanların ve sana özel çalışma taktiği. Sonucu hikâyende paylaş."
+          meta="2 dakika · hesap gerekmez"
+          locked={null}
+          onOpen={() => navigate('/ogrenci-tipi')}
         />
       </div>
 

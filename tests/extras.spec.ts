@@ -204,3 +204,55 @@ test('Tam özet: a signed-in student has the AI write the detailed summary, part
   await expect.poll(() => JSON.stringify(saved)).toContain('"detailed"')
   await expect(page.getByRole('button', { name: 'Ayrıntılı özeti yeniden yaz' })).toBeVisible()
 })
+
+test('Hangi öğrenci tipisin: no account, level and school, 10 questions, a shareable result and story image', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/ogrenci-tipi')
+  await page.getByRole('button', { name: /Teste başla/ }).click()
+  await page.getByRole('button', { name: /^Üniversite/ }).click()
+  await page.getByLabel('Üniversite ara').fill('odtu')
+  await page.getByRole('listitem').filter({ hasText: 'Orta Doğu Teknik Üniversitesi' }).first().click()
+  await expect(page.getByRole('heading', { name: 'Vizeye bir hafta var. İlk hamlen?' })).toBeVisible()
+  // Back on the first question goes to the school step; forward again.
+  await page.getByRole('button', { name: 'Geri' }).click()
+  await expect(page.getByRole('heading', { name: 'Hangi üniversitedesin?' })).toBeVisible()
+  await page.getByRole('button', { name: /Atla/ }).click()
+  // A night owl who studies alone to understand.
+  const picks = [3, 3, 0, 1, 3, 1, 1, 0, 1, 3]
+  for (let i = 0; i < picks.length; i++) {
+    await expect(page.getByText(`${i + 1} / 10`)).toBeVisible()
+    await page.locator('.quiz-option').nth(picks[i]).click()
+  }
+  await expect(page.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
+  await expect(page.getByText('Sana özel taktik:')).toBeVisible()
+  await expect(page.getByLabel('Çalışma profilin')).toContainText('Gece kuşu')
+  const story = page.getByRole('img', { name: /Hikâye görseli/ })
+  await expect(story).toBeVisible()
+  expect(await story.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([1080, 1920])
+  const download = page.waitForEvent('download')
+  await page.getByRole('link', { name: 'Görseli indir' }).click()
+  expect((await download).suggestedFilename()).toBe('ogrenci-tipim-gecekusu.png')
+  await expect(page).toHaveURL(/tip=gecekusu/)
+
+  // A friend opens the link: same card, invited to take the quiz.
+  const friend = await page.context().newPage()
+  await friend.goto(page.url())
+  await expect(friend.getByText('Arkadaşın bu testi çözdü')).toBeVisible()
+  await expect(friend.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
+  await friend.getByRole('button', { name: /Sen de çöz/ }).click()
+  await expect(friend.getByRole('heading', { name: /nerede okuyorsun/ })).toBeVisible()
+  await friend.getByRole('button', { name: /^Lise/ }).click()
+  await expect(friend.getByRole('heading', { name: 'Yazılıya bir hafta var. İlk hamlen?' })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('Hangi öğrenci tipisin: reachable from the landing page and from Mola', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: /Hangi öğrenci tipisin/ }).click()
+  await expect(page).toHaveURL(/\/ogrenci-tipi$/)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+  await page.goto('/tekrar?bolum=mola')
+  await page.getByRole('button', { name: 'Hangi öğrenci tipisin?' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: /öğrenci\s*tipisin/ })).toBeVisible()
+})

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation, useNavigationType, useParams } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { UpdateWatcher } from './components/UpdateWatcher'
@@ -43,6 +43,9 @@ function ExamForCourse() {
   return <Exam key={id} />
 }
 
+// The quiz is a marketing page in its own chunk, so the app does not load it.
+const StudentQuiz = lazy(() => import('./pages/StudentQuiz'))
+
 function Routed() {
   const store = useStore()
 
@@ -72,6 +75,14 @@ function Routed() {
       <Route path="tanitim" element={<Landing />} />
       <Route path="hakkinda" element={<About />} />
       <Route path="gizlilik" element={<Privacy />} />
+      <Route
+        path="ogrenci-tipi"
+        element={
+          <Suspense fallback={<div className="center-screen"><Spinner size={28} /></div>}>
+            <StudentQuiz />
+          </Suspense>
+        }
+      />
       <Route path="hakkında" element={<About />} />
       <Route element={<Layout />}>
         <Route index element={<Today />} />
