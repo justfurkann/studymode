@@ -211,6 +211,7 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
       unauthorized: 'Oturumun sona ermiş. Çıkış yapıp tekrar giriş yap.',
       quota: 'Ücretsiz yapay zekânın kotası şu an dolu. Biraz sonra tekrar dene ya da ayarlardan kendi anahtarını bağla.',
       busy: 'Google’ın ücretsiz modelleri şu an çok yoğun. Birkaç dakika sonra tekrar dene ya da ayarlardan kendi anahtarını bağla.',
+      too_slow: 'Yapay zekâ bu notu zamanında bitiremedi. Bir kez daha dene; yine olursa notu ikiye bölüp ayrı ayrı yükle.',
       too_large: 'İçerik çok uzun. Daha az not seçerek ya da notu bölerek dene.',
       premium_only: 'Bu özellik Premium (VIP) üyelere özel.',
       bad_output: FORMAT_ERROR,

@@ -248,6 +248,21 @@ button {
   cursor: pointer;
 }
 
+/*
+ * Phones: a tap is a tap. Without this, iOS waits to see whether two quick taps are a double-tap
+ * zoom and can swallow the second one, so answer options seemed to need several presses.
+ * Pinch-zoom still works.
+ */
+button,
+a,
+label,
+summary,
+[role='button'],
+[role='radio'],
+[role='tab'] {
+  touch-action: manipulation;
+}
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
