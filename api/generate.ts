@@ -40,6 +40,8 @@ export interface Quota {
   used: number
   limit: number | null
   allowed: boolean
+  /** End of paid Premium (a redeemed code), or null. */
+  premium_until?: string | null
 }
 
 /**
@@ -58,7 +60,13 @@ async function quotaCall(name: 'ai_quota' | 'consume_ai', auth: string, fetchImp
     if (!response.ok) return null
     const body = (await response.json()) as Partial<Quota> | null
     if (!body || typeof body.allowed !== 'boolean' || typeof body.used !== 'number') return null
-    return { role: body.role === 'vip' || body.role === 'admin' ? body.role : 'normal', used: body.used, limit: typeof body.limit === 'number' ? body.limit : null, allowed: body.allowed }
+    return {
+      role: body.role === 'vip' || body.role === 'admin' ? body.role : 'normal',
+      used: body.used,
+      limit: typeof body.limit === 'number' ? body.limit : null,
+      allowed: body.allowed,
+      ...(typeof body.premium_until === 'string' ? { premium_until: body.premium_until } : {}),
+    }
   } catch {
     return null
   }
@@ -138,7 +146,8 @@ export async function handleGenerate(
   // Free+ (VIP/admin): Gemini on Vertex AI, within its own daily caps. VIPs and admins get it by default,
   // without choosing it in Settings; only an explicit engine "free" skips it. Any problem (not set up,
   // cap reached, Google error) falls through to the normal free AI below, so nobody is left without an answer.
-  const plusRole = before?.role === 'vip' || before?.role === 'admin'
+  // VIP and admin, and anyone with paid Premium (a redeemed code; their role stays 'normal').
+  const plusRole = before?.role === 'vip' || before?.role === 'admin' || !!before?.premium_until
   const wantsPlus = body.engine === 'plus' || premium || (plusRole && body.engine !== 'free')
   if (wantsPlus && vertexConfigured(env)) {
     const plus = await plusCall('plus_quota', auth, fetchImpl)
