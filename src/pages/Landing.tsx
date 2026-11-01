@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarClock, Check, FileText, Layers, ListChecks, MessageSquareText, Smartphone } from 'lucide-react'
+import { ArrowRight, CalendarClock, Check, FileText, Layers, ListChecks, MessageSquareText, Smartphone, Sparkles } from 'lucide-react'
 import { MadeBy } from '../components/MadeBy'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
@@ -92,6 +92,9 @@ export function Landing() {
               Yapay zekâ ücretsiz · Kart bilgisi istemez ·{' '}
               <Link to="/not-ekle">Hesapsız kendi notumu dene</Link>
             </p>
+            <Link to="/ogrenci-tipi" className="lp-quiz-link">
+              <Sparkles size={16} aria-hidden /> Hangi öğrenci tipisin? <span>2 dakikalık test</span> <ArrowRight size={16} aria-hidden />
+            </Link>
           </div>
 
           <div className="lp-demo" aria-label="Örnek çalışma seti">

@@ -28,3 +28,13 @@ Ayrı bir oturumda eklendi; Premium çalışmasıyla çakışmasın diye kod ayr
 - "Ayrıntılı özet hazırla": yeni `detail` görevi (`tasks.ts`, `generateDetailedSummary`). Uzun not 12.000 karakterlik bölümlerle yazılır, her bölüm bir istek (günlük haktan sayılır). Sonuç `summary.detailed` içinde saklanır (jsonb, veritabanı değişikliği yok). Not yeniden hazırlanırsa silinir; not düzenlenirse "yeniden yaz" uyarısı çıkar.
 - Sunucuda `detail` için deneme başına 45 sn, toplam 55 sn; tarayıcı 62 sn bekler. Free+'ta hızlı model (gemini-3.8-flash) kullanılır: Gemini 4 Argon kısa bir açıklamada bile ~19 sn sürdüğü için uzun bir anlatım 60 sn'lik Vercel sınırına sığmaz.
 - Örnek notta elle yazılmış bir ayrıntılı özet var; giriş yapmayan da sayfanın nasıl göründüğünü görür.
+
+## Hangi öğrenci tipisin? (/ogrenci-tipi, 1 Kasım 2026)
+
+- Hesapsız tanıtım testi. Akış: seviye (ortaokul, lise, üniversite, yüksek lisans, mezun) → üniversite/yüksek lisans ise aranabilir okul listesi (atlanabilir, listede yoksa elle yazılır) → 10 soru → sonuç.
+- Puanlama (`src/lib/studentType.ts`): her cevap 4 eksende puan verir (planlı ↔ akışına, anlamaya ↔ sonuca odaklı, grupla ↔ yalnız, gece ↔ sabah) + gizli "estetik"; her soru kendi ortalamasına göre merkezlenir. Sonuç, profile en yakın tip (yön benzerliği). 8 tip: Ajanda Stratejisti, Son Dakika Kahramanı, Gece Kuşu Düşünür, Meraklı Kaşif, Sınıfın Anlatıcısı, Fosforlu Kalem Sanatçısı, Verimlilik Avcısı, Sessiz Maratoncu. Testler: her tip tutarlı cevaplarla çıkıyor; rastgele cevaplarda her tip %4-22.
+- Sorular seviyeye göre konuşur (vize/yazılı/sınav, hoca/öğretmen; Türkçe ekler ayrı yazılı: "Vizeye", "Yazılıya").
+- Sonuç kartı: özgün animasyonlu karakter (`StudentCharacter.tsx`), açıklama, eksen yüzdeleri, süper güç, kör nokta, sana özel taktik, en iyi çalışma arkadaşı, bütün tiplere uyum. Story görseli 1080×1920 PNG (paylaş / indir), bağlantı sonucu taşır: açan kişi kartı görür, "Sen de çöz".
+- Üniversite listesi `src/lib/universities.ts` (sabit, ~208 okul, kısaltmalarla arama). YÖK değişince elle güncellenmeli.
+- Girişler: tanıtım sayfasında "Hangi öğrenci tipisin?" bağlantısı, Mola'da kart. Sayfa ayrı yüklenir (lazy).
+- Cevaplar hiçbir yere kaydedilmiyor. İstenirse sonuçlar (tip, seviye, okul) Supabase'de sayılabilir ("ODTÜ'de en çok Gece Kuşu var") ama bu yeni bir tablo ve SQL onayı ister.
