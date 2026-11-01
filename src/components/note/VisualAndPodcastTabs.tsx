@@ -42,6 +42,7 @@ import { safeFileName } from '../../lib/noteTools'
 /** Download names: browsers drop names with Turkish letters and save the file as "download". */
 const fileSafe = (title: string) => safeFileName(title.trim().replace(/\s+/g, '-').toLocaleLowerCase('tr-TR')) || 'gorsel'
 import { PremiumLock, PremiumMark } from '../Premium'
+import { PartPlayer, type PartPlayerState } from '../../lib/partPlayer'
 import { Alert, Spinner, useToast } from '../ui'
 
 const PODCAST_SCRIPT_PREFIX = 'studymode.podcast.v1.'
@@ -564,18 +565,40 @@ export function PodcastTab({
 
   /**
    * Premium's main action: the AI writes the dialogue (if this note only has the quick local one),
-   * then the two studio voices record it, and it starts playing. One tap, with progress.
+   * then the two studio voices record it part by part. Playback starts with the first part and the
+   * rest follow as they arrive (PartPlayer); the whole file is ready to download at the end.
    */
   const [studioStep, setStudioStep] = useState<'script' | 'voice' | null>(null)
+  const live = useRef<PartPlayer | null>(null)
+  const [liveState, setLiveState] = useState<PartPlayerState | null>(null)
+
+  useEffect(() => {
+    live.current?.setRate(speed)
+  }, [speed])
+
+  useEffect(
+    () => () => {
+      live.current?.stop()
+      live.current = null
+    },
+    [note.id],
+  )
+
   async function handleStudioListen() {
     if (!premium) return
-    if (studioAudioUrl && audioRef.current) {
+    if (studioAudioUrl && audioRef.current && (!liveState || liveState.finished)) {
       if (audioRef.current.paused) void audioRef.current.play().catch(() => undefined)
       else audioRef.current.pause()
       return
     }
     stopBrowserSpeech()
     setError('')
+    // Inside the tap, before anything is awaited: phones only let an element play if it started in a tap.
+    live.current?.stop()
+    const player = new PartPlayer(new Audio(), 1, setLiveState, speed)
+    player.unlock()
+    live.current = player
+    setLiveState(player.current)
     let lines = script.lines
     try {
       const ai = await freshImport(() => import('../../lib/ai'))
@@ -588,12 +611,23 @@ export function PodcastTab({
       }
       setStudioStep('voice')
       setTtsProgress(null)
-      const res = await ai.synthesizePodcastTts(lines, settings, (done, total) => setTtsProgress({ done, total }))
+      const res = await ai.synthesizePodcastTts(
+        lines,
+        settings,
+        (done, total) => {
+          setTtsProgress({ done, total })
+          player.setTotal(total)
+        },
+        (url) => player.addPart(url),
+      )
       setStudioAudioUrl(res.audioDataUrl)
       store.recordActivity()
-      // Plays as soon as the player is on the page (the browser may still ask for a tap).
-      window.setTimeout(() => void audioRef.current?.play().catch(() => undefined), 50)
     } catch (err) {
+      player.stop()
+      if (live.current === player) {
+        live.current = null
+        setLiveState(null)
+      }
       setError(err instanceof Error ? err.message : 'Stüdyo sesi hazırlanamadı.')
     } finally {
       setStudioStep(null)
@@ -610,6 +644,7 @@ export function PodcastTab({
         : studioAudioUrl
           ? 'Stüdyo sesini çal / durdur'
           : 'Stüdyo sesiyle dinle'
+  const liveActive = !!liveState && !liveState.finished && (liveState.ready > 0 || liveState.blocked)
 
   function handleConvertLineToCard(line: PodcastLine, idx: number) {
     const prev = idx > 0 ? script.lines[idx - 1] : undefined
@@ -685,9 +720,34 @@ export function PodcastTab({
           </div>
         </div>
 
+        {liveActive && liveState && (
+          <div className="podcast-live" role="status">
+            {liveState.blocked ? (
+              <button type="button" className="btn prem-btn" onClick={() => live.current?.resume()}>
+                <Play size={16} /> Çal
+              </button>
+            ) : (
+              <button type="button" className="btn btn-sm" onClick={() => live.current?.toggle()} aria-label={liveState.playing ? 'Duraklat' : 'Devam et'}>
+                {liveState.playing ? <Pause size={15} /> : <Play size={15} />}
+              </button>
+            )}
+            <span className="podcast-live-text">
+              {liveState.blocked
+                ? 'Ses hazır. Başlatmak için dokun.'
+                : liveState.playing
+                  ? `Çalıyor · bölüm ${liveState.index + 1}/${liveState.total}`
+                  : liveState.ready <= liveState.index
+                    ? `Bölüm ${liveState.index + 1} kaydediliyor, hemen devam edecek…`
+                    : 'Duraklatıldı'}
+              {liveState.ready < liveState.total && <span className="subtle"> · {liveState.ready}/{liveState.total} hazır</span>}
+            </span>
+          </div>
+        )}
+
         {studioAudioUrl && (
           <div className="podcast-studio-player">
-            <audio ref={audioRef} controls src={studioAudioUrl} style={{ width: '100%' }} />
+            {/* While the parts are still playing, only the download; the full player comes after. */}
+            {!liveActive && <audio ref={audioRef} controls src={studioAudioUrl} style={{ width: '100%' }} />}
             <a
               href={studioAudioUrl}
               download={`${fileSafe(note.title)}-podcast.wav`}
