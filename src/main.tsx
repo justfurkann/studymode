@@ -8,9 +8,12 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { installErrorReporting } from './lib/feedback'
 import { startUpdateChecks } from './lib/version'
 import { applyTheme } from './lib/settings'
+import { applyDecor } from './lib/decor'
 import './styles/global.css'
+import './styles/extras.css'
 
 applyTheme()
+applyDecor()
 installErrorReporting()
 startUpdateChecks()
 

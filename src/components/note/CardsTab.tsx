@@ -1,5 +1,6 @@
 import { ArrowRight, BookOpen, Brain, Check, Layers, Lightbulb, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { playSound } from '../../lib/sound'
 import { Link } from 'react-router-dom'
 import { cardHint } from '../../lib/cardHint'
 import { toggleCompletedStep } from '../../lib/learningPath'
@@ -56,6 +57,9 @@ export function CardsTab({ note, onNext, onShowSource }: { note: Note; onNext?: 
   const missed = useRef(new Set<string>())
   const [hint, setHint] = useState(false)
   const [revealed, setRevealed] = useState(false)
+  useEffect(() => {
+    if (revealed) playSound('flip')
+  }, [revealed])
 
   // Cards added during the round (by hand or from test mistakes) join the end of it; deleted ones leave.
   const seen = useRef(new Set(queue))

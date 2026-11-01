@@ -2,6 +2,7 @@ import { BookOpen, Brain, ClipboardList, House, Plus, Settings } from 'lucide-re
 import { RoleBadge, VipWelcome } from './RoleBadge'
 import { FeedbackLink } from './Feedback'
 import { FocusEngine } from './mola/FocusEngine'
+import { Atmosphere } from './Atmosphere'
 import { MadeBy } from './MadeBy'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -167,6 +168,7 @@ export function Layout() {
         </div>
       </main>
       <FocusEngine />
+      <Atmosphere />
       <VipWelcome />
 
       <nav className="mobile-bar" aria-label="Alt menü">

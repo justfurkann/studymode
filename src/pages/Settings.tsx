@@ -13,6 +13,7 @@ import { clampDailyGoal } from '../lib/streak'
 import { supabase } from '../lib/supabase'
 import { emptyData } from '../lib/types'
 import { freshImport } from '../lib/version'
+import { DecorSettings } from '../components/DecorSettings'
 
 function AccountSection() {
   const store = useStore()
@@ -438,6 +439,7 @@ export function Settings() {
               <span className="subtle"> · Doğru, yanlış ve bitiş anlarında kısa bir ses. Kütüphanede kapalı tutmak isteyebilirsin.</span>
             </span>
           </label>
+          <DecorSettings />
         </div>
       </section>
 

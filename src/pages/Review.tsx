@@ -1,5 +1,6 @@
 import { ArrowLeft, Brain, PartyPopper, RotateCcw, Shuffle, Volume2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { playSound } from '../lib/sound'
 import { Link, useSearchParams } from 'react-router-dom'
 import type { Card } from '../lib/types'
 import { Celebrate, Empty } from '../components/ui'
@@ -44,6 +45,9 @@ function ReviewSession({ showSwitch }: { showSwitch: boolean }) {
   const [last, setLast] = useState<{ card: Card; queue: string[]; done: number } | null>(null)
   const [speechError, setSpeechError] = useState('')
   const [revealed, setRevealed] = useState(false)
+  useEffect(() => {
+    if (revealed) playSound('flip')
+  }, [revealed])
   const [done, setDone] = useState(0)
 
   const card = store.data.cards.find((c) => c.id === queue[0])
