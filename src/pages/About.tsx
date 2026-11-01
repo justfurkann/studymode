@@ -158,6 +158,7 @@ export function About() {
         <Brand size={24} />
         <span>Türk üniversite öğrencileri için ders çalışma uygulaması.</span>
         <Link to="/gizlilik" className="lp-footer-quiet">Gizlilik</Link>
+        <Link to="/kullanim-kosullari" className="lp-footer-quiet">Koşullar</Link>
         <Link to="/tanitim">Tanıtım</Link>
       </footer>
     </div>

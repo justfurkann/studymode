@@ -57,6 +57,7 @@ export function authErrorMessage(error: unknown): string {
   if (/should be different|same as the old/i.test(message)) return 'Yeni şifre eskisiyle aynı olamaz.'
   if (/password/i.test(message) && /(weak|short|characters)/i.test(message)) return `Şifre çok zayıf. En az ${MIN_PASSWORD} karakter kullan.`
   if (/expired|invalid.*(link|token)|otp/i.test(message)) return 'Bağlantının süresi dolmuş ya da daha önce kullanılmış. Yeni bir bağlantı iste.'
+  if (/captcha/i.test(message)) return 'Bot doğrulaması geçilemedi ya da süresi doldu. Kutunun yeniden işaretlenmesini bekleyip tekrar dene.'
   if (/fetch|network/i.test(message)) return 'Sunucuya bağlanılamadı. İnternet bağlantını kontrol et.'
   return message || 'Bir şeyler ters gitti. Tekrar dene.'
 }

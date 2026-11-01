@@ -11,6 +11,13 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_un15T1jZ2JXF4Cygq-JSUQ_s
  */
 export const GOOGLE_CLIENT_ID = '189951485932-ginghsotdhaj3amtm0fek00efbgsi7iu.apps.googleusercontent.com'
 
+/**
+ * Bot check on sign-in / sign-up / password reset (Cloudflare Turnstile). The site key is public by
+ * design; the secret key lives only in Supabase (Authentication → Attack Protection). Empty = off.
+ * Order matters: ship the site key first, then switch captcha on in Supabase, or sign-in breaks.
+ */
+export const TURNSTILE_SITE_KEY = ''
+
 /** Model behind the shared free AI. The server can override it with GEMINI_MODEL. */
 export const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite'
 

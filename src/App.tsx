@@ -23,6 +23,7 @@ import { ResetPassword } from './pages/ResetPassword'
 import { Review } from './pages/Review'
 import { Premium } from './pages/Premium'
 import { Privacy } from './pages/Privacy'
+import { Terms } from './pages/Terms'
 import { Settings } from './pages/Settings'
 import { SharedCourse } from './pages/SharedCourse'
 import { Today } from './pages/Today'
@@ -88,6 +89,7 @@ function Routed() {
       <Route path="tanitim" element={<Landing />} />
       <Route path="hakkinda" element={<About />} />
       <Route path="gizlilik" element={<Privacy />} />
+      <Route path="kullanim-kosullari" element={<Terms />} />
       <Route
         path="ogrenci-tipi"
         element={

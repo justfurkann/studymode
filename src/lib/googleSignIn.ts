@@ -58,7 +58,10 @@ async function sha256Hex(text: string): Promise<string> {
  * Draws Google's button into `parent`. `onDone` gets null on success (the session is open),
  * or a Turkish error message.
  */
-export async function renderGoogleButton(parent: HTMLElement, options: { dark: boolean; width: number; onDone: (error: string | null) => void }) {
+export async function renderGoogleButton(
+  parent: HTMLElement,
+  options: { dark: boolean; width: number; onDone: (error: string | null) => void; captcha?: { token: () => string; used: () => void } },
+) {
   const gsi = await loadGoogle()
   const nonce = randomNonce()
   gsi.initialize({
@@ -69,7 +72,11 @@ export async function renderGoogleButton(parent: HTMLElement, options: { dark: b
     use_fedcm_for_button: true,
     callback: async ({ credential }: GsiCredential) => {
       if (!supabase) return options.onDone('Bu sürüm sunucuya bağlı değil.')
-      const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: credential, nonce })
+      // With the bot check on, Supabase wants its token here too; it works once, so reset after.
+      const captchaToken = options.captcha?.token()
+      if (options.captcha && !captchaToken) return options.onDone('Önce aşağıdaki bot doğrulamasının işaretlenmesini bekle, sonra Google ile yeniden dene.')
+      const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: credential, nonce, ...(captchaToken ? { options: { captchaToken } } : {}) })
+      options.captcha?.used()
       options.onDone(error ? 'Google ile giriş tamamlanamadı. Biraz sonra yeniden dene ya da e-postanla devam et.' : null)
     },
   })

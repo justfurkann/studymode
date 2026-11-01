@@ -728,3 +728,75 @@ test('Stüdyo sesi: ilk parça gelince çalmaya başlar, kalanlar sıraya girer,
   await expect(page.getByRole('link', { name: /WAV İndir/ })).toBeVisible({ timeout: 15_000 })
   expect(ttsCalls).toBeGreaterThanOrEqual(3)
 })
+
+test('Kullanım koşulları: kendi sayfası; giriş ekranından, gizlilikten ve telefonda alt bilgiden ulaşılır', async ({ page }) => {
+  await page.goto('/giris')
+  await page.locator('.legal-note').getByRole('link', { name: 'kullanım koşullarını' }).click()
+  await expect(page).toHaveURL(/\/kullanim-kosullari$/)
+  await expect(page.getByRole('heading', { level: 1, name: /Kullanım\s*koşulları/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kabul edilebilir kullanım' })).toBeVisible()
+  await expect(page.getByText(/sınav başarısını garanti etmez/)).toBeVisible()
+  await page.goto('/gizlilik')
+  await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Kullanım koşulları' })).toHaveAttribute('href', '/kullanim-kosullari')
+  await page.setViewportSize({ width: 360, height: 760 })
+  await page.goto('/dersler')
+  await expect(page.locator('.mobile-foot').getByRole('link', { name: 'Koşullar' })).toHaveAttribute('href', '/kullanim-kosullari')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360)
+})
+
+test('Bot doğrulaması: kutu işaretlenmeden giriş olmaz; jeton Supabase’e gider, her denemeden sonra kutu yenilenir', async ({ page }) => {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  // A stand-in for Cloudflare's script: a checkbox that hands out a new token each time it is ticked.
+  await page.route('https://challenges.cloudflare.com/**', (route) =>
+    route.fulfill({
+      contentType: 'text/javascript',
+      body: `window.__n = 0; window.turnstile = {
+        render(el, o) { el.innerHTML = '<label><input type="checkbox" id="fake-ts"> Ben robot değilim</label>'; el.querySelector('input').onchange = (e) => e.target.checked && o.callback('tok-' + (++window.__n)); return 'w1' },
+        reset() { const c = document.getElementById('fake-ts'); if (c) c.checked = false },
+        remove() {},
+      }`,
+    }),
+  )
+  await page.addInitScript(() => localStorage.setItem('studymode.captcha.force', 'test-site-key'))
+  const sent: Array<{ path: string; token: unknown }> = []
+  await page.route(`${SUPABASE}/auth/v1/**`, async (route) => {
+    const req = route.request()
+    const url = new URL(req.url())
+    if (req.method() === 'POST') {
+      const body = req.postDataJSON() ?? {}
+      sent.push({ path: url.pathname + url.search, token: body.gotrue_meta_security?.captcha_token })
+      return route.fulfill({ status: 400, json: { code: 'invalid_credentials', message: 'Invalid login credentials' } })
+    }
+    return route.fulfill({ json: {} })
+  })
+  await page.goto('/giris')
+  await page.getByLabel('E-posta').fill('ali@example.com')
+  await page.getByLabel('Şifre', { exact: true }).fill('yanlis-sifre')
+  await page.locator('form').getByRole('button', { name: 'Giriş yap' }).click()
+  await expect(page.getByText(/Bot doğrulamasının bitmesini bekle/)).toBeVisible()
+  expect(sent).toHaveLength(0)
+
+  await page.locator('#fake-ts').check()
+  await page.locator('form').getByRole('button', { name: 'Giriş yap' }).click()
+  await expect(page.getByText('E-posta veya şifre hatalı.')).toBeVisible()
+  expect(sent).toEqual([{ path: '/auth/v1/token?grant_type=password', token: 'tok-1' }])
+  // A token works once: the box is cleared and must be ticked again.
+  await expect(page.locator('#fake-ts')).not.toBeChecked()
+
+  // Password reset sends a fresh token too.
+  await page.getByRole('button', { name: 'Şifremi unuttum' }).click()
+  await page.locator('#fake-ts').check()
+  await page.getByRole('button', { name: 'Yenileme bağlantısı gönder' }).click()
+  await expect.poll(() => sent.length).toBe(2)
+  expect(sent[1].path).toMatch(/^\/auth\/v1\/recover/)
+  expect(sent[1].token).toBe('tok-2')
+})
+
+test('Bot doğrulaması kapalıyken (anahtar yok) giriş ekranı eskisi gibi, Cloudflare yüklenmez', async ({ page }) => {
+  let loaded = false
+  await page.route('https://challenges.cloudflare.com/**', (route) => ((loaded = true), route.abort()))
+  await page.goto('/giris')
+  await expect(page.getByRole('heading', { level: 1, name: 'Giriş yap' })).toBeVisible()
+  await expect(page.locator('.captcha')).toHaveCount(0)
+  expect(loaded).toBe(false)
+})

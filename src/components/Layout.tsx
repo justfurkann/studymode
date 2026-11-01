@@ -257,6 +257,9 @@ export function Layout() {
           <Link to="/gizlilik" className="made-by">
             Gizlilik
           </Link>
+          <Link to="/kullanim-kosullari" className="made-by">
+            Koşullar
+          </Link>
         </div>
       </main>
       <FocusEngine />

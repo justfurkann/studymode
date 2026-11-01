@@ -604,6 +604,13 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - "Nasıl ilerlemeli?" adımlarının her birinde gerçek ekranın telefon görüntüsü (dokununca büyür, `ZoomableImage`) ve "git" bağlantısı. Dosyalar `public/rehber/adim-{1..5}-{light,dark}.webp` (520×960, ~30 KB); o anki temaya göre seçilir (`useDarkTheme` Guide.tsx içinde: `data-theme`, yoksa sistem).
 - Görüntüler örnek dersle (Örnek notla dene), 390×720 telefon, 2x, saat sabit alınır. Ekranlar değişirse yeniden üret: dev sunucu açıkken örnek notu aç; sırasıyla `/sinav`, `/not-ekle`, not sayfası, `/`, `/ders/<id>/sinav` ekranlarını iki temada çek, 520 genişliğe WebP (q78).
 
+### Aşama 25 — Kullanım koşulları ve bot doğrulaması (1 Kasım 2026, `dreamy-sagan`)
+
+- **`/kullanim-kosullari`** (`src/pages/Terms.tsx`): hizmet, hesap, kabul edilebilir kullanım (çoklu hesap/bot yasak), içerik kullanıcının, yapay zekâ hatalı olabilir, ücretsiz + günlük hak + VIP davetle ve geri alınabilir, süreklilik garantisi yok, sorumluluk sınırı, hesap kapatma, Türkiye hukuku, iletişim. Bağlantılar: giriş kartı ("kullanım koşullarını kabul etmiş… olursun"), gizlilik/tanıtım/hakkında alt bilgileri, telefonda sayfa sonu. Hukukçu kontrolünden geçmedi.
+- **Bot doğrulaması (Cloudflare Turnstile):** `src/lib/captcha.ts`, `src/components/Captcha.tsx`. E-postayla giriş, kayıt, şifre sıfırlama ve Google girişinde (signInWithIdToken) Supabase'e `captchaToken` gider; jeton tek kullanımlık, her denemeden sonra kutu sıfırlanır. **Anahtar boşken (config.ts `TURNSTILE_SITE_KEY = ''`) tamamen kapalı**; localhost'ta da kapalı (test `studymode.captcha.force` ile açar, Cloudflare betiğini sahtesiyle değiştirir).
+- **Açma sırası (önemli):** 1) Kullanıcı Cloudflare → Turnstile → widget (alan adı studymode.fun, mod "Managed") oluşturur. 2) **Site key** (herkese açık) config.ts'e yazılıp yayınlanır, canlıda kutunun çıktığı doğrulanır. 3) Ancak ondan sonra Supabase → Authentication → Attack Protection → CAPTCHA → Turnstile + **Secret key** (yalnızca Supabase'e, sohbete değil). Ters sırada yapılırsa herkesin girişi bozulur. Açıldıktan sonra yerel geliştirmede gerçek Supabase'e giriş çalışmaz (localhost'ta kutu yok); testler etkilenmez.
+- Gizlilik: Cloudflare (Turnstile) işleyenler listesine eklendi.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
