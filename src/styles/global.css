@@ -5615,3 +5615,13 @@ a.prem-hit:hover {
   color: var(--text-2);
   white-space: normal;
 }
+
+/* ============ Bot check (Turnstile) on the sign-in card ============ */
+.captcha {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.captcha-box {
+  min-height: 65px;
+}

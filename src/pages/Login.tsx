@@ -2,9 +2,11 @@ import { ArrowLeft } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { BrandIcon } from '../components/BrandIcon'
+import { Captcha } from '../components/Captcha'
 import { Alert, Spinner } from '../components/ui'
 import { authErrorMessage, isGoogleEnabled, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../lib/config'
+import { captchaSiteKey } from '../lib/captcha'
 import { renderGoogleButton } from '../lib/googleSignIn'
 import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
@@ -27,6 +29,13 @@ export function Login() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  // Bot check (Turnstile): one token per attempt, then the box is reset for the next one.
+  const captchaOn = !!captchaSiteKey()
+  const [captchaToken, setCaptchaToken] = useState('')
+  const tokenRef = useRef('')
+  tokenRef.current = captchaToken
+  const [captchaReset, setCaptchaReset] = useState(0)
+  const captchaOptions = () => (captchaOn ? { captchaToken: tokenRef.current } : {})
 
   if (!supabase) return <Navigate to="/ayarlar" replace />
   if (store.session) return <Navigate to="/" replace />
@@ -53,17 +62,19 @@ export function Login() {
       if (problem) return setError(problem)
     }
 
+    if (captchaOn && !tokenRef.current) return setError('Bot doğrulamasının bitmesini bekle; kutu birkaç saniyede kendiliğinden işaretlenir.')
+
     setBusy(true)
     try {
       if (mode === 'in') {
-        const { error } = await supabase!.auth.signInWithPassword({ email: email.trim(), password })
+        const { error } = await supabase!.auth.signInWithPassword({ email: email.trim(), password, options: captchaOptions() })
         if (error) throw error
         navigate('/')
       } else if (mode === 'up') {
         const { data, error } = await supabase!.auth.signUp({
           email: email.trim(),
           password,
-          options: { emailRedirectTo: window.location.origin, data: nameMetadata(firstName, lastName) },
+          options: { emailRedirectTo: window.location.origin, data: nameMetadata(firstName, lastName), ...captchaOptions() },
         })
         if (error) throw error
         if (data.session) navigate('/')
@@ -73,7 +84,7 @@ export function Login() {
           setRepeat('')
         }
       } else {
-        const { error } = await supabase!.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin })
+        const { error } = await supabase!.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin, ...captchaOptions() })
         if (error) throw error
         // Same message whether or not the address has an account, so the form cannot be used to look up emails.
         setInfo('Bu e-postayla bir hesap varsa şifre yenileme bağlantısı gönderdik. Gelen kutunu (ve gereksiz klasörünü) kontrol et.')
@@ -82,6 +93,7 @@ export function Login() {
       setError(authErrorMessage(e))
     } finally {
       setBusy(false)
+      if (captchaOn) setCaptchaReset((n) => n + 1)
     }
   }
 
@@ -97,7 +109,9 @@ export function Login() {
             ? 'E-posta adresini yaz, sana yeni şifre belirleyebileceğin bir bağlantı gönderelim.'
             : 'Hesapla notların, kartların ve ilerlemen tüm cihazlarında senkronize olur.'}
         </p>
-        {mode !== 'forgot' && <GoogleButton />}
+        {mode !== 'forgot' && (
+          <GoogleButton captcha={captchaOn ? { token: () => tokenRef.current, used: () => setCaptchaReset((n) => n + 1) } : undefined} />
+        )}
         <form className="form" onSubmit={submit}>
           {mode === 'up' && (
             <div className="form-row">
@@ -168,6 +182,7 @@ export function Login() {
               </button>
             </div>
           )}
+          {captchaOn && <Captcha onToken={setCaptchaToken} resetSignal={captchaReset} />}
           {error && <Alert tone="danger">{error}</Alert>}
           {info && <Alert tone="info">{info}</Alert>}
           <button className="btn btn-primary btn-lg" disabled={busy}>
@@ -176,7 +191,7 @@ export function Login() {
         </form>
         {mode !== 'forgot' && (
           <p className="subtle legal-note">
-            Devam ederek <Link to="/gizlilik">gizlilik politikasını</Link> okumuş olursun.
+            Devam ederek <Link to="/kullanim-kosullari">kullanım koşullarını</Link> kabul etmiş ve <Link to="/gizlilik">gizlilik politikasını</Link> okumuş olursun.
           </p>
         )}
         <p className="subtle" style={{ textAlign: 'center' }}>
@@ -195,7 +210,7 @@ export function Login() {
  * studymode.fun. If Google's script is blocked, falls back to the redirect flow (which names the
  * Supabase address but still works). Hidden until Google is switched on in Supabase.
  */
-function GoogleButton() {
+function GoogleButton({ captcha }: { captcha?: { token: () => string; used: () => void } }) {
   const navigate = useNavigate()
   const [enabled, setEnabled] = useState(false)
   const [mode, setMode] = useState<'gsi' | 'redirect'>('gsi')
@@ -218,6 +233,7 @@ function GoogleButton() {
     renderGoogleButton(el, {
       dark,
       width: el.clientWidth || 360,
+      captcha,
       onDone: (message) => {
         if (message) setError(message)
         else navigate('/', { replace: true })

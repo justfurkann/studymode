@@ -239,6 +239,7 @@ export function Landing() {
         <span>Türk üniversite öğrencileri için ders çalışma uygulaması.</span>
         <MadeBy />
         <Link to="/gizlilik" className="lp-footer-quiet">Gizlilik</Link>
+        <Link to="/kullanim-kosullari" className="lp-footer-quiet">Kullanım koşulları</Link>
         <Link to="/giris">Giriş yap</Link>
       </footer>
     </div>

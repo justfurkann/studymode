@@ -113,6 +113,10 @@ export function Privacy() {
               metin, çizilecek kavram ya da aranan cümle bu modellere gider.
             </li>
             <li>
+              <strong>Cloudflare (Turnstile):</strong> giriş, kayıt ve şifre sıfırlama ekranındaki bot doğrulaması. Doğrulama için tarayıcın ve bağlantın hakkında teknik
+              bilgiler Cloudflare'e gider; reklam için kullanılmaz.
+            </li>
+            <li>
               <strong>Resend:</strong> hesap onayı ve şifre sıfırlama e-postalarının gönderimi.
             </li>
             <li>
@@ -174,6 +178,9 @@ export function Privacy() {
       <footer className="lp-wrap lp-footer">
         <Brand size={24} />
         <span>Türk üniversite öğrencileri için ders çalışma uygulaması.</span>
+        <Link to="/kullanim-kosullari" className="lp-footer-quiet">
+          Kullanım koşulları
+        </Link>
         <Link to="/hakkinda">Hakkında</Link>
       </footer>
     </div>
