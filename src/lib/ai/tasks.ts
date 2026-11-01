@@ -169,6 +169,69 @@ Write in the language of the notes (usually Turkish). Ground your explanation in
 - If mode is "example": Give a concrete, relatable real-life or practical example/analogy that illustrates how this concept works in practice.
 - If mode is "step_by_step": Break the idea down into 3-5 numbered, logical mini-steps from the most basic premise to the conclusion.`
 
+// ---------- Memory Coding (Mnemonics) & Concept Comparisons ----------
+
+export const MemoryToolsSchema = z.object({
+  mnemonics: z
+    .array(
+      z.object({
+        kind: z.enum(['akrostis', 'tekerleme', 'hikaye', 'ipucu']),
+        title: z.string(),
+        code: z.string(),
+        breakdown: z.array(z.object({ key: z.string(), meaning: z.string() })).default([]),
+        tip: z.string().default(''),
+      }),
+    )
+    .default([]),
+  comparisons: z
+    .array(
+      z.object({
+        leftTerm: z.string(),
+        leftPoint: z.string(),
+        rightTerm: z.string(),
+        rightPoint: z.string(),
+        difference: z.string(),
+        examTrap: z.string().default(''),
+      }),
+    )
+    .default([]),
+})
+
+export interface MemoryInput {
+  title: string
+  text: string
+  mode?: 'all' | 'mnemonic' | 'comparison'
+  mnemonicKind?: 'akrostis' | 'tekerleme' | 'hikaye' | 'ipucu'
+  focusTopic?: string
+  leftTerm?: string
+  rightTerm?: string
+}
+
+const MEMORY_PROMPT = `You create memorable university study aids from lecture notes:
+1) Memory encodings (mnemonics) that make lists, stages, or key definitions effortless to recall in an exam.
+2) Side-by-side concept comparisons and exam trap warnings for easily confused terms.
+
+Write everything in the language of the notes (usually Turkish). Use ONLY facts from the notes.
+
+For "mnemonics":
+- kind: "akrostis" (acronym/initial letters forming a catchy Turkish word or code), "tekerleme" (a rhythmic, rhyming 4-line verse/stanza using the concepts), "hikaye" (a short vivid story chain linking the concepts in order), or "ipucu" (word-association hook).
+- title: short descriptive title.
+- code: the actual acronym word/code, rhyming stanza, or hook phrase that the student memorizes.
+- breakdown: 3-6 items unpacking each letter, line, or step into its exact concept and meaning from the notes.
+- tip: 1 sentence explaining how to recall this code on exam day.
+
+For "comparisons":
+- Pick pairs of concepts in the notes that students often confuse or that professors compare on exams (or use leftTerm and rightTerm if specified).
+- leftTerm / leftPoint: first concept and its core role (1 concise sentence).
+- rightTerm / rightPoint: second concept and its core role (1 concise sentence).
+- difference: the single sharpest distinction between the two.
+- examTrap: how a multiple-choice or classic exam question tries to trick students into confusing them.
+
+Respect the requested mode:
+- If mode is "mnemonic": return 1-2 mnemonics (using mnemonicKind and focusTopic when given) and comparisons: [].
+- If mode is "comparison": return mnemonics: [] and 1-2 comparisons (comparing leftTerm and rightTerm when given).
+- If mode is "all" or omitted: return 3 diverse mnemonics ("akrostis", "tekerleme", "hikaye") and 2-3 high-value comparisons.`
+
 // ---------- Registry ----------
 
 export const MAX_PROMPT_NOTE_CHARS = 24_000
@@ -308,6 +371,26 @@ export const TASKS = {
         `<target_concept>${input.topic}</target_concept>`,
         `<note_context>\n${contextAround(input.context, input.topic, 8_000)}\n</note_context>`,
       ].join('\n'),
+  },
+  memory: {
+    schema: MemoryToolsSchema,
+    system: MEMORY_PROMPT,
+    user: (input: MemoryInput) => {
+      const searchFocus = input.focusTopic || input.leftTerm || input.rightTerm || ''
+      const noteSlice = searchFocus ? contextAround(input.text, searchFocus, 14_000) : trimNoteText(input.text, 16_000)
+      return [
+        `<note_title>${input.title}</note_title>`,
+        `<mode>${input.mode ?? 'all'}</mode>`,
+        input.mnemonicKind ? `<mnemonic_kind>${input.mnemonicKind}</mnemonic_kind>` : '',
+        input.focusTopic?.trim() ? `<focus_topic>${input.focusTopic.trim()}</focus_topic>` : '',
+        input.leftTerm?.trim() && input.rightTerm?.trim()
+          ? `<compare_pair left="${input.leftTerm.trim()}" right="${input.rightTerm.trim()}" />`
+          : '',
+        `<notes>\n${noteSlice}\n</notes>`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    },
   },
 }
 

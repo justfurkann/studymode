@@ -40,6 +40,37 @@ export interface KeyTerm {
 
 export type LearningStepId = 'tanis' | 'anla' | 'pekistir' | 'sina' | 'anlat'
 
+export type SummarySubTab = 'tanis' | 'anla' | 'kodlama' | 'karsilastir'
+
+export type MnemonicKind = 'akrostis' | 'tekerleme' | 'hikaye' | 'ipucu'
+
+export interface MnemonicBreakdownItem {
+  key: string
+  meaning: string
+}
+
+export interface MnemonicItem {
+  id: string
+  kind: MnemonicKind
+  title: string
+  /** The memorable acronym, rhyme stanza, or hook phrase. */
+  code: string
+  /** Step-by-step or letter-by-letter unpacking of the memory code. */
+  breakdown: MnemonicBreakdownItem[]
+  /** Exam recall tip explaining how to use this code during a test. */
+  tip: string
+}
+
+export interface ConceptComparison {
+  id: string
+  leftTerm: string
+  leftPoint: string
+  rightTerm: string
+  rightPoint: string
+  difference: string
+  examTrap: string
+}
+
 export interface Summary {
   origin?: 'demo'
   tags?: string[]
@@ -49,6 +80,8 @@ export interface Summary {
   overview: string
   points: string[]
   keyTerms: KeyTerm[]
+  mnemonics?: MnemonicItem[]
+  comparisons?: ConceptComparison[]
 }
 
 export interface Question {

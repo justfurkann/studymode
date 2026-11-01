@@ -1,3 +1,4 @@
+import { buildLocalMemoryTools } from './memoryTools'
 import { generateStudySet } from './study'
 import type { GeneratedSet } from './types'
 
@@ -12,11 +13,18 @@ export function generateLocally(text: string): GeneratedSet {
     .filter((card) => card.front.startsWith('“'))
     .map((card) => ({ term: card.front.replace(/^“(.+)” ne anlama gelir\?$/u, '$1'), definition: card.back }))
 
+  const baseSummary = {
+    overview: '',
+    points: set.summary,
+    keyTerms: terms,
+  }
+  const memory = buildLocalMemoryTools({ title: 'Not', content: text, summary: baseSummary })
+
   return {
     summary: {
-      overview: '',
-      points: set.summary,
-      keyTerms: terms,
+      ...baseSummary,
+      mnemonics: memory.mnemonics,
+      comparisons: memory.comparisons,
     },
     cards: set.cards.map(({ front, back }) => ({ front, back, source: null })),
     questions: set.quiz.map((question) => ({

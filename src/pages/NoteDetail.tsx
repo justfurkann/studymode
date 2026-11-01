@@ -14,7 +14,7 @@ import { computeNoteProgress, computeTopicMastery } from '../lib/learningPath'
 import { generateLocally } from '../lib/localGenerator'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
-import type { Generator, LearningStepId, Note } from '../lib/types'
+import type { Generator, LearningStepId, Note, SummarySubTab } from '../lib/types'
 import { freshImport } from '../lib/version'
 
 /** The study flow, in order: read, measure, practise, explain. Each view covers one or two learning steps. */
@@ -173,10 +173,13 @@ export function NoteDetail() {
       view: progress.isCompleted ? (cardCount ? 'kartlar' : 'ozet') : viewOfStep(progress.currentStep.id),
     }
   }
+  const requestedStep = params.get('adim')
+  const isSummarySubTab = (v: string | null): v is SummarySubTab =>
+    v === 'tanis' || v === 'anla' || v === 'kodlama' || v === 'karsilastir'
   const tab: TabId =
     requested === 'kaynak' || VIEWS.some((v) => v.id === requested)
       ? (requested as TabId)
-      : params.get('adim') === 'tanis' || params.get('adim') === 'anla'
+      : isSummarySubTab(requestedStep)
         ? 'ozet'
         : (landing.current?.view ?? 'ozet')
 
@@ -202,11 +205,13 @@ export function NoteDetail() {
   const counts: Partial<Record<TabId, number>> = { kartlar: cardCount, test: note.questions.length, uygula: note.practice.length }
   const mastery = computeTopicMastery(note, store.data.cards, store.data.attempts)
 
-  const requestedStep = params.get('adim')
-  const summaryStep: 'tanis' | 'anla' =
-    requestedStep === 'anla' || requestedStep === 'tanis' ? requestedStep : progress.steps[0].done && !progress.steps[1].done ? 'anla' : 'tanis'
+  const summaryStep: SummarySubTab = isSummarySubTab(requestedStep)
+    ? requestedStep
+    : progress.steps[0].done && !progress.steps[1].done
+      ? 'anla'
+      : 'tanis'
 
-  function show(view: TabId, step?: 'tanis' | 'anla') {
+  function show(view: TabId, step?: SummarySubTab) {
     setParams(view === 'ozet' ? (step ? { adim: step } : {}) : { sekme: view }, { replace: true })
     window.scrollTo(0, 0)
   }

@@ -1740,3 +1740,50 @@ test('each service shows its full list of models, plus any other model by name',
   await page.getByRole('button', { name: 'ChatGPT' }).click()
   await expect(page.getByLabel('Model adı')).toHaveValue('gpt-6-preview')
 })
+
+test('memory coding and comparison tabs: mnemonics, quiz mode, comparisons, and converting to cards', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+
+  const summaryGroup = page.getByRole('group', { name: 'Özet adımları' })
+  await summaryGroup.getByRole('button', { name: 'Hafıza kodlaması' }).click()
+
+  await expect(page.getByText('Kalıcı Öğrenmenin 4 Adımı — Baş Harf Şifresi')).toBeVisible()
+  await expect(page.getByText('A · A · G · Ü')).toBeVisible()
+
+  // Toggle self-test mode to hide meanings and reveal one by one.
+  await page.getByRole('button', { name: 'Şifreyi dene (Kendini sına)' }).click()
+  await expect(page.getByRole('button', { name: 'Açılımı gör' }).first()).toBeVisible()
+  await page.getByRole('button', { name: 'Açılımı gör' }).first().click()
+  await page.getByRole('button', { name: 'Açılımları göster' }).click()
+
+  // Create a custom rhythmic mnemonic and turn a mnemonic into a flashcard.
+  await page.getByRole('radio', { name: /Kafiyeli tekerleme/ }).click()
+  await page.getByLabel('Kodlanacak kavram veya konu').fill('Üstbiliş')
+  await page.getByRole('button', { name: 'Hızlı şifrele' }).click()
+  await expect(page.getByText('Üstbiliş — Ritmik Dörtlük')).toBeVisible()
+
+  const cardsTab = page.getByRole('tablist', { name: 'Çalışma adımları' }).getByRole('tab', { name: /Kartlar/ })
+  const cardsBefore = Number(await cardsTab.locator('.tab-count').textContent())
+  await page.getByRole('button', { name: 'Şifreyi karta çevir' }).first().click()
+  await expect(page.getByRole('button', { name: 'Kartlara eklendi' }).first()).toBeDisabled()
+  const cardsAfterMnemonic = Number(await cardsTab.locator('.tab-count').textContent())
+  expect(cardsAfterMnemonic).toBe(cardsBefore + 1)
+
+  // Move to the Comparison tab and compare two concepts.
+  await page.getByRole('button', { name: /Devam: Karşılaştırma ve tuzaklar/ }).click()
+  await expect(page.getByText('Karıştırılan Kavramlar & Sınav Tuzakları')).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Çalışma belleği vs\. Uzun süreli bellek/ })).toBeVisible()
+
+  await page.getByLabel('1. Kavram').fill('Aralıklı tekrar')
+  await page.getByLabel('2. Kavram').fill('Üstbiliş')
+  await page.getByRole('button', { name: 'Karşılaştır', exact: true }).click()
+  await expect(page.getByRole('heading', { name: /Aralıklı tekrar vs\. Üstbiliş/ })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Tuzak soruyu karta çevir' }).first().click()
+  const cardsAfterComparison = Number(await cardsTab.locator('.tab-count').textContent())
+  expect(cardsAfterComparison).toBe(cardsAfterMnemonic + 1)
+  expect(errors).toEqual([])
+})
+

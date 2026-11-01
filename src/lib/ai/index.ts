@@ -3,7 +3,7 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL } from '../config'
 import type { Settings } from '../settings'
 import { supabase } from '../supabase'
-import type { GeneratedSet } from '../types'
+import type { ConceptComparison, GeneratedSet, MnemonicItem } from '../types'
 import { callGeminiWithFallback, GeminiError } from './gemini'
 import {
   jsonModeSystem,
@@ -17,6 +17,7 @@ import {
   type ExplainMode,
   type ExamInput,
   type GradeInput,
+  type MemoryInput,
   type TaskInput,
   type TaskName,
   type TaskOutput,
@@ -33,6 +34,7 @@ export type {
   ExplainMode,
   GradeInput,
   ImageMimeType,
+  MemoryInput,
   TranscribeImage,
   TranscribeInput,
 } from './tasks'
@@ -373,6 +375,37 @@ export async function transcribeImages(images: TranscribeImage[], settings: Sett
 export async function explainConcept(input: ExplainInput, settings: Settings): Promise<string> {
   const { explanation } = await runTask('explain', input, settings)
   return explanation.trim()
+}
+
+export async function generateMemoryTools(
+  input: MemoryInput,
+  settings: Settings,
+): Promise<{ mnemonics: MnemonicItem[]; comparisons: ConceptComparison[] }> {
+  const raw = await runTask('memory', input, settings)
+  const mnemonics: MnemonicItem[] = raw.mnemonics
+    .filter((m) => m.title.trim() && m.code.trim())
+    .map((m) => ({
+      id: crypto.randomUUID(),
+      kind: m.kind,
+      title: m.title.trim(),
+      code: m.code.trim(),
+      breakdown: m.breakdown
+        .filter((b) => b.key.trim() && b.meaning.trim())
+        .map((b) => ({ key: b.key.trim(), meaning: b.meaning.trim() })),
+      tip: m.tip.trim(),
+    }))
+  const comparisons: ConceptComparison[] = raw.comparisons
+    .filter((c) => c.leftTerm.trim() && c.rightTerm.trim() && c.difference.trim())
+    .map((c) => ({
+      id: crypto.randomUUID(),
+      leftTerm: c.leftTerm.trim(),
+      leftPoint: c.leftPoint.trim(),
+      rightTerm: c.rightTerm.trim(),
+      rightPoint: c.rightPoint.trim(),
+      difference: c.difference.trim(),
+      examTrap: c.examTrap.trim(),
+    }))
+  return { mnemonics, comparisons }
 }
 
 /** Local fallback explanation when AI is not configured or unavailable. */

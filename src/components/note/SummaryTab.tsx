@@ -1,13 +1,14 @@
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, HelpCircle, ListChecks } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, HelpCircle, KeyRound, ListChecks, Scale } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { type ExplainMode } from '../../lib/ai'
 import { toggleCheckedTerm, toggleCompletedStep } from '../../lib/learningPath'
 import { aiAvailability, useSettings } from '../../lib/settings'
 import { AiSignupPrompt } from '../AiSignupPrompt'
 import { useStore } from '../../lib/store'
-import type { Note } from '../../lib/types'
+import type { Note, SummarySubTab } from '../../lib/types'
 import { Modal, Spinner } from '../ui'
 import { freshImport } from '../../lib/version'
+import { ComparisonTab, MemoryCodingTab } from './MemoryTabs'
 
 const EXPLAIN_MODES: Array<{ mode: ExplainMode; label: string }> = [
   { mode: 'simple', label: 'Daha basit anlat' },
@@ -173,8 +174,8 @@ export function SummaryTab({
   onNext,
 }: {
   note: Note
-  activeStep?: 'tanis' | 'anla'
-  onStep: (step: 'tanis' | 'anla') => void
+  activeStep?: SummarySubTab
+  onStep: (step: SummarySubTab) => void
   /** Goes on to the test once the main points are read. */
   onNext: () => void
 }) {
@@ -222,9 +223,19 @@ export function SummaryTab({
         <button type="button" aria-pressed={activeStep === 'anla'} onClick={() => onStep('anla')}>
           <span className={`step-dot ${anlaDone ? 'done' : ''}`}>{anlaDone ? <Check size={12} /> : '2'}</span> Ana noktalar
         </button>
+        <button type="button" aria-pressed={activeStep === 'kodlama'} onClick={() => onStep('kodlama')}>
+          <KeyRound size={14} /> Hafıza kodlaması
+        </button>
+        <button type="button" aria-pressed={activeStep === 'karsilastir'} onClick={() => onStep('karsilastir')}>
+          <Scale size={14} /> Karşılaştırma
+        </button>
       </div>
 
-      {activeStep === 'tanis' ? (
+      {activeStep === 'kodlama' ? (
+        <MemoryCodingTab note={note} onGoCompare={() => onStep('karsilastir')} />
+      ) : activeStep === 'karsilastir' ? (
+        <ComparisonTab note={note} onNext={completeStep2} />
+      ) : activeStep === 'tanis' ? (
         <div className="section no-print" style={{ gap: 16 }} aria-label="Kavramlar">
           {summary.overview && (
             <div className="guided-overview-card">

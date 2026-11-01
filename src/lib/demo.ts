@@ -27,6 +27,67 @@ export function createDemoSet() {
   const set = generateLocally(DEMO_NOTE_CONTENT)
   set.summary.overview = 'Öğrenmek yalnızca notları tekrar okumak değildir. Bilgiyi hafızadan çağırmak, tekrarları zamana yaymak ve yanlışları geri bildirimle düzeltmek kalıcı öğrenmeyi destekler. Bu önceden hazırlanmış örnek, bir çalışma setinde neler bulabileceğini gösterir.'
   set.summary.origin = 'demo'
+  set.summary.mnemonics = [
+    {
+      id: 'demo-mn-1',
+      kind: 'akrostis',
+      title: 'Kalıcı Öğrenmenin 4 Adımı — Baş Harf Şifresi',
+      code: 'A · A · G · Ü',
+      breakdown: [
+        { key: 'A → Aktif hatırlama', meaning: 'Notu kapatıp bilgiyi zihinden geri çağırma çabası.' },
+        { key: 'A → Aralıklı tekrar', meaning: 'Tek uzun oturum yerine çalışmayı farklı günlere yayma.' },
+        { key: 'G → Geri bildirim', meaning: 'Yanlış cevabın neden yanlış olduğunu inceleyip düzeltme.' },
+        { key: 'Ü → Üstbiliş', meaning: 'Hangi konuyu bilip hangisinde zorlandığını fark edip planı güncelleme.' },
+      ],
+      tip: 'Sınavda “Etkili çalışma stratejileri nelerdir?” sorusu geldiğinde kağıdın kenarına A-A-G-Ü yaz.',
+    },
+    {
+      id: 'demo-mn-2',
+      kind: 'tekerleme',
+      title: 'Bellek ve Hatırlama — Ritmik Dörtlük',
+      code: 'Çalışma belleği dar, bilgiyi kısa tutar,\nUzun süreli bellek bağ kurdukça yutar.\nKapat notu zihinden çağır: Aktif hatırlama,\nZamana yay tekrarı, son geceye sıkıştırma!',
+      breakdown: [
+        { key: '1. Dize · Çalışma belleği', meaning: 'Kapasitesi sınırlıdır; bilgiyi kısa süre tutar ve işler.' },
+        { key: '2. Dize · Uzun süreli bellek', meaning: 'Önceki bilgilerle anlamlı bağ kurulduğunda kalıcı saklar.' },
+        { key: '3. Dize · Aktif hatırlama', meaning: 'Kaynağa bakmadan hatırlama çabası kalıcılığı artırır.' },
+        { key: '4. Dize · Aralıklı tekrar', meaning: 'Oturumları zamana yaymak sıkıştırılmış çalışmadan etkilidir.' },
+      ],
+      tip: 'İki bellek türünü ve iki çalışma tekniğini tek dörtlükte ritimli okuyarak eşleştir.',
+    },
+    {
+      id: 'demo-mn-3',
+      kind: 'hikaye',
+      title: 'Bilginin Bellekteki Yolculuğu — Hikâye Zinciri',
+      code: 'Çalışma Belleği → Uzun Süreli Bellek → Aktif Hatırlama → Geri Bildirim',
+      breakdown: [
+        { key: '1. Durak: Giriş Kapısı (Çalışma belleği)', meaning: 'Yeni bilgi önce dar bir masa olan çalışma belleğine gelir.' },
+        { key: '2. Durak: Arşiv Odası (Uzun süreli bellek)', meaning: 'Eski bilgilerle bağ kurulursa geniş arşive taşınır.' },
+        { key: '3. Durak: Geri Çağırma (Aktif hatırlama)', meaning: 'Notu kapatıp kendini sınadığında arşivden geri çağrılır.' },
+        { key: '4. Durak: Kalite Kontrol (Geri bildirim)', meaning: 'Yanlışların nedeni incelenerek hatalı bağlantılar onarılır.' },
+      ],
+      tip: 'Bilgiyi dar bir masadan büyük bir kütüphaneye taşıyan 4 duraklı bir yolculuk olarak hayal et.',
+    },
+  ]
+  set.summary.comparisons = [
+    {
+      id: 'demo-cmp-1',
+      leftTerm: 'Çalışma belleği',
+      leftPoint: 'Bilgiyi kısa süre tutar, üzerinde işlem yapar ve kapasitesi sınırlıdır.',
+      rightTerm: 'Uzun süreli bellek',
+      rightPoint: 'Bilgi, beceri ve deneyimleri anlamlı bağlarla uzun zaman saklar.',
+      difference: 'Çalışma belleği anlık ve sınırlı işlem alanıdır; uzun süreli bellek ise kalıcı depodur.',
+      examTrap: '“Aynı anda çok fazla yeni bilgi verildiğinde zorlanma” sorulursa cevap uzun süreli bellek değil, çalışma belleğinin sınırlı kapasitesidir.',
+    },
+    {
+      id: 'demo-cmp-2',
+      leftTerm: 'Aktif hatırlama',
+      leftPoint: 'Kaynağa bakmadan bilgiyi zihinden geri getirme ve kendini test etme çabasıdır.',
+      rightTerm: 'Tekrar okuma (Pasif tekrar)',
+      rightPoint: 'Notları açık tutup yeniden gözden geçirme veya altını çizme işlemidir.',
+      difference: 'Aktif hatırlama zihinsel geri çağırma gerektirir; tekrar okuma yalnızca tanıdıklık hissi yaratır.',
+      examTrap: 'Şıklarda “notların altını renkli kalemle çizmek” aktif hatırlama gibi sunulur; oysa kaynak açıksa aktif hatırlama değildir.',
+    },
+  ]
   set.questions = [
     {
       prompt: 'Hangisi aktif hatırlamaya örnektir?',
