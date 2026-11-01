@@ -1,6 +1,7 @@
 import { ArrowRight, Brain, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ExamFocusCard } from '../components/ExamFocusCard'
+import { ReceiptButton } from '../components/ReceiptButton'
 import { Welcome } from '../components/Welcome'
 import { pickExamFocus } from '../lib/examFocus'
 import { firstName } from '../lib/auth'
@@ -82,6 +83,7 @@ export function Today() {
           </p>
           <h1>{firstName(store.session?.user) ? `Merhaba ${firstName(store.session?.user)}` : 'Bugün'}</h1>
         </div>
+        <ReceiptButton className="btn btn-sm" />
       </div>
 
       {due.length > 0 ? (

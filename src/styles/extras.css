@@ -1,0 +1,469 @@
+/* ============ Kırtasiye seti, gece kütüphanesi, çalışma fişi ============ */
+/* Kept out of global.css on purpose. Loaded after it, so these win at equal specificity. */
+
+/* ---------- Highlighter colours (data-pen on <html>) ---------- */
+/* Yellow is the default and needs no rule. Text on the pen stays --on-hi (navy); every colour here is light enough for it. */
+
+:root[data-pen='pembe'] { --hi: #ff9fcf; --hi-hover: #ff86c1; --hi-soft: #ffe8f3; --accent-soft: #ffd9eb; --brand-fg: #ff9fcf; }
+:root[data-pen='nane'] { --hi: #7ff0b8; --hi-hover: #5fe8a5; --hi-soft: #e2fbef; --accent-soft: #c9f6df; --brand-fg: #7ff0b8; }
+:root[data-pen='lavanta'] { --hi: #c9b3ff; --hi-hover: #b89cff; --hi-soft: #f1ebff; --accent-soft: #e3d8ff; --brand-fg: #c9b3ff; }
+:root[data-pen='turuncu'] { --hi: #ffb35c; --hi-hover: #ffa23d; --hi-soft: #fff0de; --accent-soft: #ffe2bf; --brand-fg: #ffb35c; }
+
+/* In dark mode the highlighter is also the accent (main buttons, links, logo block). */
+:root[data-theme='dark'][data-pen='pembe'] { --hi-soft: #3a2131; --accent-soft: #3a2131; --accent: #ff9fcf; --accent-hover: #ffb8db; --accent-text: #ffc2e0; --brand-bg: #ff9fcf; --brand-fg: #11142a; }
+:root[data-theme='dark'][data-pen='nane'] { --hi-soft: #183a2c; --accent-soft: #183a2c; --accent: #7ff0b8; --accent-hover: #a0f4ca; --accent-text: #b3f7d6; --brand-bg: #7ff0b8; --brand-fg: #11142a; }
+:root[data-theme='dark'][data-pen='lavanta'] { --hi-soft: #2a2348; --accent-soft: #2a2348; --accent: #c9b3ff; --accent-hover: #d9c9ff; --accent-text: #ddd0ff; --brand-bg: #c9b3ff; --brand-fg: #11142a; }
+:root[data-theme='dark'][data-pen='turuncu'] { --hi-soft: #3a2a17; --accent-soft: #3a2a17; --accent: #ffb35c; --accent-hover: #ffc57f; --accent-text: #ffd4a1; --brand-bg: #ffb35c; --brand-fg: #11142a; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light'])[data-pen='pembe'] { --hi-soft: #3a2131; --accent-soft: #3a2131; --accent: #ff9fcf; --accent-hover: #ffb8db; --accent-text: #ffc2e0; --brand-bg: #ff9fcf; --brand-fg: #11142a; }
+  :root:not([data-theme='light'])[data-pen='nane'] { --hi-soft: #183a2c; --accent-soft: #183a2c; --accent: #7ff0b8; --accent-hover: #a0f4ca; --accent-text: #b3f7d6; --brand-bg: #7ff0b8; --brand-fg: #11142a; }
+  :root:not([data-theme='light'])[data-pen='lavanta'] { --hi-soft: #2a2348; --accent-soft: #2a2348; --accent: #c9b3ff; --accent-hover: #d9c9ff; --accent-text: #ddd0ff; --brand-bg: #c9b3ff; --brand-fg: #11142a; }
+  :root:not([data-theme='light'])[data-pen='turuncu'] { --hi-soft: #3a2a17; --accent-soft: #3a2a17; --accent: #ffb35c; --accent-hover: #ffc57f; --accent-text: #ffd4a1; --brand-bg: #ffb35c; --brand-fg: #11142a; }
+}
+
+/* ---------- Notebook paper (data-paper on <html>) ---------- */
+
+:root {
+  --paper-dot: rgb(27 34 80 / 0.16);
+  --paper-eng-minor: rgb(30 120 80 / 0.07);
+  --paper-eng-major: rgb(30 120 80 / 0.16);
+  --paper-rule: rgb(50 100 200 / 0.2);
+  --paper-margin: rgb(220 60 60 / 0.35);
+}
+
+:root[data-theme='dark'] {
+  --paper-dot: rgb(244 243 234 / 0.12);
+  --paper-eng-minor: rgb(120 220 160 / 0.05);
+  --paper-eng-major: rgb(120 220 160 / 0.1);
+  --paper-rule: rgb(140 170 255 / 0.12);
+  --paper-margin: rgb(255 110 110 / 0.22);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper-dot: rgb(244 243 234 / 0.12);
+    --paper-eng-minor: rgb(120 220 160 / 0.05);
+    --paper-eng-major: rgb(120 220 160 / 0.1);
+    --paper-rule: rgb(140 170 255 / 0.12);
+    --paper-margin: rgb(255 110 110 / 0.22);
+  }
+}
+
+:root[data-paper='duz'] body {
+  background-image: none;
+}
+
+:root[data-paper='noktali'] body {
+  background-image: radial-gradient(circle, var(--paper-dot) 1.2px, transparent 1.6px);
+  background-size: 20px 20px;
+}
+
+:root[data-paper='muhendis'] body {
+  background-image:
+    linear-gradient(var(--paper-eng-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-eng-major) 1px, transparent 1px),
+    linear-gradient(var(--paper-eng-minor) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-eng-minor) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+}
+
+:root[data-paper='hukuk'] body {
+  background-image:
+    linear-gradient(90deg, transparent 63px, var(--paper-margin) 63px, var(--paper-margin) 65px, transparent 65px),
+    linear-gradient(transparent 27px, var(--paper-rule) 27px);
+  background-size: 100% 100%, 100% 28px;
+}
+
+/* The yellow legal pad itself, in light mode only. */
+:root[data-theme='light'][data-paper='hukuk'] { --bg: #fff8d2; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark'])[data-paper='hukuk'] { --bg: #fff8d2; }
+}
+
+/* ---------- Settings: paper and pen pickers ---------- */
+
+.decor-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.decor-label {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.paper-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.paper-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 6px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.paper-swatch[aria-pressed='true'] {
+  border-color: var(--ink-line);
+  box-shadow: 0 3px 0 var(--card-drop);
+}
+
+.paper-sample {
+  display: block;
+  height: 44px;
+  border-radius: 6px;
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.paper-kareli .paper-sample {
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-image: linear-gradient(var(--paper-dot) 1px, transparent 1px), linear-gradient(90deg, var(--paper-dot) 1px, transparent 1px);
+  background-size: 9px 9px;
+}
+
+.paper-noktali .paper-sample {
+  background-image: radial-gradient(circle, var(--paper-dot) 1px, transparent 1.4px);
+  background-size: 8px 8px;
+}
+
+.paper-muhendis .paper-sample {
+  background-image:
+    linear-gradient(var(--paper-eng-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-eng-major) 1px, transparent 1px),
+    linear-gradient(var(--paper-eng-minor) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-eng-minor) 1px, transparent 1px);
+  background-size: 30px 30px, 30px 30px, 6px 6px, 6px 6px;
+}
+
+.paper-hukuk .paper-sample {
+  background-color: #fff8d2;
+  background-image:
+    linear-gradient(90deg, transparent 14px, rgb(220 60 60 / 0.45) 14px, rgb(220 60 60 / 0.45) 15px, transparent 15px),
+    linear-gradient(transparent 8px, rgb(50 100 200 / 0.3) 8px);
+  background-size: 100% 100%, 100% 9px;
+}
+
+.pen-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pen-swatch {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-line);
+  color: #1b2250;
+}
+
+.pen-swatch[aria-pressed='true'] {
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--ink-line);
+}
+
+/* ---------- Gece kütüphanesi: the cassette player ---------- */
+
+.ambient {
+  position: fixed;
+  left: calc(var(--sidebar) + 16px);
+  bottom: 16px;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+@media (max-width: 860px) {
+  .ambient {
+    left: 16px;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+}
+
+.ambient-toggle {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-line);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 3px 0 var(--card-drop);
+}
+
+.ambient-toggle.is-playing {
+  background: var(--hi);
+  color: var(--on-hi);
+}
+
+.ambient-toggle .eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 18px;
+}
+
+.ambient-toggle .eq i {
+  display: block;
+  width: 4px;
+  height: 100%;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: bottom;
+  animation: eq-bounce 1.1s ease-in-out infinite;
+}
+
+.ambient-toggle .eq i:nth-child(2) {
+  animation-delay: -0.4s;
+}
+
+.ambient-toggle .eq i:nth-child(3) {
+  animation-delay: -0.75s;
+}
+
+@keyframes eq-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.cassette {
+  width: min(300px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--card-line);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--card-drop), var(--shadow-lg);
+}
+
+.cassette-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+}
+
+.cassette-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--hero-bg);
+  color: var(--hero-fg);
+}
+
+.cassette-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--hi);
+  color: var(--on-hi);
+  font-weight: 700;
+  font-size: 0.8125rem;
+}
+
+.cassette-title {
+  flex: 1;
+  text-align: center;
+}
+
+.cassette-reel {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.cassette-reel circle:first-child {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+}
+
+.cassette-reel .hub {
+  fill: currentColor;
+}
+
+.cassette-reel.is-spinning {
+  animation: reel-spin 2.4s linear infinite;
+}
+
+@keyframes reel-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ambient-mixer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ambient-channel {
+  display: grid;
+  grid-template-columns: 18px 64px 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.ambient-channel input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+/* ---------- Night owl ---------- */
+
+.night-owl {
+  position: fixed;
+  top: 12px;
+  left: calc(var(--sidebar) + (100vw - var(--sidebar)) / 2);
+  transform: translateX(-50%);
+  z-index: 42;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - var(--sidebar) - 32px);
+  padding: 6px 6px 6px 14px;
+  border-radius: 999px;
+  background: #11142a;
+  color: #f4f3ea;
+  border: 1.5px solid #3a4070;
+  font-size: 0.875rem;
+  box-shadow: var(--shadow-lg);
+  animation: owl-in 0.5s ease-out;
+}
+
+.night-owl svg {
+  flex-shrink: 0;
+  color: var(--hi);
+}
+
+.night-owl .btn {
+  color: inherit;
+}
+
+/* On phones the top is busy (header, page title): sit at the bottom, beside the player button. */
+@media (max-width: 860px) {
+  .night-owl {
+    top: auto;
+    bottom: calc(84px + env(safe-area-inset-bottom));
+    left: 72px;
+    right: 16px;
+    transform: none;
+    max-width: none;
+    border-radius: var(--radius);
+    animation-name: owl-in-phone;
+  }
+}
+
+@keyframes owl-in-phone {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes owl-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+
+/* Night sky (and shooting stars) in the maker card after midnight, whatever the theme. */
+.pixel-sky.is-night {
+  --sky-top: #0b0f33;
+  --sky-bottom: #24307a;
+  --cloud: #3d4a94;
+  --cloud-shade: #2f3b80;
+}
+
+.sky-shooting {
+  position: absolute;
+  width: 46px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ffffff);
+  transform: rotate(-24deg);
+  opacity: 0;
+  animation: shooting-star 9s ease-in infinite;
+}
+
+@keyframes shooting-star {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  10% {
+    opacity: 0;
+    translate: 120px 54px;
+  }
+  100% {
+    opacity: 0;
+    translate: 120px 54px;
+  }
+}
+
+/* ---------- Çalışma fişi ---------- */
+
+.receipt-preview {
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  background: #1b2250;
+  overflow: hidden;
+}
+
+.receipt-preview img {
+  display: block;
+  width: 100%;
+  max-height: 56dvh;
+  object-fit: contain;
+}
+
+.receipt-loading {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  max-height: 56dvh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-toggle .eq i,
+  .cassette-reel.is-spinning,
+  .sky-shooting,
+  .night-owl {
+    animation: none;
+  }
+}
