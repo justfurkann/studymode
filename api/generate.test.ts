@@ -279,3 +279,14 @@ describe('Free+ on Vertex AI', () => {
     expect(calls(g).some((u) => u.includes('plus_quota') || u.includes('aiplatform'))).toBe(false)
   })
 })
+
+describe('Free+ model choice', () => {
+  it('uses the fast Flash for long notes and the flagship for short reasoning tasks', async () => {
+    const { vertexModels } = await import('./vertex')
+    expect(vertexModels({}, 'study')).toEqual(['gemini-3.8-flash', 'gemini-3.6-flash'])
+    expect(vertexModels({}, 'transcribe')[0]).toBe('gemini-3.8-flash')
+    expect(vertexModels({}, 'grade')).toEqual(['gemini-4-argon', 'gemini-3.1-pro-preview', 'gemini-3.8-flash'])
+    expect(vertexModels({}, 'explain')[0]).toBe('gemini-4-argon')
+    expect(vertexModels({ VERTEX_SMART_MODELS: 'a, b' }, 'memory')).toEqual(['a', 'b'])
+  })
+})
