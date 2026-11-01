@@ -7,14 +7,25 @@ import type { GeminiTarget } from '../src/lib/ai/gemini.js'
 type Env = Record<string, string | undefined>
 
 const SCOPE = 'https://www.googleapis.com/auth/cloud-platform'
+/**
+ * Long inputs (a whole lecture note, page photos, several notes for a mock exam) need speed to
+ * finish inside the function's time limit: the strongest Flash. Short tasks that need careful
+ * thinking (grading a written answer, explaining a concept, memory aids) get the flagship
+ * reasoning model, with the Pro model and Flash behind it. Override with VERTEX_MODELS /
+ * VERTEX_SMART_MODELS (comma separated).
+ */
 export const DEFAULT_VERTEX_MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash']
+export const DEFAULT_VERTEX_SMART_MODELS = ['gemini-4-argon', 'gemini-3.1-pro-preview', 'gemini-3.8-flash']
+const SMART_TASKS = new Set(['grade', 'explain', 'memory'])
 
 export function vertexConfigured(env: Env): boolean {
   return !!(env.GCP_PROJECT_ID && env.GCP_PROJECT_NUMBER && env.GCP_SERVICE_ACCOUNT_EMAIL && env.GCP_WORKLOAD_IDENTITY_POOL_ID && env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID)
 }
 
-export function vertexModels(env: Env): string[] {
-  const list = env.VERTEX_MODELS ? env.VERTEX_MODELS.split(',') : DEFAULT_VERTEX_MODELS
+export function vertexModels(env: Env, task?: string): string[] {
+  const smart = !!task && SMART_TASKS.has(task)
+  const configured = smart ? env.VERTEX_SMART_MODELS : env.VERTEX_MODELS
+  const list = configured ? configured.split(',') : smart ? DEFAULT_VERTEX_SMART_MODELS : DEFAULT_VERTEX_MODELS
   return [...new Set(list.map((m) => m.trim()).filter(Boolean))]
 }
 

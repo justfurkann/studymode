@@ -58,7 +58,8 @@ export async function callGemini(options: {
   // Keep thinking overhead minimal so large lecture notes finish in 4-8s instead of timing out at 60s.
   if (model.includes('3.1-flash-lite')) {
     generationConfig.thinkingConfig = { thinkingLevel: 'MINIMAL' }
-  } else if (model.includes('3.8-flash') || model.includes('4-argon')) {
+  } else if (model.includes('3.8-flash') || model.includes('4-argon') || model.includes('-pro')) {
+    // Pro and the flagship think a lot by default; LOW keeps answers well inside the time limit.
     generationConfig.thinkingConfig = { thinkingLevel: 'LOW' }
   }
 

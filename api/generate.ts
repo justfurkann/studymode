@@ -128,7 +128,7 @@ export async function handleGenerate(
       try {
         const target = vertexTarget(env, await vertexAccessToken(env, oidc, fetchImpl))
         for (let attempt = 0; attempt < 2; attempt += 1) {
-          const { text, model } = await callGeminiWithFallback({ target, models: vertexModels(env), system: jsonModeSystem(task), user, fetchImpl, sleep })
+          const { text, model } = await callGeminiWithFallback({ target, models: vertexModels(env, task), system: jsonModeSystem(task), user, fetchImpl, sleep })
           const result = parseTaskOutput(task, text)
           if (result) return json(200, { result, engine: 'plus', model, plus: (await plusCall('consume_plus', auth, fetchImpl)) ?? undefined })
         }
@@ -166,7 +166,7 @@ export async function handleGenerate(
 
 /** Health check: open /api/generate in a browser to see whether the shared AI is set up. */
 export function handleStatus(env: Env): Response {
-  return json(200, { ok: true, configured: !!env.GEMINI_API_KEY, models: geminiModels(env), plus: vertexConfigured(env) ? vertexModels(env) : null })
+  return json(200, { ok: true, configured: !!env.GEMINI_API_KEY, models: geminiModels(env), plus: vertexConfigured(env) ? { long: vertexModels(env, 'study'), smart: vertexModels(env, 'explain') } : null })
 }
 
 export function GET(): Response {
