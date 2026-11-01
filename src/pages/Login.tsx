@@ -167,6 +167,11 @@ export function Login() {
             {busy && <Spinner />} {mode === 'forgot' ? 'Yenileme bağlantısı gönder' : TITLES[mode]}
           </button>
         </form>
+        {mode !== 'forgot' && (
+          <p className="subtle legal-note">
+            Devam ederek <Link to="/gizlilik">gizlilik politikasını</Link> okumuş olursun.
+          </p>
+        )}
         <p className="subtle" style={{ textAlign: 'center' }}>
           {mode === 'up' ? 'Zaten hesabın var mı?' : mode === 'forgot' ? 'Şifreni hatırladın mı?' : 'Hesabın yok mu?'}{' '}
           <button className="btn btn-ghost btn-sm" onClick={() => switchTo(mode === 'in' ? 'up' : 'in')}>

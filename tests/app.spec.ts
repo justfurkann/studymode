@@ -1966,3 +1966,22 @@ test('Google’s own button signs in on studymode.fun with a checked token and n
   const hashed = await page.evaluate(async (n) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(n))), (b) => b.toString(16).padStart(2, '0')).join(''), tokenBody!.nonce)
   expect(init.nonce).toBe(hashed)
 })
+
+test('the privacy policy is reachable from the landing page, sign-in and the bottom of every page', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/tanitim')
+  await page.getByRole('contentinfo').getByRole('link', { name: 'Gizlilik' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Gizlilik politikası' })).toBeVisible()
+  for (const heading of ['Hangi bilgileri tutuyoruz?', 'Kimler işliyor?', 'Ne kadar saklıyoruz, nasıl silersin?', 'Hakların']) {
+    await expect(page.getByRole('heading', { level: 2, name: heading })).toBeVisible()
+  }
+  await expect(page.getByText(/notların senindir, satılmaz/)).toBeVisible()
+  await page.goto('/giris')
+  await page.getByRole('link', { name: 'gizlilik politikasını' }).click()
+  await expect(page).toHaveURL(/\/gizlilik$/)
+  await page.setViewportSize({ width: 375, height: 812 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false)
+  await page.goto('/dersler')
+  await expect(page.getByRole('main').getByRole('link', { name: 'Gizlilik' })).toHaveAttribute('href', '/gizlilik')
+  expect(errors).toEqual([])
+})

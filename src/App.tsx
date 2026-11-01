@@ -17,6 +17,7 @@ import { Login } from './pages/Login'
 import { NoteDetail } from './pages/NoteDetail'
 import { ResetPassword } from './pages/ResetPassword'
 import { Review } from './pages/Review'
+import { Privacy } from './pages/Privacy'
 import { Settings } from './pages/Settings'
 import { SharedCourse } from './pages/SharedCourse'
 import { Today } from './pages/Today'
@@ -70,6 +71,7 @@ function Routed() {
     <Routes>
       <Route path="tanitim" element={<Landing />} />
       <Route path="hakkinda" element={<About />} />
+      <Route path="gizlilik" element={<Privacy />} />
       <Route path="hakkında" element={<About />} />
       <Route element={<Layout />}>
         <Route index element={<Today />} />

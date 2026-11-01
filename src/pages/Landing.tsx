@@ -235,6 +235,7 @@ export function Landing() {
         <Brand size={24} />
         <span>Türk üniversite öğrencileri için ders çalışma uygulaması.</span>
         <MadeBy />
+        <Link to="/gizlilik" className="lp-footer-quiet">Gizlilik</Link>
         <Link to="/giris">Giriş yap</Link>
       </footer>
     </div>
