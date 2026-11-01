@@ -40,7 +40,7 @@ export interface KeyTerm {
 
 export type LearningStepId = 'tanis' | 'anla' | 'pekistir' | 'sina' | 'anlat'
 
-export type SummarySubTab = 'tanis' | 'anla' | 'kodlama' | 'karsilastir'
+export type SummarySubTab = 'tanis' | 'anla' | 'kodlama' | 'karsilastir' | 'gorsel' | 'podcast'
 
 export type MnemonicKind = 'akrostis' | 'tekerleme' | 'hikaye' | 'ipucu'
 

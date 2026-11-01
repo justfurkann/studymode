@@ -4854,3 +4854,185 @@ a.list-item:hover {
   gap: 6px;
   color: var(--text-2);
 }
+
+/* ============ Görsel & Şema, Podcast, Anlamsal Arama ============ */
+
+.concept-map-box {
+  position: relative;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  padding: 12px;
+  overflow: hidden;
+}
+
+.concept-map-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 360px;
+}
+
+.concept-node-group {
+  transition: transform 0.15s ease;
+}
+
+.concept-node-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--ink-line);
+  background: var(--hi-soft);
+}
+
+.visual-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.visual-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.visual-card-preview {
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--ink-line);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.visual-card-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.visual-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mnemonic-visual-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--ink-line);
+  background: var(--surface-2);
+}
+
+.mnemonic-visual-preview img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.podcast-hero-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.podcast-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.podcast-studio-player {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--hi-soft);
+  border: 1.5px solid var(--ink-line);
+}
+
+.podcast-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.podcast-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.podcast-turn.is-active {
+  background: var(--hi-soft);
+  border-color: var(--ink-line);
+  box-shadow: 0 3px 0 var(--ink-line);
+}
+
+.podcast-turn-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.podcast-speaker-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+}
+
+.podcast-speaker-badge.speaker-deniz {
+  background: var(--hi);
+  color: var(--on-hi);
+  border-color: var(--ink-line);
+}
+
+.podcast-turn-text {
+  font-size: 0.98rem;
+  line-height: 1.58;
+  color: var(--text);
+}
+
+.semantic-match-snippet {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--text-2);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--hi-soft);
+  border-left: 2.5px solid var(--ink-line);
+}
+
+.semantic-question-match {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+

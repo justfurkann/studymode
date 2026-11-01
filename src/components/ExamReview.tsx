@@ -2,6 +2,7 @@ import { Check, FileText, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { noteForSource } from '../lib/exam'
+import { matchQuestionToNote } from '../lib/semanticSearch'
 import type { ExamQuestion, Note } from '../lib/types'
 
 const FORMAT_LABELS = { test: 'Test', classic: 'Klasik', mixed: 'Karışık' } as const
@@ -59,6 +60,8 @@ export function ExamReview({
           const value = scores[i] ?? 0
           const good = value >= 0.7
           const answer = answers[i]
+          const directSourceNote = sourceNote(q)
+          const semanticMatch = !directSourceNote && notes.length > 0 ? matchQuestionToNote(q, notes) : null
           return (
             <div className="panel" key={q.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div className="section-head">
@@ -97,10 +100,18 @@ export function ExamReview({
                 </>
               )}
               {q.source && <p className="source">“{q.source}”</p>}
-              {q.source && sourceNote(q) && (
-                <Link className="btn btn-ghost btn-sm source-link" to={`/not/${sourceNote(q)!.id}?sekme=kaynak&alinti=${encodeURIComponent(q.source)}`}>
+              {q.source && directSourceNote && (
+                <Link className="btn btn-ghost btn-sm source-link" to={`/not/${directSourceNote.id}?sekme=kaynak&alinti=${encodeURIComponent(q.source)}`}>
                   <FileText size={14} /> Kaynağında gör
                 </Link>
+              )}
+              {!directSourceNote && semanticMatch && (
+                <div className="semantic-question-match">
+                  {semanticMatch.snippet && <p className="source">“{semanticMatch.snippet}”</p>}
+                  <Link className="btn btn-ghost btn-sm source-link" to={`/not/${semanticMatch.note.id}`}>
+                    <FileText size={14} /> Bu soruya cevap veren not: {semanticMatch.note.title}
+                  </Link>
+                </div>
               )}
             </div>
           )

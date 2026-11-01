@@ -2023,3 +2023,42 @@ test('Free+ shows only for VIPs and admins, with today’s use, and sends its re
   await expect.poll(() => sent).not.toBeNull()
   expect(sent!.engine).toBe('plus')
 })
+
+test('visual concept map, 2-speaker podcast, and semantic search across notes', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+
+  const summaryGroup = page.getByRole('group', { name: 'Özet adımları' })
+
+  // 1. Görsel & Şema tab: concept map + Fosforlu poster studio
+  await summaryGroup.getByRole('button', { name: 'Görsel & Şema' }).click()
+  await expect(page).toHaveURL(/adim=gorsel/)
+  await expect(page.getByRole('img', { name: /kavram haritası/i })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Kör harita testi (Gizle)' }).click()
+  await expect(page.getByRole('button', { name: 'Kavramları göster' })).toBeVisible()
+  await page.getByRole('button', { name: 'Kavramları göster' }).click()
+
+  await page.getByLabel('Görselleştirilecek kavram veya konu').fill('Aralıklı Tekrar Şeması')
+  await page.getByRole('button', { name: 'Poster Oluştur' }).click()
+  await expect(page.getByText('Fosforlu Poster')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Aralıklı Tekrar Şeması' })).toBeVisible()
+
+  // 2. Podcast tab: 2-speaker Deniz & Mert dialogue + flashcard conversion
+  await page.getByRole('button', { name: /Devam: Podcast ile dinle/ }).click()
+  await expect(page).toHaveURL(/adim=podcast/)
+  const transcript = page.getByRole('list', { name: 'Podcast diyalog metni' })
+  await expect(transcript.getByText('Deniz').first()).toBeVisible()
+  await expect(transcript.getByText('Mert').first()).toBeVisible()
+
+  const cardsTab = page.getByRole('tablist', { name: 'Çalışma adımları' }).getByRole('tab', { name: /Kartlar/ })
+  const cardsBefore = Number(await cardsTab.locator('.tab-count').textContent())
+  await transcript.getByRole('button', { name: 'Karta çevir' }).first().click()
+  await expect(transcript.getByRole('button', { name: 'Kartta' }).first()).toBeDisabled()
+  const cardsAfter = Number(await cardsTab.locator('.tab-count').textContent())
+  expect(cardsAfter).toBe(cardsBefore + 1)
+
+  expect(errors).toEqual([])
+})
+

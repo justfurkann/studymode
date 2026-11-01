@@ -17,25 +17,34 @@ import {
   type ExplainMode,
   type ExamInput,
   type GradeInput,
+  type ImageGenInput,
   type MemoryInput,
+  type PodcastInput,
   type TaskInput,
   type TaskName,
   type TaskOutput,
+  type TtsInput,
   type TranscribeImage,
   type TranscribeInput,
+  type EmbedInput,
 } from './tasks'
 import { setQuota } from '../account'
+import { concatenateWavBase64, splitScriptForTts, type PodcastLine, type PodcastScript } from '../podcastTools'
 
 export { contextAround, MAX_PROMPT_NOTE_CHARS, splitNoteIntoChunks } from './tasks'
 export type {
+  EmbedInput,
   ExamDifficulty,
   ExamFormat,
   ExamInput,
   ExplainInput,
   ExplainMode,
   GradeInput,
+  ImageGenInput,
   ImageMimeType,
   MemoryInput,
+  PodcastInput,
+  TtsInput,
   TranscribeImage,
   TranscribeInput,
 } from './tasks'
@@ -212,6 +221,13 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
 }
 
 export async function runTask<T extends TaskName>(task: T, input: TaskInput<T>, settings: Settings): Promise<TaskOutput<T>> {
+  // Gemini-native media/vector tasks (TTS, Image generation, Embeddings) run via Google key or Shared/Vertex Free+ server
+  if (task === 'tts' || task === 'image' || task === 'embed') {
+    if (settings.provider === 'google' && settings.keys.google) {
+      return viaGoogle(task, input, settings.keys.google, settings.models.google)
+    }
+    return viaShared(task, input, settings.provider === 'plus' ? 'plus' : undefined)
+  }
   switch (settings.provider) {
     case 'anthropic':
       return viaAnthropic(task, input, settings.keys.anthropic, settings.models.anthropic)
@@ -416,6 +432,82 @@ export async function generateMemoryTools(
       examTrap: c.examTrap.trim(),
     }))
   return { mnemonics, comparisons }
+}
+
+export async function generatePodcastScript(input: PodcastInput, settings: Settings): Promise<PodcastScript> {
+  const raw = await runTask('podcast', input, settings)
+  const lines: PodcastLine[] = raw.lines
+    .filter((l) => l.text.trim())
+    .map((l, idx) => ({
+      id: `ai-line-${idx + 1}`,
+      speaker: l.speaker === 'Mert' ? 'Mert' : 'Deniz',
+      role: l.speaker === 'Mert' ? 'student' : 'host',
+      text: l.text.trim(),
+      highlight: l.highlight.trim(),
+    }))
+  if (!lines.length) throw new AiError(FORMAT_ERROR)
+  const totalWords = lines.reduce((sum, l) => sum + l.text.split(/\s+/).length, 0)
+  return {
+    title: raw.title.trim() || `${input.title} · Sesli Özeti`,
+    summary: raw.summary.trim(),
+    lines,
+    durationEstimateSec: Math.max(30, Math.round((totalWords / 135) * 60)),
+    source: 'ai',
+  }
+}
+
+/**
+ * Generates studio-quality multi-speaker WAV audio via `gemini-3.8-flash-tts` / `gemini-3.8-flash-lite-tts`.
+ * Splits longer scripts into chunks to stay well under Vercel's 4.5 MB payload limit and concatenates the WAVs.
+ */
+export async function synthesizePodcastTts(
+  lines: PodcastLine[],
+  settings: Settings,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ audioDataUrl: string; mimeType: string }> {
+  const chunks = splitScriptForTts(lines, 1100)
+  if (!chunks.length) throw new AiError('Seslendirilecek metin bulunamadı.')
+  const wavChunks: string[] = []
+  let mimeType = 'audio/wav'
+  onProgress?.(0, chunks.length)
+  for (let i = 0; i < chunks.length; i += 1) {
+    const res = await runTask(
+      'tts',
+      { lines: chunks[i].map((l) => ({ speaker: l.speaker, text: l.text })) },
+      settings,
+    )
+    if (res.audioBase64) {
+      wavChunks.push(res.audioBase64)
+      if (res.mimeType) mimeType = res.mimeType
+    }
+    onProgress?.(i + 1, chunks.length)
+  }
+  if (!wavChunks.length) throw new AiError('Ses dosyası üretilemedi.')
+  const combinedBase64 = concatenateWavBase64(wavChunks)
+  return {
+    audioDataUrl: `data:${mimeType};base64,${combinedBase64}`,
+    mimeType,
+  }
+}
+
+/** Generates an educational diagram or concept illustration via `gemini-3.1-flash-lite-image` / `gemini-nano-banana-2.1`. */
+export async function generateConceptImage(
+  input: ImageGenInput,
+  settings: Settings,
+): Promise<{ imageUrl: string; caption: string }> {
+  const res = await runTask('image', input, settings)
+  if (!res.imageBase64) throw new AiError('Görsel üretilemedi.')
+  return {
+    imageUrl: `data:${res.mimeType || 'image/png'};base64,${res.imageBase64}`,
+    caption: res.caption.trim() || `${input.topic} görsel şeması`,
+  }
+}
+
+/** Generates semantic embedding vectors via `gemini-embedding-2-preview` / `gemini-embedding-001`. */
+export async function embedTexts(texts: string[], settings: Settings): Promise<number[][]> {
+  if (!texts.length) return []
+  const res = await runTask('embed', { texts }, settings)
+  return res.embeddings
 }
 
 /** Local fallback explanation when AI is not configured or unavailable. */

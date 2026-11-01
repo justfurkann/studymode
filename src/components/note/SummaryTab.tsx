@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, HelpCircle, KeyRound, ListChecks, Scale } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, Headphones, HelpCircle, Image as ImageIcon, KeyRound, ListChecks, Scale } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { type ExplainMode } from '../../lib/ai'
 import { toggleCheckedTerm, toggleCompletedStep } from '../../lib/learningPath'
@@ -9,6 +9,7 @@ import type { Note, SummarySubTab } from '../../lib/types'
 import { Modal, Spinner } from '../ui'
 import { freshImport } from '../../lib/version'
 import { ComparisonTab, MemoryCodingTab } from './MemoryTabs'
+import { PodcastTab, VisualTab } from './VisualAndPodcastTabs'
 
 const EXPLAIN_MODES: Array<{ mode: ExplainMode; label: string }> = [
   { mode: 'simple', label: 'Daha basit anlat' },
@@ -229,12 +230,22 @@ export function SummaryTab({
         <button type="button" aria-pressed={activeStep === 'karsilastir'} onClick={() => onStep('karsilastir')}>
           <Scale size={14} /> Karşılaştırma
         </button>
+        <button type="button" aria-pressed={activeStep === 'gorsel'} onClick={() => onStep('gorsel')}>
+          <ImageIcon size={14} /> Görsel & Şema
+        </button>
+        <button type="button" aria-pressed={activeStep === 'podcast'} onClick={() => onStep('podcast')}>
+          <Headphones size={14} /> Podcast
+        </button>
       </div>
 
       {activeStep === 'kodlama' ? (
         <MemoryCodingTab note={note} onGoCompare={() => onStep('karsilastir')} />
       ) : activeStep === 'karsilastir' ? (
         <ComparisonTab note={note} onNext={completeStep2} />
+      ) : activeStep === 'gorsel' ? (
+        <VisualTab note={note} onGoPodcast={() => onStep('podcast')} />
+      ) : activeStep === 'podcast' ? (
+        <PodcastTab note={note} onNext={completeStep2} />
       ) : activeStep === 'tanis' ? (
         <div className="section no-print" style={{ gap: 16 }} aria-label="Kavramlar">
           {summary.overview && (

@@ -11,8 +11,19 @@ export class GeminiError extends Error {
 }
 
 interface GeminiResponse {
-  candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> }; finishReason?: string }>
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string
+        thought?: boolean
+        inlineData?: { mimeType?: string; data?: string }
+      }>
+    }
+    finishReason?: string
+  }>
   promptFeedback?: { blockReason?: string }
+  embedding?: { values?: number[] }
+  embeddings?: Array<{ values?: number[] }>
 }
 
 const DEFAULT_ATTEMPT_TIMEOUT_MS = 22_000
@@ -51,6 +62,157 @@ export async function callGemini(options: {
   timeoutMs?: number
 }): Promise<string> {
   const { apiKey, target, model, system, user, fetchImpl = fetch, timeoutMs = DEFAULT_ATTEMPT_TIMEOUT_MS } = options
+  const baseUrl = target ? target.url(model) : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
+  const headers: Record<string, string> = target ? { 'content-type': 'application/json', ...target.headers } : { 'content-type': 'application/json', 'x-goog-api-key': apiKey ?? '' }
+
+  // 1. Semantic Embeddings (:embedContent)
+  if (user.startsWith('<embed_texts>')) {
+    const rawJson = user.replace(/^<embed_texts>/, '').replace(/<\/embed_texts>$/, '').trim()
+    const texts = JSON.parse(rawJson) as string[]
+    const embedUrl = baseUrl.replace(':generateContent', ':embedContent')
+    const vectors: number[][] = []
+    for (const itemText of texts) {
+      let response: Response
+      try {
+        response = await fetchImpl(embedUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            content: { parts: [{ text: itemText || ' ' }] },
+          }),
+          signal: AbortSignal.timeout(timeoutMs),
+        })
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error)
+        throw new GeminiError(`timeout: ${detail.slice(0, 200)}`, 504)
+      }
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '')
+        throw new GeminiError(detail.slice(0, 500) || response.statusText, response.status)
+      }
+      const data = (await response.json()) as GeminiResponse
+      const values = data.embedding?.values ?? data.embeddings?.[0]?.values
+      if (!values || !values.length) throw new GeminiError('empty embedding', 502)
+      vectors.push(values)
+    }
+    return JSON.stringify({ embeddings: vectors })
+  }
+
+  // 2. Multi-Speaker Studio TTS (gemini-3.8-flash-tts / gemini-3.8-flash-lite-tts)
+  if (user.startsWith('<tts_dialogue>')) {
+    const rawJson = user.replace(/^<tts_dialogue>/, '').replace(/<\/tts_dialogue>$/, '').trim()
+    const turns = JSON.parse(rawJson) as Array<{ speaker: 'Deniz' | 'Mert'; text: string }>
+    const useMultiSpeaker = !model.includes('lite-tts') && turns.length > 1
+    const body = useMultiSpeaker
+      ? {
+          contents: [
+            {
+              role: 'user',
+              parts: turns.map((t) => ({
+                text: `${t.speaker}: ${t.text}`,
+                speechMetadata: {
+                  speaker: t.speaker,
+                  style: t.speaker === 'Deniz' ? 'Warm, articulate university tutor' : 'Curious, engaged university student',
+                },
+              })),
+            },
+          ],
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              multiSpeakerVoiceConfig: {
+                speakerVoiceConfigs: [
+                  { speaker: 'Deniz', voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } },
+                  { speaker: 'Mert', voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } },
+                ],
+              },
+            },
+          },
+        }
+      : {
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: turns.map((t) => `${t.speaker}: ${t.text}`).join('\n') }],
+            },
+          ],
+          generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
+            },
+          },
+        }
+
+    let response: Response
+    try {
+      response = await fetchImpl(baseUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      throw new GeminiError(`timeout: ${detail.slice(0, 200)}`, 504)
+    }
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      throw new GeminiError(detail.slice(0, 500) || response.statusText, response.status)
+    }
+    const data = (await response.json()) as GeminiResponse
+    const parts = data.candidates?.[0]?.content?.parts ?? []
+    const audioPart = parts.find((p) => p.inlineData?.data)
+    if (!audioPart?.inlineData?.data) throw new GeminiError('empty audio response', 502)
+    return JSON.stringify({
+      audioBase64: audioPart.inlineData.data,
+      mimeType: audioPart.inlineData.mimeType || 'audio/wav',
+    })
+  }
+
+  // 3. Image Generation (gemini-3.1-flash-lite-image / gemini-nano-banana-2.1)
+  if (user.startsWith('<image_prompt')) {
+    const aspectMatch = user.match(/^<image_prompt\s+aspect="([^"]+)">/)
+    const aspectRatio = aspectMatch?.[1] || '16:9'
+    const promptText = user.replace(/^<image_prompt[^>]*>/, '').replace(/<\/image_prompt>$/, '').trim()
+    let response: Response
+    try {
+      response = await fetchImpl(baseUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: promptText }] }],
+          generationConfig: {
+            imageConfig: { aspectRatio },
+          },
+        }),
+        signal: AbortSignal.timeout(timeoutMs),
+      })
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      throw new GeminiError(`timeout: ${detail.slice(0, 200)}`, 504)
+    }
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      throw new GeminiError(detail.slice(0, 500) || response.statusText, response.status)
+    }
+    const data = (await response.json()) as GeminiResponse
+    const parts = data.candidates?.[0]?.content?.parts ?? []
+    const imgPart = parts.find((p) => p.inlineData?.data)
+    const caption = parts
+      .filter((p) => p.text && !p.thought)
+      .map((p) => p.text ?? '')
+      .join(' ')
+      .trim()
+    if (!imgPart?.inlineData?.data) throw new GeminiError('empty image response', 502)
+    return JSON.stringify({
+      imageBase64: imgPart.inlineData.data,
+      mimeType: imgPart.inlineData.mimeType || 'image/png',
+      caption,
+    })
+  }
+
+  // 4. Standard Structured JSON / Text Generation
   const generationConfig: Record<string, unknown> = {
     responseMimeType: 'application/json',
     maxOutputTokens: 32768,
@@ -65,9 +227,7 @@ export async function callGemini(options: {
 
   let response: Response
   try {
-    const url = target ? target.url(model) : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
-    const headers: Record<string, string> = target ? { 'content-type': 'application/json', ...target.headers } : { 'content-type': 'application/json', 'x-goog-api-key': apiKey ?? '' }
-    response = await fetchImpl(url, {
+    response = await fetchImpl(baseUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -118,7 +278,16 @@ export async function callGeminiWithFallback(options: {
   timeoutMs?: number
   deadlineMs?: number
 }): Promise<{ text: string; model: string }> {
-  const { models, sleep = wait, timeoutMs = DEFAULT_ATTEMPT_TIMEOUT_MS, deadlineMs = DEFAULT_DEADLINE_MS, ...call } = options
+  const { models: inputModels, sleep = wait, timeoutMs = DEFAULT_ATTEMPT_TIMEOUT_MS, deadlineMs = DEFAULT_DEADLINE_MS, ...call } = options
+  let models = inputModels
+  if (call.user.startsWith('<tts_dialogue>') && !models.some((m) => m.includes('tts'))) {
+    models = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts']
+  } else if (call.user.startsWith('<image_prompt') && !models.some((m) => m.includes('image') || m.includes('banana'))) {
+    models = ['gemini-3.1-flash-lite-image', 'gemini-nano-banana-2.1']
+  } else if (call.user.startsWith('<embed_texts>') && !models.some((m) => m.includes('embedding'))) {
+    models = ['gemini-embedding-2-preview', 'gemini-embedding-001']
+  }
+
   const started = Date.now()
   let lastError: unknown = new GeminiError('no model configured', 500)
   for (const model of models) {

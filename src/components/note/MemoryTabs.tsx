@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Eye, EyeOff, KeyRound, Layers, ListChecks, Scale, Sparkles, Trash2, Volume2, VolumeX, Wand2 } from 'lucide-react'
+import { ArrowRight, Check, Eye, EyeOff, Image as ImageIcon, KeyRound, Layers, ListChecks, Scale, Sparkles, Trash2, Volume2, VolumeX, Wand2 } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import {
   buildCustomLocalMnemonic,
@@ -14,6 +14,7 @@ import { aiAvailability, useSettings } from '../../lib/settings'
 import { useStore } from '../../lib/store'
 import type { ConceptComparison, MnemonicItem, MnemonicKind, Note } from '../../lib/types'
 import { freshImport } from '../../lib/version'
+import { renderEducationalPosterDataUrl } from '../../lib/visualTools'
 import { AiSignupPrompt } from '../AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../ui'
 
@@ -42,6 +43,8 @@ export function MemoryCodingTab({
   const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({})
   const [addedCardIds, setAddedCardIds] = useState<Record<string, boolean>>({})
   const [speakingId, setSpeakingId] = useState<string | null>(null)
+  const [visualUrls, setVisualUrls] = useState<Record<string, string>>({})
+  const [busyVisualId, setBusyVisualId] = useState<string | null>(null)
 
   useEffect(() => {
     return () => {
@@ -155,6 +158,41 @@ export function MemoryCodingTab({
     setRevealedKeys((prev) => ({ ...prev, [rowKey]: !prev[rowKey] }))
   }
 
+  async function handleVisualizeMnemonic(item: MnemonicItem) {
+    if (visualUrls[item.id]) {
+      setVisualUrls((prev) => {
+        const next = { ...prev }
+        delete next[item.id]
+        return next
+      })
+      return
+    }
+    if (ai.ok) {
+      setBusyVisualId(item.id)
+      try {
+        const { generateConceptImage } = await freshImport(() => import('../../lib/ai'))
+        const res = await generateConceptImage(
+          {
+            title: note.title,
+            topic: `${item.title} (${item.code})`,
+            context: item.breakdown.map((b) => `${b.key}: ${b.meaning}`).join('\n'),
+            aspectRatio: '16:9',
+          },
+          settings,
+        )
+        setVisualUrls((prev) => ({ ...prev, [item.id]: res.imageUrl }))
+        store.recordActivity()
+        return
+      } catch {
+        // Fall through to crisp Fosforlu SVG poster if image model quota is unavailable
+      } finally {
+        setBusyVisualId(null)
+      }
+    }
+    const posterUrl = renderEducationalPosterDataUrl(item.title, item.code, item.breakdown)
+    setVisualUrls((prev) => ({ ...prev, [item.id]: posterUrl }))
+  }
+
   return (
     <div className="section no-print" style={{ gap: 18 }} aria-label="Hafıza kodlaması">
       <div className="panel memory-intro-panel">
@@ -263,6 +301,15 @@ export function MemoryCodingTab({
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
+                    disabled={busyVisualId === item.id}
+                    onClick={() => handleVisualizeMnemonic(item)}
+                  >
+                    {busyVisualId === item.id ? <Spinner size={14} /> : <ImageIcon size={15} />}
+                    {visualUrls[item.id] ? 'Görseli gizle' : 'Görselleştir'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
                     onClick={() => toggleSpeak(item)}
                     aria-label={isSpeaking ? 'Okumayı durdur' : `${item.title} şifresini sesli oku`}
                   >
@@ -281,6 +328,12 @@ export function MemoryCodingTab({
                   )}
                 </div>
               </div>
+
+              {visualUrls[item.id] && (
+                <div className="visual-card-preview">
+                  <img src={visualUrls[item.id]} alt={`${item.title} görsel şeması`} />
+                </div>
+              )}
 
               <div className="mnemonic-code-box">
                 <span className="mnemonic-code-label">Hafıza Şifresi</span>

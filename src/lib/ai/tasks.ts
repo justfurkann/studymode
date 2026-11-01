@@ -232,6 +232,84 @@ Respect the requested mode:
 - If mode is "comparison": return mnemonics: [] and 1-2 comparisons (comparing leftTerm and rightTerm when given).
 - If mode is "all" or omitted: return 3 diverse mnemonics ("akrostis", "tekerleme", "hikaye") and 2-3 high-value comparisons.`
 
+// ---------- Two-Speaker Study Podcast Script ----------
+
+export const PodcastSchema = z.object({
+  title: z.string(),
+  summary: z.string().default(''),
+  lines: z
+    .array(
+      z.object({
+        speaker: z.enum(['Deniz', 'Mert']),
+        role: z.enum(['host', 'student']).default('host'),
+        text: z.string(),
+        highlight: z.string().default(''),
+      }),
+    )
+    .default([]),
+})
+
+export interface PodcastInput {
+  title: string
+  text: string
+}
+
+const PODCAST_PROMPT = `You write a lively, natural two-speaker university study podcast script from lecture notes.
+
+Write in the language of the notes (usually Turkish). Use ONLY facts from the notes.
+Speakers:
+- "Deniz" (role: "host"): warm, clear, articulate teaching assistant who explains concepts with memorable examples and highlights exam traps.
+- "Mert" (role: "student"): curious university student who asks smart questions, checks his understanding, and points out things students often confuse.
+
+Produce 8 to 12 conversational turns ("lines") that walk through the core concepts and main points of the notes naturally.
+For each line:
+- speaker: "Deniz" or "Mert" (alternate naturally).
+- role: "host" for Deniz, "student" for Mert.
+- text: 1-3 natural spoken sentences (no markdown bullets inside speech).
+- highlight: the key concept or term discussed in that turn (or "" if general).`
+
+// ---------- Multi-Speaker Studio TTS (gemini-3.8-flash-tts / -lite-tts) ----------
+
+export const TtsSchema = z.object({
+  audioBase64: z.string(),
+  mimeType: z.string().default('audio/wav'),
+})
+
+export interface TtsInput {
+  lines: Array<{ speaker: 'Deniz' | 'Mert'; text: string }>
+}
+
+const TTS_PROMPT = `Convert the provided two-speaker study dialogue into natural spoken audio.`
+
+// ---------- Educational Image & Schema Generation (gemini-3.1-flash-lite-image / nano-banana) ----------
+
+export const ImageGenSchema = z.object({
+  imageBase64: z.string(),
+  mimeType: z.string().default('image/png'),
+  caption: z.string().default(''),
+})
+
+export interface ImageGenInput {
+  title: string
+  topic: string
+  context: string
+  aspectRatio?: '1:1' | '16:9' | '4:3'
+}
+
+const IMAGE_GEN_PROMPT = `Create a clean, high-contrast educational illustration or schematic diagram for a university study card.`
+
+// ---------- Semantic Embeddings (gemini-embedding-2-preview / gemini-embedding-001) ----------
+
+export const EmbedSchema = z.object({
+  embeddings: z.array(z.array(z.number())),
+})
+
+export interface EmbedInput {
+  texts: string[]
+}
+
+const EMBED_PROMPT = `Generate semantic embedding vectors for the given study texts.`
+
 // ---------- Registry ----------
 
 export const MAX_PROMPT_NOTE_CHARS = 24_000
@@ -390,6 +468,47 @@ export const TASKS = {
       ]
         .filter(Boolean)
         .join('\n')
+    },
+  },
+  podcast: {
+    schema: PodcastSchema,
+    system: PODCAST_PROMPT,
+    user: (input: PodcastInput) => `<note_title>${input.title}</note_title>\n<notes>\n${trimNoteText(input.text, 16_000)}\n</notes>`,
+  },
+  tts: {
+    schema: TtsSchema,
+    system: TTS_PROMPT,
+    user: (input: TtsInput) => {
+      const safeLines = (Array.isArray(input?.lines) ? input.lines : []).slice(0, 16).map((l) => ({
+        speaker: l.speaker === 'Mert' ? 'Mert' : 'Deniz',
+        text: String(l.text ?? '').slice(0, 600).trim(),
+      }))
+      return `<tts_dialogue>${JSON.stringify(safeLines)}</tts_dialogue>`
+    },
+  },
+  image: {
+    schema: ImageGenSchema,
+    system: IMAGE_GEN_PROMPT,
+    user: (input: ImageGenInput) => {
+      const aspect = input.aspectRatio === '1:1' || input.aspectRatio === '4:3' ? input.aspectRatio : '16:9'
+      const slice = contextAround(input.context || '', input.topic || input.title || '', 2_000)
+      const prompt = [
+        `Educational diagram / study illustration for university lecture note "${input.title}".`,
+        `Concept to visualize: ${input.topic}.`,
+        slice ? `Context from note: ${slice.slice(0, 600)}` : '',
+        `Style: Clean, modern textbook diagram on warm cream paper (#fafaf6) with deep navy ink (#1b2250) and bright yellow highlighter accents (#ffe14d), clear Turkish labels, high legibility.`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+      return `<image_prompt aspect="${aspect}">${prompt}</image_prompt>`
+    },
+  },
+  embed: {
+    schema: EmbedSchema,
+    system: EMBED_PROMPT,
+    user: (input: EmbedInput) => {
+      const texts = (Array.isArray(input?.texts) ? input.texts : []).slice(0, 25).map((t) => String(t ?? '').slice(0, 3_500))
+      return `<embed_texts>${JSON.stringify(texts)}</embed_texts>`
     },
   },
 }

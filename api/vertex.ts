@@ -25,6 +25,9 @@ export function vertexConfigured(env: Env): boolean {
 }
 
 export function vertexModels(env: Env, task?: string): string[] {
+  if (task === 'tts') return ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts']
+  if (task === 'image') return ['gemini-3.1-flash-lite-image', 'gemini-nano-banana-2.1']
+  if (task === 'embed') return ['gemini-embedding-2-preview', 'gemini-embedding-001']
   const smart = !!task && SMART_TASKS.has(task)
   const configured = smart ? env.VERTEX_SMART_MODELS : env.VERTEX_MODELS
   const list = configured ? configured.split(',') : smart ? DEFAULT_VERTEX_SMART_MODELS : DEFAULT_VERTEX_MODELS

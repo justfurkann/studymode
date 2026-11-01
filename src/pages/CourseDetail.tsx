@@ -1,20 +1,28 @@
-import { ArrowLeft, Brain, CalendarClock, ClipboardList, FileText, Pencil, Plus, Share2, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowLeft, Brain, CalendarClock, ClipboardList, FileText, Pencil, Plus, Share2, Sparkles, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CourseForm } from '../components/CourseForm'
 import { ShareCourse } from '../components/ShareCourse'
 import { examFormatLabel, examPercent } from '../components/ExamReview'
 import { Empty, useConfirm, useToast } from '../components/ui'
+import { embedTexts } from '../lib/ai'
 import { examCountdown, examDateText, examName, examsForCourse } from '../lib/courseExams'
 import { cardMastery, courseStats, relativeDate } from '../lib/format'
 import { daysUntil } from '../lib/srs'
 import { computeNoteProgress } from '../lib/learningPath'
-import { matchesNote } from '../lib/noteTools'
+import {
+  buildNoteEmbeddingText,
+  readCourseEmbeddings,
+  saveCourseEmbeddings,
+  searchNotesSemantic,
+} from '../lib/semanticSearch'
+import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 
 export function CourseDetail() {
   const { id } = useParams()
   const store = useStore()
+  const settings = useSettings()
   const toast = useToast()
   const navigate = useNavigate()
   const [confirm, confirmation] = useConfirm()
@@ -22,7 +30,32 @@ export function CourseDetail() {
   const [sharing, setSharing] = useState(false)
   const [tag, setTag] = useState('')
   const [editing, setEditing] = useState(false)
+  const [embeddings, setEmbeddings] = useState<Record<string, number[]>>(() => (id ? readCourseEmbeddings(id) : {}))
+  const [queryVector, setQueryVector] = useState<number[] | undefined>(undefined)
+  const [indexing, setIndexing] = useState(false)
   const course = store.data.courses.find((c) => c.id === id)
+  const hasAi = aiAvailability(settings, !!store.session).ok
+
+  useEffect(() => {
+    if (id) setEmbeddings(readCourseEmbeddings(id))
+  }, [id])
+
+  useEffect(() => {
+    const trimmed = query.trim()
+    if (!trimmed || trimmed.length < 3 || !hasAi || Object.keys(embeddings).length === 0) {
+      setQueryVector(undefined)
+      return
+    }
+    const timer = window.setTimeout(async () => {
+      try {
+        const vectors = await embedTexts([trimmed], settings)
+        if (vectors[0]?.length) setQueryVector(vectors[0])
+      } catch {
+        setQueryVector(undefined)
+      }
+    }, 380)
+    return () => window.clearTimeout(timer)
+  }, [query, hasAi, embeddings, settings])
 
   if (!course) {
     return (
@@ -40,6 +73,35 @@ export function CourseDetail() {
   const notes = store.data.notes.filter((n) => n.courseId === course.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const tags = [...new Set(notes.flatMap((n) => n.summary?.tags ?? []))]
   const cardCount = (noteId: string) => store.data.cards.filter((c) => c.noteId === noteId).length
+  const searchMatches = searchNotesSemantic(notes, query, tag, {
+    noteVectors: embeddings,
+    queryVector,
+  })
+  const indexedCount = notes.filter((n) => embeddings[n.id]?.length).length
+
+  async function indexNotesWithAi() {
+    if (!course || !notes.length) return
+    setIndexing(true)
+    try {
+      const texts = notes.map((n) => buildNoteEmbeddingText(n))
+      const vectors = await embedTexts(texts, settings)
+      const next: Record<string, number[]> = { ...embeddings }
+      notes.forEach((n, idx) => {
+        if (vectors[idx]?.length) next[n.id] = vectors[idx]
+      })
+      setEmbeddings(next)
+      saveCourseEmbeddings(course.id, next)
+      if (query.trim().length >= 2) {
+        const qVectors = await embedTexts([query.trim()], settings)
+        if (qVectors[0]?.length) setQueryVector(qVectors[0])
+      }
+      toast('Notlar anlamsal arama için indekslendi')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Anlamsal indeksleme başarısız oldu')
+    } finally {
+      setIndexing(false)
+    }
+  }
 
   async function remove() {
     if (!course) return
@@ -107,12 +169,35 @@ export function CourseDetail() {
       <CourseProgress courseId={course.id} />
 
       <section className="section">
-        <h2>Notlar</h2>
+        <div className="section-head">
+          <h2>Notlar</h2>
+          {(notes.length >= 3 || tags.length > 0) && hasAi && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              disabled={indexing}
+              onClick={indexNotesWithAi}
+              title="Gemini Embedding ile tüm notları anlamsal vektör uzayında indeksle"
+            >
+              <Sparkles size={14} />{' '}
+              {indexing
+                ? 'İndeksleniyor...'
+                : indexedCount === notes.length && notes.length > 0
+                  ? 'Anlamsal indeks güncel'
+                  : 'Anlamsal indeksle'}
+            </button>
+          )}
+        </div>
         {(notes.length >= 3 || tags.length > 0) && (
         <div className="form-row">
           <label className="field">
             Notlarda ara
-            <input className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Başlık, içerik veya etiket" />
+            <input
+              className="input"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Başlık, içerik veya anlam (ör. enerji üreten organel)"
+            />
           </label>
           <label className="field">
             Etiket
@@ -125,12 +210,11 @@ export function CourseDetail() {
           </label>
         </div>
         )}
-        {notes.length > 0 && !notes.some((n) => matchesNote(n, query, tag)) && <p className="muted">Aramana uygun not bulunamadı.</p>}
+        {notes.length > 0 && searchMatches.length === 0 && <p className="muted">Aramana uygun not bulunamadı.</p>}
         {notes.length ? (
           <div className="panel panel-tight list">
-            {notes
-              .filter((n) => matchesNote(n, query, tag))
-              .map((note) => {
+            {searchMatches.map((match) => {
+                const { note } = match
                 const progress = note.generator ? computeNoteProgress(note, store.data.cards, store.data.attempts) : null
                 return (
                   <Link key={note.id} to={`/not/${note.id}`} className="list-item">
@@ -141,7 +225,16 @@ export function CourseDetail() {
                         {relativeDate(note.createdAt)} · {cardCount(note.id)} kart · {note.questions.length} soru
                         {progress ? ` · ${progress.completedCount}/${progress.totalSteps} adım` : ''}
                       </div>
+                      {query.trim() && match.snippet && (
+                        <div className="semantic-match-snippet">
+                          {match.matchedTerm && <strong>{match.matchedTerm}: </strong>}
+                          <span>{match.snippet}</span>
+                        </div>
+                      )}
                     </div>
+                    {query.trim() && match.matchType === 'semantic' && (
+                      <span className="chip chip-accent">Anlamsal eşleşme</span>
+                    )}
                     {progress?.isCompleted && <span className="chip chip-success">Tamamlandı</span>}
                     {note.generator === 'ai' && <span className="chip chip-accent">Yapay zekâ</span>}
                   </Link>
