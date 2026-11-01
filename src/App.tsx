@@ -6,6 +6,7 @@ import { Alert, Spinner, ToastProvider } from './components/ui'
 import { StoreProvider, useStore } from './lib/store'
 import { About } from './pages/About'
 import { AddNote } from './pages/AddNote'
+import { Admin } from './pages/Admin'
 import { CourseDetail } from './pages/CourseDetail'
 import { Exam } from './pages/Exam'
 import { ExamHistory } from './pages/ExamHistory'
@@ -81,6 +82,7 @@ function Routed() {
         <Route path="tekrar" element={<Review />} />
         <Route path="sinav" element={<ExamHub />} />
         <Route path="ayarlar" element={<Settings />} />
+        <Route path="yonetim" element={<Admin />} />
         <Route path="paylas/:token" element={<SharedCourse />} />
         <Route path="giris" element={<Login />} />
         <Route path="sifre-yenile" element={<ResetPassword />} />

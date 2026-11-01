@@ -1787,3 +1787,89 @@ test('memory coding and comparison tabs: mnemonics, quiz mode, comparisons, and 
   expect(errors).toEqual([])
 })
 
+
+test.describe('roles, daily AI allowance and the admin page', () => {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  const T = '2026-10-01T00:00:00Z'
+  const me = { id: 'aaaaaaaa-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'furkan@example.com', user_metadata: { full_name: 'Furkan' }, app_metadata: {}, created_at: T }
+
+  /** A signed-in session against a fake Supabase; `rpc` answers the database functions. */
+  async function signedIn(page: Page, rpc: Record<string, (body: Record<string, unknown>) => unknown>, data: Record<string, unknown[]> = {}) {
+    await page.addInitScript((u) => {
+      localStorage.setItem('sb-jpcatyopkpnudgdyncas-auth-token', JSON.stringify({ access_token: 'fake', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user: u }))
+    }, me)
+    await page.route(`${SUPABASE}/auth/v1/**`, (route) => route.fulfill({ json: me }))
+    await page.route(`${SUPABASE}/rest/v1/**`, async (route) => {
+      const req = route.request()
+      const path = new URL(req.url()).pathname
+      if (path.startsWith('/rest/v1/rpc/')) {
+        const name = path.split('/').pop()!
+        const handler = rpc[name]
+        if (!handler) return route.fulfill({ status: 404, json: { code: 'PGRST202' } })
+        return route.fulfill({ json: handler(req.postDataJSON() ?? {}) ?? null })
+      }
+      const table = path.split('/').pop()!
+      if (req.method() === 'GET') return route.fulfill({ json: data[table] ?? [] })
+      return route.fulfill({ status: 201, json: [] })
+    })
+  }
+
+  test('Settings shows today’s free AI use and the role', async ({ page }) => {
+    await signedIn(page, { ai_quota: () => ({ role: 'vip', used: 12, limit: 150, allowed: true }) })
+    await page.goto('/ayarlar')
+    const quota = page.getByLabel('Günlük ücretsiz yapay zekâ hakkı')
+    await expect(quota).toContainText('VIP')
+    await expect(quota).toContainText('Bugün 12/150 istek')
+    // Not an admin: no admin link, and the admin page says so.
+    await expect(page.getByRole('link', { name: 'Yönetim paneli' })).toHaveCount(0)
+    await page.goto('/yonetim')
+    await expect(page.getByText('Bu sayfa yalnızca yönetici için')).toBeVisible()
+  })
+
+  test('when today’s allowance is used up, the free AI says so in plain words', async ({ page }) => {
+    await signedIn(page, { ai_quota: () => ({ role: 'normal', used: 40, limit: 40, allowed: false }) })
+    await page.route('**/api/generate', (route) => route.fulfill({ status: 429, json: { error: 'daily_limit', quota: { role: 'normal', used: 40, limit: 40, allowed: false } } }))
+    await createCourse(page, 'Biyoloji')
+    await pasteNote(page, 'Hücre')
+    await page.getByRole('button', { name: /Yapay zekâ/ }).click()
+    await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
+    await expect(page.getByText(/Bugünkü ücretsiz yapay zekâ hakkın doldu \(40\/40\)/).first()).toBeVisible()
+  })
+
+  test('the admin sees accounts, feedback and errors, and can make someone VIP', async ({ page }) => {
+    const errors = watchErrors(page)
+    const roleCalls: Array<Record<string, unknown>> = []
+    let friendRole = 'normal'
+    await signedIn(page, {
+      ai_quota: () => ({ role: 'admin', used: 3, limit: null, allowed: true }),
+      admin_users: () => [
+        { id: me.id, email: me.email, name: 'Furkan', created_at: T, last_sign_in_at: T, role: 'admin', ai_today: 3, notes: 5, last_study: '2026-10-31' },
+        { id: 'bbbbbbbb-0000-0000-0000-000000000002', email: 'arkadas@example.com', name: 'Ayşe', created_at: T, last_sign_in_at: null, role: friendRole, ai_today: 7, notes: 2, last_study: null },
+      ],
+      admin_feedback: () => [{ kind: 'fikir', message: 'Karanlık tema çok iyi', contact: null, page: '/ayarlar', email: 'arkadas@example.com', created_at: T }],
+      admin_errors: () => [{ message: 'TypeError: x is undefined', page: '/sinav', times: 2, last_at: T }],
+      admin_set_role: (body) => {
+        roleCalls.push(body)
+        friendRole = String(body.new_role)
+        return null
+      },
+    })
+    await page.goto('/ayarlar')
+    await expect(page.getByLabel('Günlük ücretsiz yapay zekâ hakkı')).toContainText('sınırsız')
+    await page.getByRole('link', { name: 'Yönetim paneli' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Yönetim' })).toBeVisible()
+    await expect(page.locator('.admin-stats')).toContainText('2hesap')
+    await expect(page.locator('.admin-stats')).toContainText('10bugünkü istek')
+    await expect(page.getByText('Karanlık tema çok iyi')).toBeVisible()
+    await expect(page.getByText('TypeError: x is undefined')).toBeVisible()
+    // Your own role cannot be changed from here.
+    await expect(page.getByLabel('Furkan rolü')).toBeDisabled()
+    await page.getByLabel('Ayşe rolü').selectOption('vip')
+    await expect(page.getByText('Ayşe: VIP')).toBeVisible()
+    expect(roleCalls).toEqual([{ target: 'bbbbbbbb-0000-0000-0000-000000000002', new_role: 'vip' }])
+    await expect(page.getByLabel('Ayşe rolü')).toHaveValue('vip')
+    await page.setViewportSize({ width: 375, height: 812 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false)
+    expect(errors).toEqual([])
+  })
+})
