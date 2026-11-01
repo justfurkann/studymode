@@ -73,10 +73,13 @@ test('stationery set: paper and highlighter colour apply and stay', async ({ pag
   await expect(root).toHaveAttribute('data-paper', 'hukuk')
   await expect(root).toHaveAttribute('data-pen', 'nane')
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--hi').trim())).toBe('#7ff0b8')
-  // The logo's ribbon and "mode" highlight take the pen colour (a tint layer over the brand file).
-  const tint = page.locator('.brand-tint:visible').first()
-  await expect(tint).toBeVisible()
-  expect(await tint.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(127, 240, 184)')
+  // The logo's ribbon and "mode" highlight take the pen colour: the same brand shapes, recoloured (no layer on top).
+  const tinted = page.locator('.brand-logo.is-tinted:visible').first()
+  await expect(tinted).toBeVisible()
+  const fills = await tinted.evaluate((el) => [...el.querySelectorAll('path, rect')].map((n) => getComputedStyle(n).fill))
+  expect(fills).toContain('rgb(127, 240, 184)')
+  expect(fills).toContain('rgb(27, 33, 77)')
+  expect(fills).not.toContain('rgb(255, 227, 79)')
   await page.reload()
   await expect(root).toHaveAttribute('data-pen', 'nane')
   await page.getByRole('button', { name: 'Kareli' }).click()
@@ -84,7 +87,8 @@ test('stationery set: paper and highlighter colour apply and stay', async ({ pag
   await expect(root).not.toHaveAttribute('data-paper')
   await expect(root).not.toHaveAttribute('data-pen')
   // Yellow shows the brand files untouched.
-  await expect(page.locator('.brand-tint:visible')).toHaveCount(0)
+  await expect(page.locator('.brand-logo.is-tinted')).toHaveCount(0)
+  await expect(page.locator('img.brand-logo:visible').first()).toHaveAttribute('src', /\/brand\/svg\/logo(-dark)?\.svg$/)
 })
 
 test('study pictures: tap to enlarge, full size, download; kept after a reload', async ({ page }) => {
