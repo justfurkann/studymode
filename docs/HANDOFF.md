@@ -546,6 +546,14 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Başarımlar da `user_metadata.achievements` ile eşitlenir: hesaptakiler cihaza sessizce gelir, cihazdakiler hesaba gider.
 - **Bilinçli sınır:** "Bu başarımı oyuncuların %X'i buldu" ya da "ODTÜ'de en çok hangi tip" gibi herkesin verisini sayan istatistikler `user_metadata` ile yapılamaz; bunun için tablo + SQL gerekir (henüz istenmedi, yazılmadı).
 
+### Aşama 20 — Arayüz toparlama (1 Kasım 2026, `dreamy-sagan`)
+
+- **Yan menü kısaldı:** Not ekle, Bugün, Dersler, Tekrar, Sınavlar, Ayarlar, Premium hep görünür; Başarımlar, öğrenci tipi testi ve Hakkında **"Daha fazla" (⋯)** altında katlanır (açık/kapalı `localStorage studymode.navMore`; kendi sayfalarında kendiliğinden açılır). Kısa ekranda menü kayar; öğeler artık ezilmez (`.sidebar > * { flex-shrink: 0 }`). Önceki hata: Premium bağlantısı `overflow: hidden` yüzünden kısa ekranda ince bir şeride dönüşüyordu.
+- **Not adımları kısaldı:** Kavramlar, Ana noktalar + **"Araçlar"** menüsü (Hafıza kodlaması, Karşılaştırma, Görsel & Şema, Podcast). Tam özet zaten üstteki büyük kartta; sekmesi yalnızca açıkken görünür. Seçili araç menü düğmesinin adında görünür.
+- **Başarımlar halkası:** sayı ortada (önce üst kenara yapışıyordu), kupa + "/20 açıldı"; özet kartında **"Sıradaki hedef"** (açılmamış görünür hedeflerden en yakını, ilerleme çubuğuyla).
+- **Öğrenci tipi testi Onedio tarzında:** 10 soru gündelik hayattan (hafta sonu, alarm, dizi, ana ekran, kafe, arkadaş grubu, sınav sabahı, oyun, yeni yıl, "sonraki bölüm"). Her şıkkın eksen ağırlıkları eskisiyle **birebir aynı** (denge testleri değişmeden geçiyor). Şıklar simgeli 2×2 kartlar; seçince bir satırlık tepki (`react`). Sonuç "Bu tam sen" (tip başına 3 cümle, `you`) ile açılır; eksen çubukları ve tüm tiplere uyum "Neden bu sonuç?" altında.
+- **Canlı kontroller (keen-albattani'nin istedikleri):** #49-#55 yayınları READY; son 24 saatte yalnızca 2 Free+ zaman aşımı (ücretsize düştü, sorun yok). og.png ve /ogrenci-tipi açılıyor. Test sonucu `user_metadata.student_type` ve `achievements` olarak yazılıyor, ad-soyad korunuyor (veritabanında doğrulandı). Ayrıntılı özet kısa notta ücretsiz 2,9 sn / Free+ 3,9 sn (DETAIL_CHUNK_CHARS değişmedi). AI görsel 4,8 sn, dokununca büyüyor, yenileyince duruyor.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

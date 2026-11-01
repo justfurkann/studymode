@@ -1,4 +1,56 @@
-import { ArrowLeft, ArrowRight, Check, Download, Link2, RotateCcw, School, Search, Share2, Sparkles } from 'lucide-react'
+import {
+  AlarmClock,
+  ArrowLeft,
+  ArrowLeftRight,
+  ArrowRight,
+  BedDouble,
+  BellRing,
+  BookOpen,
+  Brush,
+  Bus,
+  CalendarDays,
+  Check,
+  CircleStop,
+  Clock,
+  Coffee,
+  Download,
+  FastForward,
+  FolderTree,
+  Footprints,
+  Gamepad2,
+  Ghost,
+  Heart,
+  Headphones,
+  Lamp,
+  Lightbulb,
+  Link2,
+  ListChecks,
+  MessageCircle,
+  MessageCircleQuestion,
+  Mic,
+  Moon,
+  Palette,
+  Play,
+  RotateCcw,
+  Scale,
+  School,
+  Search,
+  Send,
+  Settings2,
+  Share2,
+  Shuffle,
+  Smartphone,
+  Sparkles,
+  Sunrise,
+  Sunset,
+  Target,
+  Timer,
+  Tv,
+  Users,
+  Waves,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { BrandMark } from '../components/Brand'
@@ -16,6 +68,7 @@ import {
   resultOf,
   TYPES,
   type Level,
+  type OptionIcon,
   type QuizResult,
   type StudentType,
   type Vector,
@@ -41,6 +94,19 @@ interface Shared {
   runnerUp: StudentType | null
   level: Level | null
   school: string
+}
+
+const ICONS: Record<OptionIcon, LucideIcon> = {
+  calendar: CalendarDays, shuffle: Shuffle, search: Search, chat: MessageCircle,
+  sunrise: Sunrise, coffee: Coffee, snooze: AlarmClock, moon: Moon,
+  theory: Lightbulb, fastforward: FastForward, ask: MessageCircleQuestion, headphones: Headphones,
+  palette: Palette, bell: BellRing, minimal: Smartphone, folders: FolderTree,
+  lamp: Lamp, swap: ArrowLeftRight, users: Users, window: Sunset,
+  mic: Mic, ghost: Ghost, clock: Clock, early: Timer,
+  bed: BedDouble, zap: Zap, bus: Bus, target: Target,
+  gear: Settings2, play: Play, friends: Gamepad2, brush: Brush,
+  list: ListChecks, book: BookOpen, scale: Scale, wave: Waves,
+  stop: CircleStop, tv: Tv, send: Send, walk: Footprints,
 }
 
 const LEVEL_LABEL: Record<Level, string> = Object.fromEntries(LEVELS.map((l) => [l.id, l.label])) as Record<Level, string>
@@ -184,7 +250,10 @@ function Intro({ onStart }: { onStart: () => void }) {
       <h1>
         Hangi <span className="hl">öğrenci</span> tipisin?
       </h1>
-      <p className="quiz-lead">10 soru, bir dakika. Nasıl plan yaptığına, nasıl öğrendiğine, kiminle ve ne zaman çalıştığına bakıp 8 tipten sana en yakın olanı buluyoruz. Sonunda karakterin, güçlü yanların ve sana özel bir çalışma taktiği var.</p>
+      <p className="quiz-lead">Hafta sonu planın, alarmın, telefonunun ana ekranı… 10 soruda seni 8 karakterden birine benzetiyoruz. Sıkıcı ders soruları yok, söz.</p>
+      <p className="quiz-meta">
+        <Timer size={15} aria-hidden /> 1 dakika <span aria-hidden>·</span> <Heart size={15} aria-hidden /> Sonucunu arkadaşlarına at
+      </p>
       {last && (
         <Link to={resultPath(last)} className="quiz-last">
           <StudentCharacter id={last.type} size={48} still />
@@ -263,15 +332,16 @@ function QuestionStep({ level, answers, onAnswer, onBack }: { level: Level | nul
   const index = answers.length
   const question = QUESTIONS[index]
   const words = examWord(level)
-  // A short pause on the chosen option feels like a real tap before the next question.
+  // The chosen tile lights up with a one-line reaction for a moment, then the next question comes.
   const [picked, setPicked] = useState<number | null>(null)
   useEffect(() => setPicked(null), [index])
   if (!question) return null
   function pick(i: number) {
     if (picked !== null) return
     setPicked(i)
-    window.setTimeout(() => onAnswer(i), 220)
+    window.setTimeout(() => onAnswer(i), 700)
   }
+  const reaction = picked !== null ? question.options[picked].react : ''
   return (
     <section className="quiz-card" aria-live="polite">
       <div className="quiz-progress-row">
@@ -286,14 +356,27 @@ function QuestionStep({ level, answers, onAnswer, onBack }: { level: Level | nul
       <h2 key={question.id} className="quiz-question">
         {question.text(words)}
       </h2>
-      <div className="quiz-options">
-        {question.options.map((o, i) => (
-          <button key={`${question.id}-${i}`} className={`quiz-option ${picked === i ? 'is-picked' : ''}`} onClick={() => pick(i)} aria-pressed={picked === i}>
-            <span className="quiz-letter">{'ABCD'[i]}</span>
-            <strong>{optionText(o, words)}</strong>
-          </button>
-        ))}
+      <div className="quiz-options quiz-tiles">
+        {question.options.map((o, i) => {
+          const Icon = ICONS[o.icon]
+          return (
+            <button
+              key={`${question.id}-${i}`}
+              className={`quiz-option quiz-tile ${picked === i ? 'is-picked' : ''} ${picked !== null && picked !== i ? 'is-dim' : ''}`}
+              onClick={() => pick(i)}
+              aria-pressed={picked === i}
+            >
+              <span className="quiz-tile-icon" aria-hidden>
+                <Icon size={24} />
+              </span>
+              <strong>{optionText(o, words)}</strong>
+            </button>
+          )
+        })}
       </div>
+      <p className={`quiz-react ${reaction ? 'is-on' : ''}`} role="status">
+        {reaction}
+      </p>
     </section>
   )
 }
@@ -378,19 +461,18 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
           </div>
         </div>
 
-        <p className="quiz-description">{type.description}</p>
-
-        <div className="quiz-bars" aria-label="Çalışma profilin">
-          {bars.map((b) => (
-            <div key={b.label} className="quiz-bar">
-              <span>{b.label}</span>
-              <div className="quiz-bar-track">
-                <div style={{ width: `${b.percent}%` }} />
-              </div>
-              <strong>%{b.percent}</strong>
-            </div>
-          ))}
+        <div className="quiz-you">
+          <h2>{visitor ? 'Arkadaşın tam olarak böyle' : 'Bu tam sen'}</h2>
+          <ul>
+            {type.you.map((line) => (
+              <li key={line}>
+                <Check size={18} aria-hidden /> {line}
+              </li>
+            ))}
+          </ul>
         </div>
+
+        <p className="quiz-description">{type.description}</p>
 
         <div className="quiz-facts">
           <div>
@@ -404,7 +486,7 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
             </ul>
           </div>
           <div>
-            <h3>Kör noktan</h3>
+            <h3>Zayıf noktan</h3>
             <p>{type.blindSpot}</p>
           </div>
         </div>
@@ -424,9 +506,20 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
           </p>
         </div>
 
-        {matches && (
-          <details className="quiz-all">
-            <summary>Bütün tiplere uyumun</summary>
+        <details className="quiz-all">
+          <summary>Neden bu sonuç?</summary>
+          <div className="quiz-bars" aria-label="Çalışma profilin">
+            {bars.map((b) => (
+              <div key={b.label} className="quiz-bar">
+                <span>{b.label}</span>
+                <div className="quiz-bar-track">
+                  <div style={{ width: `${b.percent}%` }} />
+                </div>
+                <strong>%{b.percent}</strong>
+              </div>
+            ))}
+          </div>
+          {matches && (
             <ul>
               {matches.map((m) => (
                 <li key={m.type.id}>
@@ -438,8 +531,8 @@ function ResultStep({ shared, visitor, matches, onRestart }: { shared: Shared; v
                 </li>
               ))}
             </ul>
-          </details>
-        )}
+          )}
+        </details>
       </article>
 
       {/* The still character the story image is drawn from. */}

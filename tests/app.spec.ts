@@ -1747,6 +1747,7 @@ test('memory coding and comparison tabs: mnemonics, quiz mode, comparisons, and 
   await page.getByRole('button', { name: 'Örnek notla dene' }).click()
 
   const summaryGroup = page.getByRole('group', { name: 'Özet adımları' })
+  await summaryGroup.getByRole('button', { name: 'Araçlar' }).click()
   await summaryGroup.getByRole('button', { name: 'Hafıza kodlaması' }).click()
 
   await expect(page.getByText('Kalıcı Öğrenmenin 4 Adımı — Baş Harf Şifresi')).toBeVisible()
@@ -2101,6 +2102,7 @@ test('visual concept map, 2-speaker podcast, and semantic search across notes', 
   const summaryGroup = page.getByRole('group', { name: 'Özet adımları' })
 
   // 1. Görsel & Şema tab: concept map + Fosforlu poster studio
+  await summaryGroup.getByRole('button', { name: 'Araçlar' }).click()
   await summaryGroup.getByRole('button', { name: 'Görsel & Şema' }).click()
   await expect(page).toHaveURL(/adim=gorsel/)
   await expect(page.getByRole('img', { name: /kavram haritası/i })).toBeVisible()

@@ -1,5 +1,5 @@
-import { ArrowLeft, ArrowRight, BookOpenText, Check, ChevronRight, Gem, Headphones, HelpCircle, Image as ImageIcon, KeyRound, ListChecks, Scale } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { ArrowLeft, ArrowRight, BookOpenText, Check, ChevronDown, ChevronRight, Gem, Headphones, HelpCircle, Image as ImageIcon, KeyRound, ListChecks, MoreHorizontal, Scale } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { ExplainMode } from '../../lib/ai'
 import { toggleCheckedTerm, toggleCompletedStep } from '../../lib/learningPath'
 import { aiAvailability, useSettings } from '../../lib/settings'
@@ -11,6 +11,68 @@ import { freshImport } from '../../lib/version'
 import { ComparisonTab, MemoryCodingTab } from './MemoryTabs'
 import { PodcastTab, VisualTab } from './VisualAndPodcastTabs'
 import { FullSummary } from './FullSummary'
+
+/** The extra study tools, folded into one "Araçlar" menu so the step bar stays short. */
+const TOOLS: Array<{ id: SummarySubTab; label: string; text: string; icon: typeof KeyRound; premium?: boolean }> = [
+  { id: 'kodlama', label: 'Hafıza kodlaması', text: 'Kısaltma ve kodlarla akılda tut', icon: KeyRound },
+  { id: 'karsilastir', label: 'Karşılaştırma', text: 'Karıştırdığın iki kavramı yan yana koy', icon: Scale },
+  { id: 'gorsel', label: 'Görsel & Şema', text: 'Kavram haritası ve görseller', icon: ImageIcon, premium: true },
+  { id: 'podcast', label: 'Podcast', text: 'Notu iki kişilik sohbet olarak dinle', icon: Headphones, premium: true },
+]
+
+function StepTools({ active, onStep }: { active: SummarySubTab; onStep: (step: SummarySubTab) => void }) {
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  const current = TOOLS.find((t) => t.id === active)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const Icon = current?.icon ?? MoreHorizontal
+  return (
+    <div className="step-tools" ref={box}>
+      <button type="button" aria-pressed={!!current} aria-expanded={open} aria-controls="step-tools-menu" onClick={() => setOpen((v) => !v)}>
+        <Icon size={14} /> {current ? current.label : 'Araçlar'} <ChevronDown size={14} className="step-tools-chev" aria-hidden />
+      </button>
+      {open && (
+        <div id="step-tools-menu" className="step-tools-menu" role="group" aria-label="Çalışma araçları">
+          {TOOLS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              aria-pressed={active === t.id}
+              onClick={() => {
+                setOpen(false)
+                onStep(t.id)
+              }}
+            >
+              <span className="step-tools-icon" aria-hidden>
+                <t.icon size={16} />
+              </span>
+              <span className="step-tools-text">
+                <strong>
+                  {t.label} {t.premium && <Gem size={12} className="prem-gem" aria-label="Premium özellik içerir" />}
+                </strong>
+                <span>{t.text}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const EXPLAIN_MODES: Array<{ mode: ExplainMode; label: string }> = [
   { mode: 'simple', label: 'Daha basit anlat' },
@@ -234,21 +296,12 @@ export function SummaryTab({
         <button type="button" aria-pressed={activeStep === 'anla'} onClick={() => onStep('anla')}>
           <span className={`step-dot ${anlaDone ? 'done' : ''}`}>{anlaDone ? <Check size={12} /> : '2'}</span> Ana noktalar
         </button>
-        <button type="button" aria-pressed={activeStep === 'kodlama'} onClick={() => onStep('kodlama')}>
-          <KeyRound size={14} /> Hafıza kodlaması
-        </button>
-        <button type="button" aria-pressed={activeStep === 'karsilastir'} onClick={() => onStep('karsilastir')}>
-          <Scale size={14} /> Karşılaştırma
-        </button>
-        <button type="button" aria-pressed={activeStep === 'gorsel'} onClick={() => onStep('gorsel')}>
-          <ImageIcon size={14} /> Görsel & Şema <Gem size={12} className="prem-gem" aria-label="Premium özellik içerir" />
-        </button>
-        <button type="button" aria-pressed={activeStep === 'podcast'} onClick={() => onStep('podcast')}>
-          <Headphones size={14} /> Podcast <Gem size={12} className="prem-gem" aria-label="Premium özellik içerir" />
-        </button>
-        <button type="button" aria-pressed={activeStep === 'tam'} onClick={() => onStep('tam')}>
-          <BookOpenText size={14} /> Tam özet
-        </button>
+        {activeStep === 'tam' && (
+          <button type="button" aria-pressed onClick={() => onStep('tam')}>
+            <BookOpenText size={14} /> Tam özet
+          </button>
+        )}
+        <StepTools active={activeStep} onStep={onStep} />
       </div>
 
       {activeStep === 'tam' ? (

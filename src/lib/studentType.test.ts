@@ -62,13 +62,14 @@ describe('which student type are you', () => {
     expect(matches.at(-1)!.percent).toBeGreaterThanOrEqual(0)
   })
 
-  it('speaks each level’s language, with correct Turkish suffixes', () => {
-    const first = QUESTIONS[0]
-    expect(first.text(examWord('universite'))).toBe('Vizeye bir hafta var. İlk hamlen?')
-    expect(first.text(examWord('lise'))).toBe('Yazılıya bir hafta var. İlk hamlen?')
-    expect(first.text(examWord('mezun'))).toBe('Sınava bir hafta var. İlk hamlen?')
-    expect(optionText(QUESTIONS[2].options[1], examWord('ortaokul'))).toBe('Yazılıda nasıl soruluyor, ona bakarım')
-    expect(QUESTIONS[2].text(examWord('lise'))).toMatch(/^Öğretmen yeni bir konu/)
+  it('speaks each level’s language where the exam comes up, and every option has a picture and a reaction', () => {
+    const morning = QUESTIONS.find((q) => q.id === 'sabah')!
+    expect(morning.text(examWord('universite'))).toBe('Vize sabahı. Neredesin?')
+    expect(morning.text(examWord('lise'))).toBe('Yazılı sabahı. Neredesin?')
+    expect(morning.text(examWord('mezun'))).toBe('Sınav sabahı. Neredesin?')
+    expect(optionText(QUESTIONS[0].options[1], examWord('lise'))).toBe('Plan mı? Kalkınca bakarız')
+    for (const q of QUESTIONS) for (const o of q.options) expect(o.react.length).toBeGreaterThan(3)
+    for (const id of TYPE_ORDER) expect(TYPES[id].you).toHaveLength(3)
   })
 
   it('every type has a buddy that is another type, and recognises ids', () => {

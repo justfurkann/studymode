@@ -1,4 +1,4 @@
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, Target, Trophy } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { AchievementBadge } from '../components/Achievements'
@@ -36,6 +36,12 @@ export function Achievements() {
   const hiddenTotal = ACHIEVEMENTS.filter(isHidden).length
   const hiddenFound = ACHIEVEMENTS.filter((a) => isHidden(a) && unlocked[a.id]).length
 
+  // The visible goal closest to done, so the summary always says what to do next.
+  const next = ACHIEVEMENTS.filter((a) => !unlocked[a.id] && !isHidden(a))
+    .map((a) => ({ achievement: a, ...(goals[a.id as keyof typeof goals] ?? { value: 0, goal: 0 }) }))
+    .filter((g) => g.goal > 0)
+    .sort((a, b) => b.value / b.goal - a.value / a.goal)[0]
+
   const list = ACHIEVEMENTS.filter((a) => (filter === 'acik' ? !!unlocked[a.id] : filter === 'gizli' ? isHidden(a) : true)).sort(
     (a, b) => Number(!!unlocked[b.id]) - Number(!!unlocked[a.id]) || RARITIES[b.rarity].order - RARITIES[a.rarity].order,
   )
@@ -52,9 +58,11 @@ export function Achievements() {
       </div>
 
       <section className="ach-summary panel" aria-label="Koleksiyon özeti">
-        <div className="ach-ring" style={{ ['--p' as string]: `${(found / total) * 100}%` }} aria-label={`${total} başarımdan ${found} tanesi açıldı`}>
-          <span>
-            <strong>{found}</strong>/{total}
+        <div className="ach-ring" style={{ ['--p' as string]: `${(found / total) * 100}%` }} role="img" aria-label={`${total} başarımdan ${found} tanesi açıldı`}>
+          <span className="ach-ring-inner">
+            <Trophy size={18} aria-hidden />
+            <strong>{found}</strong>
+            <small>/{total} açıldı</small>
           </span>
         </div>
         <div className="ach-summary-text">
@@ -62,6 +70,20 @@ export function Achievements() {
           <p className="subtle">
             {hiddenFound}/{hiddenTotal} gizli keşif bulundu. Gizliler yalnızca bir ipucu verir; sitenin köşelerinde, saatlerde ve beklenmedik dokunuşlarda saklanırlar.
           </p>
+          {next && (
+            <div className="ach-next">
+              <Target size={16} aria-hidden />
+              <span>
+                Sıradaki: <strong>{next.achievement.name}</strong>
+              </span>
+              <div className="progress" aria-hidden>
+                <div style={{ width: `${(next.value / next.goal) * 100}%` }} />
+              </div>
+              <span className="subtle">
+                {next.value}/{next.goal}
+              </span>
+            </div>
+          )}
           <div className="ach-rarity-row">
             {RARITY_ORDER.map((r) => {
               const all = ACHIEVEMENTS.filter((a) => a.rarity === r)
