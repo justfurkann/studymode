@@ -792,7 +792,7 @@ test('Bot doğrulaması: kutu işaretlenmeden giriş olmaz; jeton Supabase’e g
   expect(sent[1].token).toBe('tok-2')
 })
 
-test('Bot doğrulaması kapalıyken (anahtar yok) giriş ekranı eskisi gibi, Cloudflare yüklenmez', async ({ page }) => {
+test('Bot doğrulaması localhost’ta kapalı: giriş ekranı eskisi gibi, Cloudflare yüklenmez', async ({ page }) => {
   let loaded = false
   await page.route('https://challenges.cloudflare.com/**', (route) => ((loaded = true), route.abort()))
   await page.goto('/giris')

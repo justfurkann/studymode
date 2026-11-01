@@ -16,7 +16,7 @@ export const GOOGLE_CLIENT_ID = '189951485932-ginghsotdhaj3amtm0fek00efbgsi7iu.a
  * design; the secret key lives only in Supabase (Authentication → Attack Protection). Empty = off.
  * Order matters: ship the site key first, then switch captcha on in Supabase, or sign-in breaks.
  */
-export const TURNSTILE_SITE_KEY = ''
+export const TURNSTILE_SITE_KEY = '0x4AAAAAAFvRcaGnlKR5xm3q'
 
 /** Model behind the shared free AI. The server can override it with GEMINI_MODEL. */
 export const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite'
