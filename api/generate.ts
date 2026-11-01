@@ -8,6 +8,9 @@ import { vertexAccessToken, vertexConfigured, vertexModels, vertexTarget } from 
 
 export const MAX_BODY_CHARS = 1_500_000
 
+/** Only VIPs and admins may run these (podcast, audio, images, semantic search). */
+const PREMIUM_TASKS = new Set(['podcast', 'tts', 'image', 'embed'])
+
 /** Gives Vercel Hobby functions the full 60s ceiling while our internal deadline finishes well before it. */
 export const maxDuration = 60
 
@@ -119,18 +122,30 @@ export async function handleGenerate(
   const models = geminiModels(env)
   const auth = request.headers.get('authorization')!
 
+  // Premium features (VIP/admin only): podcast script and audio, images, semantic search.
+  const premium = PREMIUM_TASKS.has(task)
+  if (premium) {
+    const status = await plusCall('plus_quota', auth, fetchImpl)
+    if (!status?.eligible) return json(403, { error: 'premium_only' })
+  }
+  // Audio and images take longer than text.
+  const media = task === 'tts' || task === 'image'
+  const timing = media ? { timeoutMs: 45_000, deadlineMs: 55_000 } : {}
+
   // Free+ (VIP/admin): Gemini on Vertex AI, within its own daily caps. Any problem (not set up, cap
   // reached, Google error) falls through to the normal free AI below, so nobody is left without an answer.
-  if (body.engine === 'plus' && vertexConfigured(env)) {
+  if ((body.engine === 'plus' || premium) && vertexConfigured(env)) {
     const plus = await plusCall('plus_quota', auth, fetchImpl)
     const oidc = request.headers.get('x-vercel-oidc-token') ?? env.VERCEL_OIDC_TOKEN
     if (plus?.eligible && plus.allowed && oidc) {
       try {
         const target = vertexTarget(env, await vertexAccessToken(env, oidc, fetchImpl))
         for (let attempt = 0; attempt < 2; attempt += 1) {
-          const { text, model } = await callGeminiWithFallback({ target, models: vertexModels(env, task), system: jsonModeSystem(task), user, fetchImpl, sleep })
+          const { text, model } = await callGeminiWithFallback({ target, models: vertexModels(env, task), system: jsonModeSystem(task), user, fetchImpl, sleep, ...timing })
           const result = parseTaskOutput(task, text)
-          if (result) return json(200, { result, engine: 'plus', model, plus: (await plusCall('consume_plus', auth, fetchImpl)) ?? undefined })
+          // Embeddings cost next to nothing and a search needs many; they do not use up Free+.
+          const counted = task === 'embed' ? undefined : ((await plusCall('consume_plus', auth, fetchImpl)) ?? undefined)
+          if (result) return json(200, { result, engine: 'plus', model, plus: counted })
         }
       } catch (error) {
         console.error('Free+ failed, using the free AI', error instanceof Error ? error.message.slice(0, 300) : error)
@@ -145,7 +160,7 @@ export async function handleGenerate(
   try {
     // One retry if the model returns JSON in the wrong shape.
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const { text } = await callGeminiWithFallback({ apiKey, models, system: jsonModeSystem(task), user, fetchImpl, sleep })
+      const { text } = await callGeminiWithFallback({ apiKey, models, system: jsonModeSystem(task), user, fetchImpl, sleep, ...timing })
       const result = parseTaskOutput(task, text)
       // Only a successful answer is counted.
       if (result) return json(200, { result, quota: (await quotaCall('consume_ai', auth, fetchImpl)) ?? undefined })

@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, Headphones, HelpCircle, Image as ImageIcon, KeyRound, ListChecks, Scale } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { type ExplainMode } from '../../lib/ai'
+import type { ExplainMode } from '../../lib/ai'
 import { toggleCheckedTerm, toggleCompletedStep } from '../../lib/learningPath'
 import { aiAvailability, useSettings } from '../../lib/settings'
 import { AiSignupPrompt } from '../AiSignupPrompt'

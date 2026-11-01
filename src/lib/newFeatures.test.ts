@@ -205,6 +205,6 @@ describe('AI tasks & Vertex model routing for podcast, tts, image, embed', () =>
   it('routes tts, image, and embed to the dedicated Gemini 3.8 / 3.1 / Embedding models on Vertex', () => {
     expect(vertexModels({}, 'tts')).toEqual(['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts'])
     expect(vertexModels({}, 'image')).toEqual(['gemini-3.1-flash-lite-image', 'gemini-nano-banana-2.1'])
-    expect(vertexModels({}, 'embed')).toEqual(['gemini-embedding-2-preview', 'gemini-embedding-001'])
+    expect(vertexModels({}, 'embed')).toEqual(['gemini-embedding-001'])
   })
 })
