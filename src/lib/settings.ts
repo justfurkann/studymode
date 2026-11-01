@@ -4,8 +4,12 @@ import { clampDailyGoal, DEFAULT_DAILY_GOAL } from './streak'
 export type Theme = 'system' | 'light' | 'dark'
 
 /** "shared" is the free AI the app provides to signed-in users; the others use the student's own key. */
-export type AiProvider = 'shared' | 'anthropic' | 'openai' | 'google'
-export type KeyProvider = Exclude<AiProvider, 'shared'>
+/** "plus" (Free+) is the shared AI on a stronger Gemini for VIPs and admins; the server decides who gets it. */
+export type AiProvider = 'shared' | 'plus' | 'anthropic' | 'openai' | 'google'
+export type KeyProvider = Exclude<AiProvider, 'shared' | 'plus'>
+
+/** Providers run by our server (no key of your own needed). */
+export const isServerAi = (provider: AiProvider) => provider === 'shared' || provider === 'plus'
 
 export const PROVIDERS: Record<KeyProvider, { label: string; keyHint: string; keyUrl: string; models: Array<{ id: string; label: string }> }> = {
   anthropic: {
@@ -78,7 +82,7 @@ function read(): Settings {
     if (models.google === 'gemini-3.8-flash' || models.google === 'gemini-3.1-flash-lite') {
       models.google = defaults.models.google
     }
-    const provider: AiProvider = ['shared', 'anthropic', 'openai', 'google'].includes(parsed.provider as string)
+    const provider: AiProvider = ['shared', 'plus', 'anthropic', 'openai', 'google'].includes(parsed.provider as string)
       ? (parsed.provider as AiProvider)
       : parsed.apiKey
         ? 'anthropic'
@@ -132,10 +136,10 @@ export function applyTheme() {
 
 /** Whether AI can be used right now, and how to describe it in the UI. */
 export function aiAvailability(settings: Settings, signedIn: boolean): { ok: boolean; label: string; reason: string } {
-  if (settings.provider === 'shared') {
+  if (isServerAi(settings.provider)) {
     return signedIn
-      ? { ok: true, label: 'Ücretsiz yapay zekâ', reason: '' }
-      : { ok: false, label: 'Ücretsiz yapay zekâ', reason: 'Ücretsiz yapay zekâ için giriş yapman gerekiyor.' }
+      ? { ok: true, label: settings.provider === 'plus' ? 'Free+' : 'Ücretsiz yapay zekâ', reason: '' }
+      : { ok: false, label: settings.provider === 'plus' ? 'Free+' : 'Ücretsiz yapay zekâ', reason: 'Ücretsiz yapay zekâ için giriş yapman gerekiyor.' }
   }
   const info = PROVIDERS[settings.provider]
   return settings.keys[settings.provider]

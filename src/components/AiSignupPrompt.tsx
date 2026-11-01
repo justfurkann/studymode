@@ -1,6 +1,6 @@
 import { Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { aiAvailability, useSettings } from '../lib/settings'
+import { aiAvailability, useSettings, isServerAi } from '../lib/settings'
 import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 
@@ -12,7 +12,7 @@ export function AiSignupPrompt({ reason = 'Notlarından özet, kart ve sınav so
   const store = useStore()
   const settings = useSettings()
   const ai = aiAvailability(settings, !!store.session)
-  if (ai.ok || settings.provider !== 'shared' || store.session || !supabase) return null
+  if (ai.ok || !isServerAi(settings.provider) || store.session || !supabase) return null
 
   return (
     <div className="signup-prompt" role="note">

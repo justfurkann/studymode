@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL } from '../config'
-import type { Settings } from '../settings'
+import type { KeyProvider, Settings } from '../settings'
 import { supabase } from '../supabase'
 import type { ConceptComparison, GeneratedSet, MnemonicItem } from '../types'
 import { callGeminiWithFallback, GeminiError } from './gemini'
@@ -165,7 +165,7 @@ async function viaGoogle<T extends TaskName>(task: T, input: TaskInput<T>, apiKe
   })
 }
 
-async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>): Promise<TaskOutput<T>> {
+async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engine?: 'plus'): Promise<TaskOutput<T>> {
   const token = (await supabase?.auth.getSession())?.data.session?.access_token
   if (!token) throw new AiError('Ücretsiz yapay zekâ için giriş yapman gerekiyor.')
   let response: Response
@@ -174,7 +174,7 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>): Prom
     response = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      body: JSON.stringify({ task, input }),
+      body: JSON.stringify(engine ? { task, input, engine } : { task, input }),
       signal: AbortSignal.timeout(55_000),
     })
   } catch (error) {
@@ -219,6 +219,8 @@ export async function runTask<T extends TaskName>(task: T, input: TaskInput<T>, 
       return viaOpenAi(task, input, settings.keys.openai, settings.models.openai)
     case 'google':
       return viaGoogle(task, input, settings.keys.google, settings.models.google)
+    case 'plus':
+      return viaShared(task, input, 'plus')
     default:
       return viaShared(task, input)
   }
@@ -449,7 +451,7 @@ export function localExplainConcept(input: ExplainInput): string {
 }
 
 /** Checks a student's own key with the cheapest call each provider offers. */
-export async function testApiKey(provider: Exclude<Settings['provider'], 'shared'>, apiKey: string, model: string): Promise<void> {
+export async function testApiKey(provider: KeyProvider, apiKey: string, model: string): Promise<void> {
   if (provider === 'anthropic') {
     try {
       await new Anthropic({ apiKey, dangerouslyAllowBrowser: true }).models.retrieve(model)

@@ -4,6 +4,7 @@
 import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../src/lib/config.js'
 import { callGeminiWithFallback, GeminiError } from '../src/lib/ai/gemini.js'
 import { isTaskName, jsonModeSystem, parseTaskOutput, userPrompt } from '../src/lib/ai/tasks.js'
+import { vertexAccessToken, vertexConfigured, vertexModels, vertexTarget } from './vertex.js'
 
 export const MAX_BODY_CHARS = 1_500_000
 
@@ -60,6 +61,33 @@ async function quotaCall(name: 'ai_quota' | 'consume_ai', auth: string, fetchImp
   }
 }
 
+export interface PlusQuota {
+  eligible: boolean
+  allowed: boolean
+  used: number
+  limit: number
+  site_used: number
+  site_limit: number
+}
+
+/** Free+ caps from Supabase, as the signed-in user. Null (= no Free+) on any problem. */
+async function plusCall(name: 'plus_quota' | 'consume_plus', auth: string, fetchImpl: typeof fetch): Promise<PlusQuota | null> {
+  try {
+    const response = await fetchImpl(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_PUBLISHABLE_KEY, authorization: auth, 'content-type': 'application/json' },
+      body: '{}',
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!response.ok) return null
+    const body = (await response.json()) as Partial<PlusQuota> | null
+    if (!body || typeof body.eligible !== 'boolean' || typeof body.allowed !== 'boolean') return null
+    return { eligible: body.eligible, allowed: body.allowed, used: Number(body.used) || 0, limit: Number(body.limit) || 0, site_used: Number(body.site_used) || 0, site_limit: Number(body.site_limit) || 0 }
+  } catch {
+    return null
+  }
+}
+
 export async function handleGenerate(
   request: Request,
   env: Env,
@@ -73,7 +101,7 @@ export async function handleGenerate(
 
   const raw = await request.text()
   if (raw.length > MAX_BODY_CHARS) return json(413, { error: 'too_large' })
-  let body: { task?: unknown; input?: unknown }
+  let body: { task?: unknown; input?: unknown; engine?: unknown }
   try {
     body = JSON.parse(raw)
   } catch {
@@ -89,9 +117,28 @@ export async function handleGenerate(
     return json(400, { error: 'bad_request' })
   }
   const models = geminiModels(env)
+  const auth = request.headers.get('authorization')!
+
+  // Free+ (VIP/admin): Gemini on Vertex AI, within its own daily caps. Any problem (not set up, cap
+  // reached, Google error) falls through to the normal free AI below, so nobody is left without an answer.
+  if (body.engine === 'plus' && vertexConfigured(env)) {
+    const plus = await plusCall('plus_quota', auth, fetchImpl)
+    const oidc = request.headers.get('x-vercel-oidc-token') ?? env.VERCEL_OIDC_TOKEN
+    if (plus?.eligible && plus.allowed && oidc) {
+      try {
+        const target = vertexTarget(env, await vertexAccessToken(env, oidc, fetchImpl))
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          const { text, model } = await callGeminiWithFallback({ target, models: vertexModels(env), system: jsonModeSystem(task), user, fetchImpl, sleep })
+          const result = parseTaskOutput(task, text)
+          if (result) return json(200, { result, engine: 'plus', model, plus: (await plusCall('consume_plus', auth, fetchImpl)) ?? undefined })
+        }
+      } catch (error) {
+        console.error('Free+ failed, using the free AI', error instanceof Error ? error.message.slice(0, 300) : error)
+      }
+    }
+  }
 
   // Daily allowance per person (normal 40, VIP 150, admin unlimited), checked before calling Gemini.
-  const auth = request.headers.get('authorization')!
   const before = await quotaCall('ai_quota', auth, fetchImpl)
   if (before && !before.allowed) return json(429, { error: 'daily_limit', quota: before })
 
@@ -119,7 +166,7 @@ export async function handleGenerate(
 
 /** Health check: open /api/generate in a browser to see whether the shared AI is set up. */
 export function handleStatus(env: Env): Response {
-  return json(200, { ok: true, configured: !!env.GEMINI_API_KEY, models: geminiModels(env) })
+  return json(200, { ok: true, configured: !!env.GEMINI_API_KEY, models: geminiModels(env), plus: vertexConfigured(env) ? vertexModels(env) : null })
 }
 
 export function GET(): Response {

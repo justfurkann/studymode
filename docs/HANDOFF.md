@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (gizlilik politikası sonrası): 168 birim testi, 67 tarayıcı testi.
+Son yeşil durum (Free+ sonrası): 172 birim testi, 68 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -430,7 +430,70 @@ grant execute on function public.ai_quota(), public.consume_ai(), public.is_admi
 
 **Gizlilik politikası:** `/gizlilik` (`src/pages/Privacy.tsx`, KVKK'ya uygun sade Türkçe: veri sorumlusu, tutulan veriler, amaç, işleyenler (Supabase, Vercel, Google Gemini, Resend, kullanıcının kendi anahtarı), paylaşım bağlantıları, saklama ve silme, kimler görebilir, haklar). Bağlantılar: tanıtım ve hakkında sayfası alt bilgisi, giriş kartı ("Devam ederek gizlilik politikasını okumuş olursun"), telefonda her sayfanın sonu. Veri işleme değişirse (ör. ücretli model) bu sayfa da güncellenmeli. Düğme yalnızca Supabase'de Google sağlayıcısı açıksa görünür (`isGoogleEnabled`, `/auth/v1/settings`), yani kurulum bitmeden hata göstermez. Google'dan gelen ad (`full_name`/`name`/`given_name`) `displayName` ve `firstName` tarafından okunur. Kurulum (kullanıcı yapar): Google Cloud → OAuth izin ekranı + Web istemcisi (yönlendirme adresi `https://jpcatyopkpnudgdyncas.supabase.co/auth/v1/callback`, köken `https://studymode.fun`) → Client ID/Secret Supabase → Authentication → Providers → Google. Faturalandırma gerekmez.
 
-**Google Cloud deneme kredisi (1 Kasım 2026'da açıldı, 300 $ ≈ 14.695 ₺, 31 Ocak 2027'de biter):** Resmî belgeye göre **2 Mart 2026'dan sonra açılan hesaplarda bu kredi Gemini API (AI Studio) için kullanılamaz**; kullanılabilir yol Vertex AI (Gemini Enterprise Agent Platform). Deneme sürerken ve "Upgrade" yapılmadıkça ücret çekilmez; kredi biterse ya da süre dolarsa deneme faturalandırma hesabına bağlı **tüm projeler durdurulur**. Bu yüzden Google girişinin OAuth istemcisi ve ücretsiz Gemini anahtarı deneme faturalandırmasına bağlı bir projede olmamalı (kullanıcıya kontrol ettirilecek). VIP/yönetici için daha iyi model kararı kullanıcıda.
+**Google Cloud deneme kredisi (1 Kasım 2026'da açıldı, 300 $ ≈ 14.695 ₺, 31 Ocak 2027'de biter):** Resmî belgeye göre **2 Mart 2026'dan sonra açılan hesaplarda bu kredi Gemini API (AI Studio) için kullanılamaz**; kullanılabilir yol Vertex AI (Gemini Enterprise Agent Platform). Deneme sürerken ve "Upgrade" yapılmadıkça ücret çekilmez; kredi biterse ya da süre dolarsa deneme faturalandırma hesabına bağlı **tüm projeler durdurulur**. Bu yüzden Google girişinin OAuth istemcisi ve ücretsiz Gemini anahtarı deneme faturalandırmasına bağlı bir projede olmamalı (kullanıcıya kontrol ettirilecek). Kullanıcı, Google girişi ve ücretsiz Gemini anahtarının başka bir hesapta olduğunu söyledi (deneme kapanınca etkilenmezler).
+
+**Aşama 12 — Free+ (VIP/yönetici için Vertex AI üzerinde daha güçlü Gemini): kod canlıda, Google Cloud kurulumu kullanıcıda.**
+- Ayarlar → Yapay zekâ'da yalnızca VIP/yöneticiye görünen "Free+" seçeneği (`provider: 'plus'`, `isServerAi`). İstek `/api/generate`'e `engine: 'plus'` ile gider.
+- Sunucu (`api/vertex.ts`): **anahtarsız** Vercel OIDC → Google STS → hizmet hesabı taklidi → Vertex `generateContent` (global uç nokta, varsayılan modeller `gemini-3.8-flash`, `gemini-3.6-flash`; `VERTEX_MODELS` ile değiştirilebilir). Erişim izni 1 saat önbellekte.
+- Tavanlar (`plus_quota` / `consume_plus`): VIP günde 30, yönetici 100, **site geneli günde 300** Free+ isteği; normal günlük haktan ayrı sayılır, yalnızca başarılı cevap sayılır. Tavan dolarsa, Vertex kurulmamışsa ya da Google hata verirse istek **sessizce normal ücretsiz Gemini'ye düşer** (o zaman normal hak sayılır).
+- Para güvencesi: kredi Google Cloud deneme hesabından (≈300 $, 31 Ocak 2027'ye kadar). Deneme hesabı "Upgrade" yapılmadıkça ücret çekmez; kredi biterse ya da süre dolarsa yalnızca o (ayrı) proje durur, Free+ ücretsiz Gemini'ye düşer. **Upgrade'e asla basılmayacak.**
+- Gerekli Vercel ortam değişkenleri (gizli değil): `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`; Vercel projesinde OIDC (team issuer: `https://oidc.vercel.com/justfurkan`, aud `https://vercel.com/justfurkan`, sub `owner:justfurkan:project:studymode:environment:production`). `GET /api/generate` yanıtındaki `plus` alanı Vertex'in kurulu olup olmadığını gösterir.
+- Gizlilik politikasına Free+ satırı eklendi (Vertex ücretli kullanımda içerik ürün geliştirmede kullanılmaz).
+- SQL (`free_plus_caps` migration'ı ile canlıya uygulandı; `schema.sql` sonunda da var):
+```sql
+-- Free+ (Aşama 12): VIPs and admins may use a stronger Gemini on Vertex AI, paid from Google Cloud
+-- trial credit. Hard caps here, on top of Google's own: per person per day by role, and for the
+-- whole site per day. When a cap is reached the server quietly uses the normal free AI instead.
+alter table public.ai_usage add column if not exists plus_count integer not null default 0 check (plus_count >= 0);
+create table if not exists public.ai_plus_daily (
+  day date primary key,
+  count integer not null default 0 check (count >= 0)
+);
+alter table public.ai_plus_daily enable row level security;
+revoke all on public.ai_plus_daily from anon, authenticated;
+
+-- Change the numbers here to adjust. 0 = not allowed.
+create or replace function public.plus_limit_for(r text) returns integer
+language sql immutable set search_path = '' as $$
+  select case r when 'admin' then 100 when 'vip' then 30 else 0 end
+$$;
+create or replace function public.plus_site_limit() returns integer
+language sql immutable set search_path = '' as $$ select 300 $$;
+
+create or replace function public.plus_quota() returns json
+language sql stable security definer set search_path = '' as $$
+  select json_build_object(
+    'role', coalesce(r.role, 'normal'),
+    'eligible', public.plus_limit_for(coalesce(r.role, 'normal')) > 0,
+    'used', coalesce(u.plus_count, 0),
+    'limit', public.plus_limit_for(coalesce(r.role, 'normal')),
+    'site_used', coalesce(d.count, 0),
+    'site_limit', public.plus_site_limit(),
+    'allowed', coalesce(u.plus_count, 0) < public.plus_limit_for(coalesce(r.role, 'normal')) and coalesce(d.count, 0) < public.plus_site_limit()
+  )
+  from (select (select auth.uid()) as id) me
+  left join public.user_roles r on r.user_id = me.id
+  left join public.ai_usage u on u.user_id = me.id and u.day = public.istanbul_today()
+  left join public.ai_plus_daily d on d.day = public.istanbul_today()
+  where me.id is not null
+$$;
+
+-- Counts one successful Free+ answer for the caller and for the site. Only for eligible roles.
+create or replace function public.consume_plus() returns json
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then return null; end if;
+  if public.plus_limit_for(coalesce((select role from public.user_roles where user_id = auth.uid()), 'normal')) = 0 then return public.plus_quota(); end if;
+  insert into public.ai_usage (user_id, day, count, plus_count) values (auth.uid(), public.istanbul_today(), 0, 1)
+  on conflict (user_id, day) do update set plus_count = public.ai_usage.plus_count + 1;
+  insert into public.ai_plus_daily (day, count) values (public.istanbul_today(), 1)
+  on conflict (day) do update set count = public.ai_plus_daily.count + 1;
+  return public.plus_quota();
+end $$;
+
+revoke all on function public.plus_quota(), public.consume_plus() from public, anon;
+grant execute on function public.plus_quota(), public.consume_plus() to authenticated;
+```
 
 ## Tasarım dili ("Fosforlu")
 
