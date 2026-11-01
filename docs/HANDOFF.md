@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (1 Kasım 2026, Aşama 32 sonrası, `main` üzerinde): 269 birim testi, 114 tarayıcı testi.
+Son yeşil durum (1 Kasım 2026, Aşama 33 sonrası, `main` üzerinde): 269 birim testi, 114 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -696,6 +696,14 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - **Not:** Hukuki metin taslaktır; bir muhasebeci ya da avukat bakmalı.
 - Testler: 269 birim, 114 tarayıcı. Yeniler: dört hata mesajı ve başarı, Premium'un hemen açılması, Ayarlar'da bitiş, hatırlatma ve kapatma, yönetimde üret / CSV / iptal, normal kullanıcı bölümü görmüyor.
 - **SQL yok** (Aşama 31'deki fonksiyonlar kullanıldı).
+
+### Aşama 33 — Logo kalem rengine uyuyor (1 Kasım 2026, `keen-albattani`)
+
+- PR #70'te logo `<img>` SVG'ye geçince Kırtasiye setindeki kalem rengine (`data-pen`) göre değişmesi kaybolmuştu; kullanıcı geri istedi.
+- Marka dosyalarına dokunulmadı. `public/brand/svg/logo-tint.svg` ve `logo-dark-tint.svg` yalnızca maske: logodaki sarı parçalar (koyu sürümde "mode" kutusu harfleri hariç + şerit), aynı yollardan türetildi.
+- `Brand.tsx` iki `.brand-tint` katmanı ekler (`background: var(--hi)` + bu maske). Yalnızca `data-pen` varken görünür; varsayılan sarıda logo marka paketindeki gibi bire bir.
+- Test: "stationery set" e2e'si nanede katmanın göründüğünü ve renginin `#7ff0b8` olduğunu, sarıya dönünce kaybolduğunu kontrol eder.
+- Not: bu ortamda e2e için `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` gerekebilir (kurulu Chromium sürümü Playwright'ınkiyle farklı).
 
 ## Tasarım dili ("Fosforlu")
 
