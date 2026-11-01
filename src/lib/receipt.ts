@@ -3,11 +3,20 @@ import { computeStreakSummary, localDayKey, mergeStudyDays, shiftLocalDay } from
 import type { StudyData } from './types'
 
 /*
- * "Çalışma fişi": the student's study session printed like a till receipt, to share as a story.
- * This file only decides what the receipt says (pure, tested); ReceiptCard draws it.
+ * "Çalışma fişi": the student's study session printed like a personalized thermal receipt,
+ * ready to share as a 1080×1920 story.
+ * This file decides what the receipt says (pure, tested); ReceiptCard draws it.
  */
 
 export type ReceiptPeriod = 'gun' | 'hafta'
+export type ReceiptThemeId = 'klasik' | 'gece' | 'espresso' | 'pembe'
+
+export interface ReceiptPrefs {
+  studentName: string
+  studentTag: string
+  customMotto: string
+  theme: ReceiptThemeId
+}
 
 export interface ReceiptLine {
   qty: string
@@ -15,12 +24,33 @@ export interface ReceiptLine {
   value: string
 }
 
+export interface ReceiptStats {
+  reviews: number
+  focusMinutes: number
+  testAvg: number | null
+  streak: number
+  courseCount: number
+  effort: number
+}
+
+export interface ReceiptRank {
+  grade: string
+  label: string
+}
+
 export interface Receipt {
   title: string
   date: string
   time: string
   register: string
+  studentName: string
+  studentTag: string
+  customMotto: string
+  theme: ReceiptThemeId
+  stats: ReceiptStats
+  rank: ReceiptRank
   lines: ReceiptLine[]
+  fallbackCourses: string[]
   total: ReceiptLine
   verdict: string
   footer: string
@@ -35,6 +65,55 @@ export interface FocusLog {
   focus: Record<string, number>
   /** Finished focus rounds per local day. */
   rounds: Record<string, number>
+}
+
+export const RECEIPT_THEMES: ReadonlyArray<{ id: ReceiptThemeId; label: string; swatch: string }> = [
+  { id: 'klasik', label: 'Fosforlu Klasik', swatch: '#ffe14d' },
+  { id: 'gece', label: 'Gece Vardiyası', swatch: '#7ff0b8' },
+  { id: 'espresso', label: 'Espresso Kafe', swatch: '#f5b942' },
+  { id: 'pembe', label: 'Kampüs Pembe', swatch: '#ff9fcf' },
+]
+
+export const MOOD_PRESETS: ReadonlyArray<string> = [
+  'Kafeinle ayaktayız',
+  'Kütüphane nöbeti',
+  'Vize haftası mesaisi',
+  'Bugün de masadaydık',
+  'Konuyu yedik bitirdik',
+]
+
+const PREFS_KEY = 'studymode.receiptPrefs.v1'
+
+export const DEFAULT_RECEIPT_PREFS: ReceiptPrefs = {
+  studentName: '',
+  studentTag: '',
+  customMotto: '',
+  theme: 'klasik',
+}
+
+export function readReceiptPrefs(): ReceiptPrefs {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY)
+    if (!raw) return DEFAULT_RECEIPT_PREFS
+    const parsed = JSON.parse(raw) as Partial<ReceiptPrefs>
+    const theme = RECEIPT_THEMES.some((t) => t.id === parsed.theme) ? (parsed.theme as ReceiptThemeId) : 'klasik'
+    return {
+      studentName: typeof parsed.studentName === 'string' ? parsed.studentName.slice(0, 40) : '',
+      studentTag: typeof parsed.studentTag === 'string' ? parsed.studentTag.slice(0, 50) : '',
+      customMotto: typeof parsed.customMotto === 'string' ? parsed.customMotto.slice(0, 70) : '',
+      theme,
+    }
+  } catch {
+    return DEFAULT_RECEIPT_PREFS
+  }
+}
+
+export function saveReceiptPrefs(prefs: ReceiptPrefs): void {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs))
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 /** Turkish upper case, monospace friendly ("i" → "İ"). */
@@ -76,7 +155,29 @@ function verdict(effort: number, avg: number | null, now: Date): string {
   return 'DURUM: AZ AMA ÖZ'
 }
 
-export function buildReceipt(data: StudyData, period: ReceiptPeriod, focusLog: FocusLog, now: Date = new Date()): Receipt {
+function computeRank(effort: number, avg: number | null): ReceiptRank {
+  if (effort >= 140 || (effort >= 70 && avg !== null && avg >= 0.85)) {
+    return { grade: 'S+', label: 'EFSANE MESAİ' }
+  }
+  if (effort >= 75) {
+    return { grade: 'A+', label: 'TAM ODAK' }
+  }
+  if (effort >= 30) {
+    return { grade: 'B+', label: 'İSTİKRARLI' }
+  }
+  if (effort > 0) {
+    return { grade: 'C+', label: 'ISINMA TURU' }
+  }
+  return { grade: '—', label: 'HAZIRLIK' }
+}
+
+export function buildReceipt(
+  data: StudyData,
+  period: ReceiptPeriod,
+  focusLog: FocusLog,
+  now: Date = new Date(),
+  prefs: Partial<ReceiptPrefs> = {},
+): Receipt {
   const keys = new Set(dayKeys(period, now))
   const inPeriod = (iso: string) => keys.has(localDayKey(new Date(iso)))
 
@@ -125,12 +226,33 @@ export function buildReceipt(data: StudyData, period: ReceiptPeriod, focusLog: F
   const hh = String(now.getHours()).padStart(2, '0')
   const mm = String(now.getMinutes()).padStart(2, '0')
   const date = now.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+  const studentName = up((prefs.studentName ?? '').trim())
+  const studentTag = up((prefs.studentTag ?? '').trim())
+  const customMotto = (prefs.customMotto ?? '').trim()
+  const theme: ReceiptThemeId = prefs.theme && RECEIPT_THEMES.some((t) => t.id === prefs.theme) ? prefs.theme : 'klasik'
+  const fallbackCourses = data.courses.slice(0, 3).map((c) => up(clip(c.name, 22)))
+
   return {
     title: period === 'gun' ? 'GÜNLÜK ÇALIŞMA FİŞİ' : 'HAFTALIK ÇALIŞMA FİŞİ',
     date,
     time: isNightOwlHour(now) ? `GECE ${hh}:${mm}` : `${hh}:${mm}`,
     register: register(data, now),
+    studentName,
+    studentTag,
+    customMotto,
+    theme,
+    stats: {
+      reviews,
+      focusMinutes,
+      testAvg: avg !== null ? Math.round(avg * 100) : null,
+      streak,
+      courseCount: perCourse.size || data.courses.length,
+      effort,
+    },
+    rank: computeRank(effort, avg),
     lines,
+    fallbackCourses,
     total: { qty: '', label: 'TOPLAM EMEK', value: `${effort} PUAN` },
     verdict: verdict(effort, avg, now),
     footer: 'FİŞİ SAKLAYINIZ, SINAVDA LAZIM OLUR',

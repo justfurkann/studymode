@@ -124,33 +124,77 @@ export function renderChannel(channel: Channel, rate: number, rng: Rng = Math.ra
     for (let i = 0; i < n; i++) data[i] += crackles[i]
     normalize(data, 0.5)
   } else {
-    // Café: several voices as band-limited noise that rises and falls like speech, far away,
-    // and now and then a cup touching a saucer.
+    // Café: warm room acoustics + continuous multi-table murmur (smooth random-walk speech envelopes,
+    // never mechanical sine-wave helicopter pulses) + gentle ceramic cup/saucer taps.
     data = new Float32Array(n)
-    const voice = new Float32Array(n)
-    for (let v = 0; v < 5; v++) {
-      for (let i = 0; i < n; i++) voice[i] = rng() * 2 - 1
-      const low = 280 + rng() * 300
-      lowpass(voice, low + 600, rate)
-      highpass(voice, low, rate)
-      const speed = 2.5 + rng() * 3
-      const phase = rng() * Math.PI * 2
-      const pause = 0.15 + rng() * 0.2
+
+    // 1. Warm acoustic room & espresso machine air bed so there are never dead-silent gaps
+    const room = brown(n, rng)
+    lowpass(room, Math.min(700, rate * 0.35), rate)
+    highpass(room, 90, rate)
+    normalize(room, 0.14)
+    for (let i = 0; i < n; i++) data[i] += room[i]
+
+    // 2. Overlapping table chatter across human speech formant bands (chest, vowel, soft consonant)
+    const chatter = new Float32Array(n)
+    const carrier = new Float32Array(n)
+    const env = new Float32Array(n)
+    const formantBands = [
+      [190, 460],
+      [240, 580],
+      [320, 780],
+      [420, 1050],
+      [550, 1350],
+      [700, 1650],
+      [260, 680],
+      [380, 920],
+    ]
+    for (let v = 0; v < formantBands.length; v++) {
+      const [lowCut, highCut] = formantBands[v]
       for (let i = 0; i < n; i++) {
-        const t = i / rate
-        const syllable = Math.max(0, Math.sin(2 * Math.PI * speed * t + phase))
-        const sentence = Math.max(0, Math.sin(2 * Math.PI * pause * t + phase * 2))
-        data[i] += voice[i] * syllable * sentence
+        carrier[i] = rng() * 2 - 1
+        env[i] = rng() * 2 - 1
+      }
+      // Band-limit carrier to speech formant region (clamped safely for low test sample rates)
+      lowpass(carrier, Math.min(highCut, rate * 0.42), rate)
+      highpass(carrier, Math.min(lowCut, rate * 0.25), rate)
+
+      // Smooth syllable/phrase envelope (~2.5 - 4.5 Hz) using two cascaded low-pass filters
+      const modCut = 2.2 + (v % 4) * 0.65
+      lowpass(env, modCut, rate)
+      lowpass(env, modCut * 0.8, rate)
+      normalize(env, 1)
+
+      const weight = 0.7 + (v % 3) * 0.15
+      for (let i = 0; i < n; i++) {
+        // Softly rectified speech cadence with a continuous murmur floor
+        const gate = Math.max(0.12, 0.48 + 0.52 * env[i])
+        chatter[i] += carrier[i] * gate * weight
       }
     }
-    const clinks = Math.floor(seconds / 4)
+    // Gentle room reflections (short 28ms comb softening) and warm high-cut so it sounds distant, not harsh
+    lowpass(chatter, Math.min(1850, rate * 0.44), rate)
+    normalize(chatter, 0.34)
+    for (let i = 0; i < n; i++) data[i] += chatter[i]
+
+    // 3. Soft porcelain cup-on-saucer taps and cutlery micro-clinks (kept subtle below the murmur)
+    const clinks = Math.max(1, Math.floor(seconds / 3.5))
     for (let c = 0; c < clinks; c++) {
-      const at = Math.floor(rng() * (n - rate))
-      const pitch = 2600 + rng() * 1400
-      const level = 0.25 + rng() * 0.25
-      for (let i = 0; i < rate * 0.4; i++) data[at + i] += Math.sin((2 * Math.PI * pitch * i) / rate) * level * Math.exp((-9 * i) / rate)
+      const at = Math.floor(rng() * Math.max(1, n - Math.floor(rate * 0.25)))
+      const f1 = Math.min(1180 + rng() * 420, rate * 0.38)
+      const f2 = Math.min(f1 * 1.58, rate * 0.45)
+      const amp = 0.045 + rng() * 0.035
+      const dur = Math.floor(rate * 0.085)
+      for (let i = 0; i < dur && at + i < n; i++) {
+        const decay = Math.exp((-32 * i) / dur)
+        const tap =
+          Math.sin((2 * Math.PI * f1 * i) / rate) * 0.65 +
+          Math.sin((2 * Math.PI * f2 * i) / rate) * 0.35
+        data[at + i] += tap * amp * decay
+      }
     }
-    normalize(data, 0.4)
+
+    normalize(data, 0.44)
   }
   return seamless(data, rate)
 }
@@ -215,7 +259,12 @@ const level = (v: number) => v * v * 0.9
 
 /** Renders a channel the first time it is needed (a few tens of ms), then loops it forever. */
 function ensureChannel(audio: AudioContext, channel: Channel) {
-  if (sources.has(channel) || !master) return
+  if (!master) return
+  const existingGain = gains.get(channel)
+  if (sources.has(channel) && existingGain) {
+    existingGain.gain.setTargetAtTime(level(state.volumes[channel]), audio.currentTime, 0.08)
+    return
+  }
   // 24 kHz is plenty for these sounds (nothing above 12 kHz) and halves the work on phones.
   const rate = Math.min(audio.sampleRate, 24000)
   const data = renderChannel(channel, rate)
@@ -247,6 +296,7 @@ export function setVolume(channel: Channel, value: number) {
   }
   setState({ ...state, volumes })
   if (!ctx || !state.playing) return
+  if (ctx.state === 'suspended') void ctx.resume()
   if (volumes[channel] > 0) ensureChannel(ctx, channel)
   gains.get(channel)?.gain.setTargetAtTime(level(volumes[channel]), ctx.currentTime, 0.08)
 }
@@ -259,7 +309,10 @@ export function play() {
     void audio.resume()
     // Nothing turned up yet: start with rain, the classic.
     if (!CHANNELS.some(({ id }) => state.volumes[id] > 0)) setVolume('yagmur', DEFAULT_VOLUMES.yagmur)
-    for (const { id } of CHANNELS) if (state.volumes[id] > 0) ensureChannel(audio, id)
+    for (const { id } of CHANNELS) {
+      if (state.volumes[id] > 0) ensureChannel(audio, id)
+      else gains.get(id)?.gain.setTargetAtTime(0, audio.currentTime, 0.08)
+    }
     master.gain.setTargetAtTime(1, audio.currentTime, 0.3)
     setState({ ...state, playing: true })
   } catch {

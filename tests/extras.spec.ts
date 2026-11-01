@@ -12,7 +12,7 @@ async function startDemo(page: Page) {
   await expect(page.getByRole('heading', { level: 1, name: 'Öğrenme ve bellek' })).toBeVisible()
 }
 
-test('study receipt: a story-sized PNG of the day and the week', async ({ page }) => {
+test('study receipt: a story-sized PNG of the day and the week with personalization', async ({ page }) => {
   const errors = watchErrors(page)
   await startDemo(page)
   await page.goto('/')
@@ -21,6 +21,9 @@ test('study receipt: a story-sized PNG of the day and the week', async ({ page }
   const image = dialog.getByRole('img', { name: /GÜNLÜK ÇALIŞMA FİŞİ/ })
   await expect(image).toBeVisible()
   expect(await image.evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([1080, 1920])
+  await dialog.getByLabel('Fişteki İsim / Lâkap').fill('Zeynep Kaya')
+  await expect(dialog.getByRole('img', { name: /ZEYNEP KAYA/ })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Gece Vardiyası' }).click()
   await dialog.getByRole('button', { name: 'Bu hafta' }).click()
   await expect(dialog.getByRole('img', { name: /HAFTALIK ÇALIŞMA FİŞİ/ })).toBeVisible()
   const download = page.waitForEvent('download')

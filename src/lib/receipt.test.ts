@@ -73,4 +73,29 @@ describe('study receipt', () => {
     expect(formatLine({ qty: '1x', label: 'A', value: 'B' }, 12)).toBe('1x A ..... B')
     expect(formatLine({ qty: '', label: 'SERİ', value: '5 GÜN' }, 16)).toBe('SERİ ..... 5 GÜN')
   })
+
+  it('personalizes receipt with student name, tag, motto, theme, stats, and rank', () => {
+    const r = buildReceipt(
+      sample(),
+      'gun',
+      { focus: { '2026-11-01': 45 }, rounds: { '2026-11-01': 3 } },
+      at(15),
+      {
+        studentName: 'Zeynep Kaya',
+        studentTag: 'Tıp Fakültesi · 3. Sınıf',
+        customMotto: 'Vize haftası mesaisi',
+        theme: 'gece',
+      },
+    )
+    expect(r.studentName).toBe('ZEYNEP KAYA')
+    expect(r.studentTag).toBe('TIP FAKÜLTESİ · 3. SINIF')
+    expect(r.customMotto).toBe('Vize haftası mesaisi')
+    expect(r.theme).toBe('gece')
+    expect(r.stats.reviews).toBe(40)
+    expect(r.stats.focusMinutes).toBe(45)
+    expect(r.stats.testAvg).toBe(80)
+    expect(r.stats.effort).toBe(95)
+    expect(r.rank.grade).toBe('A+')
+  })
 })
+
