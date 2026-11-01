@@ -1,6 +1,8 @@
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation } from 'react-router-dom'
+import { useStore } from '../lib/store'
 import { usePremium } from '../lib/premium'
 import { markTourSeen, setTourActive, shouldAutoStart, useTourRequests } from '../lib/tour'
 
@@ -42,6 +44,10 @@ function visibleTarget(key: string): HTMLElement | null {
 
 const isPhone = () => window.matchMedia('(max-width: 860px)').matches
 
+/** Pages where a tour would get in the way: signing in or up, a new password, a friend's shared course. */
+const NO_TOUR = [/^\/giris/, /^\/sifre-yenile/, /^\/paylas\//]
+const tourFits = (path: string) => !NO_TOUR.some((re) => re.test(path))
+
 function anyOverlay() {
   return !!document.querySelector('[role="dialog"][aria-modal="true"], .ach-toast, .image-viewer')
 }
@@ -49,7 +55,12 @@ function anyOverlay() {
 export function Tour() {
   const premium = usePremium().state === 'open'
   const requests = useTourRequests()
+  const { pathname } = useLocation()
+  const { session, data } = useStore()
   const [index, setIndex] = useState<number | null>(null)
+  // Someone who is in the app: signed in, or a guest already trying it with a course. Not someone on
+  // their way to the sign-up form (the tour used to cover it).
+  const inApp = (!!session || data.courses.length > 0) && tourFits(pathname)
   const steps = STEPS.filter((s) => !s.premiumOnly || premium)
 
   const start = useCallback(() => {
@@ -65,13 +76,22 @@ export function Tour() {
 
   // First visit: wait until nothing else is on screen (a dialog, a toast), then start.
   useEffect(() => {
-    if (!shouldAutoStart()) return
+    if (!inApp || index !== null || !shouldAutoStart()) return
     let timer = window.setTimeout(function check() {
       if (anyOverlay()) timer = window.setTimeout(check, 900)
       else start()
     }, 1200)
     return () => window.clearTimeout(timer)
-  }, [start])
+  }, [start, inApp, index])
+
+  // Moving to the sign-in form (or another page without a tour) closes it, without counting it as
+  // seen: it comes back once they are in the app.
+  useEffect(() => {
+    if (index !== null && !tourFits(pathname)) {
+      setIndex(null)
+      setTourActive(false)
+    }
+  }, [pathname, index])
 
   // "Turu tekrar başlat".
   const seen = useRef(requests)
