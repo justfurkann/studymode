@@ -1906,6 +1906,26 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     await signedIn(page, { ai_quota: () => ({ role: 'normal', used: 0, limit: 40, allowed: true }) })
     await page.goto('/ayarlar')
     await expect(page.getByLabel('Günlük ücretsiz yapay zekâ hakkı')).toContainText('Normal')
-    await expect(page.locator('.role-sticker')).toHaveCount(0)
+    await expect(page.locator('.role-pill')).toHaveCount(0)
   })
+})
+
+test('"Google ile devam et" appears only when Google sign-in is switched on, and goes to Google', async ({ page }) => {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  let google = false
+  await page.route(`${SUPABASE}/auth/v1/settings**`, (route) => route.fulfill({ json: { external: { email: true, google } } }))
+  await page.goto('/giris')
+  await expect(page.getByRole('heading', { level: 1, name: 'Giriş yap' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Google ile devam et' })).toHaveCount(0)
+
+  google = true
+  let authorize = ''
+  await page.route(`${SUPABASE}/auth/v1/authorize**`, (route) => {
+    authorize = route.request().url()
+    return route.fulfill({ status: 200, body: 'ok' })
+  })
+  await page.reload()
+  await page.getByRole('button', { name: 'Google ile devam et' }).click()
+  await expect.poll(() => authorize).toContain('provider=google')
+  expect(decodeURIComponent(authorize)).toContain('redirect_to=http://127.0.0.1:5173')
 })

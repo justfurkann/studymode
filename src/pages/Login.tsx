@@ -1,8 +1,10 @@
 import { ArrowLeft } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { BrandIcon } from '../components/BrandIcon'
 import { Alert, Spinner } from '../components/ui'
-import { authErrorMessage, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
+import { authErrorMessage, isGoogleEnabled, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../lib/config'
 import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 
@@ -93,6 +95,7 @@ export function Login() {
             ? 'E-posta adresini yaz, sana yeni şifre belirleyebileceğin bir bağlantı gönderelim.'
             : 'Hesapla notların, kartların ve ilerlemen tüm cihazlarında senkronize olur.'}
         </p>
+        {mode !== 'forgot' && <GoogleButton />}
         <form className="form" onSubmit={submit}>
           {mode === 'up' && (
             <div className="form-row">
@@ -169,6 +172,47 @@ export function Login() {
             {mode === 'in' ? 'Hesap oluştur' : 'Giriş yap'}
           </button>
         </p>
+      </div>
+    </div>
+  )
+}
+
+/** "Google ile devam et": one tap instead of a form. Hidden until Google is switched on in Supabase. */
+function GoogleButton() {
+  const [enabled, setEnabled] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    if (supabase) void isGoogleEnabled(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY).then((on) => alive && setEnabled(on))
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  if (!enabled) return null
+  return (
+    <div className="google-auth">
+      <button
+        type="button"
+        className="btn btn-lg google-btn"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true)
+          setError('')
+          const { error: e } = await supabase!.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
+          if (e) {
+            setError('Google ile giriş başlatılamadı. Biraz sonra yeniden dene ya da e-postanla devam et.')
+            setBusy(false)
+          }
+        }}
+      >
+        {busy ? <Spinner size={16} /> : <BrandIcon brand="google" size={18} />} Google ile devam et
+      </button>
+      {error && <Alert tone="danger">{error}</Alert>}
+      <div className="auth-divider" role="separator">
+        <span>ya da e-postayla</span>
       </div>
     </div>
   )

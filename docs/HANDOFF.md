@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (rol çıkartmaları sonrası): 167 birim testi, 64 tarayıcı testi.
+Son yeşil durum (rozet + Google girişi sonrası): 168 birim testi, 65 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -301,7 +301,7 @@ grant insert on public.feedback, public.client_errors to anon, authenticated;
 - **Roller:** `user_roles` (yalnızca `vip` / `admin`; satır yoksa normal). Kullanıcı yalnızca kendi rolünü okuyabilir; rol veren tek yol `admin_set_role` (yönetici kontrolü fonksiyonun içinde) ya da Supabase panelinde SQL. Kurucu hesabı (justfurkan42@gmail.com) yönetici. Yönetici kendi yöneticiliğini kaldıramaz.
 - **Günlük hak:** normal 40, VIP 150, yönetici sınırsız; İstanbul gününe göre (`istanbul_today`), sayıları `ai_limit_for` içinde değiştir. `api/generate.ts` Gemini'den önce `ai_quota`yı (kullanıcının kendi token'ıyla) çağırır; dolmuşsa 429 `daily_limit`; **yalnızca başarılı cevaptan sonra** `consume_ai` ile sayar. Fonksiyonlar yoksa ya da Supabase cevap vermezse **açık kalır** (herkesi durdurmaz). Kendi anahtarını bağlayanlar sayılmaz.
 - **Uygulama:** `src/lib/account.ts` (`useQuota`), Ayarlar'da ücretsiz yapay zekâ bölümünde rol rozeti + "Bugün 12/40 istek" çubuğu; hak dolunca "Bugünkü ücretsiz yapay zekâ hakkın doldu (40/40). Gece yarısı yenilenir…".
-- **Rol çıkartması** (`RoleBadge.tsx`): logonun ("mode") ucuna eğik yapışık çıkartma, hem yan menüde hem telefon üst çubuğunda. VIP: fosforlu "VIP", dokununca "VIP ayrıcalıkların" penceresi (günde 150 istek, bugünkü kullanım, çıkartma, yeni özelliklere erken erişim). Yönetici: koyu "Yönetici", dokununca `/yonetim`. Biri ilk kez VIP görünce o cihazda bir kez "Artık VIP'sin!" karşılaması (`VipWelcome`, Layout'ta tek sefer). Normal hesapta çıkartma yok.
+- **Rol rozeti** (`RoleBadge.tsx`, kullanıcı isteğiyle çıkartmadan rozete çevrildi): logonun yanında küçük hap; telefonda yanında, dar yan menüde altında. Renkler `--vip` (mor, taç simgesi) ve `--admin` (turkuaz, kalkan simgesi), üstündeki yazı `--on-role` (beyaz). VIP: "VIP", dokununca "VIP ayrıcalıkların" penceresi (günde 150 istek, bugünkü kullanım, çıkartma, yeni özelliklere erken erişim). Yönetici: koyu "Yönetici", dokununca `/yonetim`. Biri ilk kez VIP görünce o cihazda bir kez "Artık VIP'sin!" karşılaması (`VipWelcome`, Layout'ta tek sefer). Normal hesapta çıkartma yok.
 - **Pencereler (`Modal`) artık `createPortal` ile `body`'ye çiziliyor:** bulanık üst çubuk ya da yan menünün içinden açılan pencere o kutuya sıkışıyordu.
 - **Yönetim sayfası** `/yonetim` (`src/pages/Admin.tsx`, Ayarlar'da yalnızca yöneticiye "Yönetim paneli" düğmesi): özet (hesap, bugün kullanan, bugünkü istek, VIP), hesap listesi (e-posta, katılım, son giriş, not sayısı, bugünkü istek, son çalışma; rol seçimi), geri bildirimler, son 30 günün telefon hataları. Not içerikleri gösterilmez. Her fonksiyon yöneticiliği kendisi tekrar denetler.
 - Yerel Postgres'te sahte auth ile denendi (normal kullanıcı rol ekleyemez, sayacı değiştiremez, yönetim fonksiyonlarını çalıştıramaz; anon hiçbirini çalıştıramaz; VIP 150, normal 40'ta durur; şema iki kez çalışır).
@@ -425,6 +425,8 @@ grant execute on function public.ai_quota(), public.consume_ai(), public.is_admi
 ```
 - **Test hesabı:** Claude için ayrı bir hesap var (Gmail + adresi); bilgiler oturum ortamında `STUDYMODE_TEST_EMAIL` / `STUDYMODE_TEST_PASSWORD` değişkenlerinde (değerleri asla yazdırma). Canlı sitede gerçek tarayıcıyla giriş 1 Kasım'da doğrulandı. Raporlarda gerçek kullanıcı sayılarından ayrı tut.
 - **Ortak not defteri (Claude Docs):** "StudyMode · Fikir defteri" — https://claude.ai/artifact/UkjEttyZqSAekHkWW9bPqw (şimdi sırada, düşünülen fikirler, rafa kalkanlar, kalıcı kurallar). Yeni fikirler oraya yazılır.
+
+**Google ile giriş (kod hazır, Supabase'de açılmayı bekliyor):** Giriş/kayıt kartında "Google ile devam et" düğmesi; `supabase.auth.signInWithOAuth({ provider: 'google', redirectTo: origin })`. Düğme yalnızca Supabase'de Google sağlayıcısı açıksa görünür (`isGoogleEnabled`, `/auth/v1/settings`), yani kurulum bitmeden hata göstermez. Google'dan gelen ad (`full_name`/`name`/`given_name`) `displayName` ve `firstName` tarafından okunur. Kurulum (kullanıcı yapar): Google Cloud → OAuth izin ekranı + Web istemcisi (yönlendirme adresi `https://jpcatyopkpnudgdyncas.supabase.co/auth/v1/callback`, köken `https://studymode.fun`) → Client ID/Secret Supabase → Authentication → Providers → Google. Faturalandırma gerekmez.
 
 ## Tasarım dili ("Fosforlu")
 

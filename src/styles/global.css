@@ -28,6 +28,11 @@
   --hero-fg: #ffffff;
   --hero-sub: rgb(255 255 255 / 0.78);
   --hero-line: transparent;
+  /* Role badges: VIP violet, admin teal. Text on them is always white. */
+  --vip: #6d28d9;
+  --vip-soft: #ede9fe;
+  --admin: #0f766e;
+  --on-role: #ffffff;
   /* Pixel sky in the maker card: day. */
   --sky-top: #3f8df3;
   --sky-bottom: #9ad6ff;
@@ -89,6 +94,9 @@
     --hero-fg: #f4f3ea;
     --hero-sub: #b9bbd2;
     --hero-line: #2c3156;
+    --vip: #7c3aed;
+    --vip-soft: #2e1f52;
+    --admin: #0d9488;
     /* Pixel sky in the maker card: night. */
     --sky-top: #141a4a;
     --sky-bottom: #2c3a8a;
@@ -134,6 +142,9 @@
   --hero-fg: #f4f3ea;
   --hero-sub: #b9bbd2;
   --hero-line: #2c3156;
+  --vip: #7c3aed;
+  --vip-soft: #2e1f52;
+  --admin: #0d9488;
   /* Pixel sky in the maker card: night. */
   --sky-top: #141a4a;
   --sky-bottom: #2c3a8a;
@@ -4584,15 +4595,15 @@ a.list-item:hover {
 }
 
 .role-chip.is-vip {
-  background: var(--hi);
-  color: var(--on-hi);
-  border-color: var(--ink-line);
+  background: var(--vip);
+  color: var(--on-role);
+  border-color: var(--vip);
 }
 
 .role-chip.is-admin {
-  background: var(--accent);
-  color: var(--on-accent);
-  border-color: var(--accent);
+  background: var(--admin);
+  color: var(--on-role);
+  border-color: var(--admin);
 }
 
 .admin-stats {
@@ -4646,49 +4657,60 @@ a.list-item:hover {
   }
 }
 
-/* A sticker slapped next to the logo: "VIP" in highlighter yellow, "Yönetici" in ink. */
+/* Role badge beside the logo: a small pill, violet "VIP", teal "Yönetici". */
 .brand-row {
-  position: relative;
-  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.role-sticker {
+/* The sidebar is narrow: the badge goes under the logo there. */
+.sidebar .brand-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 22px;
+}
+
+.sidebar .brand-row .brand-link {
+  margin-bottom: 0;
+}
+
+.sidebar .brand-row .role-pill {
+  margin-left: 10px;
+}
+
+.role-pill {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px 2px;
-  border-radius: 6px;
-  border: 1.5px solid var(--ink-line);
-  box-shadow: 0 2px 0 var(--ink-line);
+  gap: 4px;
+  padding: 3px 9px 3px 7px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--on-role);
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 0.75rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1.2;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
   white-space: nowrap;
-  /* Slapped over the end of "mode", like a sticker on a notebook cover. */
-  position: absolute;
-  left: calc(100% - 16px);
-  top: -8px;
-  transform: rotate(-9deg);
-  transition: transform 0.15s;
   cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
-.role-sticker:hover {
-  transform: rotate(-4deg) scale(1.06);
+.role-pill:hover {
+  transform: translateY(-1px);
 }
 
-.role-sticker.is-vip {
-  background: var(--hi);
-  color: var(--on-hi);
+.role-pill.is-vip {
+  background: linear-gradient(135deg, var(--vip), color-mix(in srgb, var(--vip) 70%, #c026d3));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--vip) 35%, transparent);
 }
 
-.role-sticker.is-admin {
-  background: var(--text);
-  color: var(--bg);
-  text-transform: none;
-  letter-spacing: 0;
+.role-pill.is-admin {
+  background: var(--admin);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--admin) 30%, transparent);
 }
 
 .vip-modal {
@@ -4717,4 +4739,31 @@ a.list-item:hover {
 .vip-perks svg {
   flex-shrink: 0;
   margin-top: 3px;
+}
+
+/* "Google ile devam et" on the sign-in card. */
+.google-auth {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.google-btn {
+  width: 100%;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-3);
+  font-size: 0.8125rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
