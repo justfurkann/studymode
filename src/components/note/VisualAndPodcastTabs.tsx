@@ -3,6 +3,7 @@ import {
   Check,
   Download,
   Eye,
+  Gem,
   EyeOff,
   Headphones,
   Image as ImageIcon,
@@ -35,12 +36,12 @@ import {
   type GeneratedVisualItem,
 } from '../../lib/visualTools'
 import { ZoomableImage } from '../ImageViewer'
-import { compressImage, saveMessage } from '../../lib/imageStore'
+import { finishAiImage, imageExtension, saveMessage } from '../../lib/imageStore'
 import { safeFileName } from '../../lib/noteTools'
 
 /** Download names: browsers drop names with Turkish letters and save the file as "download". */
 const fileSafe = (title: string) => safeFileName(title.trim().replace(/\s+/g, '-').toLocaleLowerCase('tr-TR')) || 'gorsel'
-import { PremiumLock } from '../Premium'
+import { PremiumLock, PremiumMark } from '../Premium'
 import { Alert, Spinner, useToast } from '../ui'
 
 const PODCAST_SCRIPT_PREFIX = 'studymode.podcast.v1.'
@@ -148,7 +149,7 @@ export function VisualTab({
         id: crypto.randomUUID(),
         title: targetTopic,
         prompt: `${targetTopic} (${aspectRatio})`,
-        imageUrl: await compressImage(res.imageUrl),
+        imageUrl: await finishAiImage(res.imageUrl),
         caption: res.caption || `${targetTopic} — ${note.title} görsel özeti`,
         kind: 'ai_image',
         createdAt: new Date().toISOString(),
@@ -346,11 +347,11 @@ export function VisualTab({
               {premium && (
                 <button
                   type="button"
-                  className="btn btn-primary"
+                  className="btn prem-btn"
                   disabled={busyAi}
                   onClick={handleGenerateAiImage}
                 >
-                  {busyAi ? <Spinner size={15} /> : <Sparkles size={15} />} AI Görsel Üret
+                  {busyAi ? <Spinner size={15} /> : <Gem size={15} aria-hidden />} AI Görsel Üret
                 </button>
               )}
               <button type="submit" className={`btn ${!premium ? 'btn-primary' : ''}`} disabled={busyAi}>
@@ -384,7 +385,7 @@ export function VisualTab({
                     </button>
                   </div>
                   <div className="visual-card-preview">
-                    <ZoomableImage src={item.imageUrl} alt={item.title} fileName={`${fileSafe(item.title)}.${item.imageUrl.startsWith('data:image/jpeg') ? 'jpg' : 'png'}`} loading="lazy" />
+                    <ZoomableImage src={item.imageUrl} alt={item.title} fileName={`${fileSafe(item.title)}.${imageExtension(item.imageUrl)}`} loading="lazy" />
                   </div>
                   <p className="subtle" style={{ margin: 0 }}>
                     {item.caption}
@@ -401,7 +402,7 @@ export function VisualTab({
                     </button>
                     <a
                       href={item.imageUrl}
-                      download={`${fileSafe(item.title)}.${item.imageUrl.startsWith('data:image/jpeg') ? 'jpg' : 'png'}`}
+                      download={`${fileSafe(item.title)}.${imageExtension(item.imageUrl)}`}
                       className="btn btn-ghost btn-sm"
                     >
                       <Download size={14} /> İndir
@@ -561,6 +562,55 @@ export function PodcastTab({
     }
   }
 
+  /**
+   * Premium's main action: the AI writes the dialogue (if this note only has the quick local one),
+   * then the two studio voices record it, and it starts playing. One tap, with progress.
+   */
+  const [studioStep, setStudioStep] = useState<'script' | 'voice' | null>(null)
+  async function handleStudioListen() {
+    if (!premium) return
+    if (studioAudioUrl && audioRef.current) {
+      if (audioRef.current.paused) void audioRef.current.play().catch(() => undefined)
+      else audioRef.current.pause()
+      return
+    }
+    stopBrowserSpeech()
+    setError('')
+    let lines = script.lines
+    try {
+      const ai = await freshImport(() => import('../../lib/ai'))
+      if (script.source !== 'ai') {
+        setStudioStep('script')
+        const next = await ai.generatePodcastScript({ title: note.title, text: note.content }, settings)
+        setScript(next)
+        savePodcastScript(note.id, next)
+        lines = next.lines
+      }
+      setStudioStep('voice')
+      setTtsProgress(null)
+      const res = await ai.synthesizePodcastTts(lines, settings, (done, total) => setTtsProgress({ done, total }))
+      setStudioAudioUrl(res.audioDataUrl)
+      store.recordActivity()
+      // Plays as soon as the player is on the page (the browser may still ask for a tap).
+      window.setTimeout(() => void audioRef.current?.play().catch(() => undefined), 50)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Stüdyo sesi hazırlanamadı.')
+    } finally {
+      setStudioStep(null)
+      setTtsProgress(null)
+    }
+  }
+  const studioLabel =
+    studioStep === 'script'
+      ? 'Senaryo yazılıyor…'
+      : studioStep === 'voice'
+        ? ttsProgress && ttsProgress.total > 1
+          ? `Sesler kaydediliyor (${ttsProgress.done}/${ttsProgress.total})…`
+          : 'Sesler kaydediliyor…'
+        : studioAudioUrl
+          ? 'Stüdyo sesini çal / durdur'
+          : 'Stüdyo sesiyle dinle'
+
   function handleConvertLineToCard(line: PodcastLine, idx: number) {
     const prev = idx > 0 ? script.lines[idx - 1] : undefined
     store.addCards([podcastLineToCard(line, prev, note.courseId, note.id)])
@@ -580,6 +630,7 @@ export function PodcastTab({
               <span className="chip">
                 ~{Math.max(1, Math.round(script.durationEstimateSec / 60))} dk · {script.lines.length} replik
               </span>
+              {premium && <PremiumMark label={script.source === 'ai' ? 'Gemini 3.8 · iki ses' : 'Gemini 3.8 ile'} />}
             </div>
             <p className="subtle">
               <strong>Deniz (Asistan)</strong> ve <strong>Mert (Öğrenci)</strong> bu notun en önemli kavramlarını ve sınav tuzaklarını soru-cevap sohbetiyle konuşuyor.
@@ -590,8 +641,8 @@ export function PodcastTab({
             {premium && (
               <button
                 type="button"
-                className="btn btn-sm"
-                disabled={busyScript || busyTts}
+                className="btn btn-sm prem-btn"
+                disabled={busyScript || busyTts || !!studioStep}
                 onClick={handleGenerateAiScript}
               >
                 {busyScript ? <Spinner size={14} /> : <Sparkles size={14} />} Diyaloğu AI ile yenile
@@ -602,29 +653,20 @@ export function PodcastTab({
 
         <div className="podcast-controls-bar">
           <div className="btn-row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={togglePlayBrowser}
-              disabled={busyTts}
-            >
-              {playingLineIdx !== null ? <Pause size={16} /> : <Play size={16} />}
-              {playingLineIdx !== null ? 'Duraklat' : 'Hemen Dinle'}
-            </button>
-
-            {premium && (
-              <button
-                type="button"
-                className="btn"
-                disabled={busyTts || busyScript}
-                onClick={handleSynthesizeStudioAudio}
-              >
-                {busyTts ? <Spinner size={15} /> : <Volume2 size={15} />}
-                {busyTts
-                  ? ttsProgress && ttsProgress.total > 1
-                    ? `Stüdyo sesi (${ttsProgress.done}/${ttsProgress.total})…`
-                    : 'Stüdyo sesi üretiliyor…'
-                  : 'Stüdyo Sesi Üret (AI)'}
+            {premium ? (
+              <>
+                <button type="button" className="btn btn-lg prem-btn" disabled={!!studioStep || busyScript || busyTts} onClick={() => void handleStudioListen()}>
+                  {studioStep ? <Spinner size={16} /> : <Gem size={17} aria-hidden />} {studioLabel}
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={togglePlayBrowser} disabled={!!studioStep}>
+                  {playingLineIdx !== null ? <Pause size={14} /> : <Play size={14} />}
+                  {playingLineIdx !== null ? 'Önizlemeyi durdur' : 'Hızlı önizleme (cihaz sesi)'}
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn btn-primary" onClick={togglePlayBrowser} disabled={busyTts}>
+                {playingLineIdx !== null ? <Pause size={16} /> : <Play size={16} />}
+                {playingLineIdx !== null ? 'Duraklat' : 'Hemen Dinle'}
               </button>
             )}
           </div>

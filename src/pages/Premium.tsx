@@ -61,6 +61,9 @@ export function Premium() {
         </h1>
         <p className="prem-lead">Sesli not, akıllı arama ve yapay zekâ görselleri. Google'ın en yeni Gemini modelleriyle, VIP'lere özel.</p>
         <PremiumStatus />
+        <Link to="/rehber#premium" className="prem-guide-link">
+          Premium’u en iyi nasıl kullanırsın? <ArrowRight size={14} aria-hidden />
+        </Link>
       </section>
 
       {premium.state === 'loading' ? (

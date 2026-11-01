@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes, useLocation, useNavigationType, useParams
 import { Layout } from './components/Layout'
 import { AchievementWatcher } from './components/Achievements'
 import { Achievements } from './pages/Achievements'
+import { Guide } from './pages/Guide'
 import { unlock } from './lib/achievements'
 import { UpdateWatcher } from './components/UpdateWatcher'
 import { Alert, Spinner, ToastProvider } from './components/ui'
@@ -113,6 +114,7 @@ function Routed() {
         <Route path="giris" element={<Login />} />
         <Route path="sifre-yenile" element={<ResetPassword />} />
         <Route path="basarimlar" element={<Achievements />} />
+        <Route path="rehber" element={<Guide />} />
         <Route path="*" element={<LostPage />} />
       </Route>
     </Routes>

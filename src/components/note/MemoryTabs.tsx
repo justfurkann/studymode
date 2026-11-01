@@ -19,7 +19,7 @@ import { renderEducationalPosterDataUrl } from '../../lib/visualTools'
 import { AiSignupPrompt } from '../AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../ui'
 import { ZoomableImage } from '../ImageViewer'
-import { compressImage } from '../../lib/imageStore'
+import { finishAiImage, imageExtension } from '../../lib/imageStore'
 
 const MNEMONIC_VISUALS = 'studymode.mnemonicVisuals.v1.'
 
@@ -213,7 +213,7 @@ export function MemoryCodingTab({
           },
           settings,
         )
-        keepVisual(item.id, await compressImage(res.imageUrl))
+        keepVisual(item.id, await finishAiImage(res.imageUrl))
         store.recordActivity()
         return
       } catch {
@@ -363,7 +363,7 @@ export function MemoryCodingTab({
 
               {visualUrls[item.id] && !hiddenVisuals[item.id] && (
                 <div className="visual-card-preview">
-                  <ZoomableImage src={visualUrls[item.id]} alt={`${item.title} görsel şeması`} fileName={`${item.title.trim().replace(/\s+/g, '-').toLocaleLowerCase('tr-TR') || 'sema'}.${visualUrls[item.id].startsWith('data:image/jpeg') ? 'jpg' : 'png'}`} />
+                  <ZoomableImage src={visualUrls[item.id]} alt={`${item.title} görsel şeması`} fileName={`${item.title.trim().replace(/\s+/g, '-').toLocaleLowerCase('tr-TR') || 'sema'}.${imageExtension(visualUrls[item.id])}`} />
                 </div>
               )}
 

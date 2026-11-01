@@ -114,7 +114,15 @@ export type Unlocked = Partial<Record<AchievementId, string>>
 export interface AchievementData {
   quizTypes: string[]
   pens: string[]
+  /**
+   * Taken back by an admin: these stay locked (rules and other devices do not bring them back)
+   * until given again. `heldAt` orders this list against the account's copy.
+   */
+  held: AchievementId[]
+  heldAt: string
 }
+
+const EMPTY_EXTRA: AchievementData = { quizTypes: [], pens: [], held: [], heldAt: '' }
 
 export function parseUnlocked(raw: string | null): Unlocked {
   try {
@@ -138,9 +146,14 @@ function readUnlocked(): Unlocked {
 function readExtra(): AchievementData {
   try {
     const v = JSON.parse(localStorage.getItem(EXTRA_KEY) ?? '{}') as Partial<AchievementData>
-    return { quizTypes: Array.isArray(v.quizTypes) ? v.quizTypes : [], pens: Array.isArray(v.pens) ? v.pens : [] }
+    return {
+      quizTypes: Array.isArray(v.quizTypes) ? v.quizTypes : [],
+      pens: Array.isArray(v.pens) ? v.pens : [],
+      held: Array.isArray(v.held) ? v.held.filter((id): id is AchievementId => id in ACHIEVEMENT_BY_ID) : [],
+      heldAt: typeof v.heldAt === 'string' ? v.heldAt : '',
+    }
   } catch {
-    return { quizTypes: [], pens: [] }
+    return EMPTY_EXTRA
   }
 }
 
@@ -155,7 +168,7 @@ let firstVisit = (() => {
 export const isFirstVisit = () => firstVisit
 
 let unlocked: Unlocked = typeof window === 'undefined' ? {} : readUnlocked()
-let extra: AchievementData = typeof window === 'undefined' ? { quizTypes: [], pens: [] } : readExtra()
+let extra: AchievementData = typeof window === 'undefined' ? EMPTY_EXTRA : readExtra()
 /** Unlocked in this visit and not yet announced. */
 let queue: AchievementId[] = []
 const listeners = new Set<() => void>()
@@ -174,8 +187,19 @@ function save() {
  * Unlocks one achievement (once). Returns true when it is new. `silent` skips the toast: used for
  * goals someone had already reached before achievements existed, so they do not get a burst of five.
  */
-export function unlock(id: AchievementId, now = new Date(), options: { silent?: boolean } = {}): boolean {
-  if (unlocked[id]) return false
+export function unlock(id: AchievementId, now = new Date(), options: { silent?: boolean; admin?: boolean } = {}): boolean {
+  if (extra.held.includes(id)) {
+    // Taken back by an admin: only an admin can give it again.
+    if (!options.admin) return false
+    extra = { ...extra, held: extra.held.filter((h) => h !== id), heldAt: now.toISOString() }
+  }
+  if (unlocked[id]) {
+    if (options.admin) {
+      save()
+      emit()
+    }
+    return false
+  }
   unlocked = { ...unlocked, [id]: now.toISOString() }
   if (!options.silent) queue = [...queue, id]
   const count = Object.keys(unlocked).length
@@ -188,12 +212,61 @@ export function unlock(id: AchievementId, now = new Date(), options: { silent?: 
   return true
 }
 
+/** Others needed for Koleksiyoncu. */
+const othersCount = (list: Unlocked) => Object.keys(list).filter((id) => id !== 'koleksiyoncu').length
+
+/**
+ * Admin: takes an achievement back (on this account only). It leaves the collection and the toast
+ * queue, stays locked until given again, and Koleksiyoncu goes too when fewer than 10 others remain.
+ */
+export function revoke(id: AchievementId, now = new Date()): boolean {
+  const had = !!unlocked[id]
+  const next = { ...unlocked }
+  delete next[id]
+  if (next.koleksiyoncu && othersCount(next) < (ACHIEVEMENT_BY_ID.koleksiyoncu.goal ?? 10)) delete next.koleksiyoncu
+  unlocked = next
+  queue = queue.filter((q) => unlocked[q])
+  if (!extra.held.includes(id)) extra = { ...extra, held: [...extra.held, id], heldAt: now.toISOString() }
+  save()
+  emit()
+  return had
+}
+
+export interface HeldList {
+  ids: AchievementId[]
+  at: string
+}
+
+export const currentHeld = (): HeldList => ({ ids: extra.held, at: extra.heldAt })
+
+export function parseHeld(value: unknown): HeldList | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as { ids?: unknown; at?: unknown }
+  if (!Array.isArray(v.ids) || typeof v.at !== 'string') return null
+  return { ids: v.ids.filter((id): id is AchievementId => typeof id === 'string' && id in ACHIEVEMENT_BY_ID), at: v.at }
+}
+
+/** The account's held list, when newer than this browser's: taken-back ones leave here too. */
+export function applyRemoteHeld(remote: HeldList | null): boolean {
+  if (!remote || remote.at <= extra.heldAt) return false
+  extra = { ...extra, held: remote.ids, heldAt: remote.at }
+  const next = { ...unlocked }
+  for (const id of remote.ids) delete next[id]
+  if (next.koleksiyoncu && othersCount(next) < (ACHIEVEMENT_BY_ID.koleksiyoncu.goal ?? 10)) delete next.koleksiyoncu
+  unlocked = next
+  queue = queue.filter((q) => unlocked[q])
+  save()
+  emit()
+  return true
+}
+
 /**
  * Brings in achievements found on another device (from the account), quietly: they were already
  * announced there. Returns the ids this browser has that the account does not, to send up.
+ * Held (taken back) ones are not brought back.
  */
 export function mergeRemote(remote: Unlocked): AchievementId[] {
-  const missingHere = (Object.keys(remote) as AchievementId[]).filter((id) => !unlocked[id])
+  const missingHere = (Object.keys(remote) as AchievementId[]).filter((id) => !unlocked[id] && !extra.held.includes(id))
   if (missingHere.length) {
     unlocked = { ...unlocked }
     for (const id of missingHere) unlocked[id] = remote[id]
@@ -292,7 +365,7 @@ export const todayKey = () => localDayKey()
 export function resetAchievementsForTests() {
   firstVisit = false
   unlocked = {}
-  extra = { quizTypes: [], pens: [] }
+  extra = EMPTY_EXTRA
   queue = []
   emit()
 }

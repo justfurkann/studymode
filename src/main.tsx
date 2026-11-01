@@ -12,6 +12,7 @@ import { applyDecor } from './lib/decor'
 import './styles/global.css'
 import './styles/extras.css'
 import './styles/achievements.css'
+import './styles/guide.css'
 
 applyTheme()
 applyDecor()

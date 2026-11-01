@@ -176,7 +176,7 @@ export function CourseDetail() {
           {(notes.length >= 3 || tags.length > 0) && hasAi && (
             <button
               type="button"
-              className="btn btn-ghost btn-sm"
+              className="btn btn-sm prem-btn"
               disabled={indexing}
               onClick={indexNotesWithAi}
               title="Notlarını anlamına göre aranabilir yap (Premium)"
