@@ -161,6 +161,9 @@ export function Layout() {
         <div className="mobile-foot">
           <FeedbackLink />
           <MadeBy />
+          <Link to="/gizlilik" className="made-by">
+            Gizlilik
+          </Link>
         </div>
       </main>
       <FocusEngine />
