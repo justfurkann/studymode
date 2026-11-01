@@ -1,3 +1,4 @@
+import { receiptLayout } from '../lib/receiptLayout'
 import { Download, Share2, Sparkles, User } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { unlock } from '../lib/achievements'
@@ -28,8 +29,7 @@ import { Modal } from './ui'
 
 const W = 1080
 const H = 1920
-const PAPER_W = 840
-const SANS = '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+const SANS = '"Figtree Variable", system-ui, sans-serif'
 const MONO = '"JetBrains Mono", "IBM Plex Mono", "SFMono-Regular", Consolas, monospace'
 
 interface ThemePalette {
@@ -123,7 +123,16 @@ function penColor(): string {
 }
 
 function wrapTextByWidth(g: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  const words = text.trim().split(/\s+/).filter(Boolean)
+  const words = text.trim().split(/\s+/).filter(Boolean).flatMap(word => {
+    const parts: string[] = []
+    let part = ''
+    for (const char of word) {
+      if (part && g.measureText(part + char).width > maxWidth) { parts.push(part); part = '' }
+      part += char
+    }
+    if (part) parts.push(part)
+    return parts
+  })
   if (!words.length) return []
   const out: string[] = []
   let line = words[0]
@@ -140,408 +149,160 @@ function wrapTextByWidth(g: CanvasRenderingContext2D, text: string, maxWidth: nu
   return out
 }
 
-function roundRectPath(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  g.beginPath()
-  g.moveTo(x + r, y)
-  g.lineTo(x + w - r, y)
-  g.quadraticCurveTo(x + w, y, x + w, y + r)
-  g.lineTo(x + w, y + h - r)
-  g.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
-  g.lineTo(x + r, y + h)
-  g.quadraticCurveTo(x, y + h, x, y + h - r)
-  g.lineTo(x, y + r)
-  g.quadraticCurveTo(x, y, x + r, y)
-  g.closePath()
-}
-
-/** Draws the personalized receipt and returns the 1080×1920 story canvas. */
-export function drawReceipt(receipt: Receipt, pen = penColor()): HTMLCanvasElement {
+/** Draw one continuous print area so every line, including the footer, stays on paper. */
+export function drawReceipt(receipt: Receipt, pen = penColor(), logo?: CanvasImageSource): HTMLCanvasElement {
   const canvas = document.createElement('canvas')
-  canvas.width = W
-  canvas.height = H
+  canvas.width = W; canvas.height = H
   const g = canvas.getContext('2d')
   if (!g) return canvas
-
+  const base = PALETTES[receipt.theme ?? 'klasik'] ?? PALETTES.klasik
+  const palette = { ...base, hi: receipt.theme === 'klasik' && pen ? pen : base.hi }
+  const paperWidth = 780
+  const pad = 64
+  const inner = paperWidth - pad * 2
+  const left = (W - paperWidth) / 2
+  const muted = palette.inkMuted
   const rng = seeded(receipt.code)
-  const basePalette = PALETTES[receipt.theme ?? 'klasik'] ?? PALETTES.klasik
-  const hiColor = receipt.theme === 'klasik' && pen ? pen : basePalette.hi
-  const palette: ThemePalette = { ...basePalette, hi: hiColor }
-
-  // 1. Desk backdrop with grid paper & subtle radial spotlight
-  g.fillStyle = palette.deskBg
-  g.fillRect(0, 0, W, H)
-
-  const glow = g.createRadialGradient(W / 2, H * 0.45, 80, W / 2, H * 0.45, 760)
-  glow.addColorStop(0, palette.deskGlow)
-  glow.addColorStop(1, 'rgba(0,0,0,0)')
-  g.fillStyle = glow
-  g.fillRect(0, 0, W, H)
-
-  g.strokeStyle = palette.deskGrid
-  g.lineWidth = 2
-  for (let x = 0; x <= W; x += 44) {
-    g.beginPath()
-    g.moveTo(x, 0)
-    g.lineTo(x, H)
-    g.stroke()
+  const fit = (text: string, width: number) => {
+    if (g.measureText(text).width <= width) return text
+    let out = text
+    while (out.length && g.measureText(out + '…').width > width) out = out.slice(0, -1)
+    return out + '…'
   }
-  for (let y = 0; y <= H; y += 44) {
-    g.beginPath()
-    g.moveTo(0, y)
-    g.lineTo(W, y)
-    g.stroke()
-  }
+  // Repeat counts and focus time have their own headline; avoid printing them twice.
+  const detail = receipt.lines.filter(l => !['ÇEVRİLEN KART', 'ODAK SÜRESİ', 'SERİ'].includes(l.label))
+  const lines = detail.length ? detail : receipt.fallbackCourses.map(label => ({ qty: '', label, value: 'HAZIRLIK' }))
+  const note = receipt.customMotto || receipt.verdict
+  g.font = `500 28px ${SANS}`
+  const noteLines = wrapTextByWidth(g, note, inner - 132)
+  const layout = receiptLayout(Math.max(1, lines.length), noteLines.length)
+  const top = (H - layout.height * layout.scale) / 2 - 24
 
-  // 2. Prepare display rows so the receipt is always well-proportioned
-  const displayLines = receipt.lines.length
-    ? receipt.lines
-    : receipt.fallbackCourses.length
-      ? receipt.fallbackCourses.map((c) => ({ qty: '1x', label: c, value: 'HAZIRLIK' }))
-      : [
-          { qty: '1x', label: 'MASA HAZIRLIĞI', value: 'TAMAM' },
-          { qty: '1x', label: 'HEDEF ODAK', value: 'AKTİF' },
-        ]
-
-  const pad = 56
-  const innerW = PAPER_W - pad * 2
-  const rowH = 50
-  const itemSectionH = Math.max(3, displayLines.length) * rowH + (receipt.empty ? 68 : 16)
-  const paperH = Math.min(1620, Math.max(1260, 990 + itemSectionH))
-  const left = (W - PAPER_W) / 2
-  const top = Math.max(110, (H - paperH) / 2 - 20)
-
+  // A quiet desk surface; a little texture gives the paper somewhere to sit.
+  g.fillStyle = palette.deskBg; g.fillRect(0, 0, W, H)
+  const light = g.createRadialGradient(W * .5, H * .42, 50, W * .5, H * .42, 1000)
+  light.addColorStop(0, palette.deskGlow); light.addColorStop(1, 'transparent')
+  g.fillStyle = light; g.fillRect(0, 0, W, H)
+  g.strokeStyle = palette.deskGrid; g.lineWidth = 1; g.globalAlpha = .45
+  for (let x = 0; x < W; x += 72) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke() }
+  for (let y = 0; y < H; y += 72) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke() }
+  g.globalAlpha = 1
   g.save()
-  g.translate(W / 2, top + paperH / 2)
-  g.rotate(-0.012)
-  g.translate(-W / 2, -(top + paperH / 2))
+  g.translate(W / 2, top); g.rotate(-.012); g.scale(layout.scale, layout.scale); g.translate(-W / 2, 0)
 
-  // 3. Torn zigzag top & bottom receipt paper with deep drop shadow
-  const tooth = 16
-  g.beginPath()
-  g.moveTo(left, top + tooth)
-  for (let x = left; x < left + PAPER_W; x += tooth * 2) {
-    g.lineTo(x + tooth, top)
-    g.lineTo(Math.min(x + tooth * 2, left + PAPER_W), top + tooth)
+  // Fine serration and soft shadow, without a heavy outline around the paper.
+  const tooth = 10
+  g.beginPath(); g.moveTo(left, tooth)
+  for (let x = left; x < left + paperWidth; x += tooth * 2) {
+    g.lineTo(x + tooth, 0); g.lineTo(Math.min(x + tooth * 2, left + paperWidth), tooth)
   }
-  g.lineTo(left + PAPER_W, top + paperH - tooth)
-  for (let x = left + PAPER_W; x > left; x -= tooth * 2) {
-    g.lineTo(x - tooth, top + paperH)
-    g.lineTo(Math.max(x - tooth * 2, left), top + paperH - tooth)
+  g.lineTo(left + paperWidth, layout.height - tooth)
+  for (let x = left + paperWidth; x > left; x -= tooth * 2) {
+    g.lineTo(x - tooth, layout.height); g.lineTo(Math.max(x - tooth * 2, left), layout.height - tooth)
   }
   g.closePath()
-
-  g.shadowColor = 'rgba(0, 0, 0, 0.48)'
-  g.shadowBlur = 48
-  g.shadowOffsetY = 22
-  g.fillStyle = palette.paperBg
-  g.fill()
-  g.shadowColor = 'transparent'
-
-  g.lineWidth = 3
-  g.strokeStyle = palette.border
-  g.stroke()
-
-  // Masking tape strip at the top center
-  g.save()
-  g.translate(W / 2, top + 6)
-  g.rotate(0.03)
-  g.fillStyle = palette.tape
-  roundRectPath(g, -130, -22, 260, 44, 6)
-  g.fill()
-  g.strokeStyle = palette.border
-  g.lineWidth = 2.5
-  g.stroke()
+  g.shadowColor = '#00000050'; g.shadowBlur = 48; g.shadowOffsetY = 18
+  g.fillStyle = palette.paperBg; g.fill(); g.shadowColor = 'transparent'
+  g.save(); g.clip()
+  g.fillStyle = palette.ink; g.globalAlpha = .025
+  for (let i = 0; i < 4500; i++) g.fillRect(left + rng() * paperWidth, rng() * layout.height, .9, .9)
   g.restore()
 
-  let y = top + 78
-
-  // 4. Receipt Header: Brand pill + Title + Register metadata
-  g.font = `800 22px ${MONO}`
-  const pillText = 'STUDYMODE.FUN · AKADEMİK KAYIT'
-  const pillW = Math.max(410, g.measureText(pillText).width + 44)
-  roundRectPath(g, W / 2 - pillW / 2, y - 28, pillW, 40, 20)
-  g.fillStyle = palette.hi
-  g.fill()
-  g.lineWidth = 2.5
-  g.strokeStyle = palette.border
-  g.stroke()
-
-  g.fillStyle = palette.onHi
-  g.textAlign = 'center'
-  g.fillText(pillText, W / 2, y - 1)
-  y += 66
-
-  g.fillStyle = palette.ink
-  g.font = `900 46px ${SANS}`
-  g.textAlign = 'center'
-  g.fillText(receipt.title, W / 2, y)
-  y += 40
-
-  g.fillStyle = palette.inkMuted
-  g.font = `600 23px ${MONO}`
-  g.fillText(`${receipt.date}  ·  SAAT ${receipt.time}  ·  ${receipt.register}`, W / 2, y)
-  y += 34
-
-  // Dashed divider
-  const drawDashedRule = (yy: number) => {
-    g.save()
-    g.strokeStyle = palette.border
-    g.globalAlpha = 0.35
-    g.lineWidth = 2.5
-    g.setLineDash([10, 8])
-    g.beginPath()
-    g.moveTo(left + pad, yy)
-    g.lineTo(left + PAPER_W - pad, yy)
-    g.stroke()
-    g.restore()
+  const x = left + pad, right = left + paperWidth - pad
+  const rule = (y: number, dashed = false) => {
+    g.save(); g.strokeStyle = palette.border; g.globalAlpha = .22; g.lineWidth = 1
+    if (dashed) g.setLineDash([5, 7])
+    g.beginPath(); g.moveTo(x, y); g.lineTo(right, y); g.stroke(); g.restore()
   }
+  // Approved brand artwork is drawn at its original aspect ratio.
+  if (logo) g.drawImage(logo, x, 64, 274, 274 * 284 / 1298)
+  else { g.font = `800 40px ${SANS}`; g.fillStyle = palette.ink; g.fillText('studymode', x, 108) }
+  g.textAlign = 'right'; g.font = `400 19px ${MONO}`; g.fillStyle = muted
+  g.fillText(receipt.date, right, 87); g.fillText(receipt.time, right, 116)
+  rule(154)
+  g.textAlign = 'left'; g.font = `500 21px ${MONO}`; g.fillStyle = muted
+  g.fillText(receipt.title, x, 199)
+  g.font = `700 42px ${SANS}`; g.fillStyle = palette.ink
+  g.fillText(fit(receipt.studentName || (receipt.empty ? 'Bir yerden başlıyoruz.' : 'Bugün kendine zaman ayırdın.'), inner), x, 260)
+  g.font = `400 23px ${SANS}`; g.fillStyle = muted
+  g.fillText(fit(receipt.studentTag || receipt.register.replace('#', '').replaceAll('-', ' '), inner), x, 300)
 
-  // 5. Personal Student Identity Card ("ÖĞRENCİ KARTI")
-  const idCardH = 148
-  roundRectPath(g, left + pad, y, innerW, idCardH, 18)
-  g.fillStyle = palette.paperAlt
-  g.fill()
-  g.lineWidth = 2.5
-  g.strokeStyle = palette.border
-  g.stroke()
-
-  // Left side of Student ID Card: Name + Tag
-  const displayStudentName = receipt.studentName || 'İSİMSİZ SAVAŞÇI'
-  const displayStudentTag =
-    receipt.studentTag ||
-    (receipt.register === '#GECE-VARDİYASI' ? 'GECE VARDİYASI EKİBİ' : 'STUDYMODE ÖĞRENCİSİ')
-
-  g.fillStyle = palette.inkMuted
-  g.font = `700 19px ${MONO}`
-  g.textAlign = 'left'
-  g.fillText('ÖĞRENCİ KİMLİĞİ', left + pad + 26, y + 36)
-
-  g.fillStyle = palette.ink
-  g.font = `800 34px ${SANS}`
-  g.fillText(displayStudentName.slice(0, 22), left + pad + 26, y + 80)
-
-  g.fillStyle = palette.inkMuted
-  g.font = `600 22px ${SANS}`
-  g.fillText(displayStudentTag.slice(0, 34), left + pad + 26, y + 118)
-
-  // Right side of Student ID Card: Grade / Rank Badge
-  const badgeW = 148
-  const badgeH = 104
-  const badgeX = left + PAPER_W - pad - badgeW - 22
-  const badgeY = y + (idCardH - badgeH) / 2
-  roundRectPath(g, badgeX, badgeY, badgeW, badgeH, 14)
-  g.fillStyle = palette.hi
-  g.fill()
-  g.lineWidth = 2.5
-  g.strokeStyle = palette.border
-  g.stroke()
-
-  g.fillStyle = palette.onHi
-  g.textAlign = 'center'
-  g.font = `900 44px ${SANS}`
-  g.fillText(receipt.rank.grade, badgeX + badgeW / 2, badgeY + 54)
-  g.font = `800 16px ${MONO}`
-  g.fillText(receipt.rank.label, badgeX + badgeW / 2, badgeY + 84)
-
-  y += idCardH + 24
-
-  // 6. 4-Box KPI Metric Strip
-  const kpis = [
-    { label: 'KART TEKRARI', value: `${receipt.stats.reviews}` },
-    { label: 'ODAK SÜRESİ', value: `${receipt.stats.focusMinutes} DK` },
-    { label: 'TEST ORT.', value: receipt.stats.testAvg !== null ? `%${receipt.stats.testAvg}` : '—' },
-    { label: 'SERİ', value: `${receipt.stats.streak} GÜN` },
-  ]
-  const gap = 14
-  const boxW = (innerW - gap * 3) / 4
-  const boxH = 104
-  kpis.forEach((kpi, i) => {
-    const bx = left + pad + i * (boxW + gap)
-    roundRectPath(g, bx, y, boxW, boxH, 14)
-    g.fillStyle = palette.paperBg
-    g.fill()
-    g.lineWidth = 2
-    g.strokeStyle = palette.border
-    g.stroke()
-
-    g.fillStyle = palette.inkMuted
-    g.font = `700 16px ${MONO}`
-    g.textAlign = 'center'
-    g.fillText(kpi.label, bx + boxW / 2, y + 34)
-
-    g.fillStyle = palette.ink
-    g.font = `800 30px ${SANS}`
-    g.fillText(kpi.value, bx + boxW / 2, y + 78)
-  })
-
-  y += boxH + 30
-  drawDashedRule(y)
-  y += 38
-
-  // 7. Itemized Table Header & Rows
-  g.fillStyle = palette.inkMuted
-  g.font = `700 20px ${MONO}`
-  g.textAlign = 'left'
-  g.fillText('KALEM / DERS ADI', left + pad, y)
-  g.textAlign = 'right'
-  g.fillText('KARŞILIK', left + PAPER_W - pad, y)
-  y += 20
-  drawDashedRule(y)
-  y += 42
-
-  for (const item of displayLines) {
-    const leftText = `${item.qty ? `${item.qty} ` : ''}${item.label}`
-    const rightText = item.value
-
-    g.font = `700 26px ${MONO}`
-    g.fillStyle = palette.ink
-    g.textAlign = 'left'
-    g.fillText(leftText, left + pad, y)
-
-    g.textAlign = 'right'
-    g.fillText(rightText, left + PAPER_W - pad, y)
-
-    // Dotted leader between leftText and rightText
-    const lw = g.measureText(leftText).width
-    const rw = g.measureText(rightText).width
-    const dotStart = left + pad + lw + 16
-    const dotEnd = left + PAPER_W - pad - rw - 16
-    if (dotEnd > dotStart + 20) {
-      g.save()
-      g.strokeStyle = palette.inkMuted
-      g.globalAlpha = 0.4
-      g.lineWidth = 2.5
-      g.setLineDash([3, 9])
-      g.beginPath()
-      g.moveTo(dotStart, y - 7)
-      g.lineTo(dotEnd, y - 7)
-      g.stroke()
-      g.restore()
+  const metric = (mx: number, value: string, unit: string, label: string, available: number) => {
+    g.font = `400 30px ${SANS}`
+    const unitWidth = g.measureText(unit).width
+    let size = 96
+    g.font = `600 ${size}px ${SANS}`
+    while (size > 32 && g.measureText(value).width + unitWidth + 10 > available) {
+      size -= 4; g.font = `600 ${size}px ${SANS}`
     }
-    y += rowH
+    g.fillStyle = palette.ink; g.textAlign = 'left'
+    g.fillText(value, mx, 442)
+    const width = g.measureText(value).width
+    g.font = `400 30px ${SANS}`; g.fillStyle = muted
+    g.fillText(unit, mx + width + 10, 440)
+    g.font = `400 21px ${MONO}`; g.fillText(label, mx, 484)
   }
-
-  if (receipt.empty) {
-    g.fillStyle = palette.inkMuted
-    g.font = `600 21px ${MONO}`
-    g.textAlign = 'center'
-    g.fillText('HENÜZ KART ÇEVRİLMEDİ · İLK TEKRARLA PUANLAR İŞLENİR', W / 2, y + 8)
-    y += 44
+  metric(x, String(receipt.stats.focusMinutes), 'dk', 'ODAK SÜRESİ', 330)
+  metric(x + 365, String(receipt.stats.reviews), 'kart', 'KART TEKRARI', inner - 365)
+  // A single marker stroke anchors the headline, instead of four statistic boxes.
+  g.fillStyle = palette.hi; g.globalAlpha = .75; g.fillRect(x, 505, 60, 5); g.globalAlpha = 1
+  g.font = `400 23px ${SANS}`; g.fillStyle = muted
+  g.fillText(`Test ort. ${receipt.stats.testAvg === null ? '—' : `%${receipt.stats.testAvg}`}`, x, 562)
+  g.textAlign = 'right'; g.fillText(`${receipt.stats.streak} günlük seri`, right, 562)
+  rule(596, true)
+  g.font = `400 18px ${MONO}`; g.fillStyle = muted; g.textAlign = 'left'
+  g.fillText(receipt.title.startsWith('HAFTALIK') ? 'HAFTANIN DÖKÜMÜ' : 'BUGÜNÜN DÖKÜMÜ', x, 625); g.textAlign = 'right'; g.fillText('KARŞILIĞI', right, 625)
+  if (!lines.length) {
+    g.textAlign = 'left'; g.font = `400 24px ${SANS}`
+    g.fillText('İlk oturumunla burası dolacak.', x, layout.tableTop)
   }
-
-  y += 6
-  drawDashedRule(y)
-  y += 26
-
-  // 8. Highlighted Total Effort Banner
-  const totalBoxH = 74
-  roundRectPath(g, left + pad, y, innerW, totalBoxH, 14)
-  g.fillStyle = palette.hi
-  g.fill()
-  g.lineWidth = 3
-  g.strokeStyle = palette.border
-  g.stroke()
-
-  g.fillStyle = palette.onHi
-  g.font = `900 32px ${SANS}`
-  g.textAlign = 'left'
-  g.fillText(receipt.total.label, left + pad + 24, y + 48)
-  g.textAlign = 'right'
-  g.fillText(receipt.total.value, left + PAPER_W - pad - 24, y + 48)
-  y += totalBoxH + 28
-
-  // 9. Verdict / Personal Motto Box (left) + Non-overlapping Stamp Seal (right)
-  const quoteBoxW = innerW - 190
-  const quoteBoxH = 132
-  roundRectPath(g, left + pad, y, quoteBoxW, quoteBoxH, 14)
-  g.fillStyle = palette.paperAlt
-  g.fill()
-  g.lineWidth = 2
-  g.strokeStyle = palette.border
-  g.stroke()
-
-  const headlineNote = receipt.customMotto ? `“${receipt.customMotto}”` : receipt.verdict
-  g.fillStyle = palette.inkMuted
-  g.font = `700 17px ${MONO}`
-  g.textAlign = 'left'
-  g.fillText(receipt.customMotto ? 'GÜNÜN NOTU & DURUM' : 'KASA RAPORU', left + pad + 22, y + 34)
-
-  g.fillStyle = palette.ink
-  g.font = `800 24px ${SANS}`
-  const wrappedQuote = wrapTextByWidth(g, headlineNote, quoteBoxW - 44).slice(0, 2)
-  wrappedQuote.forEach((line, idx) => {
-    g.fillText(line, left + pad + 22, y + 72 + idx * 32)
+  lines.forEach((item, i) => {
+    const y = layout.tableTop + i * 48
+    g.font = `500 24px ${MONO}`
+    const value = fit(item.value, 210)
+    const valueWidth = g.measureText(value).width
+    const label = fit(`${item.qty ? `${item.qty}  ` : ''}${item.label}`, inner - valueWidth - 40)
+    const labelWidth = g.measureText(label).width
+    g.fillStyle = palette.ink; g.textAlign = 'left'; g.fillText(label, x, y)
+    g.textAlign = 'right'; g.fillText(value, right, y)
+    if (inner - valueWidth - labelWidth > 70) {
+      g.save(); g.strokeStyle = muted; g.globalAlpha = .3; g.setLineDash([1, 7]); g.lineWidth = 1.5
+      g.beginPath(); g.moveTo(x + labelWidth + 18, y - 6); g.lineTo(right - valueWidth - 18, y - 6); g.stroke(); g.restore()
+    }
   })
-  if (receipt.customMotto) {
-    g.fillStyle = palette.inkMuted
-    g.font = `600 17px ${MONO}`
-    g.fillText(receipt.verdict, left + pad + 22, y + 118)
-  }
+  rule(layout.tableBottom, true)
+  const y = layout.totalTop
+  g.fillStyle = palette.hi; g.globalAlpha = receipt.theme === 'gece' ? .16 : .32
+  g.fillRect(x - 10, y, inner + 20, 80); g.globalAlpha = 1
+  g.fillStyle = palette.ink; g.textAlign = 'left'; g.font = `500 22px ${MONO}`
+  g.fillText(receipt.total.label, x + 12, y + 49)
+  g.textAlign = 'right'; g.font = `600 36px ${SANS}`; g.fillText(receipt.total.value, right - 12, y + 51)
 
-  // Dedicated Stamp Seal on the right (never overlaps text or barcode)
-  const sx = left + PAPER_W - pad - 82
-  const sy = y + quoteBoxH / 2
-  g.save()
-  g.translate(sx, sy)
-  g.rotate(-0.22)
-  g.strokeStyle = palette.stamp
-  g.fillStyle = palette.stamp
-  g.lineWidth = 4
-  g.beginPath()
-  g.arc(0, 0, 68, 0, Math.PI * 2)
-  g.stroke()
-  g.lineWidth = 2
-  g.beginPath()
-  g.arc(0, 0, 56, 0, Math.PI * 2)
-  g.stroke()
-  g.font = `800 14px ${MONO}`
-  g.textAlign = 'center'
-  g.fillText('STUDYMODE', 0, -20)
-  g.font = `900 22px ${SANS}`
-  g.fillText('ONAYLI', 0, 8)
-  g.font = `700 13px ${MONO}`
-  g.fillText('KAYIT', 0, 28)
-  g.restore()
+  g.textAlign = 'left'; g.font = `400 18px ${MONO}`; g.fillStyle = muted
+  g.fillText(receipt.customMotto ? 'GÜNÜN NOTU' : 'KASADAN BİR NOT', x, layout.noteTop)
+  g.font = `500 28px ${SANS}`; g.fillStyle = palette.ink
+  noteLines.forEach((line, i) => g.fillText(line, x, layout.noteTop + 43 + i * 34))
+  // Small, lightly inked stamp: a keepsake detail, not a second headline.
+  g.save(); g.translate(right - 42, layout.noteTop + 46); g.rotate(-.18)
+  g.strokeStyle = palette.stamp; g.fillStyle = palette.stamp; g.globalAlpha = .65; g.lineWidth = 1.7
+  g.beginPath(); g.arc(0, 0, 40, 0, Math.PI * 2); g.stroke()
+  g.textAlign = 'center'; g.font = `500 11px ${MONO}`; g.fillText('BİR ADIM', 0, -4); g.fillText('DAHA', 0, 13); g.restore()
 
-  y += quoteBoxH + 34
-
-  // 10. Barcode & Serial Code
   const codeRng = seeded(receipt.code)
-  let bx = left + pad + 24
-  const bw = innerW - 48
-  const barH = 82
-  g.fillStyle = palette.ink
-  while (bx < left + pad + 24 + bw - 6) {
-    const width = 2 + Math.floor(codeRng() * 4) * 2
-    if (codeRng() > 0.32) g.fillRect(bx, y, width, barH)
-    bx += width + 2 + Math.floor(codeRng() * 3) * 2
+  const barcodeWidth = 320
+  let bx = W / 2 - barcodeWidth / 2
+  g.fillStyle = palette.ink; g.globalAlpha = .8
+  while (bx < W / 2 + barcodeWidth / 2 - 6) {
+    const bar = 1 + Math.floor(codeRng() * 3)
+    if (codeRng() > .24) g.fillRect(bx, layout.barcodeTop, bar, 43)
+    bx += bar + 2 + Math.floor(codeRng() * 3)
   }
-  y += barH + 34
-
-  g.fillStyle = palette.inkMuted
-  g.font = `700 22px ${MONO}`
-  g.textAlign = 'center'
-  g.fillText(receipt.code.split('').join(' '), W / 2, y)
-  y += 34
-
-  g.fillStyle = palette.inkMuted
-  g.font = `600 19px ${MONO}`
-  g.fillText(receipt.footer, W / 2, y)
-
-  // Subtle paper grain
-  g.fillStyle = palette.ink
-  g.globalAlpha = 0.025
-  for (let i = 0; i < 350; i++) {
-    g.fillRect(left + rng() * PAPER_W, top + rng() * paperH, 2, 2)
-  }
-
+  g.globalAlpha = 1; g.fillStyle = muted; g.font = `400 17px ${MONO}`; g.textAlign = 'center'
+  g.fillText(receipt.code.split('').join(' '), W / 2, layout.serialY)
+  g.font = `400 17px ${MONO}`; g.fillText(fit(receipt.footer, inner), W / 2, layout.footerY)
   g.restore()
-
-  // Bottom story watermark
-  g.fillStyle = palette.hi
-  g.font = `800 36px ${SANS}`
-  g.textAlign = 'center'
-  g.fillText('studymode.fun', W / 2, H - 68)
+  g.textAlign = 'center'; g.fillStyle = '#ffffff99'; g.font = `500 23px ${SANS}`
+  g.fillText('studymode.fun', W / 2, H - 58)
   return canvas
 }
 
@@ -593,11 +354,22 @@ export default function ReceiptDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     let url = ''
     let cancelled = false
-    drawReceipt(receipt).toBlob((blob) => {
-      if (!blob || cancelled) return
-      url = URL.createObjectURL(blob)
-      setImage({ url, blob })
-    }, 'image/png')
+    // Canvas keeps the font it first draws with. Wait for the bundled font and
+    // the approved logo so exported files match the preview on a cold load too.
+    void (async () => {
+      const logo = new Image()
+      logo.src = receipt.theme === 'gece' ? '/brand/svg/logo-dark.svg' : '/brand/svg/logo.svg'
+      const [, loadedLogo] = await Promise.all([
+        document.fonts.load(`600 28px ${SANS}`).catch(() => []),
+        logo.decode().then(() => logo).catch(() => undefined),
+      ])
+      if (cancelled) return
+      drawReceipt(receipt, penColor(), loadedLogo).toBlob((blob) => {
+        if (!blob || cancelled) return
+        url = URL.createObjectURL(blob)
+        setImage({ url, blob })
+      }, 'image/png')
+    })()
     return () => {
       cancelled = true
       if (url) URL.revokeObjectURL(url)

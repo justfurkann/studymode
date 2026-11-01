@@ -560,6 +560,8 @@
   box-shadow: 0 4px 0 var(--card-drop);
   overflow: hidden;
   padding: 8px;
+  position: sticky;
+  top: 0;
 }
 
 .receipt-preview img {
@@ -583,6 +585,11 @@
 
   .receipt-preview img {
     max-height: 52dvh;
+  }
+
+  .receipt-preview {
+    order: -1;
+    position: static;
   }
 }
 
