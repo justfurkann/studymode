@@ -3,7 +3,7 @@ import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL } from '../config'
 import type { KeyProvider, Settings } from '../settings'
 import { supabase } from '../supabase'
-import type { ConceptComparison, GeneratedSet, MnemonicItem } from '../types'
+import type { ConceptComparison, DetailedSummary, GeneratedSet, MnemonicItem } from '../types'
 import { callGeminiWithFallback, GeminiError } from './gemini'
 import {
   jsonModeSystem,
@@ -33,6 +33,7 @@ import { concatenateWavBase64, splitScriptForTts, type PodcastLine, type Podcast
 
 export { contextAround, MAX_PROMPT_NOTE_CHARS, splitNoteIntoChunks } from './tasks'
 export type {
+  DetailInput,
   EmbedInput,
   ExamDifficulty,
   ExamFormat,
@@ -184,7 +185,8 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify(engine ? { task, input, engine } : { task, input }),
-      signal: AbortSignal.timeout(55_000),
+      // Slow tasks get the server's whole 60 s, so the browser does not give up first.
+      signal: AbortSignal.timeout(task === 'detail' || task === 'tts' || task === 'image' ? 62_000 : 55_000),
     })
   } catch (error) {
     // The detail and timing help tell a dropped connection from a server timeout.
@@ -303,6 +305,49 @@ export async function generateStudySet(
     throw new AiError('Bu nottan çalışma seti çıkarılamadı. Notun yeterince açıklayıcı metin içerdiğinden emin ol.')
   }
   return { ...mergeStudySets(sets), failedChunks, totalChunks: chunks.length }
+}
+
+/** Characters per request for the detailed summary: its answer is long, so parts are smaller than for a study set. */
+export const DETAIL_CHUNK_CHARS = 12_000
+
+/**
+ * The detailed "Tam özet" of a note. A long note is written part by part (each part its own request,
+ * retried once); the sections are joined in order. Parts that still fail are counted, not fatal.
+ */
+export async function generateDetailedSummary(
+  text: string,
+  title: string,
+  settings: Settings,
+  onProgress?: (done: number, total: number) => void,
+): Promise<DetailedSummary> {
+  const chunks = splitNoteIntoChunks(text, DETAIL_CHUNK_CHARS)
+  const parts: Array<TaskOutput<'detail'>> = []
+  let failedParts = 0
+  let lastError: unknown = null
+  for (let i = 0; i < chunks.length; i += 1) {
+    onProgress?.(i, chunks.length)
+    const input = { title, text: chunks[i], part: chunks.length > 1 ? `Bölüm ${i + 1}/${chunks.length}` : undefined }
+    try {
+      parts.push(await runTask('detail', input, settings).catch(() => runTask('detail', input, settings)))
+    } catch (error) {
+      failedParts += 1
+      lastError = error
+    }
+  }
+  onProgress?.(chunks.length, chunks.length)
+  if (!parts.length) throw lastError instanceof Error ? lastError : new AiError('Ayrıntılı özet hazırlanamadı.')
+  const clean = (list: string[]) => list.map((x) => x.trim()).filter(Boolean)
+  const takeaways = [...new Set(parts.flatMap((p) => clean(p.takeaways)))].slice(0, 8)
+  return {
+    intro: parts[0].intro.trim(),
+    sections: parts
+      .flatMap((p) => p.sections)
+      .map((s) => ({ heading: s.heading.trim(), paragraphs: clean(s.paragraphs), bullets: clean(s.bullets), example: s.example.trim() }))
+      .filter((s) => s.heading && (s.paragraphs.length || s.bullets.length)),
+    takeaways,
+    createdAt: new Date().toISOString(),
+    ...(failedParts ? { failedParts } : {}),
+  }
 }
 
 /** Short Turkish note for a partly processed long note, or '' when every chunk worked. */

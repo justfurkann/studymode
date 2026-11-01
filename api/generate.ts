@@ -128,9 +128,9 @@ export async function handleGenerate(
     const status = await plusCall('plus_quota', auth, fetchImpl)
     if (!status?.eligible) return json(403, { error: 'premium_only' })
   }
-  // Audio and images take longer than text.
-  const media = task === 'tts' || task === 'image'
-  const timing = media ? { timeoutMs: 45_000, deadlineMs: 55_000 } : {}
+  // Audio, images and the long detailed summary take longer than other text.
+  const slow = task === 'tts' || task === 'image' || task === 'detail'
+  const timing = slow ? { timeoutMs: 45_000, deadlineMs: 55_000 } : {}
 
   // Free+ (VIP/admin): Gemini on Vertex AI, within its own daily caps. Any problem (not set up, cap
   // reached, Google error) falls through to the normal free AI below, so nobody is left without an answer.

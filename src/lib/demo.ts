@@ -68,6 +68,52 @@ export function createDemoSet() {
       tip: 'Bilgiyi dar bir masadan büyük bir kütüphaneye taşıyan 4 duraklı bir yolculuk olarak hayal et.',
     },
   ]
+  // A hand-written example of the detailed "Tam özet", so the page can be seen without AI.
+  set.summary.detailed = {
+    intro:
+      'Bu not, öğrenmenin ne olduğunu, bilginin hangi bellek sistemlerinde tutulduğunu ve kalıcı öğrenmeyi destekleyen çalışma yöntemlerini anlatır. Bellek sistemleri "bilgi nerede durur" sorusunu, çalışma yöntemleri ise "bilgiyi oraya nasıl kalıcı taşırız" sorusunu cevaplar.',
+    sections: [
+      {
+        heading: 'Öğrenme nedir?',
+        paragraphs: [
+          'Öğrenme, deneyim sonucunda bilgi veya davranışta ortaya çıkan görece kalıcı değişimdir. Buradaki kilit kelime "kalıcı"dır: bir şeyi bir kez okuyup anlamak öğrenmenin başlangıcıdır, ama bilgiyi gerektiğinde kullanabilmek öğrenmenin kendisidir.',
+        ],
+        bullets: ['Öğrenme = deneyimle oluşan görece kalıcı değişim.', 'Bilgiyi okumak yetmez; anlamlandırmak ve kullanabilmek gerekir.'],
+        example: '',
+      },
+      {
+        heading: 'Bellek sistemleri',
+        paragraphs: [
+          'Yeni bilgi önce çalışma belleğine gelir. Çalışma belleği bilgiyi kısa bir süre tutar ve üzerinde işlem yapmamızı sağlar, ama kapasitesi sınırlıdır: aynı anda çok fazla yeni bilgi gelirse öğrenme zorlaşır.',
+          'Kalıcı olan bilgi uzun süreli bellekte saklanır. Yeni bilgiyi önceden bildiklerimizle ilişkilendirmek, uzun süreli bellekte daha anlamlı bağlantılar kurulmasına yardım eder.',
+        ],
+        bullets: ['Çalışma belleği: kısa süreli, sınırlı kapasiteli, bilgiyi işler.', 'Uzun süreli bellek: bilgi, beceri ve deneyimleri uzun süre saklar.', 'Yeni bilgiyi eskisine bağlamak kalıcılığı artırır.'],
+        example: '',
+      },
+      {
+        heading: 'Kalıcı öğrenmeyi destekleyen yöntemler',
+        paragraphs: [
+          'Aktif hatırlama, bilgiyi kaynağa bakmadan zihinden geri getirme çabasıdır ve yalnızca tekrar okumaktan daha etkilidir. Aralıklı tekrar, çalışmayı tek uzun oturum yerine zamana yaymaktır; tekrarlar arasındaki uygun süre bilginin zorluğuna ve ne kadar süre hatırlanmak istendiğine bağlıdır.',
+          'Geri bildirim, bir yanıtın doğruluğu ve nasıl geliştirileceği hakkındaki bilgidir; puana bakmak yerine yanlışın nedenini incelemek öğrenmeyi destekler. Üstbiliş ise kişinin kendi öğrenmesini izleyip düzenlemesidir.',
+        ],
+        bullets: ['Aktif hatırlama: notu kapatıp hatırlamaya çalışmak.', 'Aralıklı tekrar: bugün, birkaç gün sonra, bir hafta sonra.', 'Geri bildirim: yanlışın nedenini anlamak.', 'Üstbiliş: neyi bilip neyi bilmediğini fark edip planı değiştirmek.'],
+        example: 'Notları kapatıp konuyu kendi cümlelerinle anlatmak ya da deneme sorusu çözmek aktif hatırlamadır; bir konuyu bugün, birkaç gün sonra ve bir hafta sonra tekrar etmek aralıklı tekrardır.',
+      },
+      {
+        heading: 'Öğrendiğini yeni duruma uygulamak',
+        paragraphs: ['Bilgiyi yeni bir duruma uygulamak öğrenmenin aktarımını destekler. Bu yöntemleri bilmek kadar onları kendi çalışma planına uygulamak da önemlidir.'],
+        bullets: [],
+        example: 'Bir öğrenci aralıklı tekrar ilkesini kullanarak haftalık ders çalışma programını düzenleyebilir.',
+      },
+    ],
+    takeaways: [
+      'Çalışma belleği ile uzun süreli belleği karıştırma: biri kısa süreli ve sınırlı, diğeri kalıcı depodur.',
+      'Tekrar okumak aktif hatırlama değildir; kaynağa bakmadan hatırlamak gerekir.',
+      'Aralıklı tekrarda tekrar sayısı kadar aradaki süre de önemlidir.',
+      'Geri bildirimde amaç puan değil, yanlışın nedenini anlamaktır.',
+    ],
+    createdAt: new Date().toISOString(),
+  }
   set.summary.comparisons = [
     {
       id: 'demo-cmp-1',

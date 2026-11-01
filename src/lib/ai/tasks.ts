@@ -43,6 +43,44 @@ Produce:
 - practice: 2-3 open-ended questions that make the student explain, compare, or apply ideas, with a model answer grounded in the notes and a one-line hint.
 - Every card and question has "source": a short verbatim quote (max ~120 characters) from the notes that supports it.`
 
+// ---------- Detailed summary ("Tam özet") of one note ----------
+
+export const DetailSchema = z.object({
+  intro: z.string().default(''),
+  sections: z
+    .array(
+      z.object({
+        heading: z.string(),
+        paragraphs: z.array(z.string()).default([]),
+        bullets: z.array(z.string()).default([]),
+        example: z.string().default(''),
+      }),
+    )
+    .default([]),
+  takeaways: z.array(z.string()).default([]),
+})
+
+export interface DetailInput {
+  title: string
+  text: string
+  /** "Bölüm 2/3" for a long note sent in parts. */
+  part?: string
+}
+
+const DETAIL_PROMPT = `You write the detailed study summary of a university student's lecture notes: the one page they read to really understand the topic before an exam, instead of the raw notes.
+
+Write everything in the language of the notes (usually Turkish), in clear, plain sentences a student can follow without the lecture. Use only information that is in the notes: do not add facts, numbers, dates, or examples from outside them. Keep every important detail from the notes (definitions, steps, causes and effects, formulas, lists, differences between similar ideas); leave out only repetition and filler.
+
+Produce:
+- intro: 2-3 sentences on what the notes are about and how the parts connect.
+- sections: follow the structure of the notes (their headings or natural topics), in order. For each section:
+  - heading: a short title.
+  - paragraphs: 1-3 paragraphs that explain the ideas, why they matter and how they relate. Explain, do not just list.
+  - bullets: the facts worth memorising in this section (definitions, steps, properties, formulas), each one short and self-contained. [] if none.
+  - example: an example, case or application that appears in the notes, explained in 1-2 sentences; "" if the notes give none.
+- takeaways: 3-6 points to watch for in the exam: easily confused ideas, frequent mistakes, the most important definitions.
+If the notes are thin, write less rather than padding. If this is one part of a longer note, cover only this part and leave intro and takeaways short.`
+
 // ---------- Mock exam from several notes ----------
 
 export const ExamSchema = z.object({
@@ -394,6 +432,11 @@ export function splitNoteIntoChunks(text: string, maxChars = 20_000): string[] {
 }
 
 export const TASKS = {
+  detail: {
+    schema: DetailSchema,
+    system: DETAIL_PROMPT,
+    user: (input: DetailInput) => `<note_title>${input.title}${input.part ? ` (${input.part})` : ''}</note_title>\n<notes>\n${trimNoteText(input.text)}\n</notes>`,
+  },
   study: {
     schema: StudySetSchema,
     system: STUDY_PROMPT,
