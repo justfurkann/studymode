@@ -611,6 +611,14 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Açma sırası (önemli):** 1) Kullanıcı Cloudflare → Turnstile → widget (alan adı studymode.fun, mod "Managed") oluşturur. 2) **Site key** (herkese açık) config.ts'e yazılıp yayınlanır, canlıda kutunun çıktığı doğrulanır. 3) Ancak ondan sonra Supabase → Authentication → Attack Protection → CAPTCHA → Turnstile + **Secret key** (yalnızca Supabase'e, sohbete değil). Ters sırada yapılırsa herkesin girişi bozulur. Açıldıktan sonra yerel geliştirmede gerçek Supabase'e giriş çalışmaz (localhost'ta kutu yok); testler etkilenmez.
 - Gizlilik: Cloudflare (Turnstile) işleyenler listesine eklendi.
 
+### Aşama 26 — Canlı testler için "test kapısı" (1 Kasım 2026, `dreamy-sagan`)
+
+- **Neden:** Supabase'de CAPTCHA açık (kullanıcı 1 Kasım'da açtı; jetonsuz giriş `captcha_failed` döner). Cloudflare otomatik tarayıcıyı geçirmiyor, yani Claude test hesabıyla canlıda formdan giriş yapamaz.
+- **Ne:** `api/test-session.ts`. `POST /api/test-session` + `x-test-secret` başlığı → test hesabına tek kullanımlık magiclink (`admin/generate_link`, e-posta gitmez) → `/auth/v1/verify` → oturum JSON. Yalnızca `TEST_ACCOUNT_EMAIL` açılır (adres istekten alınmaz; dönen oturumun e-postası da kontrol edilir). Ortam değişkenlerinden biri eksikse, sır yanlış/kısa ise ya da GET ise düz 404.
+- **Vercel ortam değişkenleri (Production):** `TEST_SESSION_SECRET` (≥32 karakter, rastgele), `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API Keys → secret key; yalnızca Vercel'de, koda/sohbete asla), `TEST_ACCOUNT_EMAIL` (test hesabının e-postası). **Kapatmak için `TEST_SESSION_SECRET`'ı sil.**
+- **Claude ortamı:** `STUDYMODE_TEST_SESSION_SECRET` (Vercel'deki ile aynı). Kullanım: `scripts/live-login.cjs` → `await liveLogin(page)` sonra `page.goto(...)`. Sırrı asla yazdırma.
+- Sızarsa etkisi: yalnızca test hesabı (şu an VIP; istenirse normale düşürülür).
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
