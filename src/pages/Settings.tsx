@@ -572,7 +572,7 @@ function PlusPanel({ eligible }: { eligible: boolean }) {
         <strong>Free+</strong> <span className="muted">— Google'ın daha güçlü Gemini modeli, VIP'lere özel.</span>
       </p>
       <ul className="plus-perks">
-        <li>Notlarını Gemini 3.8 Flash ile hazırlar (ücretside hafif "Flash-Lite" model çalışır); puanlama, "Bu konuyu anlamadım" açıklamaları ve hafıza tekniklerinde Google'ın en güçlü modeli Gemini 4 kullanılır.</li>
+        <li>Notlarını Gemini 3.8 Flash ile hazırlar (ücretside hafif "Flash-Lite" model çalışır); yazılı cevap puanlamada ve hafıza tekniklerinde Google'ın en güçlü modeli Gemini 4 kullanılır.</li>
         <li>Google, Free+ ile gönderilen içerikleri kendi ürünlerini geliştirmek için kullanmaz.</li>
         <li>Günlük Free+ hakkın dolarsa ya da servis o an cevap vermezse, istek kendiliğinden normal ücretsiz yapay zekâyla hazırlanır; sen bir şey yapmazsın.</li>
       </ul>

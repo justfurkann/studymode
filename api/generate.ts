@@ -166,7 +166,7 @@ export async function handleGenerate(
 
 /** Health check: open /api/generate in a browser to see whether the shared AI is set up. */
 export function handleStatus(env: Env): Response {
-  return json(200, { ok: true, configured: !!env.GEMINI_API_KEY, models: geminiModels(env), plus: vertexConfigured(env) ? { long: vertexModels(env, 'study'), smart: vertexModels(env, 'explain') } : null })
+  return json(200, { ok: true, configured: !!env.GEMINI_API_KEY, models: geminiModels(env), plus: vertexConfigured(env) ? { long: vertexModels(env, 'study'), smart: vertexModels(env, 'grade') } : null })
 }
 
 export function GET(): Response {
