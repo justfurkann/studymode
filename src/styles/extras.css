@@ -878,15 +878,7 @@
   color: var(--text);
 }
 
-.today-settings-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  align-self: center;
-  color: var(--text-2);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
+
 
 /* Not ekle: several files as separate notes or one. */
 .merge-choice {

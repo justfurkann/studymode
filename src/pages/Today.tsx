@@ -1,4 +1,4 @@
-import { ArrowRight, Brain, Settings, Trophy, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
+import { ArrowRight, Brain, Trophy, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
 import { StudentTypeLink } from '../components/StudentTypeCard'
 import { Link } from 'react-router-dom'
 import { ExamFocusCard } from '../components/ExamFocusCard'
@@ -317,9 +317,6 @@ export function Today() {
         )}
       </section>
 
-      <Link to="/ayarlar" className="today-settings-link">
-        <Settings size={15} aria-hidden /> Ayarlar
-      </Link>
     </div>
   )
 }
