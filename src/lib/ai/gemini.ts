@@ -35,15 +35,22 @@ export function buildUserParts(user: string): GeminiUserPart[] {
   return parts.length ? parts : [{ text: user }]
 }
 
+/** Where to send a request instead of the public Gemini API (e.g. Vertex AI with a bearer token). */
+export interface GeminiTarget {
+  url(model: string): string
+  headers: Record<string, string>
+}
+
 export async function callGemini(options: {
-  apiKey: string
+  apiKey?: string
+  target?: GeminiTarget
   model: string
   system: string
   user: string
   fetchImpl?: typeof fetch
   timeoutMs?: number
 }): Promise<string> {
-  const { apiKey, model, system, user, fetchImpl = fetch, timeoutMs = DEFAULT_ATTEMPT_TIMEOUT_MS } = options
+  const { apiKey, target, model, system, user, fetchImpl = fetch, timeoutMs = DEFAULT_ATTEMPT_TIMEOUT_MS } = options
   const generationConfig: Record<string, unknown> = {
     responseMimeType: 'application/json',
     maxOutputTokens: 32768,
@@ -57,9 +64,11 @@ export async function callGemini(options: {
 
   let response: Response
   try {
-    response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    const url = target ? target.url(model) : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
+    const headers: Record<string, string> = target ? { 'content-type': 'application/json', ...target.headers } : { 'content-type': 'application/json', 'x-goog-api-key': apiKey ?? '' }
+    response = await fetchImpl(url, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+      headers,
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: buildUserParts(user) }],
@@ -98,7 +107,8 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
  * over to the next one in `models`.
  */
 export async function callGeminiWithFallback(options: {
-  apiKey: string
+  apiKey?: string
+  target?: GeminiTarget
   models: string[]
   system: string
   user: string

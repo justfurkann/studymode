@@ -1985,3 +1985,41 @@ test('the privacy policy is reachable from the landing page, sign-in and the bot
   await expect(page.getByRole('main').getByRole('link', { name: 'Gizlilik' })).toHaveAttribute('href', '/gizlilik')
   expect(errors).toEqual([])
 })
+
+test('Free+ shows only for VIPs and admins, with today’s use, and sends its requests as Free+', async ({ page }) => {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  const me = { id: 'aaaaaaaa-0000-0000-0000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'vip@example.com', user_metadata: { full_name: 'Ayşe' }, app_metadata: {}, created_at: '2026-10-01T00:00:00Z' }
+  let role = 'normal'
+  await page.addInitScript((u) => {
+    localStorage.setItem('sb-jpcatyopkpnudgdyncas-auth-token', JSON.stringify({ access_token: 'fake', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user: u }))
+    localStorage.setItem('studymode.vipWelcomed.' + u.id, '1')
+  }, me)
+  await page.route(`${SUPABASE}/auth/v1/**`, (r) => r.fulfill({ json: me }))
+  await page.route(`${SUPABASE}/rest/v1/**`, (r) => {
+    const path = new URL(r.request().url()).pathname
+    if (path.endsWith('/ai_quota')) return r.fulfill({ json: { role, used: 1, limit: role === 'vip' ? 150 : 40, allowed: true } })
+    if (path.endsWith('/plus_quota')) return r.fulfill({ json: { role, eligible: role !== 'normal', used: 4, limit: 30, site_used: 9, site_limit: 300, allowed: true } })
+    return r.fulfill({ json: r.request().method() === 'GET' ? [] : null, status: r.request().method() === 'GET' ? 200 : 201 })
+  })
+  await page.goto('/ayarlar')
+  await expect(page.getByRole('group', { name: 'Yapay zekâ servisi' }).getByRole('button', { name: 'Free+' })).toHaveCount(0)
+
+  role = 'vip'
+  await page.reload()
+  await page.getByRole('group', { name: 'Yapay zekâ servisi' }).getByRole('button', { name: 'Free+' }).click()
+  await expect(page.getByLabel('Günlük Free+ hakkı')).toContainText('Bugün 4/30 istek')
+  await expect(page.getByText(/kendi ürünlerini geliştirmek için kullanmaz/).first()).toBeVisible()
+
+  // A note prepared with Free+ asks the server for the Free+ engine.
+  let sent: Record<string, unknown> | null = null
+  await page.route('**/api/generate', async (route) => {
+    sent = route.request().postDataJSON()
+    await route.fulfill({ status: 503, json: { error: 'busy' } })
+  })
+  await createCourse(page, 'Biyoloji')
+  await pasteNote(page, 'Hücre')
+  await page.getByRole('button', { name: /Yapay zekâ/ }).click()
+  await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
+  await expect.poll(() => sent).not.toBeNull()
+  expect(sent!.engine).toBe('plus')
+})

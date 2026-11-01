@@ -5,7 +5,7 @@ import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../components/ui'
 import { ACCEPTED_NOTE_EXTENSIONS, extractNoteText } from '../lib/importNote'
 import { generateLocally } from '../lib/localGenerator'
-import { aiAvailability, useSettings } from '../lib/settings'
+import { aiAvailability, useSettings, isServerAi } from '../lib/settings'
 import { useStore } from '../lib/store'
 import type { GeneratedSet, Generator } from '../lib/types'
 import { freshImport } from '../lib/version'
@@ -434,14 +434,14 @@ export function AddNote() {
             </button>
           </div>
           <AiSignupPrompt />
-          {!ai.ok && settings.provider !== 'shared' && (
+          {!ai.ok && !isServerAi(settings.provider) && (
             <p className="subtle">
               <Link to="/ayarlar" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>
                 Ayarlara git
               </Link>
             </p>
           )}
-          {ai.ok && mode === 'ai' && settings.provider === 'shared' && (
+          {ai.ok && mode === 'ai' && isServerAi(settings.provider) && (
             <p className="subtle">Ücretsiz modda notun Google Gemini ile işlenir; Google ücretsiz kullanımdaki içerikleri ürünlerini geliştirmek için kullanabilir. Kişisel bilgi içeren notları yükleme.</p>
           )}
         </div>

@@ -319,3 +319,56 @@ revoke all on function public.ai_quota(), public.consume_ai(), public.is_admin()
   public.admin_set_role(uuid, text), public.admin_feedback(), public.admin_errors() from public, anon;
 grant execute on function public.ai_quota(), public.consume_ai(), public.is_admin(), public.admin_users(),
   public.admin_set_role(uuid, text), public.admin_feedback(), public.admin_errors() to authenticated;
+
+-- Free+ (Aşama 12): VIPs and admins may use a stronger Gemini on Vertex AI, paid from Google Cloud
+-- trial credit. Hard caps here, on top of Google's own: per person per day by role, and for the
+-- whole site per day. When a cap is reached the server quietly uses the normal free AI instead.
+alter table public.ai_usage add column if not exists plus_count integer not null default 0 check (plus_count >= 0);
+create table if not exists public.ai_plus_daily (
+  day date primary key,
+  count integer not null default 0 check (count >= 0)
+);
+alter table public.ai_plus_daily enable row level security;
+revoke all on public.ai_plus_daily from anon, authenticated;
+
+-- Change the numbers here to adjust. 0 = not allowed.
+create or replace function public.plus_limit_for(r text) returns integer
+language sql immutable set search_path = '' as $$
+  select case r when 'admin' then 100 when 'vip' then 30 else 0 end
+$$;
+create or replace function public.plus_site_limit() returns integer
+language sql immutable set search_path = '' as $$ select 300 $$;
+
+create or replace function public.plus_quota() returns json
+language sql stable security definer set search_path = '' as $$
+  select json_build_object(
+    'role', coalesce(r.role, 'normal'),
+    'eligible', public.plus_limit_for(coalesce(r.role, 'normal')) > 0,
+    'used', coalesce(u.plus_count, 0),
+    'limit', public.plus_limit_for(coalesce(r.role, 'normal')),
+    'site_used', coalesce(d.count, 0),
+    'site_limit', public.plus_site_limit(),
+    'allowed', coalesce(u.plus_count, 0) < public.plus_limit_for(coalesce(r.role, 'normal')) and coalesce(d.count, 0) < public.plus_site_limit()
+  )
+  from (select (select auth.uid()) as id) me
+  left join public.user_roles r on r.user_id = me.id
+  left join public.ai_usage u on u.user_id = me.id and u.day = public.istanbul_today()
+  left join public.ai_plus_daily d on d.day = public.istanbul_today()
+  where me.id is not null
+$$;
+
+-- Counts one successful Free+ answer for the caller and for the site. Only for eligible roles.
+create or replace function public.consume_plus() returns json
+language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then return null; end if;
+  if public.plus_limit_for(coalesce((select role from public.user_roles where user_id = auth.uid()), 'normal')) = 0 then return public.plus_quota(); end if;
+  insert into public.ai_usage (user_id, day, count, plus_count) values (auth.uid(), public.istanbul_today(), 0, 1)
+  on conflict (user_id, day) do update set plus_count = public.ai_usage.plus_count + 1;
+  insert into public.ai_plus_daily (day, count) values (public.istanbul_today(), 1)
+  on conflict (day) do update set count = public.ai_plus_daily.count + 1;
+  return public.plus_quota();
+end $$;
+
+revoke all on function public.plus_quota(), public.consume_plus() from public, anon;
+grant execute on function public.plus_quota(), public.consume_plus() to authenticated;

@@ -1,7 +1,7 @@
 import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, Trash2, Upload } from 'lucide-react'
 import { FeedbackLink } from '../components/Feedback'
 import { MakerCard } from '../components/MadeBy'
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Spinner, useToast, useConfirm } from '../components/ui'
 import { authErrorMessage, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
@@ -206,8 +206,11 @@ function AiSection() {
     }
   }
 
+  const role = useQuota(store.session?.user.id ?? null)?.role
+  const canPlus = role === 'vip' || role === 'admin'
   const options: Array<{ id: AiProvider; label: string }> = [
     { id: 'shared', label: 'Ücretsiz' },
+    ...(canPlus || provider === 'plus' ? [{ id: 'plus' as const, label: 'Free+' }] : []),
     { id: 'anthropic', label: 'Claude' },
     { id: 'openai', label: 'ChatGPT' },
     { id: 'google', label: 'Gemini' },
@@ -224,7 +227,9 @@ function AiSection() {
         ))}
       </div>
 
-      {provider === 'shared' ? (
+      {provider === 'plus' ? (
+        <PlusPanel eligible={canPlus} />
+      ) : provider === 'shared' ? (
         <>
           <p>
             <strong>Ücretsiz yapay zekâ</strong> <span className="muted">— hiçbir şey ayarlamana gerek yok, sadece giriş yapman yeterli.</span>
@@ -532,5 +537,58 @@ function AdminLink() {
     <Link to="/yonetim" className="btn btn-sm">
       Yönetim paneli
     </Link>
+  )
+}
+
+interface PlusStatus {
+  eligible: boolean
+  used: number
+  limit: number
+  site_used: number
+  site_limit: number
+}
+
+/** Free+ for VIPs and admins: what it is, today's use, and what happens at the limit. */
+function PlusPanel({ eligible }: { eligible: boolean }) {
+  const [status, setStatus] = useState<PlusStatus | null>(null)
+  useEffect(() => {
+    let alive = true
+    if (eligible && supabase) {
+      void supabase.rpc('plus_quota').then(({ data }) => {
+        if (alive && data && typeof data === 'object') setStatus(data as PlusStatus)
+      })
+    }
+    return () => {
+      alive = false
+    }
+  }, [eligible])
+
+  if (!eligible) {
+    return <Alert tone="info">Free+ yalnızca VIP ve yöneticiler için. Senin isteklerin ücretsiz yapay zekâyla hazırlanır.</Alert>
+  }
+  return (
+    <div className="plus-panel">
+      <p>
+        <strong>Free+</strong> <span className="muted">— Google'ın daha güçlü Gemini modeli, VIP'lere özel.</span>
+      </p>
+      <ul className="plus-perks">
+        <li>Notlarını daha güçlü bir modelle hazırlar; özetler ve sorular daha derli toplu olur.</li>
+        <li>Google, Free+ ile gönderilen içerikleri kendi ürünlerini geliştirmek için kullanmaz.</li>
+        <li>Günlük Free+ hakkın dolarsa ya da servis o an cevap vermezse, istek kendiliğinden normal ücretsiz yapay zekâyla hazırlanır; sen bir şey yapmazsın.</li>
+      </ul>
+      {status && (
+        <div className="quota" aria-label="Günlük Free+ hakkı">
+          <div className="quota-head">
+            <span className="chip role-chip is-vip">Free+</span>
+            <strong>
+              Bugün {status.used}/{status.limit} istek
+            </strong>
+          </div>
+          <div className="progress" role="progressbar" aria-valuenow={status.used} aria-valuemin={0} aria-valuemax={status.limit}>
+            <div style={{ width: `${Math.min(100, (status.used / Math.max(1, status.limit)) * 100)}%` }} />
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

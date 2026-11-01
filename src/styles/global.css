@@ -4838,3 +4838,19 @@ a.list-item:hover {
   font-weight: 400;
   color: var(--text-3);
 }
+
+/* Free+ panel in Settings. */
+.plus-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plus-perks {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-2);
+}
