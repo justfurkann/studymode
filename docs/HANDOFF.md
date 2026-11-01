@@ -1,4 +1,4 @@
-# StudyMode — Devir Notu (Claude Code oturumu, son güncelleme 31 Ekim 2026)
+# StudyMode — Devir Notu (Claude Code oturumları, son güncelleme 1 Kasım 2026)
 
 Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yeni bir oturuma (Claude Code veya Google AI Studio) bağlam vermek için yazıldı.
 
@@ -65,7 +65,11 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (Free+ model seçimi sonrası): 173 birim testi, 68 tarayıcı testi.
+Son yeşil durum (1 Kasım 2026, Aşama 14-19 ve Premium birlikte, `main` üzerinde): 236 birim testi, 87 tarayıcı testi.
+
+**Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
+
+`package-lock.json` depoda yok (AI Studio sildiği için); `npm ci` çalışmaz, `npm install` kullanılır. Sürümler sabit olduğu için sorun değil.
 
 ## 4. Veritabanı
 
@@ -99,11 +103,11 @@ alter table public.study_days add column if not exists actions integer not null 
 
 ## 6. Birleştirilmiş PR'lar (özet)
 
-#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma) · #24 devir notu · #25 Aşama 7 (Mola) · #26 Aşama 8 (Sınavlar sekmesi) · #27 Aşama 9 (ders paylaşımı). Hepsi `main`de ve canlıda.
+#2 baştan yazım · #3 Supabase bağlantısı · #4 e-posta doğrulama mesajı · #5 toplu dosya yükleme · #6 ortak ücretsiz yapay zekâ + kendi anahtarı · #7 sınav provası · #8–#9 dosya ekleme, teşhis uç noktası · #10 Gemini yeniden deneme/yedek model · #11 lockfile, README · #12 Türkçe dosya adı indirme hatası · #13 README adresi · #14 ad-soyad, şifre tekrarı, şifremi unuttum · #15 öğrenme yolu testleri · #16 sınav geçmişi, hazırlık durumu, Word/PowerPoint, yeni kullanıcı akışı · #17 taranmış PDF istek boyutu, aynı günde seri toplamı · #18 Aşama 1 · #19 Aşama 2 (vize/final) · #20 Aşama 3 (not sayfasında tek çalışma akışı) · #21 Aşama 4 (Fosforlu tasarım + tanıtım sayfası) · #22 Aşama 5 (Sınav provası sekmesi) · #23 Aşama 6 (boşluk doldurma) · #24 devir notu · #25 Aşama 7 (Mola) · #26 Aşama 8 (Sınavlar sekmesi) · #27 Aşama 9 (ders paylaşımı) · … · #48 Premium özellikleri (yalnızca VIP) · #49 Aşama 14 (çalışma fişi, ortam sesleri, gece kuşu, kırtasiye seti) · #50 Aşama 15 (site incelemesi düzeltmeleri) · #51 Aşama 16 (Tam özet) · #52 Aşama 17 (Hangi öğrenci tipisin?) · #53 Aşama 18 (Başarımlar) · #54 Aşama 13 (Premium sekmesi) · Aşama 19 (öğrenci tipi ve başarımlar profilde) bu dosyayla birlikte. Hepsi `main`de.
 
 ## 7. Aşamalar ve durum
 
-**Şu an açık bir hedef yok.** Aşama 1-9 bitti, hepsi canlıda. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
+**Şu an açık bir hedef yok.** Aşama 1-19 bitti, hepsi `main`de. Sıradaki adım kullanıcının kararı; önerilen: arkadaşlarla bir hafta gerçek kullanım (bkz. 8. bölüm).
 
 **Aşama 1 — Doğrulama ve hatalar: ✅ TAMAM (#18)**
 - Uzun not: bölüm başına bir yeniden deneme, kısmi sonuç + uyarı, not eklemede bölüm ilerlemesi.
@@ -505,6 +509,43 @@ grant execute on function public.plus_quota(), public.consume_plus() to authenti
 - **Renk tokenları:** `--prem-1/2/3`, `--prem-deep`, `--prem-soft`, `--prem-text` (yalnızca arka plan/ışıltı; metin değil). `prefers-reduced-motion` ile animasyonlar durur.
 - **Not:** Bu aşama sırasında başka bir Claude oturumu (#49–#53: başarımlar, öğrenci tipi testi, tam özet, ortam sesleri) main'e iş birleştirdi; Premium onun üstüne rebase edildi. İki oturumu aynı anda çalıştırmamak gerekiyor.
 
+### Aşama 14-19 — `keen-albattani` oturumu (1 Kasım 2026)
+
+Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod çoğunlukla ayrı dosyalarda; stiller `src/styles/extras.css`, `achievements.css`, `quiz.css` (global.css'e dokunulmadı).
+
+**Aşama 14 (#49) — Çalışma fişi, Gece kütüphanesi, Gece kuşu, Kırtasiye seti**
+- Çalışma fişi: Bugün başlığında "Çalışma fişi"; günün/haftanın çalışması kasa fişi olarak 1080×1920 PNG (canvas, `ReceiptCard.tsx`, açılınca yüklenir), paylaş/indir.
+- Gece kütüphanesi: yağmur, kafe, şömine, odak (kahverengi gürültü) karıştırıcısı; sesler dosya değil, tarayıcıda üretiliyor (`ambience.ts`). Masaüstünde sol altta, telefonda üst barda kulaklık.
+- Gece kuşu: 00.00-04.59 arası not (10 sn'de gizlenir), PixelSky'da kayan yıldızlar.
+- Kırtasiye seti (Ayarlar → Görünüm ve ses): 5 kağıt dokusu, 5 fosforlu kalem rengi (`--hi` ve karanlıkta `--accent` değişir), kırtasiye sesleri. `decor.ts`, `<html data-paper data-pen>`.
+
+**Aşama 15 (#50) — Bütün sitenin incelemesi, bulunan hatalar düzeltildi**
+- Kavram haritası tanımsız `--ink`/`--muted` kullanıyordu (karanlıkta görünmüyordu); telefonda yana kayan okunur boyut.
+- Görseller dokununca tam ekran (`ImageViewer.tsx`); yapay zekâ görselleri 1280 px JPEG'e küçültülüp saklanıyor, alan dolarsa eskiler silinip söyleniyor (`imageStore.ts`); hafıza şeması görselleri saklanıyor, "gizle" artık silmiyor.
+- Türkçe harfli indirme adları "download" oluyordu → `safeFileName`.
+- Kayıt kuyruğu (`store.tsx`): bağlantı koparsa değişiklikler sekmede bekleyip internet gelince gönderiliyor; kaydedilmemiş iş varken sekme kapanırken uyarı. Yalnızca ağ hataları yeniden denenir.
+- Not hazırlanırken sekme kapatma uyarısı; yedek indirme Safari/Firefox'ta inmiyordu; `og:image` (`public/og.png`); "Şifreyi göster"; dokunmatikte klavye ipuçları gizli.
+
+**Aşama 16 (#51) — Tam özet** (arkadaş geri bildirimi: "özetin tamamını tek sayfada göreyim")
+- Özet'in en üstünde "Tam özet" kartı + alt sekme (`?adim=tam`, `FullSummary.tsx`): içindekiler, bölüm bölüm anlatım, ezberlenecekler, nottaki örnekler, "Sınavda dikkat", ana noktalar, kavramlar, yazdır.
+- "Ayrıntılı özet hazırla": yeni `detail` görevi (`tasks.ts`), uzun not 12.000 karakterlik parçalarla; sonuç `summary.detailed` (jsonb, şema değişikliği yok). Sunucuda `detail` için 45/55 sn, tarayıcı 62 sn bekler. Free+'ta hızlı model; Gemini 4 Argon 60 sn sınırına sığmadığı için kullanılmadı.
+
+**Aşama 17 (#52) — "Hangi öğrenci tipisin?" (`/ogrenci-tipi`)**
+- Hesapsız tanıtım testi, uygulama kabuğunun dışında, ayrı yüklenir. Seviye → (üniversite/yüksek lisans ise) okul arama (`universities.ts`, ~208 okul, kısaltmalarla; listede yoksa elle) → 10 soru (seviyenin diliyle: vize/yazılı, hoca/öğretmen) → sonuç.
+- Puanlama (`studentType.ts`): 4 eksen (planlı/akışına, anlamaya/sonuca, grupla/yalnız, gece/sabah) + gizli "estetik"; her soru kendi ortalamasına göre merkezli; 8 tipten yön olarak en yakını. Testler: tutarlı cevaplayan kendi tipini alır, rastgele cevaplarda her tip %4-22.
+- Kart: özgün animasyonlu karakter (`StudentCharacter.tsx`), açıklama, eksen yüzdeleri, süper güç, kör nokta, taktik, çalışma arkadaşı; 1080×1920 story PNG; bağlantı sonucu taşır, açan "Sen de çöz" görür.
+
+**Aşama 18 (#53) — Başarımlar (`/basarimlar`)**
+- 20 başarım, 4 nadirlik (Yaygın, Nadir, Destansı, Efsanevi); 11 gizli keşif "???" + bilmece. Gizliler: Gece Kuşu (03.xx), Erkenci Kuş (04-06), Gün Dönümü (tam 00.00), Dedektif (Gizlilik'in son noktası bir düğme), Glitch Hunter (logoya 2,5 sn'de 7 dokunuş ya da ↑↑↓↓←→←→BA; ekran bozulur), Kurcalamacı (Hakkında fotoğrafı ×5), Kayıp Sayfa (olmayan adres), Işık DJ'i, Kalem Kutusu, Ses Mühendisi, Çok Yüzlü (3 farklı tip).
+- `AchievementWatcher` (App kökünde) saat/veri/tema/kalem/ses/klavyeyi izler, nadirliğe göre parlayan bildirim; ilk ziyarette önceden ulaşılmış hedefler sessizce açılır.
+- Yan menü: "Başarımlar x/20" ve öğrenci tipi kartı; telefonda Bugün sayfasında. Bugün başlığında kupa.
+
+**Aşama 19 — Öğrenci tipi ve başarımlar profilde, cihazlar arası** (kullanıcı: "testi çözünce kaydedilmiyor, profile işlenmeli")
+- Sonuç artık kaybolmuyor: giriş yapmışsa Supabase **`auth` `user_metadata`** içinde (`student_type`), adın tutulduğu yerde; **yeni tablo/SQL yok**. Misafirde tarayıcıda (`studymode.studentType.v1`); giriş yapınca hesaba taşınır. En yeni sonuç geçerli (`studentProfile.ts`).
+- Görüldüğü yerler: Ayarlar → "Öğrenci tipin" (karakter, tarih, okul, eksenler, Kartım, Yeniden çöz); yan menü kartı "Öğrenci tipin: …"; test girişinde "Son sonucun". Kendi kartını açan "Arkadaşın…" değil "Sen bir…" görür.
+- Başarımlar da `user_metadata.achievements` ile eşitlenir: hesaptakiler cihaza sessizce gelir, cihazdakiler hesaba gider.
+- **Bilinçli sınır:** "Bu başarımı oyuncuların %X'i buldu" ya da "ODTÜ'de en çok hangi tip" gibi herkesin verisini sayan istatistikler `user_metadata` ile yapılamaz; bunun için tablo + SQL gerekir (henüz istenmedi, yazılmadı).
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
@@ -516,6 +557,17 @@ Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, la
 - **Emoji kullanma**; gerekiyorsa lucide simgesi.
 
 ## 8. Kullanıcının elle denemesi gerekenler (henüz teyit edilmedi)
+
+**Aşama 14-19 için (Claude bu ortamdan canlı siteye ve Supabase/Vercel'e erişemedi):**
+- Yayın: https://studymode.fun/og.png ve https://studymode.fun/ogrenci-tipi açılıyor mu (yeni sürüm canlıda mı).
+- WhatsApp'ta studymode.fun linki atınca önizleme görseli çıkıyor mu.
+- Sesler kulağa iyi geliyor mu: Ayarlar'da "Kırtasiye sesleri", kulaklık düğmesinde yağmur/kafe/şömine/odak.
+- Gerçek yapay zekâ görseli: büyütme, indirme, sayfa yenilenince durma (küçültme gerçek görselle denenmedi).
+- "Ayrıntılı özet hazırla" gerçek bir notta kaç saniye ve yeterince ayrıntılı mı.
+- Öğrenci testi telefonda: "Hikâyende paylaş" Instagram'ı açıyor mu (özellikle iPhone), story düzgün mü.
+- Giriş yapmış hesapta testi çöz → başka cihazda Ayarlar'da "Öğrenci tipin" görünüyor mu (user_metadata yazımı canlıda denenmedi).
+- Logoya 7 hızlı dokunuşta ekran bozuluyor mu; Gizlilik'in son noktası telefonda dokunulabiliyor mu.
+- Üniversite listesi: arkadaşların okulları çıkıyor mu.
 
 - **Gerçek Gemini ile sınav provası:** "Hoca ne dedi?" metninin dikkate alınması, test/klasik/boşluk sayılarına uyulması, boşluk cümlelerinin anlamlı ve fazladan kelimelerin inandırıcı olması. Testler sahte yapay zekâ cevaplarıyla yapıldı; çıktı kalitesi hiç görülmedi.
 - Uzun boşluk bölümünde (10-12) kelime havuzunun yukarıda kalması rahatsız ederse havuz ekranın üstüne sabitlenebilir.

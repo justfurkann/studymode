@@ -1,4 +1,5 @@
 import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, Trash2, Trophy, Upload } from 'lucide-react'
+import { StudentTypeSection } from '../components/StudentTypeCard'
 import { FeedbackLink } from '../components/Feedback'
 import { MakerCard } from '../components/MadeBy'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
@@ -422,6 +423,11 @@ export function Settings() {
             Bugün sayfasındaki günlük tekrar ilerlemesi bu hedefe göre gösterilir. En az 1 kart tekrarı veya 1 test tamamlamak günlük serini korur.
           </p>
         </div>
+      </section>
+
+      <section className="section">
+        <h2>Öğrenci tipin</h2>
+        <StudentTypeSection />
       </section>
 
       <section className="section">

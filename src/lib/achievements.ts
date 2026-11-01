@@ -188,6 +188,23 @@ export function unlock(id: AchievementId, now = new Date(), options: { silent?: 
   return true
 }
 
+/**
+ * Brings in achievements found on another device (from the account), quietly: they were already
+ * announced there. Returns the ids this browser has that the account does not, to send up.
+ */
+export function mergeRemote(remote: Unlocked): AchievementId[] {
+  const missingHere = (Object.keys(remote) as AchievementId[]).filter((id) => !unlocked[id])
+  if (missingHere.length) {
+    unlocked = { ...unlocked }
+    for (const id of missingHere) unlocked[id] = remote[id]
+    save()
+    emit()
+  }
+  return (Object.keys(unlocked) as AchievementId[]).filter((id) => !remote[id])
+}
+
+export const currentUnlocked = () => unlocked
+
 /** Takes the next achievement to announce. */
 export function takeAnnouncement(): AchievementId | null {
   const [next, ...rest] = queue

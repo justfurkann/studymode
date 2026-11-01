@@ -47,3 +47,10 @@ Ayrı bir oturumda eklendi; Premium çalışmasıyla çakışmasın diye kod ayr
 - `AchievementWatcher` kökte: saat, veri, tema, kalem, ses ve klavyeyi izler; yeni başarım için nadirliğe göre parlayan bildirim (dokununca koleksiyonda o kart). İlk ziyarette, önceden ulaşılmış hedefler sessizce açılır.
 - Yalnızca bu tarayıcıda (`studymode.achievements.v1`); cihazlar arası eşitleme ve "oyuncuların %X'i" için Supabase tablosu gerekir.
 - Girişler: yan menüde "Başarımlar x/20", Bugün başlığında kupa, Ayarlar. Yan menüde ve telefonda Bugün sayfasında "Hangi öğrenci tipisin? 1 dakikada öğren, sonucunu paylaş" kartı.
+
+## Öğrenci tipi ve başarımlar profilde (Aşama 19)
+
+- Test sonucu artık kaydediliyor (`src/lib/studentProfile.ts`): giriş yapmışsa Supabase `user_metadata.student_type` (yeni tablo/SQL yok, ad-soyadla aynı yer), misafirde `studymode.studentType.v1`; giriş yapınca hesaba taşınır, en yeni sonuç geçerli.
+- Ayarlar → "Öğrenci tipin", yan menü kartı ("Öğrenci tipin: …, Kartını gör"), test girişinde "Son sonucun". Kendi kartını açana "Arkadaşın" yazmaz.
+- Başarımlar `user_metadata.achievements` ile cihazlar arası eşitlenir (hesaptakiler sessizce gelir, cihazdakiler gider).
+- Herkesi sayan istatistikler (oyuncuların %X'i, okul bazında en çok tip) için tablo + SQL gerekir; yapılmadı.

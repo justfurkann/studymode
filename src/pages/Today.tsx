@@ -1,4 +1,5 @@
 import { ArrowRight, Brain, Trophy, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
+import { StudentTypeLink } from '../components/StudentTypeCard'
 import { Link } from 'react-router-dom'
 import { ExamFocusCard } from '../components/ExamFocusCard'
 import { ReceiptButton } from '../components/ReceiptButton'
@@ -14,7 +15,6 @@ import { useStore } from '../lib/store'
 import { computeStreakSummary, isDayStudied, localDayKey, mergeStudyDays, shiftLocalDay } from '../lib/streak'
 import { buildSmartStudyPlan } from '../lib/studyPlan'
 import type { LearningStepId, Note } from '../lib/types'
-import { StudentCharacter } from '../components/StudentCharacter'
 import { ACHIEVEMENTS, useAchievements } from '../lib/achievements'
 
 function stepUrl(note: Note, stepId: LearningStepId): string {
@@ -125,13 +125,7 @@ export function Today() {
       {focus && <ExamFocusCard focus={focus} />}
 
       {/* Phones have no sidebar; the quiz card sits here instead. */}
-      <Link to="/ogrenci-tipi" className="side-quiz home-quiz">
-        <StudentCharacter id="gecekusu" size={44} />
-        <span className="side-quiz-text">
-          <strong>Hangi öğrenci tipisin?</strong>
-          <span>1 dakikada öğren, sonucunu paylaş</span>
-        </span>
-      </Link>
+      <StudentTypeLink className="side-quiz home-quiz" />
 
       <section className="panel streak-panel" aria-label="Günlük hedef ve seri">
         <div className="streak-goal">

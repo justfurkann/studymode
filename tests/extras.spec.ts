@@ -205,7 +205,7 @@ test('Tam özet: a signed-in student has the AI write the detailed summary, part
   await expect(page.getByRole('button', { name: 'Ayrıntılı özeti yeniden yaz' })).toBeVisible()
 })
 
-test('Hangi öğrenci tipisin: no account, level and school, 10 questions, a shareable result and story image', async ({ page }) => {
+test('Hangi öğrenci tipisin: no account, level and school, 10 questions, a shareable result and story image', async ({ page, browser }) => {
   const errors = watchErrors(page)
   await page.goto('/ogrenci-tipi')
   await page.getByRole('button', { name: /Teste başla/ }).click()
@@ -234,8 +234,11 @@ test('Hangi öğrenci tipisin: no account, level and school, 10 questions, a sha
   expect((await download).suggestedFilename()).toBe('ogrenci-tipim-gecekusu.png')
   await expect(page).toHaveURL(/tip=gecekusu/)
 
-  // A friend opens the link: same card, invited to take the quiz.
-  const friend = await page.context().newPage()
+  // Own card from this browser is "Sen bir", not a friend's.
+  await page.reload()
+  await expect(page.getByText('Arkadaşın bu testi çözdü')).toHaveCount(0)
+  // A friend opens the link on their own phone: same card, invited to take the quiz.
+  const friend = await (await browser.newContext()).newPage()
   await friend.goto(page.url())
   await expect(friend.getByText('Arkadaşın bu testi çözdü')).toBeVisible()
   await expect(friend.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
@@ -310,4 +313,74 @@ test('Başarımlar: the keyboard code and the quiz count too; the sidebar shows 
   await page.goto('/basarimlar')
   await expect(page.getByRole('heading', { name: 'Kendini Tanı' })).toBeVisible()
   await expect(page.locator('#basarim-kendini-tani')).toHaveClass(/is-open/)
+})
+
+test('Öğrenci tipi profilde kalır: misafirde bu tarayıcıda, Ayarlar ve yan menüde görünür', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await startDemo(page)
+  await page.goto('/ogrenci-tipi')
+  await page.getByRole('button', { name: /Teste başla/ }).click()
+  await page.getByRole('button', { name: /^Lise/ }).click()
+  const picks = [3, 3, 0, 1, 3, 1, 1, 0, 1, 3]
+  for (let i = 0; i < 10; i++) {
+    await expect(page.getByText(`${i + 1} / 10`)).toBeVisible()
+    await page.locator('.quiz-option').nth(picks[i]).click()
+  }
+  await expect(page.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
+  // Leave and come back: still there.
+  await page.goto('/ayarlar')
+  await page.reload()
+  await expect(page.locator('.student-type-panel')).toContainText('Gece Kuşu Düşünür')
+  await expect(page.locator('.sidebar .side-quiz')).toContainText('Gece Kuşu Düşünür')
+  await page.goto('/ogrenci-tipi')
+  await expect(page.getByRole('link', { name: /Son sonucun/ })).toContainText('Gece Kuşu Düşünür')
+  await page.getByRole('link', { name: /Son sonucun/ }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
+})
+
+test('Öğrenci tipi ve başarımlar hesaba yazılır; başka cihazdaki sonuç ve başarımlar gelir', async ({ page }) => {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  // This account took the quiz and found Dedektif on another device.
+  const user = {
+    id: 'aaaaaaaa-0000-0000-0000-000000000077', aud: 'authenticated', role: 'authenticated', email: 'zeynep@example.com', app_metadata: {}, created_at: '2026-10-01T00:00:00Z',
+    user_metadata: {
+      first_name: 'Zeynep',
+      student_type: { type: 'kasif', percent: 91, axes: [-40, 90, -10, 20], level: 'universite', school: 'Ege', runnerUp: 'gecekusu', at: '2026-10-30T10:00:00.000Z' },
+      achievements: { dedektif: '2026-10-30T10:00:00.000Z' },
+    },
+  }
+  await page.addInitScript((u) => {
+    localStorage.setItem('sb-jpcatyopkpnudgdyncas-auth-token', JSON.stringify({ access_token: 'fake', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user: u }))
+  }, user)
+  const updates: Array<Record<string, unknown>> = []
+  await page.route(`${SUPABASE}/auth/v1/**`, (route) => {
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON() as { data?: Record<string, unknown> }
+      updates.push(body.data ?? {})
+      user.user_metadata = { ...user.user_metadata, ...(body.data as object) } as typeof user.user_metadata
+    }
+    return route.fulfill({ json: user })
+  })
+  await page.route(`${SUPABASE}/rest/v1/**`, (route) => route.fulfill({ json: route.request().method() === 'GET' ? [] : [] }))
+
+  await page.goto('/ayarlar')
+  await expect(page.locator('.student-type-panel')).toContainText('Meraklı Kaşif')
+  await expect(page.locator('.student-type-panel')).toContainText('Ege')
+  await page.goto('/basarimlar')
+  await expect(page.locator('#basarim-dedektif')).toHaveClass(/is-open/)
+  // Found here: goes up to the account.
+  await page.goto('/burasi-yok')
+  await expect.poll(() => JSON.stringify(updates)).toContain('kayip-sayfa')
+
+  // Taking the quiz again on this device updates the account.
+  await page.goto('/ogrenci-tipi')
+  await page.getByRole('button', { name: /Teste başla/ }).click()
+  await page.getByRole('button', { name: /^Lise/ }).click()
+  for (let i = 0; i < 10; i++) {
+    await expect(page.getByText(`${i + 1} / 10`)).toBeVisible()
+    await page.locator('.quiz-option').nth([3, 3, 0, 1, 3, 1, 1, 0, 1, 3][i]).click()
+  }
+  await expect(page.getByRole('heading', { level: 1, name: 'Gece Kuşu Düşünür' })).toBeVisible()
+  await expect.poll(() => JSON.stringify(updates)).toContain('"type":"gecekusu"')
 })

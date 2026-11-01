@@ -103,3 +103,19 @@ describe('quiet unlocks', () => {
     expect(A.parseUnlocked(store.get('studymode.achievements.v1')!)).toHaveProperty('ilk-adim')
   })
 })
+
+describe('achievements across devices', () => {
+  beforeEach(() => {
+    store.clear()
+    A.resetAchievementsForTests()
+  })
+  it('brings in what the account has quietly, and reports what only this browser has', () => {
+    A.unlock('dedektif')
+    A.takeAnnouncement()
+    const onlyHere = A.mergeRemote({ glitch: '2026-10-30T00:00:00Z' })
+    expect(onlyHere).toEqual(['dedektif'])
+    expect(A.currentUnlocked()).toHaveProperty('glitch', '2026-10-30T00:00:00Z')
+    expect(A.takeAnnouncement()).toBe(null)
+    expect(A.mergeRemote({ glitch: '2026-10-30T00:00:00Z', dedektif: '2026-11-01T00:00:00Z' })).toEqual([])
+  })
+})
