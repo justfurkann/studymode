@@ -286,7 +286,7 @@ describe('Free+ model choice', () => {
     expect(vertexModels({}, 'study')).toEqual(['gemini-3.8-flash', 'gemini-3.6-flash'])
     expect(vertexModels({}, 'transcribe')[0]).toBe('gemini-3.8-flash')
     expect(vertexModels({}, 'grade')).toEqual(['gemini-4-argon', 'gemini-3.1-pro-preview', 'gemini-3.8-flash'])
-    expect(vertexModels({}, 'explain')[0]).toBe('gemini-4-argon')
+    expect(vertexModels({}, 'explain')[0]).toBe('gemini-3.8-flash')
     expect(vertexModels({ VERTEX_SMART_MODELS: 'a, b' }, 'memory')).toEqual(['a', 'b'])
   })
 })

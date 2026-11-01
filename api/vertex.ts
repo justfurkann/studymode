@@ -9,14 +9,16 @@ type Env = Record<string, string | undefined>
 const SCOPE = 'https://www.googleapis.com/auth/cloud-platform'
 /**
  * Long inputs (a whole lecture note, page photos, several notes for a mock exam) need speed to
- * finish inside the function's time limit: the strongest Flash. Short tasks that need careful
- * thinking (grading a written answer, explaining a concept, memory aids) get the flagship
+ * finish inside the function's time limit: the strongest Flash, which also answers quick
+ * explanations fast. Tasks where careful thinking pays off (grading a written answer, memory aids) get the flagship
  * reasoning model, with the Pro model and Flash behind it. Override with VERTEX_MODELS /
  * VERTEX_SMART_MODELS (comma separated).
  */
 export const DEFAULT_VERTEX_MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash']
 export const DEFAULT_VERTEX_SMART_MODELS = ['gemini-4-argon', 'gemini-3.1-pro-preview', 'gemini-3.8-flash']
-const SMART_TASKS = new Set(['grade', 'explain', 'memory'])
+// Measured 1 Nov 2026: the flagship took ~19 s for a short explanation vs ~2 s on the free model;
+// worth it where accuracy matters (grading, memory aids), not for a quick "Bu konuyu anlamadım".
+const SMART_TASKS = new Set(['grade', 'memory'])
 
 export function vertexConfigured(env: Env): boolean {
   return !!(env.GCP_PROJECT_ID && env.GCP_PROJECT_NUMBER && env.GCP_SERVICE_ACCOUNT_EMAIL && env.GCP_WORKLOAD_IDENTITY_POOL_ID && env.GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID)
