@@ -1,4 +1,4 @@
-import { Crown, Sparkles } from 'lucide-react'
+import { Crown, ShieldCheck, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { quotaText, useQuota } from '../lib/account'
@@ -17,7 +17,7 @@ function VipPerks({ used }: { used: number }) {
         <Sparkles size={16} aria-hidden /> Günde <strong>{VIP_LIMIT}</strong> ücretsiz yapay zekâ isteği (normalde {NORMAL_LIMIT}). Bugün {used} tanesini kullandın.
       </li>
       <li>
-        <Crown size={16} aria-hidden /> Logonun yanında VIP çıkartması.
+        <Crown size={16} aria-hidden /> Logonun yanında VIP rozeti.
       </li>
       <li>
         <Sparkles size={16} aria-hidden /> Yeni özellikleri herkesten önce deneyenlerden olacaksın.
@@ -36,16 +36,16 @@ export function RoleBadge() {
 
   if (quota.role === 'admin') {
     return (
-      <Link to="/yonetim" className="role-sticker is-admin" aria-label="Yönetici: yönetim paneli" title="Yönetim paneli">
-        Yönetici
+      <Link to="/yonetim" className="role-pill is-admin" aria-label="Yönetici: yönetim paneli" title="Yönetim paneli">
+        <ShieldCheck size={13} aria-hidden /> Yönetici
       </Link>
     )
   }
 
   return (
     <>
-      <button type="button" className="role-sticker is-vip" onClick={() => setOpen(true)} aria-label="VIP: ayrıcalıklarını gör">
-        VIP
+      <button type="button" className="role-pill is-vip" onClick={() => setOpen(true)} aria-label="VIP: ayrıcalıklarını gör">
+        <Crown size={13} aria-hidden /> VIP
       </button>
       {open && <VipDialog title="VIP ayrıcalıkların" used={quota.used} text={quotaText(quota)} onClose={() => setOpen(false)} />}
     </>

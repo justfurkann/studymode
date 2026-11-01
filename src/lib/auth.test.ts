@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { describe, expect, it } from 'vitest'
-import { authErrorMessage, displayName, nameMetadata, passwordProblem } from './auth'
+import { authErrorMessage, displayName, firstName, nameMetadata, passwordProblem } from './auth'
 
 const user = (meta: Record<string, unknown>) => ({ email: 'ali@example.com', user_metadata: meta }) as unknown as User
 
@@ -32,5 +32,15 @@ describe('authErrorMessage', () => {
     expect(authErrorMessage(new Error('email rate limit exceeded'))).toMatch(/Çok fazla deneme/)
     expect(authErrorMessage(new Error('New password should be different from the old password.'))).toMatch(/eskisiyle aynı/)
     expect(authErrorMessage('otp_expired')).toMatch(/süresi dolmuş/)
+  })
+})
+
+describe('names from Google sign-in', () => {
+  const user = (meta: Record<string, string>) => ({ id: 'u', email: 'a@b.com', user_metadata: meta, app_metadata: {}, aud: 'authenticated', created_at: '' }) as never
+  it('uses the given name and the full name Google sends', () => {
+    expect(firstName(user({ full_name: 'Mehmet Furkan Öztürk', name: 'Mehmet Furkan Öztürk' }))).toBe('Mehmet')
+    expect(firstName(user({ given_name: 'Furkan', full_name: 'Furkan Öztürk' }))).toBe('Furkan')
+    expect(firstName(user({ first_name: 'Ayşe' }))).toBe('Ayşe')
+    expect(displayName(user({ name: 'Ayşe Yılmaz' }))).toBe('Ayşe Yılmaz')
   })
 })
