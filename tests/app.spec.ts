@@ -1865,7 +1865,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     // A normal account: the tab is there, locked, with the way in.
     await page.goto('/premium')
     await expect(page.getByRole('heading', { level: 1, name: /konuşsun/ })).toBeVisible()
-    await expect(page.getByText('Kilitli · VIP hesaplarda açık')).toBeVisible()
+    await expect(page.getByText('Kilitli · Premium kodu ya da VIP hesapla açılır')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Nasıl açılır?' })).toBeVisible()
     await expect(page.getByRole('button', { name: /Stüdyo sesiyle dinle/ })).toHaveCount(0)
     // VIP: open, with today's allowance, and the studio works from the Premium tab.

@@ -87,13 +87,23 @@ export function Terms() {
         </section>
 
         <section>
-          <h2>Ücretsiz hizmet, günlük haklar ve VIP</h2>
+          <h2>Ücretsiz hizmet, ücretli Premium ve VIP</h2>
           <ul>
-            <li>StudyMode şu an ücretsizdir. Yapay zekânın adil paylaşılması için günlük kullanım hakları vardır; bu sınırları gerektiğinde değiştirebiliriz.</li>
+            <li>StudyMode’un temel özellikleri ücretsizdir. Yapay zekânın adil paylaşılması için günlük kullanım hakları vardır; bu sınırları gerektiğinde değiştirebiliriz.</li>
             <li>
-              VIP ve Premium özellikler davetle verilen ücretsiz ayrıcalıklardır. Kapsamları, günlük hakları ve kimlere verildikleri değişebilir; gerektiğinde geri alınabilir.
+              <strong>Ücretli Premium kodla satılır.</strong> Kodu Shopier üzerinden satın alırsın; ödemeyi Shopier alır, kart bilgilerin bize hiç gelmez. Kodu Ayarlar’da ya da Premium
+              sayfasında girdiğinde Premium hesabında açılır.
             </li>
-            <li>İleride ücretli bir özellik gelirse, fiyatı ve koşulları önceden açıkça gösterilir; senin onayın olmadan hiçbir ücret alınmaz.</li>
+            <li>
+              Her kod <strong>tek kullanımlıktır</strong> ve süresi kodla belirlenir (ör. 30 gün). Süren devam ederken yeni bir kod girersen süre üstüne eklenir. Süre bitince Premium
+              kendiliğinden kapanır; <strong>otomatik yenileme ve tekrarlayan ödeme yoktur</strong>.
+            </li>
+            <li>
+              <strong>İade:</strong> Henüz kullanılmamış bir kodun iadesi, kodun iptal edilmesiyle yapılır; bunun için uygulamadaki “Fikir · Hata bildir” kutusundan ya da Instagram’dan
+              yaz. Kod kullanıldığında hizmet hemen başladığı için kullanılmış kodlar iade edilmez; yasadan doğan hakların saklıdır.
+            </li>
+            <li>Premium’un içeriği (sesli not, akıllı arama, görsel) ve günlük hakları adil kullanım için değişebilir; satın aldığın süre boyunca özellikleri kaldırmayız.</li>
+            <li>VIP, davetle verilen ücretsiz bir ayrıcalıktır; kapsamı ve kimlere verildiği değişebilir, gerektiğinde geri alınabilir.</li>
           </ul>
         </section>
 

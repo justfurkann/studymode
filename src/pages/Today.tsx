@@ -1,4 +1,5 @@
 import { ArrowRight, Brain, Trophy, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
+import { PremiumReminder } from '../components/PremiumCode'
 import { LevelBadge } from '../components/Level'
 import { StudentTypeLink } from '../components/StudentTypeCard'
 import { Link } from 'react-router-dom'
@@ -138,6 +139,8 @@ export function Today() {
           </Link>
         </section>
       )}
+
+      <PremiumReminder />
 
       {focus && <ExamFocusCard focus={focus} />}
 

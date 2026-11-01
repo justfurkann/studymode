@@ -1,4 +1,5 @@
 import { ArrowLeft, Bug, GraduationCap, Lightbulb, RefreshCw, ShieldCheck, Users } from 'lucide-react'
+import { PremiumCodesAdmin } from '../components/PremiumCode'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Empty, Spinner, useToast } from '../components/ui'
@@ -210,6 +211,8 @@ export function Admin() {
           ))}
         </section>
       )}
+
+      <PremiumCodesAdmin />
 
       <section className="section" aria-label="Hesaplar">
         <h2>

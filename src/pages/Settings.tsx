@@ -1,4 +1,5 @@
 import { Cloud, Download, Eye, EyeOff, KeyRound, LogOut, Monitor, Moon, Sun, LifeBuoy, PlayCircle, Trash2, Trophy, Upload } from 'lucide-react'
+import { PremiumAccessSection } from '../components/PremiumCode'
 import { requestTour } from '../lib/tour'
 import { StudentTypeSection } from '../components/StudentTypeCard'
 import { EducationForm } from '../components/EducationForm'
@@ -440,6 +441,11 @@ export function Settings() {
           <EducationSection />
         </section>
       )}
+
+      <section className="section">
+        <h2>Premium</h2>
+        <PremiumAccessSection />
+      </section>
 
       <section className="section">
         <h2>Öğrenci tipin</h2>

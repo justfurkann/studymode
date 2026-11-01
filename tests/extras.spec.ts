@@ -393,7 +393,14 @@ test('Öğrenci tipi ve başarımlar hesaba yazılır; başka cihazdaki sonuç v
 })
 
 /** Signed in as `role`, with the account's metadata kept by the fake server (PUT /user merges into it). */
-async function signedInAs(page: Page, role: 'admin' | 'normal' | 'vip', metadata: Record<string, unknown> = {}, tables: Record<string, unknown[]> = {}) {
+async function signedInAs(
+  page: Page,
+  role: 'admin' | 'normal' | 'vip',
+  metadata: Record<string, unknown> = {},
+  tables: Record<string, unknown[]> = {},
+  /** Database functions this test answers itself: name → (body) → JSON, or an Error for a failure. */
+  rpc: Record<string, (body: Record<string, unknown>) => unknown> = {},
+) {
   const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
   const user = { id: `aaaaaaaa-0000-0000-0000-0000000000${role === 'admin' ? '10' : '11'}`, aud: 'authenticated', role: 'authenticated', email: `${role}@example.com`, app_metadata: {}, created_at: '2026-10-01T00:00:00Z', user_metadata: { first_name: 'Furkan', ...metadata } as Record<string, unknown> }
   await page.addInitScript((u) => {
@@ -411,6 +418,11 @@ async function signedInAs(page: Page, role: 'admin' | 'normal' | 'vip', metadata
   })
   await page.route(`${SUPABASE}/rest/v1/**`, (route) => {
     const path = new URL(route.request().url()).pathname
+    const fn = path.includes('/rpc/') ? path.split('/').pop()! : ''
+    if (fn && rpc[fn]) {
+      const out = rpc[fn]((route.request().postDataJSON() as Record<string, unknown>) ?? {})
+      return out instanceof Error ? route.fulfill({ status: 400, json: { message: out.message } }) : route.fulfill({ json: out ?? null })
+    }
     if (path.endsWith('/rpc/ai_quota')) return route.fulfill({ json: { role, used: 0, limit: role === 'admin' ? null : 40, allowed: true } })
     if (path.endsWith('/rpc/plus_quota')) return route.fulfill({ json: { role, eligible: role !== 'normal', used: 2, limit: 30, allowed: true } })
     if (path.includes('/rpc/')) return route.fulfill({ status: 404, json: { code: 'PGRST202' } })
@@ -1011,4 +1023,112 @@ test('Seviye ve XP: Bugün’de rozet, Başarımlar’da kart ve döküm; seviye
   await card.getByText('XP nereden geldi?').click()
   await expect(card).toContainText('Çevrilen kart')
   await expect(card).toContainText('+80')
+})
+
+
+test('Premium kodu: her hata kendi mesajıyla; doğru kodda Premium hemen açılır ve bitiş tarihi görünür', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  let until: string | null = null
+  const answers = ['invalid', 'used', 'already_yours', 'too_many']
+  await signedInAs(page, 'normal', {}, {}, {
+    ai_quota: () => ({ role: 'normal', used: 0, limit: until ? 150 : 40, allowed: true, premium_until: until }),
+    plus_quota: () => ({ role: 'normal', eligible: !!until, used: 0, limit: 30, allowed: true, premium_until: until }),
+    redeem_code: (body) => {
+      const next = answers.shift()
+      if (next) return { ok: false, error: next }
+      expect(String(body.code)).toBe('SM-7KQ2-X9PD-4M8T')
+      until = '2026-12-02T14:00:00Z'
+      return { ok: true, days: 30, premium_until: until }
+    },
+  })
+  await page.goto('/premium')
+  await expect(page.getByText(/Kilitli · Premium kodu/)).toBeVisible()
+  const input = page.getByPlaceholder('SM-XXXX-XXXX-XXXX')
+  const use = page.getByRole('button', { name: 'Kodu kullan' })
+  for (const message of ['Bu kod geçerli değil.', 'Bu kod daha önce kullanılmış.', 'Bu kodu zaten kullandın.', 'Çok fazla yanlış deneme. Bir saat sonra yeniden dene.']) {
+    await input.fill('sm-0000-0000-0000')
+    await use.click()
+    await expect(page.getByRole('alert')).toHaveText(message)
+  }
+  await input.fill('sm-7kq2-x9pd-4m8t')
+  await expect(input).toHaveValue('SM-7KQ2-X9PD-4M8T')
+  await use.click()
+  await expect(page.getByText(/Premium açıldı! 2 Aralık 2026 tarihine kadar seninle/)).toBeVisible()
+  // Premium opens right away (the allowance is read again), with the end date on the status line.
+  await expect(page.getByText(/Premium açık · 2 Aralık 2026 tarihine kadar/)).toBeVisible()
+  await page.goto('/ayarlar')
+  await expect(page.locator('.premium-access')).toContainText('2 Aralık 2026 tarihine kadar')
+  await expect(page.locator('.premium-access')).toContainText('30 gün kaldı')
+})
+
+test('Premium kodu: bitmesine 3 gün kala Bugün’de kapatılabilir hatırlatma', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  const T = '2026-10-01T00:00:00Z'
+  await signedInAs(page, 'normal', {}, { courses: [{ id: 'c1', name: 'Biyoloji', color: '#4f46e5', exam_date: null, created_at: T, updated_at: T }] }, {
+    ai_quota: () => ({ role: 'normal', used: 0, limit: 150, allowed: true, premium_until: '2026-11-04T20:00:00Z' }),
+  })
+  await page.goto('/')
+  const reminder = page.locator('.premium-reminder')
+  await expect(reminder).toContainText('Premium’ın 3 gün sonra bitiyor')
+  // No Shopier link set yet: no "Yenile" button.
+  await expect(reminder.getByRole('link', { name: 'Yenile' })).toHaveCount(0)
+  await reminder.getByRole('button', { name: 'Hatırlatmayı kapat' }).click()
+  await expect(reminder).toHaveCount(0)
+  await page.reload()
+  await expect(page.locator('.premium-reminder')).toHaveCount(0)
+})
+
+test('Yönetim: kod üret (yalnızca bir kez görünür), listede gör, kullanılmamışı iptal et; Premium kullanıcılar', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  const codes = [
+    { id: 'k1', hint: 'SM-…-4M8T', days: 30, label: 'Shopier', created_at: '2026-11-01T10:00:00Z', redeemed_at: '2026-11-01T12:00:00Z', redeemed_email: 'ali@example.com', revoked_at: null },
+    { id: 'k2', hint: 'SM-…-9QRS', days: 30, label: 'Shopier', created_at: '2026-11-01T10:00:00Z', redeemed_at: null, redeemed_email: null, revoked_at: null },
+  ]
+  const calls: Array<{ fn: string; body: Record<string, unknown> }> = []
+  await signedInAs(page, 'admin', {}, {}, {
+    admin_users: () => [],
+    admin_feedback: () => [],
+    admin_errors: () => [],
+    admin_codes: () => codes,
+    admin_premium: () => [{ id: 'u1', email: 'ali@example.com', until: '2026-12-01T12:00:00Z' }],
+    admin_create_codes: (body) => {
+      calls.push({ fn: 'create', body })
+      return Array.from({ length: Number(body.how_many) }, (_, i) => ({ code: `SM-TEST-000${i}-ABCD`, hint: `SM-…-${i}ABC` }))
+    },
+    admin_revoke_code: (body) => {
+      calls.push({ fn: 'revoke', body })
+      codes[1].revoked_at = '2026-11-02T14:00:00Z'
+      return null
+    },
+  })
+  await page.goto('/yonetim')
+  const section = page.getByRole('region', { name: 'Premium kodları' })
+  await expect(section).toContainText('1 bekleyen · 1 kullanılmış · 1 Premium kullanıcı')
+  await section.getByLabel('Kaç kod?').fill('3')
+  await section.getByRole('button', { name: 'Özel' }).click()
+  await section.getByLabel('Gün sayısı').fill('120')
+  await section.getByLabel('Etiket (isteğe bağlı)').fill('Dönem paketi')
+  await section.getByRole('button', { name: 'Kod üret' }).click()
+  const made = section.getByRole('region', { name: 'Üretilen kodlar' }).or(section.locator('.codes-made'))
+  await expect(made).toContainText('yalnızca şimdi görünür')
+  await expect(made.locator('code')).toHaveCount(3)
+  expect(calls[0]).toEqual({ fn: 'create', body: { how_many: 3, days: 120, label: 'Dönem paketi' } })
+  const download = page.waitForEvent('download')
+  await made.getByRole('button', { name: 'CSV indir' }).click()
+  expect((await download).suggestedFilename()).toBe('premium-kodlari-120-gun.csv')
+  // The used one has no cancel button; the waiting one does.
+  await expect(section.getByRole('button', { name: 'SM-…-4M8T kodunu iptal et' })).toHaveCount(0)
+  await section.getByRole('button', { name: 'SM-…-9QRS kodunu iptal et' }).click()
+  expect(calls.at(-1)).toEqual({ fn: 'revoke', body: { code_id: 'k2' } })
+  await expect(section).toContainText('İptal edildi')
+  await expect(section.getByRole('region', { name: 'Premium kullanıcılar' }).or(section.locator('[aria-label="Premium kullanıcılar"]'))).toContainText('ali@example.com')
+})
+
+test('Yönetim: normal kullanıcı Premium kodları bölümünü görmez', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  await signedInAs(page, 'normal', {}, {}, { admin_codes: () => new Error('not admin') })
+  await page.goto('/yonetim')
+  await expect(page.locator('main')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Premium kodları' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Kod üret' })).toHaveCount(0)
 })

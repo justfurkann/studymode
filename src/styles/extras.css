@@ -1208,3 +1208,116 @@
   background: var(--hi);
   transition: width 0.3s ease;
 }
+
+/* ============ Premium kodları ============ */
+
+.redeem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.redeem.is-compact {
+  margin-top: 8px;
+}
+
+.redeem-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.redeem-form .field {
+  min-width: 200px;
+  margin: 0;
+}
+
+.redeem-input {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.redeem-error {
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.redeem-done {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--prem-soft, var(--hi-soft));
+  border: 1px solid color-mix(in srgb, var(--prem-2, var(--accent)) 40%, transparent);
+  line-height: 1.5;
+}
+
+.redeem-done svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--prem-2, var(--accent));
+}
+
+.premium-access {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.premium-access-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.premium-access-line svg {
+  color: var(--prem-2, var(--accent));
+}
+
+.premium-reminder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-color: color-mix(in srgb, var(--prem-2, var(--accent)) 45%, var(--border));
+  background: var(--prem-soft, var(--surface));
+}
+
+.prem-how-code .redeem-form .field > span {
+  display: none;
+}
+
+.codes-maker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.codes-made {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.codes-list {
+  margin: 0;
+  padding-left: 28px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 4px 16px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.codes-list code,
+.list-item code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.9375rem;
+  letter-spacing: 0.04em;
+  user-select: all;
+}
