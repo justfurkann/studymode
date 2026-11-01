@@ -41,4 +41,51 @@ describe('generateStudySet with long notes', () => {
     await expect(ai.generateStudySet(long, 'Not', settings, undefined, async () => undefined)).rejects.toThrow(/anahtar/)
     vi.unstubAllGlobals()
   })
+
+  it('splits a 30-question exam into 3 parallel batches of 10 questions and merges them without timeout', async () => {
+    const examInput: ai.ExamInput = {
+      courseName: 'Hücre Biyolojisi',
+      notes: [{ title: 'Organeller', text: 'Mitokondri enerji üretir.\n\n'.repeat(400) }],
+      format: 'test',
+      count: 30,
+      difficulty: 'medium',
+      pastQuestions: '',
+      mcqCount: 30,
+      openCount: 0,
+      blankCount: 0,
+      distractorCount: 0,
+      examInfo: '',
+    }
+
+    const batches = ai.splitExamIntoBatches(examInput)
+    expect(batches).toHaveLength(3)
+    expect(batches.map((b) => b.mcqCount)).toEqual([10, 10, 10])
+    expect(batches.map((b) => b.count)).toEqual([10, 10, 10])
+
+    let callIdx = 0
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      callIdx += 1
+      const text = JSON.parse(init.body as string).contents[0].parts[0].text as string
+      const partNum = Number(text.match(/Sınav Bölümü (\d)\/3/)?.[1] ?? callIdx)
+      const questions = Array.from({ length: 10 }, (_, qIdx) => ({
+        type: 'mcq',
+        prompt: `Bölüm ${partNum} Soru ${qIdx + 1}?`,
+        options: ['A', 'B', 'C', 'D'],
+        answerIndex: 0,
+        explanation: 'Açıklama',
+        modelAnswer: '',
+        source: 'Mitokondri',
+      }))
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ questions, distractors: [] }) }] } }] }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const progress: string[] = []
+    const raw = await ai.generateExam(examInput, settings, (d, t) => progress.push(`${d}/${t}`))
+    expect(raw.questions).toHaveLength(30)
+    expect(progress[0]).toBe('0/3')
+    expect(progress[progress.length - 1]).toBe('3/3')
+    vi.unstubAllGlobals()
+  })
 })
+

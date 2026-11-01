@@ -272,7 +272,18 @@ export async function generateStudySet(
   const chunks = splitNoteIntoChunks(text)
   if (chunks.length <= 1) {
     onProgress?.(0, 1)
-    const result = normalizeStudySet(await runTask('study', { text, title }, settings))
+    let raw: RawStudySet | null = null
+    let lastErr: unknown = null
+    for (let attempt = 0; attempt < 2 && !raw; attempt += 1) {
+      try {
+        raw = await runTask('study', { text, title }, settings)
+      } catch (error) {
+        lastErr = error
+        if (attempt === 0) await sleep(CHUNK_RETRY_DELAY_MS)
+      }
+    }
+    if (!raw) throw lastErr instanceof Error ? lastErr : new AiError('Çalışma seti oluşturulamadı.')
+    const result = normalizeStudySet(raw)
     onProgress?.(1, 1)
     return { ...result, failedChunks: 0, totalChunks: 1 }
   }
@@ -433,24 +444,169 @@ export function mergeStudySets(sets: GeneratedSet[]): GeneratedSet {
   }
 }
 
-export async function generateExam(input: ExamInput, settings: Settings): Promise<RawExam> {
-  return runTask('exam', input, settings)
+/** Max questions requested in a single LLM call so 20–30+ question exams never hit serverless timeouts. */
+export const EXAM_BATCH_SIZE = 10
+
+function sliceNoteForExamBatch(text: string, batchIndex: number, batchCount: number): string {
+  if (batchCount <= 1 || text.length <= 4_500) return text
+  const segment = Math.ceil(text.length / batchCount)
+  const overlap = Math.min(800, Math.floor(segment * 0.15))
+  const start = Math.max(0, batchIndex * segment - (batchIndex > 0 ? overlap : 0))
+  const end = Math.min(text.length, (batchIndex + 1) * segment + (batchIndex < batchCount - 1 ? overlap : 0))
+  return text.slice(start, end).trim()
 }
 
+/**
+ * Splits a large exam request (> 10 questions) into smaller balanced batches so each batch finishes
+ * in ~6-10 seconds and covers a distinct portion of the lecture notes without timing out.
+ */
+export function splitExamIntoBatches(input: ExamInput, maxPerBatch = EXAM_BATCH_SIZE): ExamInput[] {
+  const hasExplicitSplit = input.mcqCount != null && input.openCount != null
+  const mcqTotal = hasExplicitSplit ? input.mcqCount! : 0
+  const openTotal = hasExplicitSplit ? input.openCount! : 0
+  const blankTotal = hasExplicitSplit ? (input.blankCount ?? 0) : 0
+  const totalQuestions = hasExplicitSplit ? mcqTotal + openTotal + blankTotal : input.count
+
+  if (totalQuestions <= maxPerBatch) return [input]
+
+  const batchCount = Math.ceil(totalQuestions / maxPerBatch)
+  const shareOf = (total: number, index: number) => Math.floor(total / batchCount) + (index < total % batchCount ? 1 : 0)
+
+  const batches: ExamInput[] = []
+  for (let i = 0; i < batchCount; i += 1) {
+    const mcq = hasExplicitSplit ? shareOf(mcqTotal, i) : undefined
+    const open = hasExplicitSplit ? shareOf(openTotal, i) : undefined
+    const blank = hasExplicitSplit ? shareOf(blankTotal, i) : undefined
+    const count = hasExplicitSplit ? (mcq ?? 0) + (open ?? 0) + (blank ?? 0) : shareOf(input.count, i)
+    if (count <= 0) continue
+
+    const distractors =
+      hasExplicitSplit && (blank ?? 0) > 0 && (input.distractorCount ?? 0) > 0
+        ? Math.max(1, shareOf(input.distractorCount!, i))
+        : 0
+
+    const focusPart =
+      batchCount > 1
+        ? `[Sınav Bölümü ${i + 1}/${batchCount}: Notların özellikle ${i === 0 ? 'başlangıç ve ilk' : i === batchCount - 1 ? 'son ve kapanış' : `${i + 1}.`} kısmındaki konu ve kavramlardan özgün sorular hazırla.]`
+        : ''
+    const combinedInfo = [input.examInfo?.trim(), focusPart].filter(Boolean).join('\n')
+
+    const notesForBatch =
+      input.notes.length >= batchCount * 2
+        ? input.notes.filter((_, idx) => idx % batchCount === i)
+        : input.notes.map((n) => ({
+            title: n.title,
+            text: sliceNoteForExamBatch(n.text, i, batchCount),
+          }))
+
+    batches.push({
+      ...input,
+      notes: notesForBatch,
+      count,
+      ...(hasExplicitSplit
+        ? {
+            mcqCount: mcq,
+            openCount: open,
+            blankCount: blank,
+            distractorCount: distractors,
+          }
+        : {}),
+      examInfo: combinedInfo,
+    })
+  }
+  return batches.length ? batches : [input]
+}
+
+export async function generateExam(
+  input: ExamInput,
+  settings: Settings,
+  onProgress?: (done: number, total: number) => void,
+): Promise<RawExam> {
+  const batches = splitExamIntoBatches(input)
+  if (batches.length === 1) {
+    onProgress?.(0, 1)
+    const out = await runTask('exam', batches[0], settings).catch(() => runTask('exam', batches[0], settings))
+    onProgress?.(1, 1)
+    return out
+  }
+
+  let completed = 0
+  onProgress?.(0, batches.length)
+
+  const settled = await Promise.allSettled(
+    batches.map(async (batch) => {
+      const result = await runTask('exam', batch, settings).catch(() => runTask('exam', batch, settings))
+      completed += 1
+      onProgress?.(completed, batches.length)
+      return result
+    }),
+  )
+
+  const fulfilled = settled.filter((s): s is PromiseFulfilledResult<RawExam> => s.status === 'fulfilled').map((s) => s.value)
+  if (!fulfilled.length) {
+    const firstRejected = settled.find((s): s is PromiseRejectedResult => s.status === 'rejected')
+    throw firstRejected?.reason instanceof Error ? firstRejected.reason : new AiError('Sınav hazırlanamadı.')
+  }
+
+  const seenPrompts = new Set<string>()
+  const questions: RawExam['questions'] = []
+  for (const part of fulfilled) {
+    for (const q of part.questions) {
+      const key = `${q.type}:${q.prompt.trim().toLocaleLowerCase('tr-TR')}`
+      if (!seenPrompts.has(key)) {
+        seenPrompts.add(key)
+        questions.push(q)
+      }
+    }
+  }
+
+  const seenDistractors = new Set<string>()
+  const distractors: string[] = []
+  for (const part of fulfilled) {
+    for (const d of part.distractors ?? []) {
+      const key = d.trim().toLocaleLowerCase('tr-TR')
+      if (key && !seenDistractors.has(key)) {
+        seenDistractors.add(key)
+        distractors.push(d.trim())
+      }
+    }
+  }
+
+  return { questions, distractors }
+}
+
+const GRADE_BATCH_SIZE = 4
+
 export async function gradeAnswers(input: GradeInput, settings: Settings) {
-  const { results } = await runTask('grade', input, settings)
-  if (results.length !== input.items.length) throw new AiError(FORMAT_ERROR)
-  return results.map((r) => ({ score: Math.min(1, Math.max(0, r.score)), feedback: r.feedback.trim() }))
+  if (!input.items.length) return []
+  if (input.items.length <= GRADE_BATCH_SIZE) {
+    const { results } = await runTask('grade', input, settings).catch(() => runTask('grade', input, settings))
+    if (results.length !== input.items.length) throw new AiError(FORMAT_ERROR)
+    return results.map((r) => ({ score: Math.min(1, Math.max(0, r.score)), feedback: r.feedback.trim() }))
+  }
+
+  const chunks: GradeInput['items'][] = []
+  for (let i = 0; i < input.items.length; i += GRADE_BATCH_SIZE) {
+    chunks.push(input.items.slice(i, i + GRADE_BATCH_SIZE))
+  }
+  const chunkResults = await Promise.all(
+    chunks.map(async (items) => {
+      const { results } = await runTask('grade', { items }, settings).catch(() => runTask('grade', { items }, settings))
+      if (results.length !== items.length) throw new AiError(FORMAT_ERROR)
+      return results.map((r) => ({ score: Math.min(1, Math.max(0, r.score)), feedback: r.feedback.trim() }))
+    }),
+  )
+  return chunkResults.flat()
 }
 
 export async function transcribeImages(images: TranscribeImage[], settings: Settings): Promise<string> {
   if (!images.length) return ''
-  const { text } = await runTask('transcribe', { images }, settings)
+  const { text } = await runTask('transcribe', { images }, settings).catch(() => runTask('transcribe', { images }, settings))
   return text.trim()
 }
 
 export async function explainConcept(input: ExplainInput, settings: Settings): Promise<string> {
-  const { explanation } = await runTask('explain', input, settings)
+  const { explanation } = await runTask('explain', input, settings).catch(() => runTask('explain', input, settings))
   return explanation.trim()
 }
 
@@ -458,7 +614,7 @@ export async function generateMemoryTools(
   input: MemoryInput,
   settings: Settings,
 ): Promise<{ mnemonics: MnemonicItem[]; comparisons: ConceptComparison[] }> {
-  const raw = await runTask('memory', input, settings)
+  const raw = await runTask('memory', input, settings).catch(() => runTask('memory', input, settings))
   const mnemonics: MnemonicItem[] = raw.mnemonics
     .filter((m) => m.title.trim() && m.code.trim())
     .map((m) => ({
@@ -486,7 +642,7 @@ export async function generateMemoryTools(
 }
 
 export async function generatePodcastScript(input: PodcastInput, settings: Settings): Promise<PodcastScript> {
-  const raw = await runTask('podcast', input, settings)
+  const raw = await runTask('podcast', input, settings).catch(() => runTask('podcast', input, settings))
   const lines: PodcastLine[] = raw.lines
     .filter((l) => l.text.trim())
     .map((l, idx) => ({

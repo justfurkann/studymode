@@ -26,7 +26,7 @@ const DIFFICULTIES: Array<{ id: ExamDifficulty; label: string }> = [
   { id: 'hard', label: 'Zor' },
 ]
 /** Rough guard so one request stays well under model and server limits. */
-const MAX_NOTE_CHARS = 600_000
+const MAX_NOTE_CHARS = 2_000_000
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -92,6 +92,7 @@ export function Exam() {
   const count = useAi ? plan.mcqCount + plan.openCount + plan.blankCount : plan.mcqCount || COUNTS[1]
   const format = useAi ? planFormat(plan) : 'test'
   const [error, setError] = useState('')
+  const [examProgress, setExamProgress] = useState<{ done: number; total: number } | null>(null)
 
   const [questions, setQuestions] = useState<ExamQuestion[]>(() => initialDraft?.questions ?? [])
   const [answers, setAnswers] = useState<Answer[]>(() => initialDraft?.answers ?? [])
@@ -185,6 +186,7 @@ export function Exam() {
     if (useAi) {
       if (chosenChars > MAX_NOTE_CHARS) return setError('Seçtiğin notlar tek bir sınav için çok uzun. Daha az not seç.')
       setPhase('preparing')
+      setExamProgress(null)
       try {
         const { generateExam } = await freshImport(() => import('../lib/ai'))
         const raw = await generateExam(
@@ -202,6 +204,7 @@ export function Exam() {
             examInfo: plan.info,
           },
           settings,
+          (done, total) => setExamProgress({ done, total }),
         )
         list = normalizeExam(
           raw.questions,
@@ -215,8 +218,10 @@ export function Exam() {
         })
       } catch (e) {
         setPhase('setup')
+        setExamProgress(null)
         return setError(e instanceof Error ? e.message : 'Sınav hazırlanamadı.')
       }
+      setExamProgress(null)
       if (!list.length) {
         setPhase('setup')
         return setError('Bu notlardan sınav sorusu çıkarılamadı. Başka notlar seçip tekrar dene.')
@@ -518,7 +523,10 @@ export function Exam() {
               <button className="btn btn-primary btn-lg" onClick={start} disabled={busy || !chosen.length}>
                 {busy ? (
                   <>
-                    <Spinner /> Sınav hazırlanıyor… (1-2 dk sürebilir)
+                    <Spinner />{' '}
+                    {examProgress && examProgress.total > 1
+                      ? `Sınav hazırlanıyor… (${examProgress.done}/${examProgress.total} bölüm)`
+                      : 'Sınav hazırlanıyor… (birkaç saniye sürebilir)'}
                   </>
                 ) : (
                   'Sınavı başlat'
