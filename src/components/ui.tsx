@@ -1,5 +1,6 @@
 import { AlertCircle, Info, LoaderCircle, TriangleAlert, X } from 'lucide-react'
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { playSound } from '../lib/sound'
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -25,7 +26,9 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
     }
   }, [])
 
-  return (
+  // Drawn at the end of <body>: inside the blurred top bar or sidebar a fixed backdrop would be
+  // trapped in that box instead of covering the screen.
+  return createPortal(
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} ref={ref}>
         <div className="modal-head">
@@ -36,7 +39,8 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

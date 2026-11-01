@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (Aşama 11 sonrası): 167 birim testi, 61 tarayıcı testi.
+Son yeşil durum (rol çıkartmaları sonrası): 167 birim testi, 64 tarayıcı testi.
 
 ## 4. Veritabanı
 
@@ -301,6 +301,8 @@ grant insert on public.feedback, public.client_errors to anon, authenticated;
 - **Roller:** `user_roles` (yalnızca `vip` / `admin`; satır yoksa normal). Kullanıcı yalnızca kendi rolünü okuyabilir; rol veren tek yol `admin_set_role` (yönetici kontrolü fonksiyonun içinde) ya da Supabase panelinde SQL. Kurucu hesabı (justfurkan42@gmail.com) yönetici. Yönetici kendi yöneticiliğini kaldıramaz.
 - **Günlük hak:** normal 40, VIP 150, yönetici sınırsız; İstanbul gününe göre (`istanbul_today`), sayıları `ai_limit_for` içinde değiştir. `api/generate.ts` Gemini'den önce `ai_quota`yı (kullanıcının kendi token'ıyla) çağırır; dolmuşsa 429 `daily_limit`; **yalnızca başarılı cevaptan sonra** `consume_ai` ile sayar. Fonksiyonlar yoksa ya da Supabase cevap vermezse **açık kalır** (herkesi durdurmaz). Kendi anahtarını bağlayanlar sayılmaz.
 - **Uygulama:** `src/lib/account.ts` (`useQuota`), Ayarlar'da ücretsiz yapay zekâ bölümünde rol rozeti + "Bugün 12/40 istek" çubuğu; hak dolunca "Bugünkü ücretsiz yapay zekâ hakkın doldu (40/40). Gece yarısı yenilenir…".
+- **Rol çıkartması** (`RoleBadge.tsx`): logonun ("mode") ucuna eğik yapışık çıkartma, hem yan menüde hem telefon üst çubuğunda. VIP: fosforlu "VIP", dokununca "VIP ayrıcalıkların" penceresi (günde 150 istek, bugünkü kullanım, çıkartma, yeni özelliklere erken erişim). Yönetici: koyu "Yönetici", dokununca `/yonetim`. Biri ilk kez VIP görünce o cihazda bir kez "Artık VIP'sin!" karşılaması (`VipWelcome`, Layout'ta tek sefer). Normal hesapta çıkartma yok.
+- **Pencereler (`Modal`) artık `createPortal` ile `body`'ye çiziliyor:** bulanık üst çubuk ya da yan menünün içinden açılan pencere o kutuya sıkışıyordu.
 - **Yönetim sayfası** `/yonetim` (`src/pages/Admin.tsx`, Ayarlar'da yalnızca yöneticiye "Yönetim paneli" düğmesi): özet (hesap, bugün kullanan, bugünkü istek, VIP), hesap listesi (e-posta, katılım, son giriş, not sayısı, bugünkü istek, son çalışma; rol seçimi), geri bildirimler, son 30 günün telefon hataları. Not içerikleri gösterilmez. Her fonksiyon yöneticiliği kendisi tekrar denetler.
 - Yerel Postgres'te sahte auth ile denendi (normal kullanıcı rol ekleyemez, sayacı değiştiremez, yönetim fonksiyonlarını çalıştıramaz; anon hiçbirini çalıştıramaz; VIP 150, normal 40'ta durur; şema iki kez çalışır).
 - SQL (`schema.sql` sonunda da var; kurucuyu yönetici yapan satır ayrıca: `insert into public.user_roles (user_id, role) select id, 'admin' from auth.users where lower(email) = 'justfurkan42@gmail.com' on conflict (user_id) do update set role = 'admin';`):

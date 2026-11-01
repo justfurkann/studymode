@@ -1821,7 +1821,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     await expect(quota).toContainText('VIP')
     await expect(quota).toContainText('Bugün 12/150 istek')
     // Not an admin: no admin link, and the admin page says so.
-    await expect(page.getByRole('link', { name: 'Yönetim paneli' })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Yönetim paneli', exact: true })).toHaveCount(0)
     await page.goto('/yonetim')
     await expect(page.getByText('Bu sayfa yalnızca yönetici için')).toBeVisible()
   })
@@ -1856,7 +1856,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     })
     await page.goto('/ayarlar')
     await expect(page.getByLabel('Günlük ücretsiz yapay zekâ hakkı')).toContainText('sınırsız')
-    await page.getByRole('link', { name: 'Yönetim paneli' }).click()
+    await page.getByRole('link', { name: 'Yönetim paneli', exact: true }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Yönetim' })).toBeVisible()
     await expect(page.locator('.admin-stats')).toContainText('2hesap')
     await expect(page.locator('.admin-stats')).toContainText('10bugünkü istek')
@@ -1871,5 +1871,41 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     await page.setViewportSize({ width: 375, height: 812 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false)
     expect(errors).toEqual([])
+  })
+
+  test('a VIP sees a sticker by the logo, a welcome once, and what VIP gives', async ({ page }) => {
+    const errors = watchErrors(page)
+    await signedIn(page, { ai_quota: () => ({ role: 'vip', used: 5, limit: 150, allowed: true }) })
+    await page.goto('/')
+    const welcome = page.getByRole('dialog', { name: 'Artık VIP’sin!' })
+    await expect(welcome).toBeVisible()
+    await expect(welcome).toContainText('Günde 150 ücretsiz yapay zekâ isteği (normalde 40)')
+    await welcome.getByRole('button', { name: 'Harika' }).click()
+    // Only once per device.
+    await page.reload()
+    await expect(page.getByRole('complementary', { name: 'Ana menü' }).getByRole('button', { name: 'VIP: ayrıcalıklarını gör' })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await page.getByRole('complementary', { name: 'Ana menü' }).getByRole('button', { name: 'VIP: ayrıcalıklarını gör' }).click()
+    await expect(page.getByRole('dialog', { name: 'VIP ayrıcalıkların' })).toContainText('Bugün 5 tanesini kullandın')
+    await page.getByRole('button', { name: 'Harika' }).click()
+    // On a phone the sticker sits by the logo in the top bar.
+    await page.setViewportSize({ width: 375, height: 812 })
+    await expect(page.locator('.mobile-top').getByRole('button', { name: 'VIP: ayrıcalıklarını gör' })).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test('the admin gets a "Yönetici" sticker that opens the admin page; normal accounts get none', async ({ page }) => {
+    await signedIn(page, { ai_quota: () => ({ role: 'admin', used: 0, limit: null, allowed: true }), admin_users: () => [], admin_feedback: () => [], admin_errors: () => [] })
+    await page.goto('/')
+    await page.getByRole('complementary', { name: 'Ana menü' }).getByRole('link', { name: 'Yönetici: yönetim paneli' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Yönetim' })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+
+  test('a normal account has no sticker', async ({ page }) => {
+    await signedIn(page, { ai_quota: () => ({ role: 'normal', used: 0, limit: 40, allowed: true }) })
+    await page.goto('/ayarlar')
+    await expect(page.getByLabel('Günlük ücretsiz yapay zekâ hakkı')).toContainText('Normal')
+    await expect(page.locator('.role-sticker')).toHaveCount(0)
   })
 })
