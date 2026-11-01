@@ -1,6 +1,6 @@
 import { BookOpen, Brain, ClipboardList, Gem, House, Plus, Settings, Trophy } from 'lucide-react'
+import { StudentTypeLink } from './StudentTypeCard'
 import { triggerGlitch } from './Achievements'
-import { StudentCharacter } from './StudentCharacter'
 import { ACHIEVEMENTS, unlock, useAchievements } from '../lib/achievements'
 import { RoleBadge, VipWelcome } from './RoleBadge'
 import { FeedbackLink } from './Feedback'
@@ -113,13 +113,7 @@ export function Layout() {
             {found}/{ACHIEVEMENTS.length}
           </span>
         </NavLink>
-        <Link to="/ogrenci-tipi" className="side-quiz">
-          <StudentCharacter id="gecekusu" size={44} />
-          <span className="side-quiz-text">
-            <strong>Hangi öğrenci tipisin?</strong>
-            <span>1 dakikada öğren, sonucunu paylaş</span>
-          </span>
-        </Link>
+        <StudentTypeLink className="side-quiz" />
         <div className="sidebar-footer">
           <span className={`status-dot ${mode === 'cloud' ? 'cloud' : ''}`} />
           <span title={session?.user.email} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -30,6 +30,9 @@ import {
   ACHIEVEMENT_BY_ID,
   clockAchievements,
   isFirstVisit,
+  currentUnlocked,
+  mergeRemote,
+  parseUnlocked,
   reachedGoals,
   RARITIES,
   recordPen,
@@ -47,6 +50,8 @@ import { readRecords } from '../lib/mola'
 import { useSettings } from '../lib/settings'
 import { playSound } from '../lib/sound'
 import { useStore } from '../lib/store'
+import { pushIfNewer, useSyncStudentResult } from '../lib/studentProfile'
+import { supabase } from '../lib/supabase'
 import { localDayKey } from '../lib/streak'
 
 const ICONS: Record<AchievementIcon, LucideIcon> = {
@@ -102,6 +107,8 @@ const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'Ar
  */
 export function AchievementWatcher() {
   const { data, status } = useStore()
+  const { session, mine, remote } = useSyncStudentResult()
+  const { unlocked } = useAchievements()
   const settings = useSettings()
   const decor = useDecor()
   const ambience = useAmbience()
@@ -151,6 +158,26 @@ export function AchievementWatcher() {
   useEffect(() => {
     if (ambience.playing && Object.values(ambience.volumes).every((v) => v > 0)) unlock('ses-muhendisi')
   }, [ambience])
+
+  // The quiz result follows the account: one taken before signing in is copied up.
+  useEffect(() => {
+    pushIfNewer(!!session, mine, remote)
+  }, [session, mine, remote])
+
+  // Achievements follow the account too (user_metadata.achievements, no table needed): what the
+  // account has comes here quietly, what only this browser has goes up.
+  const pushed = useRef('')
+  const remoteAchievements = (session?.user.user_metadata as Record<string, unknown> | undefined)?.achievements
+  useEffect(() => {
+    if (!session || !supabase) return
+    const fromAccount = parseUnlocked(JSON.stringify(remoteAchievements ?? {}))
+    const onlyHere = mergeRemote(fromAccount)
+    if (!onlyHere.length) return
+    const payload = JSON.stringify(currentUnlocked())
+    if (payload === pushed.current) return
+    pushed.current = payload
+    void supabase.auth.updateUser({ data: { achievements: currentUnlocked() } }).catch(() => undefined)
+  }, [session, remoteAchievements, unlocked])
 
   // The old cheat code.
   useEffect(() => {

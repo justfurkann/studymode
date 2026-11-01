@@ -23,6 +23,7 @@ import {
 import { searchUniversities } from '../lib/universities'
 import '../styles/quiz.css'
 import { recordQuizType } from '../lib/achievements'
+import { fromQuiz, resultPath, saveStudentResult, useStudentResult } from '../lib/studentProfile'
 
 /*
  * "Hangi öğrenci tipisin?" at /ogrenci-tipi. No account needed. Level, then (for university
@@ -71,14 +72,22 @@ function sharedFromParams(params: URLSearchParams): Shared | null {
 
 export default function StudentQuiz() {
   const [params, setParams] = useSearchParams()
-  const opened = useMemo(() => sharedFromParams(params), []) // eslint-disable-line react-hooks/exhaustive-deps
+  // A card in the address (a shared link, or "Son sonucun"). Follows the address, so opening one from
+  // the quiz's own first screen works too.
+  const opened = useMemo(() => sharedFromParams(params), [params])
+  const saved = useStudentResult()
   const [step, setStep] = useState<Step>(opened ? 'result' : 'intro')
   const [level, setLevel] = useState<Level | null>(null)
   const [school, setSchool] = useState('')
   const [answers, setAnswers] = useState<number[]>([])
   const [result, setResult] = useState<QuizResult | null>(null)
-  /** Opened from someone else's link: show their card and invite to take the quiz. */
-  const [visitor, setVisitor] = useState(!!opened)
+  /** Someone else's card: show it and invite to take the quiz. The student's own saved card is not "a friend's". */
+  const own = !!opened && !!saved && saved.type === opened.type.id && params.get('p') === saved.axes.join(',')
+  const visitor = !!opened && !result && !own
+
+  useEffect(() => {
+    if (opened && !result) setStep('result')
+  }, [opened, result])
 
   useEffect(() => {
     document.title = 'Hangi öğrenci tipisin? · studymode'
@@ -96,7 +105,6 @@ export default function StudentQuiz() {
     : opened
 
   function start() {
-    setVisitor(false)
     setAnswers([])
     setResult(null)
     setParams({}, { replace: true })
@@ -115,6 +123,8 @@ export default function StudentQuiz() {
     if (next.length === QUESTIONS.length) {
       const r = resultOf(next)
       recordQuizType(r.type.id)
+      // Kept on the profile (the account when signed in), not only in the address bar.
+      void saveStudentResult(fromQuiz(r, level, school))
       setResult(r)
       setStep('result')
       setParams(resultParams({ type: r.type, bars: [], percent: r.matches[0].percent, runnerUp: r.runnerUp, level, school }, r.profile), { replace: true })
@@ -163,6 +173,7 @@ export default function StudentQuiz() {
 }
 
 function Intro({ onStart }: { onStart: () => void }) {
+  const last = useStudentResult()
   return (
     <section className="quiz-card quiz-intro">
       <div className="quiz-intro-cast" aria-hidden="true">
@@ -174,6 +185,16 @@ function Intro({ onStart }: { onStart: () => void }) {
         Hangi <span className="hl">öğrenci</span> tipisin?
       </h1>
       <p className="quiz-lead">10 soru, bir dakika. Nasıl plan yaptığına, nasıl öğrendiğine, kiminle ve ne zaman çalıştığına bakıp 8 tipten sana en yakın olanı buluyoruz. Sonunda karakterin, güçlü yanların ve sana özel bir çalışma taktiği var.</p>
+      {last && (
+        <Link to={resultPath(last)} className="quiz-last">
+          <StudentCharacter id={last.type} size={48} still />
+          <span>
+            <span className="subtle">Son sonucun · {new Date(last.at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</span>
+            <strong>{TYPES[last.type].name}</strong>
+          </span>
+          <ArrowRight size={18} aria-hidden />
+        </Link>
+      )}
       <button className="btn btn-primary btn-lg" onClick={onStart}>
         Teste başla <ArrowRight size={18} />
       </button>
