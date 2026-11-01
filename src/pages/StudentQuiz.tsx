@@ -33,7 +33,6 @@ import {
   Play,
   RotateCcw,
   Scale,
-  School,
   Search,
   Send,
   Settings2,
@@ -60,7 +59,6 @@ import { useStore } from '../lib/store'
 import {
   axisBars,
   examWord,
-  hasUniversity,
   isTypeId,
   LEVELS,
   optionText,
@@ -73,10 +71,10 @@ import {
   type StudentType,
   type Vector,
 } from '../lib/studentType'
-import { searchUniversities } from '../lib/universities'
 import '../styles/quiz.css'
 import { recordQuizType } from '../lib/achievements'
 import { fromQuiz, resultPath, saveStudentResult, useStudentResult } from '../lib/studentProfile'
+import { useEducation } from '../lib/education'
 
 /*
  * "Hangi öğrenci tipisin?" at /ogrenci-tipi. No account needed. Level, then (for university
@@ -85,7 +83,7 @@ import { fromQuiz, resultPath, saveStudentResult, useStudentResult } from '../li
  * invited to take the quiz too.
  */
 
-type Step = 'intro' | 'level' | 'school' | 'questions' | 'result'
+type Step = 'intro' | 'level' | 'questions' | 'result'
 
 interface Shared {
   type: StudentType
@@ -142,6 +140,8 @@ export default function StudentQuiz() {
   // the quiz's own first screen works too.
   const opened = useMemo(() => sharedFromParams(params), [params])
   const saved = useStudentResult()
+  // Level and school come from the profile (asked once after sign-up); guests pick a level here.
+  const education = useEducation()
   const [step, setStep] = useState<Step>(opened ? 'result' : 'intro')
   const [level, setLevel] = useState<Level | null>(null)
   const [school, setSchool] = useState('')
@@ -174,13 +174,17 @@ export default function StudentQuiz() {
     setAnswers([])
     setResult(null)
     setParams({}, { replace: true })
-    setStep('level')
+    if (education) {
+      setLevel(education.level)
+      setSchool(education.school)
+      setStep('questions')
+    } else setStep('level')
   }
 
   function chooseLevel(next: Level) {
     setLevel(next)
-    if (!hasUniversity(next)) setSchool('')
-    setStep(hasUniversity(next) ? 'school' : 'questions')
+    setSchool('')
+    setStep('questions')
   }
 
   function answer(choice: number) {
@@ -214,22 +218,12 @@ export default function StudentQuiz() {
       <main className="quiz-main">
         {step === 'intro' && <Intro onStart={start} />}
         {step === 'level' && <LevelStep onPick={chooseLevel} onBack={() => setStep('intro')} />}
-        {step === 'school' && (
-          <SchoolStep
-            initial={school}
-            onDone={(name) => {
-              setSchool(name)
-              setStep('questions')
-            }}
-            onBack={() => setStep('level')}
-          />
-        )}
         {step === 'questions' && (
           <QuestionStep
             level={level}
             answers={answers}
             onAnswer={answer}
-            onBack={() => (answers.length ? setAnswers(answers.slice(0, -1)) : setStep(hasUniversity(level) ? 'school' : 'level'))}
+            onBack={() => (answers.length ? setAnswers(answers.slice(0, -1)) : setStep(education ? 'intro' : 'level'))}
           />
         )}
         {step === 'result' && shared && <ResultStep shared={shared} visitor={visitor} matches={result?.matches ?? null} onRestart={start} />}
@@ -285,45 +279,6 @@ function LevelStep({ onPick, onBack }: { onPick: (level: Level) => void; onBack:
           </button>
         ))}
       </div>
-    </section>
-  )
-}
-
-function SchoolStep({ initial, onDone, onBack }: { initial: string; onDone: (name: string) => void; onBack: () => void }) {
-  const [query, setQuery] = useState(initial)
-  const matches = searchUniversities(query)
-  const input = useRef<HTMLInputElement>(null)
-  useEffect(() => input.current?.focus(), [])
-  const typed = query.trim()
-  return (
-    <section className="quiz-card">
-      <BackButton onClick={onBack} />
-      <h2>Hangi üniversitedesin?</h2>
-      <p className="subtle">Sonuç kartında görünür. İstemezsen atlayabilirsin.</p>
-      <label className="quiz-search">
-        <Search size={18} aria-hidden />
-        <input ref={input} className="input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Örn. ODTÜ, Ege, Boğaziçi" aria-label="Üniversite ara" />
-      </label>
-      {typed && (
-        <div className="quiz-options" role="list">
-          {matches.map((u) => (
-            <button key={u.name} role="listitem" className="quiz-option" onClick={() => onDone(u.short)}>
-              <strong>{u.name}</strong>
-              <span>{u.city}</span>
-            </button>
-          ))}
-          {!matches.some((u) => u.name.toLocaleLowerCase('tr-TR') === typed.toLocaleLowerCase('tr-TR')) && (
-            <button className="quiz-option is-plain" onClick={() => onDone(typed.slice(0, 60))}>
-              <strong>
-                <School size={16} aria-hidden /> Listede yok: “{typed.slice(0, 60)}” yaz
-              </strong>
-            </button>
-          )}
-        </div>
-      )}
-      <button className="btn btn-ghost" onClick={() => onDone('')}>
-        Atla <ArrowRight size={16} />
-      </button>
     </section>
   )
 }

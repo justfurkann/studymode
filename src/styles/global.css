@@ -5625,3 +5625,93 @@ a.prem-hit:hover {
 .captcha-box {
   min-height: 65px;
 }
+
+/* ============ School (education) prompt, settings and admin ============ */
+.edu-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.edu-prompt > .muted {
+  margin: 0;
+}
+.edu-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.edu-back {
+  align-self: flex-start;
+  padding-inline: 0;
+}
+.edu-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.edu-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+}
+.edu-option:hover:not(:disabled) {
+  border-color: var(--ink-line);
+  transform: translateY(-1px);
+}
+.edu-option[aria-pressed='true'] {
+  background: var(--hi-soft);
+  border-color: var(--ink-line);
+}
+.edu-option > svg {
+  flex: none;
+  color: var(--text-2);
+}
+.edu-option > span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.edu-option strong {
+  font-weight: 650;
+}
+.edu-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+}
+.edu-search .input {
+  border: 0;
+  background: transparent;
+  padding-left: 0;
+}
+.edu-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.admin-schools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.admin-school {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
