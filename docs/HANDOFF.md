@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (2 Kasım 2026, Aşama 39 sonrası, `main` üzerinde): 275 birim testi, 115 tarayıcı testi.
+Son yeşil durum (2 Kasım 2026, Aşama 40 sonrası, `main` üzerinde): 275 birim testi, 116 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -755,6 +755,20 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Ayarlar > Yapay zekâ: Free+ sahiplerinde sıra artık Ücretsiz, Free+, Claude, ChatGPT, Gemini.
 - Telefon alt bilgisi (`.mobile-foot`): Gizlilik ve Koşullar `.mobile-foot-legal` içinde kendi satırında, aralarında "·". Önceden dört bağlantı kendiliğinden kayıyor ve biri alta düşüyordu.
 - Not: "Başarımlar: hidden discoveries" e2e'si tam pakette bir kez düştü, tek başına ve ikinci tam koşuda geçti (zamanlamaya duyarlı).
+
+### Aşama 40 — Eski iPhone'larda "PDF okunamadı" (2 Kasım 2026, `keen-albattani`)
+
+- **Belirti:** Aynı PDF kullanıcının iPhone'unda açılıyor, arkadaşınınkinde her seferinde "PDF okunamadı" diyordu.
+- **Sebep:** pdf.js 6.4'ün normal sürümü yeni tarayıcı özellikleri istiyor (`URL.parse`, `Promise.withResolvers`, Uint8Array base64…). iOS 17.4'ten eski Safari'de bunlar yok.
+- **Düzeltme:**
+  - `src/lib/importNote.ts` artık `pdfjs-dist/legacy/build/…` kullanıyor; eksiklerin çoğunu kendisi tamamlıyor.
+  - Legacy sürümde bile eksik kalan `Promise.withResolvers`, `src/lib/polyfills.ts` ile sayfada (`main.tsx`'te ilk iş) tamamlanıyor.
+  - PDF işçisinde de tamamlanıyor: `workerWithPolyfills()` küçük bir blob modülü yapar, önce polyfill'i çalıştırıp sonra pdf.js işçisini `import` eder; pdf.js'in CDN işçileri için yaptığının aynısı.
+- **Test:** "PDF upload works on an older iPhone browser" e2e'si `URL.parse` ve `Promise.withResolvers`'ı hem sayfada hem işçide siliyor. Düzeltme olmadan düşüyor, düzeltmeyle geçiyor.
+- **Üst bar:** Kulaklık düğmesi 36 px (Premium düğmesiyle aynı); iki düğme de `display: flex` ile ortalanıyor (eski Safari ızgara `<button>` içinde simgeyi kaydırabiliyor). Arkadaşın telefonunda neyin bozuk durduğu net görülemedi; canlıda bakılmalı.
+- **Kararsız testler düzeltildi:**
+  - Başarımlar testi "Kayıp Sayfa" bildirimini bekledikten sonra sayfadan çıkıyor.
+  - Yönetim testi iptal isteğini `expect.poll` ile bekliyor.
 
 ## Tasarım dili ("Fosforlu")
 

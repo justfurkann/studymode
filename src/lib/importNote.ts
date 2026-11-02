@@ -1,5 +1,6 @@
 import type { ImageMimeType, TranscribeImage } from './ai/tasks'
 import { freshImport, StaleVersionError } from './version'
+import { POLYFILL_SOURCE } from './polyfills'
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024
 export const MAX_PDF_PAGES = 150
@@ -141,15 +142,36 @@ async function readFileBytes(file: File): Promise<Uint8Array> {
  * isolated worker per document (never sharing a single `workerPort` that `loadingTask.destroy()`
  * would terminate or that iOS Safari would abort while the native file picker is open).
  */
-let pdfLoad: Promise<typeof import('pdfjs-dist')> | null = null
+/*
+ * The "legacy" build of pdf.js: the normal one needs a recent browser (URL.parse, Uint8Array base64
+ * and other features from iOS 17-18), so on an iPhone with an older iOS every PDF failed with
+ * "PDF okunamadı" while the same file worked on a newer phone. The legacy build carries most missing
+ * pieces itself; Promise.withResolvers comes from ./polyfills, on the page and in the worker.
+ */
+type PdfJs = typeof import('pdfjs-dist/legacy/build/pdf.mjs')
 
-function loadPdfReader(): Promise<typeof import('pdfjs-dist')> {
+/**
+ * A tiny worker script that installs the polyfills and then loads pdf.js's worker. pdf.js uses a
+ * same-origin address as it is (a blob: address counts as same-origin), the way it wraps CDN workers.
+ */
+function workerWithPolyfills(src: string): string {
+  try {
+    const absolute = new URL(src, window.location.href).href
+    const code = `${POLYFILL_SOURCE}\nawait import(${JSON.stringify(absolute)});\n`
+    return URL.createObjectURL(new Blob([code], { type: 'text/javascript' }))
+  } catch {
+    return src
+  }
+}
+let pdfLoad: Promise<PdfJs> | null = null
+
+function loadPdfReader(): Promise<PdfJs> {
   pdfLoad ??= (async () => {
     const [pdfjs, worker] = await Promise.all([
-      freshImport(() => import('pdfjs-dist')),
-      freshImport(() => import('pdfjs-dist/build/pdf.worker.min.mjs?url')),
+      freshImport(() => import('pdfjs-dist/legacy/build/pdf.mjs')),
+      freshImport(() => import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')),
     ])
-    pdfjs.GlobalWorkerOptions.workerSrc = worker.default
+    pdfjs.GlobalWorkerOptions.workerSrc = workerWithPolyfills(worker.default)
     if ('workerPort' in pdfjs.GlobalWorkerOptions) {
       pdfjs.GlobalWorkerOptions.workerPort = null
     }
@@ -169,12 +191,12 @@ export function preloadNoteReaders() {
 }
 
 async function extractPdfText(file: File, options?: NoteImportOptions): Promise<string> {
-  let loadingTask: import('pdfjs-dist').PDFDocumentLoadingTask | undefined
+  let loadingTask: import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentLoadingTask | undefined
 
   try {
     const rawBytes = await readFileBytes(file)
     let pdfjs = await loadPdfReader()
-    let document: import('pdfjs-dist').PDFDocumentProxy
+    let document: import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentProxy
 
     try {
       // Slice a copy so that if pdf.js transfers the ArrayBuffer to a worker and we need to retry,
@@ -317,7 +339,7 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
 }
 
 async function renderPdfPageToImage(
-  document: import('pdfjs-dist').PDFDocumentProxy,
+  document: import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentProxy,
   pageNumber: number,
 ): Promise<TranscribeImage> {
   const page = await document.getPage(pageNumber)

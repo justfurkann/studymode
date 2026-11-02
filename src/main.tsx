@@ -7,6 +7,7 @@ import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { installErrorReporting } from './lib/feedback'
 import { startUpdateChecks } from './lib/version'
+import { installPolyfills } from './lib/polyfills'
 import { applyTheme } from './lib/settings'
 import { applyDecor } from './lib/decor'
 import './styles/global.css'
@@ -14,6 +15,7 @@ import './styles/extras.css'
 import './styles/achievements.css'
 import './styles/guide.css'
 
+installPolyfills()
 applyTheme()
 applyDecor()
 installErrorReporting()

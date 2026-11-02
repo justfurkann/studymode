@@ -735,12 +735,23 @@
     display: block;
   }
 
+  /* Same size as the Premium button next to it, and centred with flex: older iPhone Safari does not
+     always centre an icon in a grid <button>, which pushed the headphones off-centre. */
   .ambient-in-header .ambient-toggle {
-    width: 38px;
-    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    flex-shrink: 0;
     box-shadow: none;
     border-width: 1px;
     border-color: var(--border-strong);
+  }
+  .ambient-in-header .ambient-toggle svg {
+    display: block;
+    flex-shrink: 0;
   }
 
   .ambient-in-header .cassette {
