@@ -5,10 +5,11 @@ import { useEffect, useState } from 'react'
  * Files in public/brand (from the approved brand pack, see docs/BRAND-ASSETS.md); the letters are
  * real paths, so no font is needed. Never redraw, stretch or crop them: height is set, width follows.
  *
- * With the default yellow highlighter the brand files are shown as they are (<img>). With another
- * pen colour (Kırtasiye seti, data-pen on <html>) the same file is drawn inline and only its yellow
- * shapes take the pen colour: the shapes themselves change colour, so there is no layer on top and
- * no yellow halo at the edges (an earlier overlay left one).
+ * The file is drawn inline and its yellow shapes take --logo-yellow: the brand yellow by default,
+ * the pen colour with another highlighter (Kırtasiye seti, data-pen on <html>). Every colour goes
+ * through the same drawing, so switching colours can never change the logo's size or sharpness
+ * (with yellow as an <img> and pens inline, yellow looked a little smaller on an iPhone). The <img>
+ * is only shown until the file's markup has arrived.
  */
 
 /** Height of the full logo for a given `size` (the old mark size), so existing call sites keep their scale. */
@@ -24,20 +25,7 @@ export function BrandMark({ size = 28 }: { size?: number }) {
   return <img className="brand-mark" src="/brand/svg/icon.svg" width={size} height={size} alt="" aria-hidden="true" decoding="async" />
 }
 
-/** Whether a highlighter colour other than the default yellow is on (data-pen on <html>). */
-function usePen(): boolean {
-  const read = () => typeof document !== 'undefined' && document.documentElement.hasAttribute('data-pen')
-  const [pen, setPen] = useState(read)
-  useEffect(() => {
-    const observer = new MutationObserver(() => setPen(read()))
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-pen'] })
-    setPen(read())
-    return () => observer.disconnect()
-  }, [])
-  return pen
-}
-
-/** The file's markup with its yellow shapes painted in the pen colour (--hi). Same file as the <img>, so it comes from the cache. */
+/** The file's markup with its yellow shapes painted in --logo-yellow. Same file as the <img>, so it comes from the cache. */
 const tinted = new Map<string, Promise<string>>()
 function tintedSvg(src: string): Promise<string> {
   let p = tinted.get(src)
@@ -51,7 +39,7 @@ function tintedSvg(src: string): Promise<string> {
           .replace(/ id="[^"]*"/g, '')
           .replace(/<svg /, '<svg aria-hidden="true" focusable="false" ')
           .replace(/ width="\d+" height="\d+"/, ' width="100%" height="100%"')
-          .replace(BRAND_YELLOW, 'fill="var(--hi)"'),
+          .replace(BRAND_YELLOW, 'fill="var(--logo-yellow)"'),
       )
     p.catch(() => tinted.delete(src))
     tinted.set(src, p)
@@ -59,19 +47,24 @@ function tintedSvg(src: string): Promise<string> {
   return p
 }
 
-function useTinted(on: boolean): { light: string; dark: string } | null {
-  const [svgs, setSvgs] = useState<{ light: string; dark: string } | null>(null)
+let ready: { light: string; dark: string } | null = null
+
+function useTinted(): { light: string; dark: string } | null {
+  const [svgs, setSvgs] = useState(ready)
   useEffect(() => {
-    if (!on) return
+    if (ready) return
     let alive = true
     Promise.all([tintedSvg(LIGHT), tintedSvg(DARK)])
-      .then(([light, dark]) => alive && setSvgs({ light, dark }))
-      .catch(() => alive && setSvgs(null))
+      .then(([light, dark]) => {
+        ready = { light, dark }
+        if (alive) setSvgs(ready)
+      })
+      .catch(() => {})
     return () => {
       alive = false
     }
-  }, [on])
-  return on ? svgs : null
+  }, [])
+  return svgs
 }
 
 /** Full logo. Both theme versions are in the page and CSS shows the one for the current theme. */
@@ -79,7 +72,7 @@ export function Brand({ size = 28, className = '' }: { size?: number; className?
   const height = logoHeight(size)
   // The SVGs are 1298 × 284.
   const width = Math.round((height * 1298) / 284)
-  const svgs = useTinted(usePen())
+  const svgs = useTinted()
   return (
     <span className={`brand ${className}`.trim()} role="img" aria-label="studymode">
       {svgs ? (

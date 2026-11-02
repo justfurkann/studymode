@@ -357,7 +357,13 @@ summary,
   display: block;
 }
 
-/* The pen colour over the logo's yellow parts; only with a pen other than yellow (data-pen). */
+/* The logo's yellow shapes: the brand yellow, or the pen colour when another highlighter is chosen. */
+.brand {
+  --logo-yellow: #ffe34f;
+}
+:root[data-pen] .brand {
+  --logo-yellow: var(--hi);
+}
 .brand-logo.is-tinted svg {
   display: block;
 }

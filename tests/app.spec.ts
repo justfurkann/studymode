@@ -141,13 +141,14 @@ test('PDF upload fills the note text', async ({ page }) => {
 test('a deploy while the add page is open does not stop a PDF from being added', async ({ page }) => {
   await createCourse(page, 'Biyoloji 103')
   const loaded: string[] = []
-  page.on('response', (r) => /pdfjs-dist|pdf\.worker/.test(r.url()) && loaded.push(r.url()))
+  page.on('response', (r) => /pdfjs-dist/.test(r.url()) && loaded.push(r.url()))
   await page.getByRole('link', { name: 'Not ekle' }).last().click()
   // The page fetches the PDF reader by itself, before any file is chosen.
   // (The worker file itself, not the small module that only holds its address.)
-  await expect.poll(() => loaded.some((u) => /pdf\.worker/.test(u) && !/[?&]url\b/.test(u)), { timeout: 15_000 }).toBe(true)
+  // (pdf.js itself; its worker is started per file, see importNote.ts.)
+  await expect.poll(() => loaded.some((u) => /pdfjs-dist/.test(u) && !/pdf\.worker/.test(u)), { timeout: 15_000 }).toBe(true)
   // Then a deploy removes this version's files.
-  await page.route(/pdfjs-dist|pdf\.worker/, (route) => route.abort())
+  await page.route(/pdfjs-dist(?!.*pdf\.worker)/, (route) => route.abort())
   await page.getByLabel('Not dosyası').setInputFiles({ name: 'hucre.pdf', mimeType: 'application/pdf', buffer: makePdf(biologyNotes.split('\n').filter(Boolean)) })
   await expect(page.getByLabel('Ders notun')).toHaveValue(/Mitokondri/)
 })
@@ -399,7 +400,11 @@ test('AI mock exam with past questions, written answers graded by AI', async ({ 
   await expect(page.getByText('Protein sentezi nerede olur?')).toBeVisible()
   expect(users[0]).toContain('Golgi cisimciğinin')
   expect(users[0]).toContain('difficulty="hard"')
-  expect(users[0]).toContain('mcq="10" open="2"')
+  // A large exam is written in parts (each its own request, so none hits the time limit); together they ask for 10 + 2.
+  const examParts = users.filter((u) => u.includes('<exam '))
+  const sum = (key: string) => examParts.reduce((s, u) => s + Number(u.match(new RegExp(`${key}="(\\d+)"`))?.[1] ?? 0), 0)
+  expect(sum('mcq')).toBe(10)
+  expect(sum('open')).toBe(2)
   expect(users[0]).toContain('Tanım soruları ağırlıklı olacak.')
   expect(users[0]).toContain('Mitokondri')
   await expect(page.getByLabel('Kalan süre')).toHaveCount(0)

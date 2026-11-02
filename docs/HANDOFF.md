@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (1 Kasım 2026, Aşama 35 sonrası, `main` üzerinde): 271 birim testi, 115 tarayıcı testi.
+Son yeşil durum (2 Kasım 2026, Aşama 36 sonrası, `main` üzerinde): 275 birim testi, 115 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -728,6 +728,13 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - Telefonda "yeni sürüm" bildirimi alt menünün üstüne taşındı; logo ve üst düğmelerin üstüne binmiyor.
 - **Testler:** Sayfa açıkken okuyucu dosyaları silinse de PDF eklenir. Yenile `?surum=` ile yükler ve işaret temizlenir. Telefonda bildirim altta durur.
 - **Canlıda doğrulanacak:** Arkadaşın telefonunda bu sürüm yayına girdikten sonra Safari sekmesini tamamen kapatıp siteyi yeniden açması yeterli.
+
+### Aşama 36 — Logo her renkte aynı boyda (2 Kasım 2026, `keen-albattani`)
+
+- Kullanıcı: sarıda logo "bir tık küçük", diğer renklerde aynı. Sebep: sarıda `<img>`, diğer kalemlerde satır içi SVG çiziliyordu (#74); Safari ikisini farklı işleyebiliyor. Masaüstü Chromium'da piksel olarak aynıydı, yani fark tarayıcı çiziminden geliyor.
+- Artık her renkte aynı satır içi çizim kullanılıyor. Sarı parçalar `--logo-yellow` alıyor: varsayılan `#ffe34f` (marka sarısı), `data-pen` varken `var(--hi)`. `<img>` yalnızca SVG metni gelene kadar görünüyor.
+- Test: "stationery set" e2e'si nanede ve sarıda logonun aynı kutuda durduğunu ve sarının tam marka sarısı olduğunu kontrol ediyor.
+- **Aynı PR'da:** 9bfb693 (PDF işçisi artık dosya başına; önyükleme yalnızca pdf.js'i alıyor) ve 6872467 (büyük sınav parçalara bölünüyor) `main`'e doğrudan gelmiş ve iki tarayıcı testini kırmıştı. Testler yeni davranışa uyduruldu: önyükleme testi pdf.js modülünü bekliyor; sınav testi parçalardaki mcq/open toplamının 10 + 2 olduğunu kontrol ediyor. **Not:** Bu iki commit dört kontrol çalıştırılmadan `main`'e gönderilmiş.
 
 ## Tasarım dili ("Fosforlu")
 
