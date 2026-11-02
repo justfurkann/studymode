@@ -80,15 +80,19 @@ test('stationery set: paper and highlighter colour apply and stay', async ({ pag
   expect(fills).toContain('rgb(127, 240, 184)')
   expect(fills).toContain('rgb(27, 33, 77)')
   expect(fills).not.toContain('rgb(255, 227, 79)')
+  const penBox = await tinted.boundingBox()
   await page.reload()
   await expect(root).toHaveAttribute('data-pen', 'nane')
   await page.getByRole('button', { name: 'Kareli' }).click()
   await page.getByRole('button', { name: 'Sarı', exact: true }).click()
   await expect(root).not.toHaveAttribute('data-paper')
   await expect(root).not.toHaveAttribute('data-pen')
-  // Yellow shows the brand files untouched.
-  await expect(page.locator('.brand-logo.is-tinted')).toHaveCount(0)
-  await expect(page.locator('img.brand-logo:visible').first()).toHaveAttribute('src', /\/brand\/svg\/logo(-dark)?\.svg$/)
+  // Yellow is drawn the same way, in the exact brand yellow, so the logo keeps its size and look.
+  const yellow = await tinted.evaluate((el) => [...el.querySelectorAll('path, rect')].map((n) => getComputedStyle(n).fill))
+  expect(yellow).toContain('rgb(255, 227, 79)')
+  expect(yellow).not.toContain('rgb(127, 240, 184)')
+  expect(await tinted.boundingBox()).toEqual(penBox)
+  await expect(page.locator('img.brand-logo:visible')).toHaveCount(0)
 })
 
 test('study pictures: tap to enlarge, full size, download; kept after a reload', async ({ page }) => {
