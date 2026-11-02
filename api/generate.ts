@@ -175,7 +175,8 @@ export async function handleGenerate(
           // 22 s and started again from scratch on the next model.
           const plusLeft = left() - FREE_RESERVE_MS
           if (plusLeft < 8_000) break
-          const { text, model } = await callGeminiWithFallback({ target, models: vertexModels(env, task), system: jsonModeSystem(task), user, fetchImpl, sleep, timeoutMs: plusLeft, deadlineMs: plusLeft })
+          const plusAttemptMs = slow ? Math.min(38_000, plusLeft) : Math.min(22_000, plusLeft)
+          const { text, model } = await callGeminiWithFallback({ target, models: vertexModels(env, task), system: jsonModeSystem(task), user, fetchImpl, sleep, timeoutMs: plusAttemptMs, deadlineMs: plusLeft })
           const result = parseTaskOutput(task, text)
           // Embeddings cost next to nothing and a search needs many; they do not use up Free+.
           const counted = task === 'embed' ? undefined : ((await plusCall('consume_plus', auth, fetchImpl)) ?? undefined)

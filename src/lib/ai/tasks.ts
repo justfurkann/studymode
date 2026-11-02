@@ -41,7 +41,8 @@ Produce:
 - cards: 8-12 flashcards for active recall. The front is a specific question (not just a term name when a question works better); the back is a short, complete answer. Cover different parts of the notes, not only definitions.
 - questions: 5-8 multiple-choice questions with exactly 4 options and one correct answer (answerIndex is 0-based). Prefer questions that test understanding and application over word recall. Distractors must be plausible and clearly wrong according to the notes. Vary the position of the correct answer. The explanation says why the answer is right and, briefly, why the most tempting distractor is wrong.
 - practice: 2-3 open-ended questions that make the student explain, compare, or apply ideas, with a model answer grounded in the notes and a one-line hint.
-- Every card and question has "source": a short verbatim quote (max ~120 characters) from the notes that supports it.`
+- Every card and question has "source": a short verbatim quote (max ~120 characters) from the notes that supports it.
+- If the title indicates this is one part of a multi-part note (e.g. "(Bölüm 2/6)" or "(Bölüm 1.1)"), keep this part focused and concise so the combined set is balanced: produce 1-2 overview sentences, 3-4 summary.points, 4-6 cards, 3-4 questions, and 1 practice question for this part.`
 
 // ---------- Detailed summary ("Tam özet") of one note ----------
 

@@ -1,6 +1,6 @@
 import type { ImageMimeType, TranscribeImage } from './ai/tasks'
 import { freshImport, StaleVersionError } from './version'
-import { POLYFILL_SOURCE } from './polyfills'
+import { NEEDS_WORKER_POLYFILL, POLYFILL_SOURCE } from './polyfills'
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024
 export const MAX_PDF_PAGES = 150
@@ -150,20 +150,39 @@ async function readFileBytes(file: File): Promise<Uint8Array> {
  */
 type PdfJs = typeof import('pdfjs-dist/legacy/build/pdf.mjs')
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out`)), ms)
+    promise.then(
+      (val) => {
+        clearTimeout(timer)
+        resolve(val)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      },
+    )
+  })
+}
+
 /**
- * A tiny worker script that installs the polyfills and then loads pdf.js's worker. pdf.js uses a
- * same-origin address as it is (a blob: address counts as same-origin), the way it wraps CDN workers.
+ * Only wraps the worker in a Blob on older browsers (iOS < 17.4) that lack native Promise.withResolvers.
+ * Modern browsers use the direct worker asset URL with zero overhead. Also re-exports WorkerMessageHandler
+ * so pdf.js's built-in main-thread fallback (#setupFakeWorker) works if the Web Worker cannot start.
  */
 function workerWithPolyfills(src: string): string {
+  if (!NEEDS_WORKER_POLYFILL) return src
   try {
     const absolute = new URL(src, window.location.href).href
-    const code = `${POLYFILL_SOURCE}\nawait import(${JSON.stringify(absolute)});\n`
+    const code = `${POLYFILL_SOURCE}\nconst m = await import(${JSON.stringify(absolute)});\nexport const WorkerMessageHandler = m.WorkerMessageHandler;\n`
     return URL.createObjectURL(new Blob([code], { type: 'text/javascript' }))
   } catch {
     return src
   }
 }
 let pdfLoad: Promise<PdfJs> | null = null
+let rawWorkerUrl = ''
 
 function loadPdfReader(): Promise<PdfJs> {
   pdfLoad ??= (async () => {
@@ -171,6 +190,7 @@ function loadPdfReader(): Promise<PdfJs> {
       freshImport(() => import('pdfjs-dist/legacy/build/pdf.mjs')),
       freshImport(() => import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')),
     ])
+    rawWorkerUrl = worker.default
     pdfjs.GlobalWorkerOptions.workerSrc = workerWithPolyfills(worker.default)
     if ('workerPort' in pdfjs.GlobalWorkerOptions) {
       pdfjs.GlobalWorkerOptions.workerPort = null
@@ -206,24 +226,27 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
         enableXfa: false,
         useSystemFonts: true,
       })
-      document = await loadingTask.promise
+      document = await withTimeout(loadingTask.promise, 12_000, 'PDF open')
     } catch (firstError) {
       if (firstError instanceof Error && firstError.name === 'PasswordException') {
         throw firstError
       }
       await loadingTask?.destroy().catch(() => undefined)
       loadingTask = undefined
-      // Reset cached reader state and retry once after a short delay (handles iOS Safari waking up
-      // from the native file picker or a terminated worker).
+      // Reset cached reader state, register main-thread worker handler as a guaranteed fallback
+      // (populates globalThis.pdfjsWorker so older iOS WebViews don't need a Web Worker), and retry.
       pdfLoad = null
-      await new Promise((resolve) => setTimeout(resolve, 250))
+      if (rawWorkerUrl) {
+        await import(/* @vite-ignore */ rawWorkerUrl).catch(() => undefined)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200))
       pdfjs = await loadPdfReader()
       loadingTask = pdfjs.getDocument({
         data: rawBytes.slice(0),
         enableXfa: false,
         useSystemFonts: true,
       })
-      document = await loadingTask.promise
+      document = await withTimeout(loadingTask.promise, 15_000, 'PDF open retry')
     }
 
     if (document.numPages > MAX_PDF_PAGES) {
@@ -234,17 +257,17 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
     const scannedPageNumbers: number[] = []
     let totalCharacters = 0
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-      const page = await document.getPage(pageNumber)
+      const page = await withTimeout(document.getPage(pageNumber), 10_000, `PDF page ${pageNumber}`)
       try {
         let pageText = ''
         try {
-          const content = await page.getTextContent()
+          const content = await withTimeout(page.getTextContent(), 10_000, `PDF text ${pageNumber}`)
           pageText = content.items
             .map((item) => ('str' in item ? `${item.str}${item.hasEOL ? '\n' : ' '}` : ''))
             .join('')
             .trim()
         } catch {
-          // If text extraction fails on a page with custom encodings/fonts, fall back to OCR for that page.
+          // If text extraction fails or times out on a page with custom encodings/fonts, fall back to OCR for that page.
           pageText = ''
         }
         totalCharacters += pageText.length
@@ -277,7 +300,7 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
           const pageNum = scannedPageNumbers[index]
           let img: TranscribeImage | null = null
           try {
-            img = await renderPdfPageToImage(document, pageNum)
+            img = await withTimeout(renderPdfPageToImage(document, pageNum), 15_000, `PDF render ${pageNum}`)
           } catch (renderErr) {
             if (!hasSelectableText && scannedPageNumbers.length === 1) {
               throw renderErr

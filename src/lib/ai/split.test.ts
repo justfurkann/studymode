@@ -52,4 +52,42 @@ describe('generateStudySet through our server', () => {
     expect(progress.at(-1)).toBe(`${pieces}/${pieces}`)
     vi.unstubAllGlobals()
   })
+
+  it('splits a timed-out chunk even when it has no double-newline paragraph breaks and does not loop endlessly', async () => {
+    const singleWallOfText = `Tek blok ders notu: ${'kelime '.repeat(1_600)}`
+    const sizes: number[] = []
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: RequestInit) => {
+      const text = JSON.parse(init.body as string).input.text as string
+      sizes.push(text.length)
+      if (text.length > 7_000) return new Response(JSON.stringify({ error: 'too_slow' }), { status: 504 })
+      return new Response(JSON.stringify({ result: set(sizes.length) }))
+    }))
+    const result = await ai.generateStudySet(singleWallOfText, 'Not', settings, undefined, async () => undefined)
+    expect(sizes).toHaveLength(3)
+    expect(result.failedChunks).toBe(0)
+    expect(result.totalChunks).toBe(2)
+    expect(result.cards).toHaveLength(2)
+    vi.unstubAllGlobals()
+  })
+
+  it('splits a 2-page scanned PDF transcribe batch into single pages when the 2-page request times out at 6/8', async () => {
+    const batchCounts: number[] = []
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: RequestInit) => {
+      const images = JSON.parse(init.body as string).input.images as unknown[]
+      batchCounts.push(images.length)
+      if (images.length > 1) return new Response(JSON.stringify({ error: 'too_slow' }), { status: 504 })
+      return new Response(JSON.stringify({ result: { text: `Sayfa (${batchCounts.length})` } }))
+    }))
+    const text = await ai.transcribeImages(
+      [
+        { mimeType: 'image/jpeg', data: 'cGFnZTc=' },
+        { mimeType: 'image/jpeg', data: 'cGFnZTg=' },
+      ],
+      settings,
+    )
+    expect(batchCounts).toEqual([2, 1, 1])
+    expect(text).toBe('Sayfa (2)\n\nSayfa (3)')
+    vi.unstubAllGlobals()
+  })
 })
+

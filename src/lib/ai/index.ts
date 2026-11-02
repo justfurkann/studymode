@@ -273,6 +273,26 @@ export const SERVER_CHUNK_CHARS = 12_000
 /** Parts shorter than this are not split further when they run out of time. */
 const MIN_SPLIT_CHARS = 3_000
 
+/** Guarantees splitting a timed-out note chunk into smaller parts even when it lacks double-newline paragraph breaks. */
+function splitTimedOutChunk(text: string): string[] {
+  const cleaned = text.trim()
+  if (cleaned.length < MIN_SPLIT_CHARS) return []
+  const byParagraph = splitNoteIntoChunks(cleaned, Math.ceil(cleaned.length / 2) + 500)
+  if (byParagraph.length > 1) return byParagraph
+  const half = Math.floor(cleaned.length / 2)
+  const newlineAt = cleaned.indexOf('\n', half)
+  const spaceAt = cleaned.indexOf(' ', half)
+  const cut =
+    newlineAt > 0 && newlineAt - half < 600
+      ? newlineAt
+      : spaceAt > 0 && spaceAt - half < 300
+        ? spaceAt
+        : half
+  const left = cleaned.slice(0, cut).trim()
+  const right = cleaned.slice(cut).trim()
+  return left && right ? [left, right] : []
+}
+
 /**
  * Long notes are split into chunks, each sent as its own request so none hits the server's time or
  * size limits. A chunk that fails is retried once; if it still fails the others are kept, and the
@@ -288,9 +308,12 @@ export async function generateStudySet(
   // Our server has to answer within 60 s, so its parts are smaller than with the student's own key.
   const first = splitNoteIntoChunks(text, isServerAi(settings.provider) ? SERVER_CHUNK_CHARS : 20_000)
   const many = first.length > 1
-  // Parts still to do, in order. A part that runs out of time is split in two and both halves go
-  // to the front, so a long PDF finishes in smaller steps instead of failing with "notu böl".
-  const queue = first.map((chunk, i) => ({ text: chunk, label: many ? `Bölüm ${i + 1}/${first.length}` : '' }))
+  // Parts still to do, in order. A part that runs out of time is split once and its pieces
+  // go to the front, so a long PDF finishes in smaller steps instead of failing or spinning forever.
+  const queue: Array<{ text: string; label: string; wasSplit?: boolean }> = first.map((chunk, i) => ({
+    text: chunk,
+    label: many ? `Bölüm ${i + 1}/${first.length}` : '',
+  }))
   let total = queue.length
   let done = 0
   const sets: GeneratedSet[] = []
@@ -302,21 +325,32 @@ export async function generateStudySet(
     const input = { text: part.text, title: part.label ? `${title} (${part.label})` : title }
     let raw: RawStudySet | null = null
     let split = false
-    for (let attempt = 0; attempt < 2 && !raw && !split; attempt += 1) {
+    const maxAttempts = part.wasSplit ? 1 : 2
+    for (let attempt = 0; attempt < maxAttempts && !raw && !split; attempt += 1) {
       try {
         raw = await runTask('study', input, settings)
       } catch (error) {
         lastError = error
-        if (isTimeout(error) && part.text.length >= MIN_SPLIT_CHARS) {
-          const halves = splitNoteIntoChunks(part.text, Math.ceil(part.text.length / 2) + 500)
-          if (halves.length > 1) {
-            queue.unshift(...halves.map((h, k) => ({ text: h, label: `${part.label || 'Bölüm'}${part.label ? '' : ' 1'}.${k + 1}` })))
-            total += halves.length - 1
-            split = true
-            break
+        if (isTimeout(error)) {
+          if (!part.wasSplit && part.text.length >= MIN_SPLIT_CHARS) {
+            const halves = splitTimedOutChunk(part.text)
+            if (halves.length > 1) {
+              queue.unshift(
+                ...halves.map((h, k) => ({
+                  text: h,
+                  label: `${part.label || 'Bölüm'}${part.label ? '' : ' 1'}.${k + 1}`,
+                  wasSplit: true,
+                })),
+              )
+              total += halves.length - 1
+              split = true
+              break
+            }
           }
+          // A timeout already waited ~50-60s across server fallbacks; do not stall another 60s on the same chunk.
+          break
         }
-        if (attempt === 0) await sleep(CHUNK_RETRY_DELAY_MS)
+        if (attempt === 0 && maxAttempts > 1) await sleep(CHUNK_RETRY_DELAY_MS)
       }
     }
     if (split) continue
@@ -619,8 +653,24 @@ export async function gradeAnswers(input: GradeInput, settings: Settings) {
 
 export async function transcribeImages(images: TranscribeImage[], settings: Settings): Promise<string> {
   if (!images.length) return ''
-  const { text } = await runTask('transcribe', { images }, settings).catch(() => runTask('transcribe', { images }, settings))
-  return text.trim()
+  try {
+    const { text } = await runTask('transcribe', { images }, settings)
+    return text.trim()
+  } catch (error) {
+    if (isTimeout(error)) {
+      if (images.length > 1) {
+        const parts: string[] = []
+        for (const img of images) {
+          const { text } = await runTask('transcribe', { images: [img] }, settings)
+          if (text.trim()) parts.push(text.trim())
+        }
+        return parts.join('\n\n')
+      }
+      throw error
+    }
+    const { text } = await runTask('transcribe', { images }, settings)
+    return text.trim()
+  }
 }
 
 export async function explainConcept(input: ExplainInput, settings: Settings): Promise<string> {
