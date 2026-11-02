@@ -138,6 +138,27 @@ test('PDF upload fills the note text', async ({ page }) => {
   await expect(page.getByLabel('Not başlığı')).toHaveValue('hucre notlari')
 })
 
+test('PDF upload works on an older iPhone browser (no URL.parse / Promise.withResolvers)', async ({ page }) => {
+  // iOS 16-17 Safari lacks these; the normal pdf.js build needs them, so every PDF failed there.
+  await page.addInitScript(() => {
+    const strip = 'delete URL.parse; delete Promise.withResolvers;'
+    eval(strip)
+    // Workers have their own globals: strip them there too, before the worker's own script runs.
+    const Original = window.Worker
+    window.Worker = class extends Original {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        const absolute = new URL(String(url), location.href).href
+        super(URL.createObjectURL(new Blob([`${strip}\nawait import(${JSON.stringify(absolute)});`], { type: 'text/javascript' })), { ...options, type: 'module' })
+      }
+    }
+  })
+  await createCourse(page, 'Biyoloji 104')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'eski.pdf', mimeType: 'application/pdf', buffer: makePdf(biologyNotes.split('\n').filter(Boolean)) })
+  await expect(page.getByLabel('Ders notun')).toHaveValue(/Mitokondri/)
+  await expect(page.getByText('PDF okunamadı')).toHaveCount(0)
+})
+
 test('a deploy while the add page is open does not stop a PDF from being added', async ({ page }) => {
   await createCourse(page, 'Biyoloji 103')
   const loaded: string[] = []

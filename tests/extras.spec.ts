@@ -308,6 +308,8 @@ test('Başarımlar: hidden discoveries across the site, a toast, and the collect
   // Kayıp Sayfa: an address that does not exist still shows today's page.
   await page.goto('/burasi-yok')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  // Wait for the unlock itself before leaving (under load a quick reload could come first).
+  await expect(page.locator('.ach-toast').filter({ hasText: 'Kayıp Sayfa' })).toBeVisible()
   await page.goto('/basarimlar')
   for (const name of ['Dedektif', 'Glitch Hunter', 'Kayıp Sayfa']) await expect(page.getByRole('heading', { name })).toBeVisible()
   await expect(page.getByRole('link', { name: /Başarımlar/ }).first()).toContainText(/[3-9]\/20/)
@@ -1146,7 +1148,8 @@ test('Yönetim: kod üret (yalnızca bir kez görünür), listede gör, kullanı
   // The used one has no cancel button; the waiting one does.
   await expect(section.getByRole('button', { name: 'SM-…-4M8T kodunu iptal et' })).toHaveCount(0)
   await section.getByRole('button', { name: 'SM-…-9QRS kodunu iptal et' }).click()
-  expect(calls.at(-1)).toEqual({ fn: 'revoke', body: { code_id: 'k2' } })
+  // The request is recorded when it reaches the (mocked) server, a moment after the click.
+  await expect.poll(() => calls.at(-1)).toEqual({ fn: 'revoke', body: { code_id: 'k2' } })
   await expect(section).toContainText('İptal edildi')
   await expect(section.getByRole('region', { name: 'Premium kullanıcılar' }).or(section.locator('[aria-label="Premium kullanıcılar"]'))).toContainText('ali@example.com')
 })
