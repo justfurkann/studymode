@@ -219,7 +219,7 @@ function AiSection() {
   const canPlus = isPremiumRole(quota?.role) || hasPremiumUntil(quota?.premiumUntil)
   // They get Free+ from the server unless they pick "Ücretsiz" (provider "free") on purpose.
   const options: Array<{ id: AiProvider; label: string }> = [
-    ...(canPlus ? [{ id: 'plus' as const, label: 'Free+' }, { id: 'free' as const, label: 'Ücretsiz' }] : [{ id: 'shared' as const, label: 'Ücretsiz' }]),
+    ...(canPlus ? [{ id: 'free' as const, label: 'Ücretsiz' }, { id: 'plus' as const, label: 'Free+' }] : [{ id: 'shared' as const, label: 'Ücretsiz' }]),
     ...(!canPlus && provider === 'plus' ? [{ id: 'plus' as const, label: 'Free+' }] : []),
     { id: 'anthropic', label: 'Claude' },
     { id: 'openai', label: 'ChatGPT' },

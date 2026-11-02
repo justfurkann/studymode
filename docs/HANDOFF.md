@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (2 Kasım 2026, Aşama 38 sonrası, `main` üzerinde): 275 birim testi, 115 tarayıcı testi.
+Son yeşil durum (2 Kasım 2026, Aşama 39 sonrası, `main` üzerinde): 275 birim testi, 115 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -749,6 +749,12 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Varsayılan `shared` değişmedi: Free+ sahibi hiçbir şey seçmediyse yine Free+ alır.
 - Premium işler (podcast, ses, görsel, akıllı arama) her zaman `engine: 'plus'` ile gider, bu seçimden etkilenmez.
 - Ayarlar'da Free+ sahiplerine iki düğme gösterilir: Free+ ve Ücretsiz. Ücretsiz seçiliyken kısa bir açıklama çıkar. Premium süresi biterse `free` seçimi normal "Ücretsiz" olarak görünür.
+
+### Aşama 39 — Ücretsiz solda; telefonda Gizlilik · Koşullar birlikte (2 Kasım 2026, `keen-albattani`)
+
+- Ayarlar > Yapay zekâ: Free+ sahiplerinde sıra artık Ücretsiz, Free+, Claude, ChatGPT, Gemini.
+- Telefon alt bilgisi (`.mobile-foot`): Gizlilik ve Koşullar `.mobile-foot-legal` içinde kendi satırında, aralarında "·". Önceden dört bağlantı kendiliğinden kayıyor ve biri alta düşüyordu.
+- Not: "Başarımlar: hidden discoveries" e2e'si tam pakette bir kez düştü, tek başına ve ikinci tam koşuda geçti (zamanlamaya duyarlı).
 
 ## Tasarım dili ("Fosforlu")
 

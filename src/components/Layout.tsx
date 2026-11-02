@@ -255,12 +255,16 @@ export function Layout() {
         <div className="mobile-foot">
           <FeedbackLink />
           <MadeBy />
-          <Link to="/gizlilik" className="made-by">
-            Gizlilik
-          </Link>
-          <Link to="/kullanim-kosullari" className="made-by">
-            Koşullar
-          </Link>
+          {/* Always together on their own line, so one of them never drops below the other. */}
+          <span className="mobile-foot-legal">
+            <Link to="/gizlilik" className="made-by">
+              Gizlilik
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/kullanim-kosullari" className="made-by">
+              Koşullar
+            </Link>
+          </span>
         </div>
       </main>
       <FocusEngine />
