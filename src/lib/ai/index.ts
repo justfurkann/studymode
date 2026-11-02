@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL } from '../config'
-import type { KeyProvider, Settings } from '../settings'
+import { isServerAi, type KeyProvider, type Settings } from '../settings'
 import { supabase } from '../supabase'
 import type { ConceptComparison, DetailedSummary, GeneratedSet, MnemonicItem } from '../types'
 import { callGeminiWithFallback, GeminiError } from './gemini'
@@ -53,7 +53,15 @@ export type {
 export type RawStudySet = TaskOutput<'study'>
 export type RawExam = TaskOutput<'exam'>
 
-export class AiError extends Error {}
+export class AiError extends Error {
+  /** The server's short error code, when there is one (e.g. "too_slow", "timeout"). */
+  constructor(message: string, readonly code?: string) {
+    super(message)
+  }
+}
+
+/** The request ran out of time: on the server, or the browser gave up waiting. */
+const isTimeout = (error: unknown) => error instanceof AiError && (error.code === 'too_slow' || error.code === 'timeout')
 
 const FORMAT_ERROR = 'Yapay zekâdan beklenen biçimde cevap gelmedi. Tekrar dene.'
 
@@ -196,6 +204,7 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
     const detail = error instanceof Error ? error.message : String(error)
     throw new AiError(
       `Sunucuya bağlanılamadı (${seconds} sn sonra: ${detail}). İşlem sürerken sayfadan ayrılma veya ekranı kapatma; bağlantını kontrol edip tekrar dene.`,
+      seconds >= 50 ? 'timeout' : 'network',
     )
   }
   const body = (await response.json().catch(() => ({}))) as { result?: unknown; error?: string; quota?: unknown }
@@ -219,7 +228,7 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
     }
     const extra = body as { status?: number; detail?: string }
     const upstream = body.error === 'upstream' ? ` Gemini kodu: ${extra.status}${extra.detail ? ` (${extra.detail})` : ''}.` : ''
-    throw new AiError(messages[body.error ?? ''] ?? `Sunucu hata verdi (${response.status}${body.error ? `, ${body.error}` : ''}).${upstream} Biraz sonra tekrar dene.`)
+    throw new AiError(messages[body.error ?? ''] ?? `Sunucu hata verdi (${response.status}${body.error ? `, ${body.error}` : ''}).${upstream} Biraz sonra tekrar dene.`, body.error)
   }
   const parsed = TASKS[task].schema.safeParse(body.result)
   if (!parsed.success) throw new AiError(FORMAT_ERROR)
@@ -259,6 +268,10 @@ export async function runTask<T extends TaskName>(task: T, input: TaskInput<T>, 
 export type ChunkedStudySet = GeneratedSet & { failedChunks: number; totalChunks: number }
 
 const CHUNK_RETRY_DELAY_MS = 1500
+/** Characters per study-set request through our server (Free+ and the free AI). */
+export const SERVER_CHUNK_CHARS = 12_000
+/** Parts shorter than this are not split further when they run out of time. */
+const MIN_SPLIT_CHARS = 3_000
 
 /**
  * Long notes are split into chunks, each sent as its own request so none hits the server's time or
@@ -272,40 +285,42 @@ export async function generateStudySet(
   onProgress?: (done: number, total: number) => void,
   sleep: (ms: number) => Promise<unknown> = (ms) => new Promise((r) => setTimeout(r, ms)),
 ): Promise<ChunkedStudySet> {
-  const chunks = splitNoteIntoChunks(text)
-  if (chunks.length <= 1) {
-    onProgress?.(0, 1)
-    let raw: RawStudySet | null = null
-    let lastErr: unknown = null
-    for (let attempt = 0; attempt < 2 && !raw; attempt += 1) {
-      try {
-        raw = await runTask('study', { text, title }, settings)
-      } catch (error) {
-        lastErr = error
-        if (attempt === 0) await sleep(CHUNK_RETRY_DELAY_MS)
-      }
-    }
-    if (!raw) throw lastErr instanceof Error ? lastErr : new AiError('Çalışma seti oluşturulamadı.')
-    const result = normalizeStudySet(raw)
-    onProgress?.(1, 1)
-    return { ...result, failedChunks: 0, totalChunks: 1 }
-  }
-
+  // Our server has to answer within 60 s, so its parts are smaller than with the student's own key.
+  const first = splitNoteIntoChunks(text, isServerAi(settings.provider) ? SERVER_CHUNK_CHARS : 20_000)
+  const many = first.length > 1
+  // Parts still to do, in order. A part that runs out of time is split in two and both halves go
+  // to the front, so a long PDF finishes in smaller steps instead of failing with "notu böl".
+  const queue = first.map((chunk, i) => ({ text: chunk, label: many ? `Bölüm ${i + 1}/${first.length}` : '' }))
+  let total = queue.length
+  let done = 0
   const sets: GeneratedSet[] = []
   let failedChunks = 0
   let lastError: unknown = null
-  for (let i = 0; i < chunks.length; i += 1) {
-    onProgress?.(i, chunks.length)
-    const input = { text: chunks[i], title: `${title} (Bölüm ${i + 1}/${chunks.length})` }
+  while (queue.length) {
+    onProgress?.(done, total)
+    const part = queue.shift()!
+    const input = { text: part.text, title: part.label ? `${title} (${part.label})` : title }
     let raw: RawStudySet | null = null
-    for (let attempt = 0; attempt < 2 && !raw; attempt += 1) {
+    let split = false
+    for (let attempt = 0; attempt < 2 && !raw && !split; attempt += 1) {
       try {
         raw = await runTask('study', input, settings)
       } catch (error) {
         lastError = error
+        if (isTimeout(error) && part.text.length >= MIN_SPLIT_CHARS) {
+          const halves = splitNoteIntoChunks(part.text, Math.ceil(part.text.length / 2) + 500)
+          if (halves.length > 1) {
+            queue.unshift(...halves.map((h, k) => ({ text: h, label: `${part.label || 'Bölüm'}${part.label ? '' : ' 1'}.${k + 1}` })))
+            total += halves.length - 1
+            split = true
+            break
+          }
+        }
         if (attempt === 0) await sleep(CHUNK_RETRY_DELAY_MS)
       }
     }
+    if (split) continue
+    done += 1
     if (!raw) {
       failedChunks += 1
       continue
@@ -316,12 +331,12 @@ export async function generateStudySet(
       // A chunk with only headings or figures yields nothing useful; the rest still count.
     }
   }
-  onProgress?.(chunks.length, chunks.length)
+  onProgress?.(total, total)
   if (!sets.length) {
     if (lastError instanceof Error) throw lastError
     throw new AiError('Bu nottan çalışma seti çıkarılamadı. Notun yeterince açıklayıcı metin içerdiğinden emin ol.')
   }
-  return { ...mergeStudySets(sets), failedChunks, totalChunks: chunks.length }
+  return { ...mergeStudySets(sets), failedChunks, totalChunks: total }
 }
 
 /** Characters per request for the detailed summary: its answer is long, so parts are smaller than for a study set. */
