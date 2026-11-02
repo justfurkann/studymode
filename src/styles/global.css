@@ -3860,6 +3860,14 @@ a.list-item:hover {
     gap: 6px 16px;
     margin: 32px auto 0;
   }
+  .mobile-foot-legal {
+    flex-basis: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-3);
+  }
 }
 
 /* "Fikir · Hata bildir": a quiet text button next to the signature. */
