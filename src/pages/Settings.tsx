@@ -217,9 +217,9 @@ function AiSection() {
   const quota = useQuota(store.session?.user.id ?? null)
   // VIPs, admins and anyone with a Premium code (their role stays 'normal') get Free+.
   const canPlus = isPremiumRole(quota?.role) || hasPremiumUntil(quota?.premiumUntil)
-  // They always get Free+ from the server, so for them the free option is Free+ itself.
+  // They get Free+ from the server unless they pick "Ücretsiz" (provider "free") on purpose.
   const options: Array<{ id: AiProvider; label: string }> = [
-    ...(canPlus ? [{ id: 'plus' as const, label: 'Free+' }] : [{ id: 'shared' as const, label: 'Ücretsiz' }]),
+    ...(canPlus ? [{ id: 'plus' as const, label: 'Free+' }, { id: 'free' as const, label: 'Ücretsiz' }] : [{ id: 'shared' as const, label: 'Ücretsiz' }]),
     ...(!canPlus && provider === 'plus' ? [{ id: 'plus' as const, label: 'Free+' }] : []),
     { id: 'anthropic', label: 'Claude' },
     { id: 'openai', label: 'ChatGPT' },
@@ -231,7 +231,7 @@ function AiSection() {
       <p className="muted">Yapay zekâ notlarından özet, kart, test ve sınav provası hazırlar. Hangi servisin kullanılacağını seç:</p>
       <div className="segmented" role="group" aria-label="Yapay zekâ servisi">
         {options.map((o) => (
-          <button key={o.id} aria-pressed={provider === o.id || (canPlus && o.id === 'plus' && provider === 'shared')} onClick={() => choose(o.id)}>
+          <button key={o.id} aria-pressed={provider === o.id || (canPlus && o.id === 'plus' && provider === 'shared') || (!canPlus && o.id === 'shared' && provider === 'free')} onClick={() => choose(o.id)}>
             {o.label}
           </button>
         ))}
@@ -243,11 +243,16 @@ function AiSection() {
           {/* When Free+ runs out for the day, requests continue on this allowance. */}
           <QuotaLine />
         </>
-      ) : provider === 'shared' ? (
+      ) : provider === 'shared' || provider === 'free' ? (
         <>
           <p>
             <strong>Ücretsiz yapay zekâ</strong> <span className="muted">— hiçbir şey ayarlamana gerek yok, sadece giriş yapman yeterli.</span>
           </p>
+          {canPlus && (
+            <Alert tone="info">
+              Notların ücretsiz modelle hazırlanır ve Free+ hakkın harcanmaz. Sesli not, akıllı arama ve görseller yine Free+ ile çalışır. Daha güçlü model için Free+’yı seç.
+            </Alert>
+          )}
           {!store.session && (
             <Alert tone="info" action={<Link to="/giris" className="btn btn-sm">Giriş yap</Link>}>
               Ücretsiz yapay zekâ yalnızca giriş yapmış kullanıcılara açık.

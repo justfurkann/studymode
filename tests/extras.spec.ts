@@ -1076,7 +1076,11 @@ test('Premium kodu: her hata kendi mesajıyla; doğru kodda Premium hemen açıl
   // A code holder (role still "normal") has Free+ as their free option, and it stays after trying another one.
   const services = page.getByRole('group', { name: 'Yapay zekâ servisi' })
   await expect(services.getByRole('button', { name: 'Free+' })).toHaveAttribute('aria-pressed', 'true')
-  await expect(services.getByRole('button', { name: 'Ücretsiz' })).toHaveCount(0)
+  // The plain free AI can still be chosen; then requests ask the server to skip Free+.
+  await services.getByRole('button', { name: 'Ücretsiz' }).click()
+  await expect(services.getByRole('button', { name: 'Ücretsiz' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText(/Free\+ hakkın harcanmaz/)).toBeVisible()
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('studymode.settings.v1') ?? '{}').provider)).toBe('free')
   await services.getByRole('button', { name: 'Claude' }).click()
   await services.getByRole('button', { name: 'Free+' }).click()
   await expect(services.getByRole('button', { name: 'Free+' })).toHaveAttribute('aria-pressed', 'true')

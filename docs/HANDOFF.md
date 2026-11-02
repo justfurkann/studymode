@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (2 Kasım 2026, Aşama 37 sonrası, `main` üzerinde): 275 birim testi, 115 tarayıcı testi.
+Son yeşil durum (2 Kasım 2026, Aşama 38 sonrası, `main` üzerinde): 275 birim testi, 115 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -741,6 +741,14 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Ayarlar > Yapay zekâ, Free+'yı yalnızca `vip`/`admin` rolüne gösteriyordu. Kodla Premium alanın rolü `normal` kaldığı için "Ücretsiz"e geçince Free+ seçeneği kayboluyor, panel "yalnızca VIP" diyordu. Sunucu (`plusRole` içinde `premium_until`) zaten Free+ veriyordu; hata yalnızca arayüzdeydi.
 - `canPlus` artık `isPremiumRole(role) || hasPremiumUntil(premiumUntil)`. Panel ve Premium sayfası metinleri "VIP'lere özel" yerine "Premium'a özel" diyor.
 - Test: "Premium kodu: her hata…" e2e'si, kod kullanan hesapta Free+'nın seçili olduğunu, "Ücretsiz" seçeneğinin olmadığını ve Claude'a geçip dönünce Free+'nın kaldığını kontrol ediyor.
+
+### Aşama 38 — Free+ sahiplerine "Ücretsiz" seçeneği geri geldi (2 Kasım 2026, `keen-albattani`)
+
+- Kullanıcı isteği: Free+ olan (VIP, yönetici, Premium kodu) hesaplarda da "Ücretsiz" seçilebilsin.
+- Yeni sağlayıcı değeri `free` (`src/lib/settings.ts`): bilerek seçilen düz ücretsiz yapay zekâ. İstek `engine: 'free'` ile gider; sunucu Free+'yı atlar (`plusRole && body.engine !== 'free'`, zaten vardı).
+- Varsayılan `shared` değişmedi: Free+ sahibi hiçbir şey seçmediyse yine Free+ alır.
+- Premium işler (podcast, ses, görsel, akıllı arama) her zaman `engine: 'plus'` ile gider, bu seçimden etkilenmez.
+- Ayarlar'da Free+ sahiplerine iki düğme gösterilir: Free+ ve Ücretsiz. Ücretsiz seçiliyken kısa bir açıklama çıkar. Premium süresi biterse `free` seçimi normal "Ücretsiz" olarak görünür.
 
 ## Tasarım dili ("Fosforlu")
 

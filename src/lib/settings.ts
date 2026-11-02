@@ -4,12 +4,13 @@ import { clampDailyGoal, DEFAULT_DAILY_GOAL } from './streak'
 export type Theme = 'system' | 'light' | 'dark'
 
 /** "shared" is the free AI the app provides to signed-in users; the others use the student's own key. */
-/** "plus" (Free+) is the shared AI on a stronger Gemini for VIPs and admins; the server decides who gets it. */
-export type AiProvider = 'shared' | 'plus' | 'anthropic' | 'openai' | 'google'
-export type KeyProvider = Exclude<AiProvider, 'shared' | 'plus'>
+/** "plus" (Free+) is the shared AI on a stronger Gemini for VIPs, admins and Premium; the server decides who gets it. */
+/** "shared" gives Free+ to those who have it anyway; "free" is the plain free AI, chosen on purpose by someone who has Free+. */
+export type AiProvider = 'shared' | 'free' | 'plus' | 'anthropic' | 'openai' | 'google'
+export type KeyProvider = Exclude<AiProvider, 'shared' | 'free' | 'plus'>
 
 /** Providers run by our server (no key of your own needed). */
-export const isServerAi = (provider: AiProvider) => provider === 'shared' || provider === 'plus'
+export const isServerAi = (provider: AiProvider) => provider === 'shared' || provider === 'free' || provider === 'plus'
 
 export const PROVIDERS: Record<KeyProvider, { label: string; keyHint: string; keyUrl: string; models: Array<{ id: string; label: string }> }> = {
   anthropic: {
@@ -82,7 +83,7 @@ function read(): Settings {
     if (models.google === 'gemini-3.8-flash' || models.google === 'gemini-3.1-flash-lite') {
       models.google = defaults.models.google
     }
-    const provider: AiProvider = ['shared', 'plus', 'anthropic', 'openai', 'google'].includes(parsed.provider as string)
+    const provider: AiProvider = ['shared', 'free', 'plus', 'anthropic', 'openai', 'google'].includes(parsed.provider as string)
       ? (parsed.provider as AiProvider)
       : parsed.apiKey
         ? 'anthropic'
