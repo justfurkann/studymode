@@ -62,7 +62,7 @@ export function Premium() {
         <h1 id="prem-title">
           Notun <span className="hl">konuşsun</span>, sen dinle
         </h1>
-        <p className="prem-lead">Sesli not, akıllı arama ve yapay zekâ görselleri. Google'ın en yeni Gemini modelleriyle, VIP'lere özel.</p>
+        <p className="prem-lead">Sesli not, akıllı arama ve yapay zekâ görselleri. Google'ın en yeni Gemini modelleriyle, Premium üyelere özel.</p>
         <PremiumStatus />
         <Link to="/rehber#premium" className="prem-guide-link">
           Premium’u en iyi nasıl kullanırsın? <ArrowRight size={14} aria-hidden />

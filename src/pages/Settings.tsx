@@ -13,7 +13,8 @@ import { authErrorMessage, MIN_PASSWORD, nameMetadata, passwordProblem } from '.
 import { hasLocalData, parseData } from '../lib/backend'
 import { PROVIDERS, updateSettings, useSettings, type AiProvider, type KeyProvider, type Theme } from '../lib/settings'
 import { migrateLocalToCloud, useStore } from '../lib/store'
-import { quotaText, ROLE_LABEL, useQuota } from '../lib/account'
+import { isPremiumRole, quotaText, ROLE_LABEL, useQuota } from '../lib/account'
+import { hasPremiumUntil } from '../lib/premiumCodes'
 import { clampDailyGoal } from '../lib/streak'
 import { supabase } from '../lib/supabase'
 import { emptyData } from '../lib/types'
@@ -213,9 +214,10 @@ function AiSection() {
     }
   }
 
-  const role = useQuota(store.session?.user.id ?? null)?.role
-  const canPlus = role === 'vip' || role === 'admin'
-  // VIPs and admins always get Free+ from the server, so for them the free option is Free+ itself.
+  const quota = useQuota(store.session?.user.id ?? null)
+  // VIPs, admins and anyone with a Premium code (their role stays 'normal') get Free+.
+  const canPlus = isPremiumRole(quota?.role) || hasPremiumUntil(quota?.premiumUntil)
+  // They always get Free+ from the server, so for them the free option is Free+ itself.
   const options: Array<{ id: AiProvider; label: string }> = [
     ...(canPlus ? [{ id: 'plus' as const, label: 'Free+' }] : [{ id: 'shared' as const, label: 'Ücretsiz' }]),
     ...(!canPlus && provider === 'plus' ? [{ id: 'plus' as const, label: 'Free+' }] : []),
@@ -591,7 +593,7 @@ interface PlusStatus {
   site_limit: number
 }
 
-/** Free+ for VIPs and admins: what it is, today's use, and what happens at the limit. */
+/** Free+ for Premium (a code), VIPs and admins: what it is, today's use, and what happens at the limit. */
 function PlusPanel({ eligible }: { eligible: boolean }) {
   const [status, setStatus] = useState<PlusStatus | null>(null)
   useEffect(() => {
@@ -607,12 +609,12 @@ function PlusPanel({ eligible }: { eligible: boolean }) {
   }, [eligible])
 
   if (!eligible) {
-    return <Alert tone="info">Free+ yalnızca VIP ve yöneticiler için. Senin isteklerin ücretsiz yapay zekâyla hazırlanır.</Alert>
+    return <Alert tone="info">Free+ Premium'a özel. Senin isteklerin ücretsiz yapay zekâyla hazırlanır; Premium kodun varsa aşağıdaki Premium bölümünden girebilirsin.</Alert>
   }
   return (
     <div className="plus-panel">
       <p>
-        <strong>Free+</strong> <span className="muted">— Google'ın daha güçlü Gemini modeli, VIP'lere özel. Hesabında otomatik açık; bir şey seçmene gerek yok.</span>
+        <strong>Free+</strong> <span className="muted">— Google'ın daha güçlü Gemini modeli, Premium'a özel. Hesabında otomatik açık; bir şey seçmene gerek yok.</span>
       </p>
       <ul className="plus-perks">
         <li>Notlarını Gemini 3.8 Flash ile hazırlar (ücretside hafif "Flash-Lite" model çalışır); yazılı cevap puanlamada ve hafıza tekniklerinde Google'ın en güçlü modeli Gemini 4 kullanılır.</li>

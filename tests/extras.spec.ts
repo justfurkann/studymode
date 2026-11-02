@@ -1073,6 +1073,15 @@ test('Premium kodu: her hata kendi mesajıyla; doğru kodda Premium hemen açıl
   await page.goto('/ayarlar')
   await expect(page.locator('.premium-access')).toContainText('2 Aralık 2026 tarihine kadar')
   await expect(page.locator('.premium-access')).toContainText('30 gün kaldı')
+  // A code holder (role still "normal") has Free+ as their free option, and it stays after trying another one.
+  const services = page.getByRole('group', { name: 'Yapay zekâ servisi' })
+  await expect(services.getByRole('button', { name: 'Free+' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(services.getByRole('button', { name: 'Ücretsiz' })).toHaveCount(0)
+  await services.getByRole('button', { name: 'Claude' }).click()
+  await services.getByRole('button', { name: 'Free+' }).click()
+  await expect(services.getByRole('button', { name: 'Free+' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('Bugün 0/30 istek')).toBeVisible()
+  await expect(page.getByText(/yalnızca VIP/)).toHaveCount(0)
 })
 
 test('Premium kodu: bitmesine 3 gün kala Bugün’de kapatılabilir hatırlatma', async ({ page }) => {
