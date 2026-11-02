@@ -4890,6 +4890,128 @@ a.list-item:hover {
   font-size: 0.8125rem;
 }
 
+/* ---------- /fiyatlar: packages, features, seller and the contract ---------- */
+.legal .btn {
+  text-decoration: none;
+  color: inherit;
+}
+.legal .btn-primary {
+  color: var(--on-hi);
+}
+.price-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.price-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+}
+.price-card h3 {
+  font-size: 1.0625rem;
+  margin: 0;
+}
+.price-card p {
+  margin: 0;
+}
+.price-amount strong {
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.legal ul.price-includes,
+.legal ul.price-features {
+  list-style: none;
+  padding-left: 0;
+}
+.price-includes li,
+.price-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.price-includes svg,
+.price-features svg {
+  flex-shrink: 0;
+  margin-top: 5px;
+  color: var(--accent-text);
+}
+.price-card .btn {
+  margin-top: auto;
+  justify-content: center;
+}
+.price-steps {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.price-steps li {
+  color: var(--text-2);
+  line-height: 1.7;
+}
+.inline-icon {
+  vertical-align: -3px;
+  margin-right: 2px;
+}
+.seller-card {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+}
+.seller-card > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+}
+.seller-card dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: 0.875rem;
+}
+.seller-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+@media (max-width: 420px) {
+  .seller-card > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+.contract {
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+}
+.contract summary {
+  cursor: pointer;
+  padding: 14px 18px;
+  font-weight: 650;
+}
+.contract-body {
+  padding: 0 18px 18px;
+}
+.contract-body h3 {
+  font-size: 1rem;
+  margin: 16px 0 6px;
+}
+
 .legal-note a {
   color: var(--accent-text);
   text-decoration: underline;

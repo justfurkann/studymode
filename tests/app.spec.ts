@@ -442,6 +442,44 @@ test('AI mock exam with past questions, written answers graded by AI', async ({ 
   expect(errors).toEqual([])
 })
 
+test('public pricing page (Shopier): opens signed out, prices, delivery, refunds, contract and seller; fits a 360 px phone', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.setViewportSize({ width: 360, height: 780 })
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Fiyatlar' }).click()
+  await expect(page).toHaveURL(/\/fiyatlar$/)
+  await expect(page).toHaveTitle('Fiyatlar · StudyMode')
+  expect(await page.locator('meta[name="description"]').getAttribute('content')).toContain('150 TL')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Premium fiyatları')
+  await expect(page.getByText('StudyMode Premium üyelik kodu').first()).toBeVisible()
+  for (const [name, price] of [['1 aylık Premium', '50 TL'], ['4 aylık dönem paketi', '150 TL']]) {
+    const card = page.getByRole('article', { name })
+    await expect(card).toContainText(price)
+    // No Shopier link yet: no "Satın al", a way to ask instead.
+    await expect(card.getByRole('link', { name: 'Satın al', exact: true })).toHaveCount(0)
+    await expect(card.getByRole('link', { name: 'Satın almak için yaz' })).toHaveAttribute('href', /^mailto:justfurkan42@gmail\.com/)
+  }
+  await expect(page.getByRole('heading', { name: 'Teslimat' })).toBeVisible()
+  await expect(page.getByText(/en geç 24 saat/).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'İptal ve iade' })).toBeVisible()
+  await expect(page.getByText(/Kullanılmış kod:/)).toBeVisible()
+  await expect(page.getByText(/Otomatik yenileme yok/).first()).toBeVisible()
+  const seller = page.locator('.seller-card')
+  await expect(seller).toContainText('Muhammed Furkan Öztürk')
+  await expect(seller).toContainText('justfurkan42@gmail.com')
+  await expect(seller).toContainText('0501 608 74 92')
+  await expect(seller).toContainText('Şişli / İstanbul')
+  await page.getByText('Sözleşmenin tamamını göster').click()
+  await expect(page.getByRole('heading', { name: '6. Cayma hakkının istisnası' })).toBeVisible()
+  await expect(page.getByText(/tüketici hakem heyetleri/)).toBeVisible()
+  // Nothing sticks out sideways on a small phone.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360)
+  // The terms point here for prices and refunds.
+  await page.goto('/kullanim-kosullari')
+  await expect(page.getByRole('link', { name: 'fiyatlar sayfasında' }).first()).toHaveAttribute('href', '/fiyatlar')
+  expect(errors).toEqual([])
+})
+
 test('account entry point leads to the sign-in form', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/ayarlar')

@@ -5,7 +5,7 @@ import { FeedbackLink } from '../components/Feedback'
 import { MAKER, SOCIALS } from '../components/MadeBy'
 import { useStore } from '../lib/store'
 
-export const TERMS_UPDATED = '1 Kasım 2026'
+export const TERMS_UPDATED = '2 Kasım 2026'
 
 /** /kullanim-kosullari: the rules for using StudyMode, in plain Turkish, next to the privacy policy. */
 export function Terms() {
@@ -91,16 +91,18 @@ export function Terms() {
           <ul>
             <li>StudyMode’un temel özellikleri ücretsizdir. Yapay zekânın adil paylaşılması için günlük kullanım hakları vardır; bu sınırları gerektiğinde değiştirebiliriz.</li>
             <li>
-              <strong>Ücretli Premium kodla satılır.</strong> Kodu Shopier üzerinden satın alırsın; ödemeyi Shopier alır, kart bilgilerin bize hiç gelmez. Kodu Ayarlar’da ya da Premium
-              sayfasında girdiğinde Premium hesabında açılır.
+              <strong>Ücretli Premium kodla satılır.</strong> Paketler, fiyatlar, teslimat ve mesafeli satış sözleşmesi <Link to="/fiyatlar">fiyatlar sayfasında</Link>. Kodu Shopier
+              üzerinden satın alırsın; ödemeyi Shopier alır, kart bilgilerin bize hiç gelmez. Kod en geç 24 saat içinde e-postayla gönderilir; Ayarlar’da ya da Premium sayfasında
+              girdiğinde Premium hesabında açılır.
             </li>
             <li>
               Her kod <strong>tek kullanımlıktır</strong> ve süresi kodla belirlenir (ör. 30 gün). Süren devam ederken yeni bir kod girersen süre üstüne eklenir. Süre bitince Premium
               kendiliğinden kapanır; <strong>otomatik yenileme ve tekrarlayan ödeme yoktur</strong>.
             </li>
             <li>
-              <strong>İade:</strong> Henüz kullanılmamış bir kodun iadesi, kodun iptal edilmesiyle yapılır; bunun için uygulamadaki “Fikir · Hata bildir” kutusundan ya da Instagram’dan
-              yaz. Kod kullanıldığında hizmet hemen başladığı için kullanılmış kodlar iade edilmez; yasadan doğan hakların saklıdır.
+              <strong>İade:</strong> Henüz kullanılmamış bir kod için 14 gün içinde iade isteyebilirsin; kod iptal edilir ve ücreti geri ödenir. Kod kullanıldığında hizmet hemen
+              başladığı için kullanılmış kodlar iade edilmez (Mesafeli Sözleşmeler Yönetmeliği 15/1-ğ); yasadan doğan hakların saklıdır. Ayrıntılar ve iletişim{' '}
+              <Link to="/fiyatlar#iade">fiyatlar sayfasında</Link>.
             </li>
             <li>Premium’un içeriği (sesli not, akıllı arama, görsel) ve günlük hakları adil kullanım için değişebilir; satın aldığın süre boyunca özellikleri kaldırmayız.</li>
             <li>VIP, davetle verilen ücretsiz bir ayrıcalıktır; kapsamı ve kimlere verildiği değişebilir, gerektiğinde geri alınabilir.</li>
@@ -155,6 +157,9 @@ export function Terms() {
         <span>Türk üniversite öğrencileri için ders çalışma uygulaması.</span>
         <Link to="/gizlilik" className="lp-footer-quiet">
           Gizlilik
+        </Link>
+        <Link to="/fiyatlar" className="lp-footer-quiet">
+          Fiyatlar
         </Link>
         <Link to="/hakkinda">Hakkında</Link>
       </footer>

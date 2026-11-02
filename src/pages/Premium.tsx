@@ -214,14 +214,15 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
                   </>
                 ) : (
                   'Elinde bir Premium kodu varsa buraya gir. Süre bitince kendiliğinden kapanır, otomatik yenilenmez.'
-                )}
+                )}{' '}
+                <Link to="/fiyatlar">Fiyatlar ve satın alma</Link>
                 <RedeemCode compact />
               </span>
             </li>
             <li>
               <Gem size={17} aria-hidden />
               <span>
-                <strong>VIP ol.</strong> Premium şimdilik davetle açılıyor; VIP hesaplarda hazır gelir.{' '}
+                <strong>VIP ol.</strong> VIP hesaplarda Premium hazır gelir; VIP davetle verilir.{' '}
                 <a href={instagram.url} target="_blank" rel="noopener noreferrer">
                   <BrandIcon brand="instagram" size={14} /> Instagram'dan yaz
                 </a>

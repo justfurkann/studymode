@@ -240,6 +240,7 @@ export function Landing() {
         <MadeBy />
         <Link to="/gizlilik" className="lp-footer-quiet">Gizlilik</Link>
         <Link to="/kullanim-kosullari" className="lp-footer-quiet">Kullanım koşulları</Link>
+        <Link to="/fiyatlar" className="lp-footer-quiet">Fiyatlar</Link>
         <Link to="/giris">Giriş yap</Link>
       </footer>
     </div>

@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (2 Kasım 2026, Aşama 41 sonrası, `main` üzerinde): 277 birim testi, 116 tarayıcı testi.
+Son yeşil durum (2 Kasım 2026, Aşama 42 sonrası, `main` üzerinde): 281 birim testi, 117 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -778,6 +778,26 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Hata kodu:** `AiError` artık sunucunun hata kodunu taşıyor (`code`).
 - **Kota:** Uzun notlar biraz daha fazla istek harcar (her parça bir istek).
 - **Test:** `src/lib/ai/split.test.ts`.
+
+### Aşama 42 — Herkese açık satış sayfası `/fiyatlar` (Shopier onayı için) (2 Kasım 2026, `keen-albattani`)
+
+- **Neden:** Shopier başvuruyu onaylamadı. Giriş yapmadan açılan, ürünü ve fiyatını gösteren bir satış sayfası istedi. (Diğer oturum "Aşama 35" demişti; o numara dolu olduğu için 42.)
+- **Sayfa:** `src/pages/Pricing.tsx`, uygulama kabuğunun dışında (`/gizlilik` gibi), girişsiz açılır.
+  - `<title>`: "Fiyatlar · StudyMode". Açıklama meta'sı sayfa açıkken değişir, çıkınca eskisine döner.
+  - Bölümler: ürün (tek kullanımlık dijital kod, kargo yok, otomatik yenileme yok), paketler, Premium'da neler var (sesli not, görsel, akıllı arama, Free+: günde 30 Free+ + 150 istek, ücretsizde 40), nasıl çalışır, teslimat, iptal ve iade, satıcı ve iletişim, açılır "Mesafeli satış sözleşmesi" (9 madde).
+- **Veriler:** `src/lib/pricing.ts`. Fiyatlar, satıcı ve teslimat kullanıcıdan alındı (2 Kasım 2026); uydurma yok.
+  - 1 aylık 30 gün 50 TL; 4 aylık dönem paketi 120 gün 150 TL.
+  - Satıcı: Muhammed Furkan Öztürk (şahıs), justfurkan42@gmail.com, 0501 608 74 92, Şehit Tunç Uncu Sokak No: 1, Şişli / İstanbul.
+  - Teslimat: elle, Shopier siparişindeki e-postaya, en geç 24 saat.
+  - Paketin `shopierUrl` alanı ya da genel `SHOPIER_URL` doluysa "Satın al" çıkar; boşken "Satın almak için yaz" (mailto).
+- **İade:** Kullanılmamış kod 14 gün içinde iade (kod `admin_revoke_code` ile iptal, ücret 14 gün içinde geri). Kullanılmış kodda Mesafeli Sözleşmeler Yönetmeliği 15/1-ğ istisnası. Uyuşmazlıkta tüketici hakem heyeti / tüketici mahkemesi.
+- **Bağlantılar:** Tanıtım, Gizlilik ve Koşullar alt bilgisi; Kullanım koşulları "Ücretli Premium" bölümü (fiyat, teslimat, iade buraya bağlanır, metin aynı; `TERMS_UPDATED` 2 Kasım); Premium kilitli görünüm ("Fiyatlar ve satın alma"); Ayarlar > Premium.
+- **Testler:** `pricing.test.ts` (paketler, `buyUrl`); e2e: girişsiz açılır; fiyatlar, teslimat, iade, satıcı ve sözleşme görünür; Shopier bağlantısı yokken "Satın al" yok; 360 px'te yatay taşma yok.
+- **Yapılacak (kullanıcı):**
+  - Shopier ürün bağlantıları gelince `PACKAGES[].shopierUrl` (ya da `SHOPIER_URL`) doldurulacak.
+  - Shopier panelindeki adres sayfadakiyle aynı olmalı (kullanıcı başvuruda Konya adresini yazmış olabilir).
+  - Mesafeli satış ve iade metnini bir muhasebeci ya da hukukçu görmeli.
+- **Sonra (sunucu, dreamy-sagan):** Otomatik kod teslimi (Shopier ödeme bildirimi → kod üret → e-posta). Kurulunca `DELIVERY.within` "anında" yapılır.
 
 ## Tasarım dili ("Fosforlu")
 
