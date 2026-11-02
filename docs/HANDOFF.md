@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (2 Kasım 2026, Aşama 40 sonrası, `main` üzerinde): 275 birim testi, 116 tarayıcı testi.
+Son yeşil durum (2 Kasım 2026, Aşama 41 sonrası, `main` üzerinde): 277 birim testi, 116 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -769,6 +769,15 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Kararsız testler düzeltildi:**
   - Başarımlar testi "Kayıp Sayfa" bildirimini bekledikten sonra sayfadan çıkıyor.
   - Yönetim testi iptal isteğini `expect.poll` ile bekliyor.
+
+### Aşama 41 — Uzun notlarda "zamanında bitiremedi" yerine kendiliğinden bölme (2 Kasım 2026, `keen-albattani`)
+
+- **Durum:** Arkadaşın telefonunda PDF artık okunuyor (Aşama 40), ama çalışma seti hazırlanırken sunucu `too_slow` dönüyordu (Free+ ve ücretsiz yol 52 sn'ye sığmadı).
+- **Daha küçük parçalar:** `generateStudySet` sunucu yolunda (`shared` / `free` / `plus`) notu 20.000 yerine 12.000 karakterlik parçalara bölüyor (`SERVER_CHUNK_CHARS`). Kendi anahtarıyla yine 20.000.
+- **Kendiliğinden bölme:** Bir parça zaman aşımına uğrarsa (`AiError.code` `too_slow` ya da tarayıcının 50 sn'den sonra vazgeçmesi `timeout`) aynı parça yeniden denenmiyor. Paragraf sınırlarından yarıya bölünüp yarılar sıranın başına ekleniyor; 3.000 karakterden kısa parçalar bölünmüyor. İlerleme çubuğundaki toplam buna göre artıyor.
+- **Hata kodu:** `AiError` artık sunucunun hata kodunu taşıyor (`code`).
+- **Kota:** Uzun notlar biraz daha fazla istek harcar (her parça bir istek).
+- **Test:** `src/lib/ai/split.test.ts`.
 
 ## Tasarım dili ("Fosforlu")
 
