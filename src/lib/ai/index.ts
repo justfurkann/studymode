@@ -176,7 +176,7 @@ async function viaGoogle<T extends TaskName>(task: T, input: TaskInput<T>, apiKe
   })
 }
 
-async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engine?: 'plus'): Promise<TaskOutput<T>> {
+async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engine?: 'plus' | 'free'): Promise<TaskOutput<T>> {
   const token = (await supabase?.auth.getSession())?.data.session?.access_token
   if (!token) throw new AiError('Ücretsiz yapay zekâ için giriş yapman gerekiyor.')
   let response: Response
@@ -243,6 +243,9 @@ export async function runTask<T extends TaskName>(task: T, input: TaskInput<T>, 
       return viaOpenAi(task, input, settings.keys.openai, settings.models.openai)
     case 'google':
       return viaGoogle(task, input, settings.keys.google, settings.models.google)
+    case 'free':
+      // Chosen on purpose by someone who has Free+: the server skips Free+.
+      return viaShared(task, input, 'free')
     case 'plus':
       return viaShared(task, input, 'plus')
     default:
