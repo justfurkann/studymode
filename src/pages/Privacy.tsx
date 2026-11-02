@@ -185,6 +185,9 @@ export function Privacy() {
         <Link to="/kullanim-kosullari" className="lp-footer-quiet">
           Kullanım koşulları
         </Link>
+        <Link to="/fiyatlar" className="lp-footer-quiet">
+          Fiyatlar
+        </Link>
         <Link to="/hakkinda">Hakkında</Link>
       </footer>
     </div>

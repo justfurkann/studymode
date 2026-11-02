@@ -115,7 +115,7 @@ export function PremiumAccessSection() {
           <Gem size={17} aria-hidden /> Premium hesabında zaten açık.
         </p>
       ) : (
-        <p className="subtle">Premium; iki sesli sesli not, akıllı arama ve yapay zekâ görselleri. Shopier’den aldığın kodu buraya gir; süre bitince kendiliğinden kapanır, otomatik yenilenmez.</p>
+        <p className="subtle">Premium; iki kişilik sesli not, akıllı arama ve yapay zekâ görselleri. Shopier’den aldığın kodu buraya gir; süre bitince kendiliğinden kapanır, otomatik yenilenmez.</p>
       )}
       <RedeemCode />
       <div className="btn-row">
@@ -124,6 +124,9 @@ export function PremiumAccessSection() {
             <ShoppingBag size={15} aria-hidden /> {premium.until ? 'Süreyi uzat' : 'Kod satın al'}
           </a>
         )}
+        <Link to="/fiyatlar" className="btn btn-ghost btn-sm">
+          Fiyatlar ve satın alma
+        </Link>
         <Link to="/premium" className="btn btn-ghost btn-sm">
           Premium’da neler var?
         </Link>
