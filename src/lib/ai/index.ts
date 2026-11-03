@@ -13,6 +13,7 @@ import {
   TASKS,
   TRANSCRIBE_USER_TEXT,
   userPrompt,
+  type ChatInput,
   type ExplainInput,
   type ExplainMode,
   type ExamInput,
@@ -34,6 +35,8 @@ import { compactVector } from '../semanticSearch'
 
 export { contextAround, MAX_PROMPT_NOTE_CHARS, splitNoteIntoChunks } from './tasks'
 export type {
+  ChatInput,
+  ChatTurn,
   DetailInput,
   EmbedInput,
   ExamDifficulty,
@@ -671,6 +674,12 @@ export async function transcribeImages(images: TranscribeImage[], settings: Sett
     const { text } = await runTask('transcribe', { images }, settings)
     return text.trim()
   }
+}
+
+/** One answer from the study assistant. */
+export async function askAssistant(input: ChatInput, settings: Settings): Promise<string> {
+  const { reply } = await runTask('chat', input, settings)
+  return reply.trim()
 }
 
 export async function explainConcept(input: ExplainInput, settings: Settings): Promise<string> {

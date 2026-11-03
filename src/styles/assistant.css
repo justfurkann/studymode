@@ -1,0 +1,245 @@
+/* ============ Fosfor, the study assistant (components/Assistant.tsx) ============ */
+
+.fosfor {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+.fosfor .fosfor-eyes {
+  transform-origin: 32px 37px;
+  animation: fosfor-blink 5s infinite;
+}
+.fosfor.is-talking .fosfor-mouth {
+  transform-origin: 32px 45px;
+  animation: fosfor-talk 0.5s ease-in-out infinite alternate;
+}
+@keyframes fosfor-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+@keyframes fosfor-talk {
+  from { transform: scaleY(1); }
+  to { transform: scaleY(0.4); }
+}
+
+/* The corner button. Phones: above the bottom bar; computers: bottom right. */
+.assistant-launcher {
+  position: fixed;
+  right: 16px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 42;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-line);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--ink-line), var(--shadow-lg);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.assistant-launcher:hover {
+  transform: translateY(-2px) rotate(-6deg);
+}
+.assistant-launcher:active {
+  transform: translateY(1px);
+}
+@media (min-width: 861px) {
+  .assistant-launcher {
+    right: 24px;
+    bottom: 24px;
+    width: 62px;
+    height: 62px;
+  }
+}
+
+/* The running focus timer sits to the left of the button instead of under it. */
+.focus-pill {
+  right: 84px;
+}
+@media (min-width: 861px) {
+  .focus-pill {
+    right: 98px;
+  }
+}
+
+.assistant-panel {
+  position: fixed;
+  z-index: 48;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1.5px solid var(--ink-line);
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--ink-line), var(--shadow-lg);
+  /* Phones: a sheet between the top bar and the bottom bar. */
+  left: 8px;
+  right: 8px;
+  top: calc(68px + env(safe-area-inset-top));
+  bottom: calc(80px + env(safe-area-inset-bottom));
+}
+@media (min-width: 861px) {
+  .assistant-panel {
+    left: auto;
+    top: auto;
+    right: 24px;
+    bottom: 24px;
+    width: 390px;
+    height: min(620px, calc(100vh - 48px));
+  }
+}
+
+.assistant-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.assistant-head .grow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+.assistant-head .subtle {
+  font-size: 0.8125rem;
+}
+
+.assistant-course {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.assistant-course span {
+  flex-shrink: 0;
+  color: var(--text-2);
+}
+.assistant-course select {
+  flex: 1;
+  min-width: 0;
+  padding-block: 8px;
+}
+
+.assistant-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px;
+}
+
+.assistant-msg {
+  max-width: 88%;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assistant-msg.is-assistant {
+  align-self: flex-start;
+  background: var(--surface-2);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+.assistant-msg.is-user {
+  align-self: flex-end;
+  background: var(--accent-soft);
+  color: var(--text);
+  border-bottom-right-radius: 4px;
+}
+
+.assistant-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.assistant-chip {
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.assistant-chip:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.assistant-dots {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px 0;
+}
+.assistant-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-3);
+  animation: assistant-dot 1s ease-in-out infinite;
+}
+.assistant-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.assistant-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes assistant-dot {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+.assistant-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.assistant-form textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  max-height: 120px;
+  resize: none;
+  /* 16px stops iPhones from zooming in when the box is tapped. */
+  font-size: 16px;
+  line-height: 1.4;
+}
+.assistant-form .btn-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
+.assistant-blocked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.assistant-blocked p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fosfor .fosfor-eyes,
+  .fosfor.is-talking .fosfor-mouth,
+  .assistant-dots i {
+    animation: none;
+  }
+  .assistant-launcher {
+    transition: none;
+  }
+}

@@ -208,6 +208,42 @@ Write in the language of the notes (usually Turkish). Ground your explanation in
 - If mode is "example": Give a concrete, relatable real-life or practical example/analogy that illustrates how this concept works in practice.
 - If mode is "step_by_step": Break the idea down into 3-5 numbered, logical mini-steps from the most basic premise to the conclusion.`
 
+// ---------- Study assistant ("Fosfor"): quick questions while studying ----------
+
+export const ChatSchema = z.object({
+  reply: z.string(),
+})
+
+export interface ChatTurn {
+  role: 'user' | 'assistant'
+  text: string
+}
+
+export interface ChatInput {
+  /** The course the student picked, or '' for a general question. */
+  course: string
+  /** Notes from that course, already trimmed by the app (current note first). */
+  context: string
+  /** Earlier turns of this conversation, oldest first. */
+  history: ChatTurn[]
+  question: string
+}
+
+/** Limits applied again on the server, whatever the app sends. */
+export const CHAT_LIMITS = { context: 18_000, turns: 10, turnChars: 1_500, question: 2_000 }
+
+const CHAT_PROMPT = `You are Fosfor, the friendly study buddy inside StudyMode, a study app for Turkish students. The student is in the middle of studying (reading notes, solving a test) and asks you a quick question so they do not have to leave the app.
+
+How to answer:
+- Answer in Turkish, warmly and plainly, like a smart classmate (use "sen").
+- Be short: usually 2-6 sentences, or a short list. Go longer only if the student asks for detail.
+- When <notes> are given, ground the answer in them and use their terms. If the notes do not cover the question, answer from general knowledge and say so in a few words (e.g. "Notlarında yok ama genel olarak...").
+- Never invent what the notes say. Do not make up sources, page numbers or quotes.
+- Formatting: plain text. You may use "- " for list items and **bold** for one or two key terms. No headings, no tables, no code blocks. Write formulas in plain text (e.g. F = m·a).
+- If the student asks for a quiz question, give one question, then wait for their answer before revealing it.
+- If the question has nothing to do with studying, answer briefly and kindly steer back to their lesson.
+- Use <conversation> for context; answer only the latest <question>.`
+
 // ---------- Memory Coding (Mnemonics) & Concept Comparisons ----------
 
 export const MemoryToolsSchema = z.object({
@@ -493,6 +529,24 @@ export const TASKS = {
         `<target_concept>${input.topic}</target_concept>`,
         `<note_context>\n${contextAround(input.context, input.topic, 8_000)}\n</note_context>`,
       ].join('\n'),
+  },
+  chat: {
+    schema: ChatSchema,
+    system: CHAT_PROMPT,
+    user: (input: ChatInput) => {
+      const history = (Array.isArray(input?.history) ? input.history : [])
+        .slice(-CHAT_LIMITS.turns)
+        .map((t) => `${t.role === 'assistant' ? 'Fosfor' : 'Öğrenci'}: ${String(t.text ?? '').slice(0, CHAT_LIMITS.turnChars)}`)
+      const context = String(input?.context ?? '').slice(0, CHAT_LIMITS.context).trim()
+      return [
+        input?.course ? `<course>${String(input.course).slice(0, 120)}</course>` : '<course>(genel soru, ders seçilmedi)</course>',
+        context ? `<notes>\n${context}\n</notes>` : '',
+        history.length ? `<conversation>\n${history.join('\n')}\n</conversation>` : '',
+        `<question>${String(input?.question ?? '').slice(0, CHAT_LIMITS.question)}</question>`,
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+    },
   },
   memory: {
     schema: MemoryToolsSchema,
