@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (3 Kasım 2026, Aşama 45 sonrası, `main` üzerinde): 283 birim testi, 118 tarayıcı testi.
+Son yeşil durum (3 Kasım 2026, Aşama 46 sonrası, `main` üzerinde): 284 birim testi, 118 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -837,6 +837,13 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - Siteye sıradan bir ziyarette Google ya da Cloudflare'e hiçbir istek gitmez.
 - **Not:** Turnstile kutusu yüklendikten sonra 1-2 sn kendi doğrulamasını yapar; bu Cloudflare'in işi, hızlandırılamaz.
 - **Test:** e2e "sign-in opens fast": Supabase 3 sn gecikse de Google düğmesi 2,5 sn içinde görünür; "Giriş yap"ın üstüne gelince Google betiği istenir; düz ziyarette istenmez. Eski kodda düştüğü doğrulandı.
+
+### Aşama 46 — "5/5 sayfa okundu" sonrası sonsuz bekleme (3 Kasım 2026, `keen-albattani`)
+
+- **Belirti:** iPhone'da taranmış PDF'in sayfaları okunuyor (5/5), ama sonra döner simge duruyor ve not eklenemiyor.
+- **Sebep:** `extractPdfText` `finally` içinde `await loadingTask.destroy()` bekliyordu. pdf.js'in `destroy()`'u bütün sayfaların `_destroy()`'unu (bekleyen çizimler dahil) ve işçiden "Terminate" cevabını bekler. Taranmış sayfalar resme çizilirken iPhone işçiyi bellek yüzünden öldürür ya da bir çizim takılırsa bu cevap hiç gelmez; metin hazır olduğu hâlde fonksiyon hiç dönmez. Yeniden açma yolundaki `destroy` de aynı riskteydi.
+- **Düzeltme:** `closePdf(task, waitMs)`: `finally` içinde hiç beklemeden kapatır; yeniden açma yolunda en fazla 1 sn bekler. Hata da fırlatmaz.
+- **Test:** `importNote.test.ts`: `destroy` hiç bitmese de metin döner. Eski kodda 5 sn zaman aşımıyla düştüğü doğrulandı.
 
 ## Tasarım dili ("Fosforlu")
 

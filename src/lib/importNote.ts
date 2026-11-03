@@ -235,7 +235,7 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
       if (firstError instanceof Error && firstError.name === 'PasswordException') {
         throw firstError
       }
-      await loadingTask?.destroy().catch(() => undefined)
+      await closePdf(loadingTask, 1_000)
       loadingTask = undefined
       // Reset cached reader state, register main-thread worker handler as a guaranteed fallback
       // (populates globalThis.pdfjsWorker so older iOS WebViews don't need a Web Worker), and retry.
@@ -369,9 +369,20 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
     }
     throw new Error('PDF okunamadı. Dosyanın açılabildiğini kontrol et veya notunu TXT olarak yükle.')
   } finally {
-    // Destroy the loading task even after invalid, encrypted, or oversized PDFs.
-    await loadingTask?.destroy().catch(() => undefined)
+    // Close the reader even after invalid, encrypted, or oversized PDFs, but never wait for it: the
+    // text is ready by now. pdf.js's destroy() waits for every drawn page and for the worker to say
+    // it stopped; on an iPhone that killed the worker (drawing scanned pages takes a lot of memory)
+    // that answer never came, and the page kept spinning after "5/5 sayfa okundu".
+    void closePdf(loadingTask, 0)
   }
+}
+
+/** Closes a pdf.js document, waiting at most `waitMs` (0: not at all). Never throws or hangs. */
+function closePdf(task: { destroy(): Promise<void> } | undefined, waitMs: number): Promise<void> {
+  if (!task) return Promise.resolve()
+  const closing = task.destroy().catch(() => undefined)
+  if (waitMs <= 0) return Promise.resolve()
+  return Promise.race([closing, new Promise<void>((resolve) => setTimeout(resolve, waitMs))])
 }
 
 async function renderPdfPageToImage(

@@ -23,7 +23,7 @@ vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({
   default: '/assets/pdf.worker.test.mjs',
 }))
 
-function fakePdf(options: { numPages?: number; pages?: string[]; failure?: Error } = {}) {
+function fakePdf(options: { numPages?: number; pages?: string[]; failure?: Error; hangOnClose?: boolean } = {}) {
   const cleanup = vi.fn()
   const render = vi.fn(() => ({ promise: Promise.resolve() }))
   const getViewport = vi.fn(({ scale }: { scale: number }) => ({ width: 800 * scale, height: 1100 * scale }))
@@ -35,7 +35,8 @@ function fakePdf(options: { numPages?: number; pages?: string[]; failure?: Error
     render,
     cleanup,
   }))
-  const destroy = vi.fn(async () => undefined)
+  // hangOnClose: like an iPhone whose PDF worker was killed, closing never finishes.
+  const destroy = vi.fn(() => (options.hangOnClose ? new Promise<undefined>(() => {}) : Promise.resolve(undefined)))
   pdfMocks.getDocument.mockImplementation(() => ({
     promise: options.failure
       ? Promise.reject(options.failure)
@@ -134,6 +135,14 @@ describe('extractNoteText', () => {
       [1, 2],
       [2, 2],
     ])
+    expect(destroy).toHaveBeenCalledOnce()
+  })
+
+  it('hands back the text even when closing the PDF never finishes (iPhone: spinner after "5/5 sayfa okundu")', async () => {
+    const { destroy } = fakePdf({ numPages: 3, pages: ['', 'Metinli sayfa.', ''], hangOnClose: true })
+    const transcribe = vi.fn(async () => 'Taranmış sayfa.')
+    const text = await extractNoteText(new File(['scan'], 'tarama.pdf'), { transcribe })
+    expect(text).toBe('Taranmış sayfa.\n\nMetinli sayfa.\n\nTaranmış sayfa.')
     expect(destroy).toHaveBeenCalledOnce()
   })
 
