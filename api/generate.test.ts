@@ -59,7 +59,8 @@ describe('handleGenerate', () => {
   })
 
   it('rejects unknown tasks so the endpoint is not a general proxy', async () => {
-    const res = await handleGenerate(request({ task: 'chat', input: { prompt: 'hi' } }), env, fakeFetch({}))
+    // ("chat" was the example here; it is now the study assistant's task, so another made-up name.)
+    const res = await handleGenerate(request({ task: 'proxy', input: { prompt: 'hi' } }), env, fakeFetch({}))
     expect(res.status).toBe(400)
   })
 

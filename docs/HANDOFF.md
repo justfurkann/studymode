@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (3 Kasım 2026, Aşama 46 sonrası, `main` üzerinde): 284 birim testi, 118 tarayıcı testi.
+Son yeşil durum (3 Kasım 2026, Aşama 47 sonrası, `main` üzerinde): 289 birim testi, 120 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -844,6 +844,25 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Sebep:** `extractPdfText` `finally` içinde `await loadingTask.destroy()` bekliyordu. pdf.js'in `destroy()`'u bütün sayfaların `_destroy()`'unu (bekleyen çizimler dahil) ve işçiden "Terminate" cevabını bekler. Taranmış sayfalar resme çizilirken iPhone işçiyi bellek yüzünden öldürür ya da bir çizim takılırsa bu cevap hiç gelmez; metin hazır olduğu hâlde fonksiyon hiç dönmez. Yeniden açma yolundaki `destroy` de aynı riskteydi.
 - **Düzeltme:** `closePdf(task, waitMs)`: `finally` içinde hiç beklemeden kapatır; yeniden açma yolunda en fazla 1 sn bekler. Hata da fırlatmaz.
 - **Test:** `importNote.test.ts`: `destroy` hiç bitmese de metin döner. Eski kodda 5 sn zaman aşımıyla düştüğü doğrulandı.
+
+### Aşama 47 — Çalışma asistanı "Fosfor" (3 Kasım 2026, `keen-albattani`)
+
+- **İstek (kullanıcı):** Not okurken ya da test çözerken akla takılanı sormak için Google'a ya da başka bir yapay zekâya gitmesin. Köşede bir kutucuk olsun, tıklayınca bir karakter "Nasıl yardımcı olabilirim?" desin, ders seçilsin, normal sohbet edilsin.
+- **Arayüz:** `src/components/Assistant.tsx`, uygulama kabuğunda (Layout) her sayfada.
+  - Köşe düğmesi: telefonda alt barın üstünde sağda, bilgisayarda sağ altta. Karakter `FosforCharacter`: yüzlü fosforlu kalem; renkleri token'lardan (`--hi`, `--ink-line`), kalem rengine uyar, göz kırpar, cevap yazarken ağzı oynar, hareket azaltma tercihine uyar.
+  - Panel: "Hangi ders?" seçimi (ya da "Genel soru"), karşılama mesajı, ilk açılışta öneri düğmeleri, sohbet, "Yeni sohbet", Kapat (Esc).
+  - Ders başlangıçta açık sayfanın dersi (`/not/:id`, `/ders/:id`). Sohbet ders başına `sessionStorage`'da (`studymode.assistant.v1`, en fazla 40 mesaj); hesaba kaydedilmez.
+  - Odak sayacı (`.focus-pill`) düğmenin soluna kaydırıldı.
+- **Yapay zekâ:** Yeni görev `chat` (`src/lib/ai/tasks.ts`, şema `{ reply }`, Türkçe "çalışma arkadaşı" komutu).
+  - Girdi: ders adı, not bağlamı, son 10 tur, soru. Sunucu da sınırlar: bağlam 18.000, tur 1.500, soru 2.000 karakter.
+  - Bağlam `buildAssistantContext` (`src/lib/assistant.ts`) ile hazırlanır: açık not önce ve daha fazla (9.000), sonra dersin diğer notları en yeniden (2.500'er; özet + ana noktalar + kavramlar + metnin başı). Toplam 16.000.
+  - Normal yönlendirme geçerli: VIP/Premium → Free+, diğerleri ücretsiz. Her mesaj günlük haktan 1 sayılır. Kendi anahtarıyla da çalışır.
+  - Giriş yoksa ya da anahtar eksikse panel nedenini söyler, giriş ya da ayarlar bağlantısı verir.
+- **Not:** `generate.test.ts`'teki "bilinmeyen görev" testi örnek olarak `chat` adını kullanıyordu; artık `proxy` kullanıyor. `chat` genel bir soru-cevap kapısı, ama giriş, günlük hak ve konuyu derse geri çeken komutla sınırlı.
+- **Gizlilik:** Fosfor'a sorulan soruların seçilen dersin notlarından bir bölümle aynı yoldan gittiği yazıldı (`PRIVACY_UPDATED` 3 Kasım).
+- **Testler:**
+  - `assistant.test.ts` (5): bağlam sırası ve bütçesi, adresten ders, kalın yazı, sunucu sınırları.
+  - e2e (2): açık notun dersiyle soru, bağlam ve geçmiş, ders başına sohbet, telefonda panel alt barın üstünde; girişsiz durumda yol gösterme.
 
 ## Tasarım dili ("Fosforlu")
 

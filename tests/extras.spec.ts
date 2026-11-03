@@ -1162,3 +1162,68 @@ test('Yönetim: normal kullanıcı Premium kodları bölümünü görmez', async
   await expect(page.getByRole('region', { name: 'Premium kodları' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Kod üret' })).toHaveCount(0)
 })
+
+test('Fosfor: ask about the open note’s course, with its notes; the conversation stays per course; phone layout', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const T = '2026-10-01T00:00:00Z'
+  const course = { id: 'cccccccc-0000-0000-0000-0000000000f1', user_id: 'aaaaaaaa-0000-0000-0000-000000000011', name: 'Fizyoloji', color: '#e5484d', exam_date: null, created_at: T, updated_at: T }
+  const other = { ...course, id: 'cccccccc-0000-0000-0000-0000000000f2', name: 'Kimya' }
+  const note = { id: 'dddddddd-0000-0000-0000-0000000000f1', user_id: course.user_id, course_id: course.id, title: 'Dolaşım', content: 'Kalp kası kasılır ve kanı pompalar. Sol karıncık en kalın duvarlıdır.', summary: { overview: 'Kalbin çalışması.', points: ['Kalp kanı pompalar.'], keyTerms: [{ term: 'Sol karıncık', definition: 'Kanı vücuda pompalayan oda.' }] }, questions: [], practice: [], generator: 'ai', created_at: T, updated_at: T }
+  await signedInAs(page, 'normal', {}, { courses: [course, other], notes: [note] })
+  const asked: Array<{ task: string; input: { course: string; context: string; history: Array<{ role: string; text: string }>; question: string } }> = []
+  await page.route('**/api/generate', async (route) => {
+    const body = route.request().postDataJSON()
+    asked.push(body)
+    const n = asked.length
+    await route.fulfill({ json: { result: { reply: n === 1 ? 'Sol karıncık en kalın duvarlıdır, çünkü kanı **bütün vücuda** pompalar.' : 'Kimya için cevap.' } } })
+  })
+  await page.goto(`/not/${note.id}`)
+  await page.getByRole('button', { name: /Fosfor’a sor/ }).click()
+  const panel = page.getByRole('dialog', { name: /Fosfor/ })
+  await expect(panel).toContainText('Nasıl yardımcı olabilirim?')
+  // Starts on the course of the open note.
+  await expect(panel.getByLabel('Hangi ders?')).toHaveValue(course.id)
+  await panel.getByLabel('Fosfor’a sorun').fill('Neden sol karıncık kalın?')
+  await panel.getByRole('button', { name: 'Gönder' }).click()
+  await expect(panel.locator('.assistant-msg.is-assistant strong')).toHaveText('bütün vücuda')
+  expect(asked[0].task).toBe('chat')
+  expect(asked[0].input.course).toBe('Fizyoloji')
+  expect(asked[0].input.question).toBe('Neden sol karıncık kalın?')
+  expect(asked[0].input.context).toContain('Dolaşım (şu an açık)')
+  expect(asked[0].input.context).toContain('Sol karıncık en kalın duvarlıdır')
+  expect(asked[0].input.history).toEqual([])
+  // The panel fits between the top bar and the bottom bar on a phone.
+  const box = (await panel.boundingBox())!
+  const bar = (await page.locator('.mobile-bar').boundingBox())!
+  expect(box.y + box.height).toBeLessThanOrEqual(bar.y)
+  expect(box.x).toBeGreaterThanOrEqual(0)
+  expect(box.x + box.width).toBeLessThanOrEqual(390)
+
+  // Another course: its own (empty) conversation, a suggestion, no notes from the first course.
+  await panel.getByLabel('Hangi ders?').selectOption(other.id)
+  await expect(panel.locator('.assistant-msg.is-user')).toHaveCount(0)
+  await panel.getByRole('button', { name: 'Bana bir soru sor' }).click()
+  await expect(panel).toContainText('Kimya için cevap.')
+  expect(asked[1].input.course).toBe('Kimya')
+  expect(asked[1].input.context).toBe('')
+  // Back to the first course: its conversation is still there, and goes along as history.
+  await panel.getByLabel('Hangi ders?').selectOption(course.id)
+  await expect(panel.locator('.assistant-msg.is-user')).toHaveText(['Neden sol karıncık kalın?'])
+  await panel.getByLabel('Fosfor’a sorun').fill('Peki sağ karıncık?')
+  await panel.getByRole('button', { name: 'Gönder' }).click()
+  await expect.poll(() => asked.length).toBe(3)
+  expect(asked[2].input.history.map((t) => t.role)).toEqual(['user', 'assistant'])
+  // Escape closes it; the corner button comes back.
+  await page.keyboard.press('Escape')
+  await expect(panel).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Fosfor’a sor/ })).toBeVisible()
+})
+
+test('Fosfor: signed out, it says how to start instead of failing', async ({ page }) => {
+  await startDemo(page)
+  await page.getByRole('button', { name: /Fosfor’a sor/ }).click()
+  const panel = page.getByRole('dialog', { name: /Fosfor/ })
+  await expect(panel).toContainText('giriş yapman gerekiyor')
+  await expect(panel.getByRole('link', { name: 'Giriş yap' })).toBeVisible()
+  await expect(panel.getByLabel('Fosfor’a sorun')).toHaveCount(0)
+})

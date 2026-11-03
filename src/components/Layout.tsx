@@ -18,6 +18,7 @@ import { authLinkError, openedFromConfirmationEmail, openedFromRecoveryEmail, su
 import { Landing } from '../pages/Landing'
 import { Brand } from './Brand'
 import { Alert } from './ui'
+import { Assistant } from './Assistant'
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -272,6 +273,7 @@ export function Layout() {
       <VipWelcome />
       <EducationPrompt />
       <Tour />
+      <Assistant />
 
       <nav className="mobile-bar" aria-label="Alt menü">
         <NavLink to="/" end data-tour="bugun">

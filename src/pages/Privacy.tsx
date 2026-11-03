@@ -6,7 +6,7 @@ import { MAKER, SOCIALS } from '../components/MadeBy'
 import { useStore } from '../lib/store'
 import { unlock } from '../lib/achievements'
 
-export const PRIVACY_UPDATED = '1 Kasım 2026'
+export const PRIVACY_UPDATED = '3 Kasım 2026'
 
 /** /gizlilik: what StudyMode keeps, why, who processes it, and how to delete it. Plain Turkish. */
 export function Privacy() {
@@ -105,7 +105,9 @@ export function Privacy() {
             </li>
             <li>
               <strong>Google (Gemini):</strong> ücretsiz yapay zekâ, yüklediğin notun metnini özet ve soru hazırlamak için Google'ın Gemini modellerine gönderir. Ücretsiz katmanda Google bu
-              içerikleri kendi ürünlerini geliştirmek için kullanabilir; bu yüzden kişisel ya da gizli bilgi içeren notları yükleme. Google ile giriş yaparsan girişini de Google doğrular.
+              içerikleri kendi ürünlerini geliştirmek için kullanabilir; bu yüzden kişisel ya da gizli bilgi içeren notları yükleme. Çalışma asistanı Fosfor’a sorduğun sorular da,
+              seçtiğin dersin notlarından bir bölümle birlikte aynı yoldan gider; sohbet yalnızca bu sekmede tutulur, hesabına kaydedilmez. Google ile giriş yaparsan girişini de Google
+              doğrular.
             </li>
             <li>
               <strong>Google Cloud (Vertex AI) — Free+:</strong> VIP, yönetici ve Premium kodu olan hesaplarda notun metni Google Cloud üzerindeki ücretli Gemini modellerine gider. Bu kullanımda
