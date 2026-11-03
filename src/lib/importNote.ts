@@ -1,6 +1,6 @@
 import type { ImageMimeType, TranscribeImage } from './ai/tasks'
 import { freshImport, StaleVersionError } from './version'
-import { NEEDS_WORKER_POLYFILL, POLYFILL_SOURCE } from './polyfills'
+import { MODERN_PDF, NEEDS_WORKER_POLYFILL, POLYFILL_SOURCE } from './polyfills'
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024
 export const MAX_PDF_PAGES = 150
@@ -186,10 +186,13 @@ let rawWorkerUrl = ''
 
 function loadPdfReader(): Promise<PdfJs> {
   pdfLoad ??= (async () => {
-    const [pdfjs, worker] = await Promise.all([
-      freshImport(() => import('pdfjs-dist/legacy/build/pdf.mjs')),
-      freshImport(() => import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')),
-    ])
+    // Current browsers: the normal build, as fast as before. Only older ones (iOS before 18) get
+    // the slower legacy build with its stand-ins; giving it to everyone made every phone slower.
+    const [pdfjs, worker] = (await Promise.all(
+      MODERN_PDF
+        ? [freshImport(() => import('pdfjs-dist')), freshImport(() => import('pdfjs-dist/build/pdf.worker.min.mjs?url'))]
+        : [freshImport(() => import('pdfjs-dist/legacy/build/pdf.mjs')), freshImport(() => import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'))],
+    )) as [PdfJs, { default: string }]
     rawWorkerUrl = worker.default
     pdfjs.GlobalWorkerOptions.workerSrc = workerWithPolyfills(worker.default)
     if ('workerPort' in pdfjs.GlobalWorkerOptions) {
@@ -226,7 +229,8 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
         enableXfa: false,
         useSystemFonts: true,
       })
-      document = await withTimeout(loadingTask.promise, 12_000, 'PDF open')
+      // Generous: a big PDF on a slow phone can take a while to open, and a retry starts over.
+      document = await withTimeout(loadingTask.promise, 30_000, 'PDF open')
     } catch (firstError) {
       if (firstError instanceof Error && firstError.name === 'PasswordException') {
         throw firstError
@@ -246,7 +250,7 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
         enableXfa: false,
         useSystemFonts: true,
       })
-      document = await withTimeout(loadingTask.promise, 15_000, 'PDF open retry')
+      document = await withTimeout(loadingTask.promise, 30_000, 'PDF open retry')
     }
 
     if (document.numPages > MAX_PDF_PAGES) {
@@ -257,17 +261,19 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
     const scannedPageNumbers: number[] = []
     let totalCharacters = 0
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-      const page = await withTimeout(document.getPage(pageNumber), 10_000, `PDF page ${pageNumber}`)
+      const page = await document.getPage(pageNumber)
       try {
         let pageText = ''
         try {
-          const content = await withTimeout(page.getTextContent(), 10_000, `PDF text ${pageNumber}`)
+          // No time limit here: a slow page is still a text page. Treating it as scanned sent
+          // pages full of text to the AI as pictures, one by one, which took minutes.
+          const content = await page.getTextContent()
           pageText = content.items
             .map((item) => ('str' in item ? `${item.str}${item.hasEOL ? '\n' : ' '}` : ''))
             .join('')
             .trim()
         } catch {
-          // If text extraction fails or times out on a page with custom encodings/fonts, fall back to OCR for that page.
+          // If text extraction fails on a page with custom encodings/fonts, fall back to OCR for that page.
           pageText = ''
         }
         totalCharacters += pageText.length

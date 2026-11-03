@@ -11,6 +11,14 @@
 export const NEEDS_WORKER_POLYFILL =
   typeof (Promise as unknown as { withResolvers?: unknown }).withResolvers !== 'function'
 
+/**
+ * Whether this browser can run pdf.js's normal (fast) build as it is: it needs native
+ * Promise.withResolvers and URL.parse (iOS 18+, any current desktop browser). Read before the
+ * polyfills are installed, so it reflects the browser itself. Older ones get the legacy build.
+ */
+export const MODERN_PDF =
+  !NEEDS_WORKER_POLYFILL && typeof (URL as unknown as { parse?: unknown }).parse === 'function'
+
 export function installPolyfills() {
   const P = Promise as unknown as { withResolvers?: () => unknown }
   if (typeof P.withResolvers !== 'function') {

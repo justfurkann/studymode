@@ -14,6 +14,14 @@ vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
 vi.mock('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url', () => ({
   default: '/assets/pdf.worker.test.mjs',
 }))
+// Current browsers (and Node) load the normal build; older ones the legacy one. Same fakes for both.
+vi.mock('pdfjs-dist', () => ({
+  getDocument: pdfMocks.getDocument,
+  GlobalWorkerOptions: pdfMocks.workerOptions,
+}))
+vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({
+  default: '/assets/pdf.worker.test.mjs',
+}))
 
 function fakePdf(options: { numPages?: number; pages?: string[]; failure?: Error } = {}) {
   const cleanup = vi.fn()

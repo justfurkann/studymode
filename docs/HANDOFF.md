@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (2 Kasım 2026, Aşama 42 sonrası, `main` üzerinde): 281 birim testi, 117 tarayıcı testi.
+Son yeşil durum (3 Kasım 2026, Aşama 43 sonrası, `main` üzerinde): 281 birim testi, 117 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -798,6 +798,21 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - Shopier panelindeki adres sayfadakiyle aynı olmalı (kullanıcı başvuruda Konya adresini yazmış olabilir).
   - Mesafeli satış ve iade metnini bir muhasebeci ya da hukukçu görmeli.
 - **Sonra (sunucu, dreamy-sagan):** Otomatik kod teslimi (Shopier ödeme bildirimi → kod üret → e-posta). Kurulunca `DELIVERY.within` "anında" yapılır.
+
+### Aşama 43 — PDF okuma yeniden hızlı; eski iPhone yolu yalnızca eski iPhone'larda (3 Kasım 2026, `keen-albattani`)
+
+- **Şikâyet:** Yeni ve eski iPhone'da dosya ekleyince uzun bekleme, "x/y sayfa okundu" ekranı. Eskiden PDF saniyesinde okunuyordu.
+- **Sebep 1:** Aşama 40'tan sonra herkes pdf.js'in legacy sürümüne geçmişti.
+- **Sebep 2:** 9bfb693'te (AI Studio) her sayfanın yazı çıkarma işine 10 sn sınır konmuştu; aşılırsa sayfa "taranmış" sayılıp yapay zekâya resim olarak okutuluyordu. Yavaş telefonda yazılı sayfalar tek tek yapay zekâya gidiyordu. "x/y sayfa okundu" mesajı yalnızca bu taranmış sayfa yolunda çıkar.
+- **Düzeltme:**
+  - `MODERN_PDF` (`src/lib/polyfills.ts`): yerel `Promise.withResolvers` ve `URL.parse` varsa normal `pdfjs-dist` sürümü ve işçisi kullanılır (Aşama 40 öncesindeki hızlı yol). Yoksa legacy sürüm ve polyfill sarmalayıcısı.
+  - `getPage` ve `getTextContent` sınırları kaldırıldı; yazı çıkarma yalnızca gerçek hata verirse sayfa taranmış sayılır.
+  - Belge açma sınırı 12 sn'den 30 sn'ye çıkarıldı.
+- **Ölçüm (Chromium, 40 sayfalık PDF, işlemci 6 kat yavaş):** Aşama 35 öncesi (2917f76) ~0,54 sn; şimdi ~0,63 sn. Gerçek iPhone'da ölçülemedi.
+- **Testler:**
+  - "PDF upload fills the note text" normal sürümün yüklendiğini, legacy'nin yüklenmediğini kontrol eder.
+  - "older iPhone" testi legacy sürümün yüklendiğini ve "sayfa okundu" (yapay zekâyla okuma) çıkmadığını kontrol eder.
+- **Not (yapay zekâya PDF'i dosya olarak göndermek):** Metin göndermek daha hızlı, daha ucuz ve kotaya dosttur. Yapay zekâ yalnızca yazısı olmayan (taranmış) sayfalar için kullanılır.
 
 ## Tasarım dili ("Fosforlu")
 
