@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (3 Kasım 2026, Aşama 44 sonrası, `main` üzerinde): 283 birim testi, 117 tarayıcı testi.
+Son yeşil durum (3 Kasım 2026, Aşama 45 sonrası, `main` üzerinde): 283 birim testi, 118 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -825,6 +825,18 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Testler:**
   - `importNote.test.ts`: aynı anda okuma ve sayfa sırası.
   - `generate.test.ts`: `transcribe` Vertex'e gitmez, `consume_plus` çağrılmaz.
+
+### Aşama 45 — Giriş sayfasında Google düğmesi beklemeden geliyor (3 Kasım 2026, `keen-albattani`)
+
+- **Şikâyet:** Giriş sayfasında "Google ile devam et" 2-3 sn geç çıkıyordu; Cloudflare doğrulaması da geç geliyordu.
+- **Sebep:** Üç dış istek sırayla yapılıyordu: önce Supabase `auth/v1/settings` ("Google açık mı?"), sonra `accounts.google.com/gsi/client` betiği, sonra Google'ın düğme çerçevesi. Düğmenin yeri de cevap gelene kadar boştu. Turnstile betiği de ancak giriş sayfası açılınca indiriliyordu.
+- **Düzeltme:**
+  - `GoogleButton` beklemeden çizilir. Başlangıç değeri son kontrolün cevabıdır (`googleEnabledHint`, localStorage `studymode.googleEnabled`); bu yoksa `GOOGLE_CLIENT_ID` tanımlıysa açık kabul edilir. Kontrol "kapalı" derse gizlenir.
+  - Google'ın düğmesinin altında aynı boyda bir benzeri (`.google-placeholder`) durur; Google'ın düğmesi çizilince üstünü örter.
+  - `src/lib/signInWarmup.ts`: `/giris` bağlantısına imleç gelince, dokunulunca ya da klavyeyle odaklanınca Supabase kontrolü, Google betiği ve Turnstile betiği önceden başlar. Giriş sayfası açılınca da hepsi aynı anda başlar.
+  - Siteye sıradan bir ziyarette Google ya da Cloudflare'e hiçbir istek gitmez.
+- **Not:** Turnstile kutusu yüklendikten sonra 1-2 sn kendi doğrulamasını yapar; bu Cloudflare'in işi, hızlandırılamaz.
+- **Test:** e2e "sign-in opens fast": Supabase 3 sn gecikse de Google düğmesi 2,5 sn içinde görünür; "Giriş yap"ın üstüne gelince Google betiği istenir; düz ziyarette istenmez. Eski kodda düştüğü doğrulandı.
 
 ## Tasarım dili ("Fosforlu")
 

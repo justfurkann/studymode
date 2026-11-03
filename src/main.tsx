@@ -8,6 +8,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { installErrorReporting } from './lib/feedback'
 import { startUpdateChecks } from './lib/version'
 import { installPolyfills } from './lib/polyfills'
+import { installSignInWarmup } from './lib/signInWarmup'
 import { applyTheme } from './lib/settings'
 import { applyDecor } from './lib/decor'
 import './styles/global.css'
@@ -20,6 +21,7 @@ applyTheme()
 applyDecor()
 installErrorReporting()
 startUpdateChecks()
+installSignInWarmup()
 
 // Visitor counts (Vercel Web Analytics, cookieless). Not on local development or in tests.
 const analytics = !['localhost', '127.0.0.1'].includes(window.location.hostname)
