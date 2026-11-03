@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (3 Kasım 2026, Aşama 43 sonrası, `main` üzerinde): 281 birim testi, 117 tarayıcı testi.
+Son yeşil durum (3 Kasım 2026, Aşama 44 sonrası, `main` üzerinde): 283 birim testi, 117 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -813,6 +813,18 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - "PDF upload fills the note text" normal sürümün yüklendiğini, legacy'nin yüklenmediğini kontrol eder.
   - "older iPhone" testi legacy sürümün yüklendiğini ve "sayfa okundu" (yapay zekâyla okuma) çıkmadığını kontrol eder.
 - **Not (yapay zekâya PDF'i dosya olarak göndermek):** Metin göndermek daha hızlı, daha ucuz ve kotaya dosttur. Yapay zekâ yalnızca yazısı olmayan (taranmış) sayfalar için kullanılır.
+
+### Aşama 44 — Taranmış PDF sayfaları hızlı modelle ve aynı anda okunuyor (3 Kasım 2026, `keen-albattani`)
+
+- **Durum:** Aşama 43'ten sonra da kullanıcının PDF'inde "2/5 sayfa okundu" çıkıyordu. Bu PDF'in sayfaları resim (taranmış), yani yapay zekâ ile okunması (transcribe) gerekiyor.
+- **Sebep 1:** b4a563e'den beri VIP/Premium istekleri varsayılan olarak Free+'ya gidiyor; sayfa okuma da Free+'nın düşünen modeline (3.8 Flash) gitmeye başlamıştı. Sayfa başına yavaştı ve Free+ hakkını (günde 30) yiyordu. Eskiden hızlı hafif modelde yapılıyordu.
+- **Sebep 2:** Sayfalar tek tek, sırayla okunuyordu.
+- **Düzeltme:**
+  - `api/generate.ts`: `transcribe` hiçbir zaman Free+'ya gitmez (`fastOnly`). Her zaman ücretsiz hızlı model kullanılır; günlük ücretsiz haktan sayılır.
+  - `src/lib/importNote.ts`: Taranmış sayfalar 3 istek aynı anda okunuyor (her istekte 1-2 sayfa). Resimler bellek için yine tek tek çiziliyor; metin sayfa sırasına göre birleştiriliyor.
+- **Testler:**
+  - `importNote.test.ts`: aynı anda okuma ve sayfa sırası.
+  - `generate.test.ts`: `transcribe` Vertex'e gitmez, `consume_plus` çağrılmaz.
 
 ## Tasarım dili ("Fosforlu")
 

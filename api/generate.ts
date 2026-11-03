@@ -162,7 +162,10 @@ export async function handleGenerate(
   // cap reached, Google error) falls through to the normal free AI below, so nobody is left without an answer.
   // VIP and admin, and anyone with paid Premium (a redeemed code; their role stays 'normal').
   const plusRole = before?.role === 'vip' || before?.role === 'admin' || !!before?.premium_until
-  const wantsPlus = body.engine === 'plus' || premium || (plusRole && body.engine !== 'free')
+  // Reading text off page pictures needs no reasoning: the light free model does it in seconds, while
+  // Free+'s thinking model took long per page and used up the Free+ allowance on a scanned PDF.
+  const fastOnly = task === 'transcribe'
+  const wantsPlus = !fastOnly && (body.engine === 'plus' || premium || (plusRole && body.engine !== 'free'))
   if (wantsPlus && vertexConfigured(env)) {
     const plus = await plusCall('plus_quota', auth, fetchImpl)
     const oidc = request.headers.get('x-vercel-oidc-token') ?? env.VERCEL_OIDC_TOKEN

@@ -297,60 +297,67 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
       let doneCount = 0
       let index = 0
 
+      // Pages are read by the AI a few batches at a time, in parallel: one after another, a five page
+      // scan took a minute. Pictures are still drawn one by one, to keep phone memory low.
+      const PARALLEL = 3
       while (index < totalScanned) {
-        const batchNums: number[] = []
-        const batchImages: TranscribeImage[] = []
-        let batchChars = 0
-
-        while (index < totalScanned && batchNums.length < maxPerBatch) {
-          const pageNum = scannedPageNumbers[index]
-          let img: TranscribeImage | null = null
-          try {
-            img = await withTimeout(renderPdfPageToImage(document, pageNum), 15_000, `PDF render ${pageNum}`)
-          } catch (renderErr) {
-            if (!hasSelectableText && scannedPageNumbers.length === 1) {
-              throw renderErr
+        const wave: Array<{ nums: number[]; images: TranscribeImage[] }> = []
+        while (index < totalScanned && wave.length < PARALLEL) {
+          const batchNums: number[] = []
+          const batchImages: TranscribeImage[] = []
+          let batchChars = 0
+          while (index < totalScanned && batchNums.length < maxPerBatch) {
+            const pageNum = scannedPageNumbers[index]
+            let img: TranscribeImage | null = null
+            try {
+              img = await withTimeout(renderPdfPageToImage(document, pageNum), 15_000, `PDF render ${pageNum}`)
+            } catch (renderErr) {
+              if (!hasSelectableText && scannedPageNumbers.length === 1) {
+                throw renderErr
+              }
+              // Skip decorative/unrenderable page if the PDF has other readable pages.
+              index += 1
+              doneCount += 1
+              options.onProgress?.(doneCount, totalScanned)
+              continue
             }
-            // Skip decorative/unrenderable page if the PDF has other readable pages.
+            if (batchImages.length > 0 && batchChars + img.data.length > MAX_BATCH_BASE64_CHARS) {
+              break
+            }
+            batchNums.push(pageNum)
+            batchImages.push(img)
+            batchChars += img.data.length
             index += 1
-            doneCount += 1
+          }
+          if (batchImages.length) wave.push({ nums: batchNums, images: batchImages })
+        }
+        if (!wave.length) continue
+
+        const results = await Promise.all(
+          wave.map(async ({ nums, images }) => {
+            let transcribed = ''
+            try {
+              transcribed = await options.transcribe!(images)
+            } catch (err) {
+              if (!hasSelectableText) {
+                throw new NoteImportError(err instanceof Error ? err.message : 'Taranmış PDF sayfaları okunamadı.')
+              }
+              // If the PDF already has selectable text on other pages, don't discard the whole document
+              // just because OCR failed on a blank/cover page.
+            }
+            doneCount += nums.length
             options.onProgress?.(doneCount, totalScanned)
-            continue
-          }
-          if (batchImages.length > 0 && batchChars + img.data.length > MAX_BATCH_BASE64_CHARS) {
-            break
-          }
-          batchNums.push(pageNum)
-          batchImages.push(img)
-          batchChars += img.data.length
-          index += 1
+            return { nums, transcribed }
+          }),
+        )
+        for (const { nums, transcribed } of results) {
+          pages[nums[0] - 1] = transcribed.trim()
+          for (let k = 1; k < nums.length; k += 1) pages[nums[k] - 1] = ''
+          totalCharacters += transcribed.length
         }
-
-        if (batchImages.length === 0) continue
-
-        let transcribed = ''
-        try {
-          transcribed = await options.transcribe(batchImages)
-        } catch (err) {
-          if (!hasSelectableText) {
-            throw new NoteImportError(err instanceof Error ? err.message : 'Taranmış PDF sayfaları okunamadı.')
-          }
-          // If the PDF already has selectable text on other pages, don't discard the whole document
-          // just because OCR failed on a blank/cover page.
-          transcribed = ''
-        }
-
-        pages[batchNums[0] - 1] = transcribed.trim()
-        for (let k = 1; k < batchNums.length; k += 1) {
-          pages[batchNums[k] - 1] = ''
-        }
-        totalCharacters += transcribed.length
         if (totalCharacters > MAX_TEXT_CHARACTERS) {
           throw new NoteImportError('Not çok uzun. Tek seferde en fazla 400.000 karakter yükleyebilirsin; notunu bölümlere ayır.')
         }
-
-        doneCount += batchNums.length
-        options.onProgress?.(doneCount, totalScanned)
       }
     }
 
