@@ -137,6 +137,26 @@ describe('extractNoteText', () => {
     expect(destroy).toHaveBeenCalledOnce()
   })
 
+  it('reads scanned pages a few at a time in parallel and keeps them in page order', async () => {
+    fakePdf({ numPages: 6, pages: ['', '', '', '', '', ''] })
+    let inFlight = 0
+    let most = 0
+    let call = 0
+    const transcribe = vi.fn(async () => {
+      const n = ++call
+      inFlight += 1
+      most = Math.max(most, inFlight)
+      // Later requests answer first, so order must come from the pages, not from who finishes.
+      await new Promise((r) => setTimeout(r, 30 - n * 5))
+      inFlight -= 1
+      return `Parça ${n}`
+    })
+    const text = await extractNoteText(new File(['scan'], 'tarama.pdf'), { transcribe })
+    expect(transcribe).toHaveBeenCalledTimes(3) // six pages, two per request
+    expect(most).toBeGreaterThan(1)
+    expect(text).toBe('Parça 1\n\nParça 2\n\nParça 3')
+  })
+
   it('transcribes uploaded image files (.jpg, .png, .webp) and requires AI when signed out', async () => {
     await expect(extractNoteText(new File(['img'], 'defter.jpg'))).rejects.toThrow('Fotoğraftan metin çıkarmak için')
 

@@ -306,6 +306,19 @@ describe('Free+ on Vertex AI', () => {
     expect(calls(f).some((u) => u.includes('consume_ai'))).toBe(true)
   })
 
+  it('reads page pictures (transcribe) on the fast free model, never on Free+', async () => {
+    resetVertexToken()
+    const f = plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 } })
+    const request = new Request('https://studymode.fun/api/generate', {
+      method: 'POST',
+      headers: { authorization: 'Bearer user-token', 'content-type': 'application/json', 'x-vercel-oidc-token': 'vercel-oidc' },
+      body: JSON.stringify({ task: 'transcribe', input: { images: [{ mimeType: 'image/jpeg', data: 'aGVsbG8=' }] }, engine: 'plus' }),
+    })
+    await handleGenerate(request, plusEnv, f)
+    expect(calls(f).some((u) => u.includes('aiplatform') || u.includes('consume_plus'))).toBe(false)
+    expect(calls(f).some((u) => u.includes('generativelanguage'))).toBe(true)
+  })
+
   it('falls back to the free AI when Google Cloud refuses, so nobody is left without an answer', async () => {
     resetVertexToken()
     const f = plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 }, sts: 403 })
