@@ -4815,11 +4815,38 @@ a.list-item:hover {
 }
 
 /* Google draws its own button in here; keep room so the card does not jump while it loads. */
+.google-slot-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 44px;
+}
 .google-slot {
+  position: relative;
+  z-index: 1;
   width: 100%;
   min-height: 44px;
   display: flex;
   justify-content: center;
+}
+/* A look-alike under Google's button while its script and frame load. */
+.google-placeholder {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 400px);
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  pointer-events: none;
 }
 
 .auth-divider {

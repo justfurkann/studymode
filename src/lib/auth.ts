@@ -29,9 +29,29 @@ let googleCheck: Promise<boolean> | null = null
 export function isGoogleEnabled(url: string, key: string, fetchImpl: typeof fetch = fetch): Promise<boolean> {
   googleCheck ??= fetchImpl(`${url}/auth/v1/settings`, { headers: { apikey: key } })
     .then((r) => (r.ok ? r.json() : null))
-    .then((body: { external?: { google?: boolean } } | null) => body?.external?.google === true)
+    .then((body: { external?: { google?: boolean } } | null) => {
+      const on = body?.external?.google === true
+      try {
+        localStorage.setItem(GOOGLE_HINT_KEY, on ? '1' : '0')
+      } catch {
+        // Private mode: no hint next time, nothing else changes.
+      }
+      return on
+    })
     .catch(() => false)
   return googleCheck
+}
+
+const GOOGLE_HINT_KEY = 'studymode.googleEnabled'
+
+/** What the last check said (true/false), or null if there was none on this device. */
+export function googleEnabledHint(): boolean | null {
+  try {
+    const v = localStorage.getItem(GOOGLE_HINT_KEY)
+    return v === '1' ? true : v === '0' ? false : null
+  } catch {
+    return null
+  }
 }
 
 export function nameMetadata(first: string, last: string) {

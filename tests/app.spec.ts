@@ -2162,6 +2162,34 @@ test('Google’s own button signs in on studymode.fun with a checked token and n
   expect(init.nonce).toBe(hashed)
 })
 
+test('sign-in opens fast: Google’s button does not wait for Supabase, and starts loading on the way to sign-in', async ({ page }) => {
+  const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+  // Supabase answers slowly; Google's (stand-in) script quickly.
+  await page.route(`${SUPABASE}/auth/v1/settings**`, async (route) => {
+    await new Promise((r) => setTimeout(r, 3000))
+    await route.fulfill({ json: { external: { email: true, google: true } } })
+  })
+  let gsiAt = 0
+  await page.route('https://accounts.google.com/gsi/client**', (route) => {
+    gsiAt ||= Date.now()
+    return route.fulfill({
+      contentType: 'text/javascript',
+      body: `window.google = { accounts: { id: { initialize() {}, renderButton(el) { const b = document.createElement('button'); b.textContent = 'Google ile devam et (Google)'; el.appendChild(b) }, cancel() {} } } }`,
+    })
+  })
+  await page.goto('/tanitim')
+  await page.waitForTimeout(500)
+  expect(gsiAt).toBe(0) // nothing goes to Google for a plain visit
+  // Heading for sign-in is enough to start loading.
+  await page.getByRole('link', { name: 'Giriş yap' }).first().hover()
+  await expect.poll(() => gsiAt).toBeGreaterThan(0)
+  const opened = Date.now()
+  await page.getByRole('link', { name: 'Giriş yap' }).first().click()
+  await expect(page.getByRole('button', { name: 'Google ile devam et (Google)' })).toBeVisible()
+  // Well before Supabase's slow answer: the button no longer waits for it.
+  expect(Date.now() - opened).toBeLessThan(2500)
+})
+
 test('the privacy policy is reachable from the landing page, sign-in and the bottom of every page', async ({ page }) => {
   const errors = watchErrors(page)
   await page.goto('/tanitim')

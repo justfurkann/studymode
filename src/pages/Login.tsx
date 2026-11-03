@@ -4,10 +4,11 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { BrandIcon } from '../components/BrandIcon'
 import { Captcha } from '../components/Captcha'
 import { Alert, Spinner } from '../components/ui'
-import { authErrorMessage, isGoogleEnabled, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
-import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../lib/config'
+import { authErrorMessage, googleEnabledHint, isGoogleEnabled, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
+import { GOOGLE_CLIENT_ID, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../lib/config'
 import { captchaSiteKey } from '../lib/captcha'
 import { renderGoogleButton } from '../lib/googleSignIn'
+import { warmUpSignIn } from '../lib/signInWarmup'
 import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 
@@ -212,7 +213,9 @@ export function Login() {
  */
 function GoogleButton({ captcha }: { captcha?: { token: () => string; used: () => void } }) {
   const navigate = useNavigate()
-  const [enabled, setEnabled] = useState(false)
+  // Shown right away (last known answer, or on when a Google client is set up) instead of waiting
+  // for Supabase to answer first; hidden again if the check says Google is off.
+  const [enabled, setEnabled] = useState(() => googleEnabledHint() ?? Boolean(GOOGLE_CLIENT_ID))
   const [mode, setMode] = useState<'gsi' | 'redirect'>('gsi')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -220,6 +223,8 @@ function GoogleButton({ captcha }: { captcha?: { token: () => string; used: () =
 
   useEffect(() => {
     let alive = true
+    // Google's script, the bot check and this check all start together (or earlier, on the link).
+    warmUpSignIn()
     if (supabase) void isGoogleEnabled(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY).then((on) => alive && setEnabled(on))
     return () => {
       alive = false
@@ -245,7 +250,14 @@ function GoogleButton({ captcha }: { captcha?: { token: () => string; used: () =
   return (
     <div className="google-auth">
       {mode === 'gsi' ? (
-        <div ref={slot} className="google-slot" aria-label="Google ile devam et" />
+        <div className="google-slot-wrap">
+          {/* Same size as Google's button, under it: the place looks ready at once, and Google's
+              button covers it the moment it is drawn. */}
+          <div className="google-placeholder" aria-hidden="true">
+            <BrandIcon brand="google" size={18} /> Google ile devam et
+          </div>
+          <div ref={slot} className="google-slot" aria-label="Google ile devam et" />
+        </div>
       ) : (
         <button
           type="button"
