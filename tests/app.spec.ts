@@ -131,14 +131,21 @@ test('course with exam, pasted note in simple mode, spaced review and persistenc
 })
 
 test('PDF upload fills the note text', async ({ page }) => {
+  const pdfjs: string[] = []
+  page.on('request', (r) => /pdfjs-dist/.test(r.url()) && pdfjs.push(r.url()))
   await createCourse(page, 'Biyoloji 102')
   await page.getByRole('link', { name: 'Not ekle' }).last().click()
   await page.getByLabel('Not dosyası').setInputFiles({ name: 'hucre_notlari.pdf', mimeType: 'application/pdf', buffer: makePdf(biologyNotes.split('\n').filter(Boolean)) })
   await expect(page.getByLabel('Ders notun')).toHaveValue(/Mitokondri/)
   await expect(page.getByLabel('Not başlığı')).toHaveValue('hucre notlari')
+  // A current browser gets the normal, fast pdf.js build, not the legacy one meant for old iPhones.
+  expect(pdfjs.some((u) => /pdfjs-dist\/build\//.test(u) || /pdfjs-dist\.js/.test(u))).toBe(true)
+  expect(pdfjs.some((u) => /legacy/.test(u))).toBe(false)
 })
 
 test('PDF upload works on an older iPhone browser (no URL.parse / Promise.withResolvers)', async ({ page }) => {
+  const legacy: string[] = []
+  page.on('request', (r) => /legacy/.test(r.url()) && legacy.push(r.url()))
   // iOS 16-17 Safari lacks these; the normal pdf.js build needs them, so every PDF failed there.
   await page.addInitScript(() => {
     const strip = 'delete URL.parse; delete Promise.withResolvers;'
@@ -157,6 +164,9 @@ test('PDF upload works on an older iPhone browser (no URL.parse / Promise.withRe
   await page.getByLabel('Not dosyası').setInputFiles({ name: 'eski.pdf', mimeType: 'application/pdf', buffer: makePdf(biologyNotes.split('\n').filter(Boolean)) })
   await expect(page.getByLabel('Ders notun')).toHaveValue(/Mitokondri/)
   await expect(page.getByText('PDF okunamadı')).toHaveCount(0)
+  // Read as text, not page by page through the AI.
+  await expect(page.getByText(/sayfa okundu/)).toHaveCount(0)
+  expect(legacy.length).toBeGreaterThan(0)
 })
 
 test('a deploy while the add page is open does not stop a PDF from being added', async ({ page }) => {
