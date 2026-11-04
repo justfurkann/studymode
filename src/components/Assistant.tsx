@@ -33,20 +33,22 @@ import { Alert } from './ui'
 export function FosforCharacter({ size = 56, talking = false }: { size?: number; talking?: boolean }) {
   return (
     <svg className={`fosfor ${talking ? 'is-talking' : ''}`} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
-      {/* Chisel tip and cap */}
-      <path d="M25 4h14l3 9H22z" fill="var(--ink-line)" />
-      <rect x="20" y="12" width="24" height="7" rx="2.5" fill="var(--ink-line)" />
+      {/* Chisel tip and cap: their own colour so they show on the dark theme too */}
+      <path d="M24.5 4.5h13q1.4 0 2 1.3l3 7.2H21.5l1.4-7.2q.3-1.3 1.6-1.3z" fill="var(--fosfor-cap)" />
+      <rect x="19.5" y="11.5" width="25" height="8" rx="3" fill="var(--fosfor-cap)" />
       {/* Body */}
       <rect x="15" y="17" width="34" height="42" rx="13" fill="var(--hi)" stroke="var(--ink-line)" strokeWidth="3" />
-      <rect x="21" y="23" width="5" height="16" rx="2.5" fill="var(--surface)" opacity="0.55" />
+      <rect x="20.5" y="23" width="4.5" height="13" rx="2.25" fill="var(--fosfor-shine)" opacity="0.6" />
       {/* Face */}
       <g className="fosfor-eyes">
-        <ellipse cx="27" cy="37" rx="2.6" ry="3.4" fill="var(--ink-line)" />
-        <ellipse cx="37" cy="37" rx="2.6" ry="3.4" fill="var(--ink-line)" />
+        <ellipse cx="27" cy="37" rx="2.9" ry="3.7" fill="var(--ink-line)" />
+        <ellipse cx="37" cy="37" rx="2.9" ry="3.7" fill="var(--ink-line)" />
+        <circle cx="28" cy="35.7" r="1" fill="var(--fosfor-shine)" />
+        <circle cx="38" cy="35.7" r="1" fill="var(--fosfor-shine)" />
       </g>
-      <ellipse cx="23" cy="44" rx="3" ry="1.8" fill="var(--danger)" opacity="0.28" />
-      <ellipse cx="41" cy="44" rx="3" ry="1.8" fill="var(--danger)" opacity="0.28" />
-      <path className="fosfor-mouth" d="M28 44 q4 4.5 8 0" stroke="var(--ink-line)" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      <ellipse cx="22.5" cy="44.2" rx="3.1" ry="1.9" fill="var(--danger)" opacity="0.32" />
+      <ellipse cx="41.5" cy="44.2" rx="3.1" ry="1.9" fill="var(--danger)" opacity="0.32" />
+      <path className="fosfor-mouth" d="M27.6 44 q4.4 5 8.8 0" stroke="var(--ink-line)" strokeWidth="2.6" fill="none" strokeLinecap="round" />
     </svg>
   )
 }
