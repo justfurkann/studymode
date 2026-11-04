@@ -1106,8 +1106,8 @@ test('Premium kodu: bitmesine 3 gün kala Bugün’de kapatılabilir hatırlatma
   await page.goto('/')
   const reminder = page.locator('.premium-reminder')
   await expect(reminder).toContainText('Premium’ın 3 gün sonra bitiyor')
-  // No payment link set yet: no "Yenile" button.
-  await expect(reminder.getByRole('link', { name: 'Yenile' })).toHaveCount(0)
+  // "Yenile" leads to the packages on the pricing page.
+  await expect(reminder.getByRole('link', { name: 'Yenile' })).toHaveAttribute('href', '/fiyatlar#paketler')
   await reminder.getByRole('button', { name: 'Hatırlatmayı kapat' }).click()
   await expect(reminder).toHaveCount(0)
   await page.reload()
