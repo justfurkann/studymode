@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
 /*
- * Paid Premium through codes sold on Shopier: the student buys a code there and types it here.
+ * Paid Premium through codes sold on the payment provider's page (lib/config PAYMENT_PROVIDER): the student buys a code there and types it here.
  * The database does the work (redeem_code, admin_* functions; see HANDOFF "Aşama 31"); this file
  * only calls it and turns the answers into plain Turkish.
  */
@@ -72,7 +72,7 @@ export interface NewCode {
   hint: string
 }
 
-/** CSV of freshly made codes, for a spreadsheet or Shopier. */
+/** CSV of freshly made codes, for a spreadsheet. */
 export function codesCsv(codes: NewCode[], days: number, label: string): string {
   const esc = (s: string) => `"${s.replace(/"/g, '""')}"`
   return ['kod,gun,etiket', ...codes.map((c) => [esc(c.code), String(days), esc(label)].join(','))].join('\n')

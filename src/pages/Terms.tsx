@@ -4,6 +4,7 @@ import { Brand } from '../components/Brand'
 import { FeedbackLink } from '../components/Feedback'
 import { MAKER, SOCIALS } from '../components/MadeBy'
 import { useStore } from '../lib/store'
+import { PAYMENT_PROVIDER } from '../lib/config'
 
 export const TERMS_UPDATED = '2 Kasım 2026'
 
@@ -91,8 +92,8 @@ export function Terms() {
           <ul>
             <li>StudyMode’un temel özellikleri ücretsizdir. Yapay zekânın adil paylaşılması için günlük kullanım hakları vardır; bu sınırları gerektiğinde değiştirebiliriz.</li>
             <li>
-              <strong>Ücretli Premium kodla satılır.</strong> Paketler, fiyatlar, teslimat ve mesafeli satış sözleşmesi <Link to="/fiyatlar">fiyatlar sayfasında</Link>. Kodu Shopier
-              üzerinden satın alırsın; ödemeyi Shopier alır, kart bilgilerin bize hiç gelmez. Kod en geç 24 saat içinde e-postayla gönderilir; Ayarlar’da ya da Premium sayfasında
+              <strong>Ücretli Premium kodla satılır.</strong> Paketler, fiyatlar, teslimat ve mesafeli satış sözleşmesi <Link to="/fiyatlar">fiyatlar sayfasında</Link>. Kodu {PAYMENT_PROVIDER}
+              üzerinden satın alırsın; kart bilgilerin bize hiç gelmez. Kod en geç 24 saat içinde e-postayla gönderilir; Ayarlar’da ya da Premium sayfasında
               girdiğinde Premium hesabında açılır.
             </li>
             <li>
