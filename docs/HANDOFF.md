@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (4 Kasım 2026, Aşama 55 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (4 Kasım 2026, Aşama 56 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -931,6 +931,13 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - Liste yalnızca süresi devam edenleri gösterir; "Premium'u bitir" ikinci bir "Evet, bitir" ister.
   - Süresi bitenler sayılır ve "Süresi bitenleri temizle" ile silinir.
   - "İptal" süzgecinde "İptal edilenleri sil (n)" ikinci bir "Evet, sil" ister.
+
+### Aşama 56 — Uzun notlar 3 parça birden hazırlanıyor (4 Kasım 2026, `dreamy-sagan`)
+
+- Olay: 6 büyük PDF "Tek not olarak birleştir" ile 230 602 karakterlik tek nota dönüştü. Sunucu bunu 12 000'lik ~20 parçada **sırayla** hazırlıyordu (≈15 dk); ekranda ilerleme görünmüyordu; uyarı da yanlışlıkla 20 000'lik parçayla hesaplayıp "12 bölüm" diyordu.
+- `generateStudySet` (`src/lib/ai/index.ts`): parçalar aynı anda **3** (kendi anahtarla 2) hazırlanır. Her parça yine kendi isteği; sonuçlar notun sırasıyla birleşir (`order`, zaman aşımında bölünen parçalar da yerini korur). Test: `split.test.ts` "prepares three parts at a time…".
+- Birleştirme uyarısı (`mergeMessage`): sunucuda 12 000'lik parçayla sayar, tahmini dakika söyler, 9+ parçada "Ayrı notlar daha iyi" önerir. Birleşik hazırlanırken dosya listesinin başlığında "tek not olarak hazırlanıyor · Bölüm x/y", satırlarda "Birleşik notun içinde" yazar.
+- Kalan: aynı anda birden çok **ayrı** not hâlâ sırayla hazırlanıyor (her biri kendi içinde 3 parça birden).
 
 ## Tasarım dili ("Fosforlu")
 
