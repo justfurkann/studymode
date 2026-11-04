@@ -197,6 +197,8 @@ export function AchievementWatcher() {
   useEffect(() => {
     let position = 0
     const onKey = (e: KeyboardEvent) => {
+      // Android in-app browsers (Instagram, Gmail) and autofill send keydown events with no key at all.
+      if (typeof e.key !== 'string') return
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key
       position = key === KONAMI[position] ? position + 1 : key === KONAMI[0] ? 1 : 0
       if (position === KONAMI.length) {

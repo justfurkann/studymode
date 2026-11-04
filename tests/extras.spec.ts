@@ -1267,6 +1267,18 @@ test('Premium pop-up: normal hesapta bile Premium ve fiyatlar sayfasında çıkm
   await expect(page.getByRole('dialog', { name: 'Premium’u dene' })).toHaveCount(0)
 })
 
+test('Klavye olayı tuşsuz gelince (Android uygulama içi tarayıcı, otomatik doldurma) hata çıkmaz', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.goto('/giris')
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('keydown'))
+    document.querySelector('input')?.dispatchEvent(new Event('keydown', { bubbles: true }))
+  })
+  await page.waitForTimeout(300)
+  expect(errors).toEqual([])
+})
+
 test('Fosfor: ask about the open note’s course, with its notes; the conversation stays per course; phone layout', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   const T = '2026-10-01T00:00:00Z'
