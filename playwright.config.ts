@@ -14,6 +14,8 @@ export default defineConfig({
       args: ['--no-sandbox'],
     },
     screenshot: 'only-on-failure',
+    // The Premium pop-up would cover pages in tests that are not about it; its own tests turn it on.
+    storageState: { cookies: [], origins: [{ origin: 'http://127.0.0.1:5173', localStorage: [{ name: 'studymode.nudge.off', value: '1' }] }] },
   },
   webServer: {
     command: 'npm run dev -- --port 5173 --strictPort',

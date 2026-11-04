@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (4 Kasım 2026, Aşama 52 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (4 Kasım 2026, Aşama 53 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -902,6 +902,12 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Shopier'in "Dijital Ürün Teslimatı" uygulaması her alıcıya **aynı dosyayı** gönderir, benzersiz kod veremez. Oraya kod değil, "kodun 24 saat içinde link olarak gelecek, şöyle kullan" diyen tek sayfalık PDF konur. Kodun kendisi elle gönderilir: Yönetim → Premium → 1 kod → Link → alıcının e-postasına.
 - Sonraki adım (istenirse): Shopier sipariş bildirimi (OSB/webhook) varsa sunucu kodu kendisi üretip Resend ile gönderebilir.
 - **Fiyat güncellemesi (4 Kasım):** 1 aylık **49 TL** ("Lansman fiyatı" rozeti), 4 aylık **149 TL** (4 ayı ayrı almaktan 47 TL ucuz). Satıcı Shopier'de 70 TL'yi üstü çizili gösterip "%30 indirim" yazdı; sitede üstü çizili eski fiyat **gösterilmiyor**: yönetmelik indirimden önceki fiyatın son 30 günde gerçekten uygulanmış en düşük fiyat olmasını istiyor, 70 TL hiç uygulanmadı.
+
+### Aşama 53 — Premium pop-up'ı ve büyük "Hemen al" (4 Kasım 2026, `dreamy-sagan`)
+
+- **Pop-up** (`src/components/PremiumNudge.tsx`, kurallar `src/lib/nudge.ts` + testleri): yalnızca giriş yapmış, rolü **normal** ve Premium'u kilitli hesaplara (VIP, yönetici, Premium kodu olan, kendi Gemini anahtarını kullanan **asla** görmez). Hesap 1 günlük ya da 3 notlu olmadan çıkmaz. En fazla 3 günde bir; iki kez "Şimdi değil" denince haftada bir; "Hemen al"a basılınca 2 hafta hiç. Sayfada 20 sn durulmadan, başka bir pencere ya da Fosfor açıkken, tanıtım turunda ve /giris, /fiyatlar, /premium, /kod, sınav provası, paylaşım, yönetim sayfalarında çıkmaz. Hafıza: `studymode.nudge.<kullanıcı id>`.
+- **Testlerde:** `playwright.config.ts` her teste `studymode.nudge.off` koyar (pop-up sayfayı kapatmasın); pop-up testleri `studymode.nudge.force` ile açar (bekleme atlanır, rol kuralı atlanmaz).
+- **Hemen al** (`src/components/BuyPremium.tsx`): iki paket büyük kartlarla, doğrudan Shopier'e. Premium sayfasında kilitliyken başlıkta "Premium'u al · 49 TL'den başlayan" butonu (#premium-al'a iner) ve "Premium'u hemen al" bölümü; pop-up'ta da aynı kartlar.
 
 ## Tasarım dili ("Fosforlu")
 

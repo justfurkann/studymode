@@ -1978,7 +1978,12 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     await page.goto('/premium')
     await expect(page.getByRole('heading', { level: 1, name: /konuşsun/ })).toBeVisible()
     await expect(page.getByText('Kilitli · Premium kodu ya da VIP hesapla açılır')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Nasıl açılır?' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Kodun mu var?' })).toBeVisible()
+    // Buying is big and right there: a button in the header, and both packages straight to Shopier.
+    await expect(page.getByRole('link', { name: /Premium’u al · 49 TL’den başlayan/ })).toHaveAttribute('href', '#premium-al')
+    const buy = page.getByRole('region', { name: /Premium’u hemen al/ })
+    await expect(buy.getByRole('link', { name: /1 aylık Premium, 49 TL: hemen al/ })).toHaveAttribute('href', 'https://www.shopier.com/studymode/52567232')
+    await expect(buy.getByRole('link', { name: /4 aylık dönem paketi, 149 TL: hemen al/ })).toHaveAttribute('href', 'https://www.shopier.com/studymode/52567292')
     await expect(page.getByRole('button', { name: /Stüdyo sesiyle dinle/ })).toHaveCount(0)
     // VIP: open, with today's allowance, and the studio works from the Premium tab.
     role = 'vip'

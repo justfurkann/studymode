@@ -1227,6 +1227,46 @@ test('Premium kodu link olarak: bekleyen kod, giriş yapınca ana sayfadan /kod�
   expect(await page.evaluate(() => localStorage.getItem('studymode.pendingCode'))).toBeNull()
 })
 
+test('Premium pop-up: normal hesaba çıkar, iki paket doğrudan Shopier’e; “Şimdi değil” kapatır ve hatırlar', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('studymode.nudge.force', '1'))
+  await signedInAs(page, 'normal')
+  await page.goto('/dersler')
+  const pop = page.getByRole('dialog', { name: 'Premium’u dene' })
+  await expect(pop).toBeVisible()
+  await expect(pop).toContainText('Daha güçlü model (Free+), günde 150 istek')
+  await expect(pop.getByRole('link', { name: /1 aylık Premium, 49 TL: hemen al/ })).toHaveAttribute('href', 'https://www.shopier.com/studymode/52567232')
+  await expect(pop.getByRole('link', { name: /4 aylık dönem paketi, 149 TL: hemen al/ })).toHaveAttribute('href', 'https://www.shopier.com/studymode/52567292')
+  await pop.getByRole('button', { name: 'Şimdi değil' }).click()
+  await expect(pop).toHaveCount(0)
+  const memory = await page.evaluate(() => Object.entries(localStorage).find(([k]) => k.startsWith('studymode.nudge.a'))?.[1])
+  expect(JSON.parse(memory!)).toMatchObject({ no: 1 })
+  // On a phone it fits the screen.
+  await page.setViewportSize({ width: 375, height: 700 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375)
+})
+
+test('Premium pop-up: VIP’e ve yöneticiye hiç çıkmaz', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('studymode.nudge.force', '1'))
+  await signedInAs(page, 'vip')
+  await page.goto('/dersler')
+  await page.waitForTimeout(2500)
+  await expect(page.getByRole('dialog', { name: 'Premium’u dene' })).toHaveCount(0)
+  const admin = await page.context().newPage()
+  await admin.addInitScript(() => localStorage.setItem('studymode.nudge.force', '1'))
+  await signedInAs(admin, 'admin')
+  await admin.goto('/dersler')
+  await admin.waitForTimeout(2500)
+  await expect(admin.getByRole('dialog', { name: 'Premium’u dene' })).toHaveCount(0)
+})
+
+test('Premium pop-up: normal hesapta bile Premium ve fiyatlar sayfasında çıkmaz', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('studymode.nudge.force', '1'))
+  await signedInAs(page, 'normal')
+  await page.goto('/premium')
+  await page.waitForTimeout(2500)
+  await expect(page.getByRole('dialog', { name: 'Premium’u dene' })).toHaveCount(0)
+})
+
 test('Fosfor: ask about the open note’s course, with its notes; the conversation stays per course; phone layout', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   const T = '2026-10-01T00:00:00Z'
