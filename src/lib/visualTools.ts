@@ -1,5 +1,5 @@
 import { saveList, type SaveResult } from './imageStore'
-import brandSymbol from '../../public/brand/svg/symbol-yellow.svg?raw'
+import brandSymbol from '../assets/brand-symbol-yellow.svg?raw'
 import type { Card, Note } from './types'
 
 export interface ConceptNode {
@@ -190,7 +190,7 @@ export function renderEducationalPosterDataUrl(
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }
 
-/** The yellow brand "S" (public/brand/svg/symbol-yellow.svg) without its outer <svg>, to inline in posters. */
+/** The yellow brand "S" (a copy of public/brand/svg/symbol-yellow.svg in src/assets) without its outer <svg>, to inline in posters. */
 const BRAND_S = brandSymbol.replace(/^[\s\S]*?<\/title>/, '').replace(/<\/svg>\s*$/, '').replace(/ id="[^"]*"/g, '')
 
 const VISUAL_STORAGE_PREFIX = 'studymode.visuals.v1.'

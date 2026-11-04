@@ -205,17 +205,18 @@ export async function callGemini(options: {
     responseMimeType: 'application/json',
     maxOutputTokens: 32768,
   }
-  // Keep thinking overhead minimal on Flash models so large lecture notes and 30-question exams finish in 4-8s instead of timing out at 60s.
-  if (model.includes('flash')) {
+  // Keep thinking short so large notes and 30-question exams finish well inside the time limit.
+  // MINIMAL exists only on the Flash-Lite models; the full Flash, Pro and flagship models (Free+ on
+  // Vertex) reject it with 400 "Thinking level is unsupported", which silently sent every Free+
+  // request to the free AI for two days. They get LOW.
+  if (model.includes('flash-lite')) {
     generationConfig.thinkingConfig = { thinkingLevel: 'MINIMAL' }
-  } else if (model.includes('4-argon') || model.includes('-pro')) {
-    // Pro and the flagship think a lot by default; LOW keeps answers well inside the time limit.
+  } else if (model.includes('flash') || model.includes('4-argon') || model.includes('-pro')) {
     generationConfig.thinkingConfig = { thinkingLevel: 'LOW' }
   }
 
-  let response: Response
-  try {
-    response = await fetchImpl(baseUrl, {
+  const send = () =>
+    fetchImpl(baseUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -225,6 +226,17 @@ export async function callGemini(options: {
       }),
       signal: AbortSignal.timeout(timeoutMs),
     })
+  let response: Response
+  try {
+    response = await send()
+    // A model that does not know the thinking setting: ask once more without it rather than failing.
+    if (response.status === 400 && generationConfig.thinkingConfig) {
+      const detail = await response.clone().text().catch(() => '')
+      if (/thinking/i.test(detail)) {
+        delete generationConfig.thinkingConfig
+        response = await send()
+      }
+    }
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
     throw new GeminiError(`timeout: ${detail.slice(0, 200)}`, 504)
