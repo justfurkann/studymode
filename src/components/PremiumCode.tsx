@@ -1,4 +1,4 @@
-import { CalendarClock, Copy, Download, Gem, KeyRound, Link2, QrCode as QrIcon, ShoppingBag, Ticket, X } from 'lucide-react'
+import { CalendarClock, Copy, Download, Gem, KeyRound, Link2, QrCode as QrIcon, ShoppingBag, Ticket, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { refreshQuota, useQuota } from '../lib/account'
@@ -210,7 +210,13 @@ export function PremiumCodesAdmin() {
   const [filter, setFilter] = useState<CodeFilter>('open')
   const shown = codes.filter((c) => codeState(c) === filter || filter === 'all')
   const codeList = useShowMore(shown, 8, filter)
-  const userList = useShowMore(users, 5)
+  // Premium whose time is over stays in the database until cleared; the list shows the live ones.
+  const now = Date.now()
+  const activeUsers = users.filter((u) => new Date(u.until).getTime() > now)
+  const expiredCount = users.length - activeUsers.length
+  const userList = useShowMore(activeUsers, 5)
+  const [ending, setEnding] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = useCallback(async () => {
     if (!supabase) return
@@ -264,6 +270,41 @@ export function PremiumCodesAdmin() {
     void load()
   }
 
+  async function endPremium(user: AdminPremiumUser) {
+    if (!supabase) return
+    const { error: err } = await supabase.rpc('admin_end_premium', { target: user.id })
+    setEnding(null)
+    if (err) {
+      toast('Premium bitirilemedi.')
+      return
+    }
+    toast(`${user.email}: Premium bitti`)
+    void load()
+  }
+
+  async function clearExpired() {
+    if (!supabase) return
+    const { data, error: err } = await supabase.rpc('admin_clear_expired_premium')
+    if (err) {
+      toast('Temizlenemedi.')
+      return
+    }
+    toast(`${Number(data) || 0} süresi biten kayıt temizlendi`)
+    void load()
+  }
+
+  async function deleteRevoked() {
+    if (!supabase) return
+    const { data, error: err } = await supabase.rpc('admin_delete_revoked_codes')
+    setConfirmDelete(false)
+    if (err) {
+      toast('Silinemedi.')
+      return
+    }
+    toast(`${Number(data) || 0} iptal edilmiş kod silindi`)
+    void load()
+  }
+
   async function copy(text: string, done: string) {
     try {
       await navigator.clipboard.writeText(text)
@@ -290,7 +331,7 @@ export function PremiumCodesAdmin() {
       <h2>
         <KeyRound size={18} aria-hidden /> Premium kodları{' '}
         <span className="subtle">
-          ({open} bekleyen · {used} kullanılmış · {users.length} Premium kullanıcı)
+          ({open} bekleyen · {used} kullanılmış · {activeUsers.length} Premium kullanıcı)
         </span>
       </h2>
 
@@ -410,6 +451,25 @@ export function PremiumCodesAdmin() {
           ))}
         </div>
       )}
+      {filter === 'revoked' && revoked > 0 && (
+        <div className="admin-danger-row">
+          {confirmDelete ? (
+            <>
+              <span className="subtle">{revoked} iptal edilmiş kod kalıcı olarak silinsin mi?</span>
+              <button type="button" className="btn btn-sm btn-danger" onClick={() => void deleteRevoked()}>
+                Evet, sil
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(false)}>
+                Vazgeç
+              </button>
+            </>
+          ) : (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(true)}>
+              <Trash2 size={15} aria-hidden /> İptal edilenleri sil ({revoked})
+            </button>
+          )}
+        </div>
+      )}
       {codes.length > 0 && (
         <div className="panel panel-tight list admin-compact" aria-label="Kod listesi">
           {shown.length === 0 && <p className="subtle admin-empty">Bu grupta kod yok.</p>}
@@ -439,7 +499,7 @@ export function PremiumCodesAdmin() {
         </div>
       )}
 
-      {users.length > 0 && (
+      {activeUsers.length > 0 && (
         <div className="panel panel-tight list admin-compact" aria-label="Premium kullanıcılar">
           {userList.visible.map((u) => (
             <div key={u.id} className="list-item">
@@ -450,9 +510,31 @@ export function PremiumCodesAdmin() {
                   {formatUntil(u.until)} tarihine kadar · {Math.max(0, daysLeft(u.until))} gün kaldı
                 </div>
               </div>
+              {ending === u.id ? (
+                <span className="admin-confirm">
+                  <button type="button" className="btn btn-sm btn-danger" onClick={() => void endPremium(u)}>
+                    Evet, bitir
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEnding(null)}>
+                    Vazgeç
+                  </button>
+                </span>
+              ) : (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEnding(u.id)} aria-label={`${u.email} için Premium’u bitir`}>
+                  Premium’u bitir
+                </button>
+              )}
             </div>
           ))}
           {userList.more}
+        </div>
+      )}
+      {expiredCount > 0 && (
+        <div className="admin-danger-row">
+          <span className="subtle">{expiredCount} kişinin Premium süresi bitti.</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => void clearExpired()}>
+            <Trash2 size={15} aria-hidden /> Süresi bitenleri temizle
+          </button>
         </div>
       )}
     </section>

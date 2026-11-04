@@ -1765,3 +1765,16 @@
 .inapp-bar .btn {
   flex-shrink: 0;
 }
+.admin-danger-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.admin-confirm {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
