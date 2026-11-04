@@ -4,9 +4,12 @@ import { buyUrl, canBuy, formatPrice, PACKAGES } from './pricing'
 describe('pricing', () => {
   it('has the two packages with the prices the seller gave', () => {
     expect(PACKAGES.map((p) => [p.id, p.days, p.price])).toEqual([
-      ['aylik', 30, 50],
-      ['donem', 120, 150],
+      ['aylik', 30, 49],
+      ['donem', 120, 149],
     ])
+    // The term package's note says how much it saves against four months bought one by one.
+    const [monthly, term] = PACKAGES
+    expect(term.note).toContain(`${monthly.price * 4 - term.price} TL daha uygun`)
     expect(formatPrice(150)).toBe('150 TL')
   })
 

@@ -459,12 +459,12 @@ test('public pricing page: opens signed out, prices, delivery, refunds, contract
   await page.getByRole('link', { name: 'Fiyatlar' }).click()
   await expect(page).toHaveURL(/\/fiyatlar$/)
   await expect(page).toHaveTitle('Fiyatlar · StudyMode')
-  expect(await page.locator('meta[name="description"]').getAttribute('content')).toContain('150 TL')
+  expect(await page.locator('meta[name="description"]').getAttribute('content')).toContain('149 TL')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Premium fiyatları')
   await expect(page.getByText('StudyMode Premium üyelik kodu').first()).toBeVisible()
   for (const [name, price, product] of [
-    ['1 aylık Premium', '50 TL', '52567232'],
-    ['4 aylık dönem paketi', '150 TL', '52567292'],
+    ['1 aylık Premium', '49 TL', '52567232'],
+    ['4 aylık dönem paketi', '149 TL', '52567292'],
   ]) {
     const card = page.getByRole('article', { name })
     await expect(card).toContainText(price)

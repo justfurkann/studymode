@@ -901,6 +901,7 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Ürünler: 1 aylık 50 TL → `https://www.shopier.com/studymode/52567232`, 4 aylık 150 TL → `https://www.shopier.com/studymode/52567292` (`PACKAGES[].payUrl`). /fiyatlar'da "Satın al" ve uygulamadaki "Kod satın al / Süreyi uzat / Yenile" artık görünür.
 - Shopier'in "Dijital Ürün Teslimatı" uygulaması her alıcıya **aynı dosyayı** gönderir, benzersiz kod veremez. Oraya kod değil, "kodun 24 saat içinde link olarak gelecek, şöyle kullan" diyen tek sayfalık PDF konur. Kodun kendisi elle gönderilir: Yönetim → Premium → 1 kod → Link → alıcının e-postasına.
 - Sonraki adım (istenirse): Shopier sipariş bildirimi (OSB/webhook) varsa sunucu kodu kendisi üretip Resend ile gönderebilir.
+- **Fiyat güncellemesi (4 Kasım):** 1 aylık **49 TL** ("Lansman fiyatı" rozeti), 4 aylık **149 TL** (4 ayı ayrı almaktan 47 TL ucuz). Satıcı Shopier'de 70 TL'yi üstü çizili gösterip "%30 indirim" yazdı; sitede üstü çizili eski fiyat **gösterilmiyor**: yönetmelik indirimden önceki fiyatın son 30 günde gerçekten uygulanmış en düşük fiyat olmasını istiyor, 70 TL hiç uygulanmadı.
 
 ## Tasarım dili ("Fosforlu")
 

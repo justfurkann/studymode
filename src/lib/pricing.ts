@@ -13,6 +13,11 @@ export interface PremiumPackage {
   days: number
   /** Total price in Turkish lira. */
   price: number
+  /**
+   * A short word on the card (e.g. "Lansman fiyatı"). Never a crossed-out "old price": a discount
+   * may only be shown against a price actually charged in the 30 days before it.
+   */
+  badge?: string
   note: string
   /**
    * This package's payment link (a Shopier product page made for exactly this package and price). Empty
@@ -22,8 +27,8 @@ export interface PremiumPackage {
 }
 
 export const PACKAGES: PremiumPackage[] = [
-  { id: 'aylik', name: '1 aylık Premium', days: 30, price: 50, note: 'Bir ay boyunca bütün Premium özellikleri.', payUrl: 'https://www.shopier.com/studymode/52567232' },
-  { id: 'donem', name: '4 aylık dönem paketi', days: 120, price: 150, note: 'Bir dönemi baştan sona kapsar; aylığa göre 50 TL daha uygun.', payUrl: 'https://www.shopier.com/studymode/52567292' },
+  { id: 'aylik', name: '1 aylık Premium', days: 30, price: 49, badge: 'Lansman fiyatı', note: 'Bir ay boyunca bütün Premium özellikleri.', payUrl: 'https://www.shopier.com/studymode/52567232' },
+  { id: 'donem', name: '4 aylık dönem paketi', days: 120, price: 149, note: 'Bir dönemi baştan sona kapsar; 4 ayı ayrı ayrı almaktan 47 TL daha uygun.', payUrl: 'https://www.shopier.com/studymode/52567292' },
 ]
 
 /** Where "Satın al" goes for a package, or null while it has no payment link yet. */
@@ -55,4 +60,4 @@ export const DELIVERY = {
   how: `${PAYMENT_PROVIDER} üzerinden öderken yazdığın e-posta adresine`,
 }
 
-export const PRICING_UPDATED = '2 Kasım 2026'
+export const PRICING_UPDATED = '4 Kasım 2026'
