@@ -1141,6 +1141,8 @@ test('Yönetim: kod üret (yalnızca bir kez görünür), listede gör, kullanı
   const section = page.getByRole('region', { name: 'Premium kodları' })
   await expect(section).toContainText('1 bekleyen · 1 kullanılmış · 1 Premium kullanıcı')
   await section.getByLabel('Kaç kod?').fill('3')
+  // 3 days (a gift to give away), 30 and 120 (the packages) are one tap; anything else is "Özel".
+  await expect(section.getByRole('group', { name: 'Kod süresi' }).getByRole('button')).toHaveText(['3 gün', '30 gün', '120 gün', 'Özel'])
   await section.getByRole('button', { name: 'Özel' }).click()
   await section.getByLabel('Gün sayısı').fill('120')
   await section.getByLabel('Etiket (isteğe bağlı)').fill('Dönem paketi')
@@ -1222,6 +1224,9 @@ test('Premium kodu link olarak: bekleyen kod, giriş yapınca ana sayfadan /kod�
   await page.goto('/')
   await expect(page).toHaveURL(/\/kod$/)
   await expect(page.getByRole('alert')).toContainText('Bu kod daha önce kullanılmış.')
+  // A gift someone else took: say so kindly, and offer the packages right there.
+  await expect(page.getByRole('heading', { name: 'Bu kodu başkası kaptı' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /1 aylık Premium, 49 TL: hemen al/ })).toHaveAttribute('href', 'https://www.shopier.com/studymode/52567232')
   expect(redeemed).toEqual([{ code: 'SM-AB2C-DE3F-GH4J' }])
   // A code that can never work is forgotten.
   expect(await page.evaluate(() => localStorage.getItem('studymode.pendingCode'))).toBeNull()
@@ -1277,6 +1282,38 @@ test('Klavye olayı tuşsuz gelince (Android uygulama içi tarayıcı, otomatik 
   })
   await page.waitForTimeout(300)
   expect(errors).toEqual([])
+})
+
+test('Instagram tarayıcısı: Android’de Chrome’a geçmeyi bir kez dener ve şerit sunar; iPhone’da menüyü tarif eder; normal tarayıcıda hiçbir şey', async ({ browser }) => {
+  const android = await browser.newContext({ userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-A256E; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0 Mobile Safari/537.36 Instagram 360.0.0.40.92 Android', viewport: { width: 390, height: 800 } })
+  const a = await android.newPage()
+  await a.goto('/kod#SM-AB2C-DE3F-GH4J')
+  const bar = a.getByRole('note', { name: 'Tarayıcıda aç' })
+  await expect(bar).toContainText('Instagram’ın tarayıcısındasın.')
+  // The way to Chrome keeps the whole address, the code after # included.
+  await expect(bar.getByRole('link', { name: 'Chrome’da aç' })).toHaveAttribute('href', /^intent:\/\/127\.0\.0\.1:5173\/kod#SM-AB2C-DE3F-GH4J#Intent;scheme=http;package=com\.android\.chrome;/)
+  expect(await a.evaluate(() => sessionStorage.getItem('studymode.inapp.tried'))).toBe('1')
+  await android.close()
+
+  const ios = await browser.newContext({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 360.0.0.40.92 (iPhone15,2; iOS 18_0)', viewport: { width: 390, height: 800 } })
+  const i = await ios.newPage()
+  await i.goto('/')
+  await expect(i.getByRole('note', { name: 'Tarayıcıda aç' })).toContainText('••• menüsünden tarayıcıda (Safari’de) aç')
+  await expect(i.getByRole('note', { name: 'Tarayıcıda aç' }).getByRole('button', { name: 'Linki kopyala' })).toBeVisible()
+  // It can be closed, and stays closed for the visit.
+  await i.getByRole('note', { name: 'Tarayıcıda aç' }).getByRole('button', { name: 'Kapat' }).click()
+  await expect(i.getByRole('note', { name: 'Tarayıcıda aç' })).toHaveCount(0)
+  await i.reload()
+  await expect(i.locator('h1').first()).toBeVisible()
+  await expect(i.getByRole('note', { name: 'Tarayıcıda aç' })).toHaveCount(0)
+  await ios.close()
+
+  const normal = await browser.newContext()
+  const n = await normal.newPage()
+  await n.goto('/')
+  await expect(n.locator('h1').first()).toBeVisible()
+  await expect(n.getByRole('note', { name: 'Tarayıcıda aç' })).toHaveCount(0)
+  await normal.close()
 })
 
 test('Fosfor: ask about the open note’s course, with its notes; the conversation stays per course; phone layout', async ({ page }) => {

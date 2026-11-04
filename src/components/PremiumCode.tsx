@@ -178,7 +178,8 @@ export function PremiumReminder() {
 
 // ---------- Yönetim: Premium kodları ----------
 
-const DAY_CHOICES = [30, 120] as const
+/** 3 days: a taste to give away (story links, friends); 30 and 120: the packages sold. */
+const DAY_CHOICES = [3, 30, 120] as const
 
 type CodeFilter = 'open' | 'used' | 'revoked' | 'all'
 const codeState = (c: AdminCode): Exclude<CodeFilter, 'all'> => (c.revoked_at ? 'revoked' : c.redeemed_at ? 'used' : 'open')
