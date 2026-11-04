@@ -21,6 +21,9 @@
   --on-hi: #1b2250;
   --hi-soft: #fff6c7;
   --ink-line: #1b2250;
+  /* Fosfor's cap and the shine on it (components/Assistant.tsx). */
+  --fosfor-cap: #1b2250;
+  --fosfor-shine: #ffffff;
   --card-line: #1b2250;
   --card-drop: #1b2250;
   --grid: rgb(27 34 80 / 0.045);
@@ -94,6 +97,7 @@
     --on-hi: #11142a;
     --hi-soft: #33301a;
     --ink-line: #05060f;
+    --fosfor-cap: #4a5291;
     --card-line: #3a4070;
     --card-drop: #070916;
     --grid: rgb(244 243 234 / 0.035);
@@ -148,6 +152,7 @@
   --on-hi: #11142a;
   --hi-soft: #33301a;
   --ink-line: #05060f;
+  --fosfor-cap: #4a5291;
   --card-line: #3a4070;
   --card-drop: #070916;
   --grid: rgb(244 243 234 / 0.035);
