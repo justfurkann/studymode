@@ -1527,3 +1527,213 @@
     font-size: 0.8125rem;
   }
 }
+
+/* ============ Buying Premium: big buttons (components/BuyPremium.tsx) ============ */
+.prem-buy {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+  border: 1.5px solid var(--ink-line);
+  box-shadow: 0 4px 0 var(--ink-line);
+  background: linear-gradient(160deg, var(--prem-soft), var(--surface) 60%);
+}
+.prem-buy-head h2 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+.prem-buy-head p {
+  margin: 0;
+}
+.prem-hero-buy {
+  align-self: flex-start;
+  min-height: 48px;
+  padding-inline: 20px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.buy-perks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.buy-perks li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  line-height: 1.35;
+}
+.buy-perk-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--prem-soft);
+  color: var(--prem-text);
+}
+
+.buy-premium {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.buy-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.buy-option:hover {
+  transform: translateY(-2px);
+  border-color: var(--ink-line);
+  box-shadow: 0 3px 0 var(--ink-line);
+}
+.buy-option.is-main {
+  border-color: var(--ink-line);
+  box-shadow: 0 3px 0 var(--ink-line);
+}
+.buy-badge {
+  position: absolute;
+  top: -11px;
+  left: 14px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink-line);
+  background: var(--hi);
+  color: var(--on-hi);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.buy-name {
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+.buy-price {
+  margin-bottom: 8px;
+}
+.buy-price strong {
+  font-family: var(--font-display);
+  font-size: 1.875rem;
+  letter-spacing: -0.02em;
+}
+.buy-price span {
+  color: var(--text-2);
+  font-size: 0.875rem;
+}
+.buy-cta {
+  margin-top: auto;
+  justify-content: center;
+  min-height: 48px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.buy-fine {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+.buy-fine svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--success);
+}
+.buy-premium.is-compact .buy-option {
+  padding: 14px 12px 12px;
+}
+.buy-premium.is-compact .buy-price strong {
+  font-size: 1.5rem;
+}
+/* Narrow cards: the days go under the price so both buttons line up. */
+.buy-premium.is-compact .buy-price span {
+  display: block;
+}
+.buy-premium:not(.is-compact) .buy-days::before {
+  content: '· ';
+}
+.buy-main {
+  min-height: 48px;
+}
+
+/* The pop-up */
+.nudge {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.nudge-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--prem-1), var(--prem-2));
+  color: var(--on-role);
+}
+.nudge-lead {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.nudge .buy-perks {
+  grid-template-columns: 1fr;
+}
+.nudge-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .buy-perks {
+    grid-template-columns: 1fr;
+  }
+  .buy-premium {
+    grid-template-columns: 1fr;
+  }
+  .buy-premium.is-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .buy-premium.is-compact .buy-option {
+    padding: 14px 10px 10px;
+  }
+  .buy-premium.is-compact .buy-name {
+    font-size: 0.8125rem;
+  }
+  .buy-premium.is-compact .buy-cta {
+    min-height: 42px;
+    font-size: 0.9375rem;
+    padding-inline: 8px;
+  }
+  .prem-buy {
+    padding: 18px 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .buy-option {
+    transition: none;
+  }
+}

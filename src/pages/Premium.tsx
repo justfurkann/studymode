@@ -1,6 +1,7 @@
 import { ArrowRight, AudioLines, FileText, Gem, Headphones, Image as ImageIcon, KeyRound, Lock, Search, Sparkles, Ticket } from 'lucide-react'
+import { BuyPremium, PremiumPerks } from '../components/BuyPremium'
 import { RedeemCode } from '../components/PremiumCode'
-import { canBuy } from '../lib/pricing'
+import { canBuy, formatPrice, PACKAGES } from '../lib/pricing'
 import { formatUntil } from '../lib/premiumCodes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -64,6 +65,11 @@ export function Premium() {
         </h1>
         <p className="prem-lead">Sesli not, akıllı arama ve yapay zekâ görselleri. Google'ın en yeni Gemini modelleriyle, Premium üyelere özel.</p>
         <PremiumStatus />
+        {premium.state === 'locked' && canBuy() && (
+          <a href="#premium-al" className="btn prem-btn prem-hero-buy">
+            <Gem size={18} aria-hidden /> Premium’u al · {formatPrice(Math.min(...PACKAGES.map((p) => p.price)))}’den başlayan
+          </a>
+        )}
         <Link to="/rehber#premium" className="prem-guide-link">
           Premium’u en iyi nasıl kullanırsın? <ArrowRight size={14} aria-hidden />
         </Link>
@@ -155,6 +161,17 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
   const instagram = SOCIALS[0]
   return (
     <div className="prem-locked">
+      <section className="panel prem-buy" id="premium-al" aria-labelledby="premium-al-title">
+        <div className="prem-buy-head">
+          <h2 id="premium-al-title">
+            Premium’u <span className="hl">hemen</span> al
+          </h2>
+          <p className="muted">Paketi seç, öde; kodun e-postana link olarak gelir. Tıklayınca Premium hesabında açılır.</p>
+        </div>
+        <PremiumPerks />
+        <BuyPremium />
+      </section>
+
       <div className="panel prem-peek" aria-label="Önizleme">
         {tool === 'ses' ? (
           <>
@@ -195,7 +212,7 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
       </div>
 
       <div className="panel prem-how">
-        <h2>Nasıl açılır?</h2>
+        <h2>{canBuy() ? 'Kodun mu var?' : 'Nasıl açılır?'}</h2>
         {!signedIn ? (
           <>
             <p className="muted">Önce giriş yap. Premium hesabına bağlı çalışır.</p>
