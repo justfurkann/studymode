@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (4 Kasım 2026, Aşama 51 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (4 Kasım 2026, Aşama 52 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -895,6 +895,12 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - Girişsizse kod bu cihazda 7 gün bekler (`studymode.pendingCode`), sayfa "Hesap aç / Giriş yap" der. Giriş ya da hesap onayından sonra `PendingCodeReturn` (Layout'ta) kullanıcıyı `/kod`'a döndürür ve kod kullanılır. Hiç çalışmayacak kod (kullanılmış, geçersiz) unutulur; bağlantı hatasında saklanır. Tur `/kod`'da açılmaz.
 - **Yönetimde:** kod üretince her kodun yanında "Link" (kopyalar) ve "QR" (QR'ı gösterir + "QR kartını indir": `src/lib/codeCard.ts`, 720×980 PNG, okutunca link, altında kod). "Linkleri kopyala" ve CSV'de `link` sütunu. Veritabanı kodun yalnızca özetini tuttuğu için link/QR **yalnızca üretildiği an** alınabilir; eski bekleyen kodların linki sonradan çıkarılamaz.
 - **Yönetim sekmeli** (`?bolum=ozet|premium|hesaplar|geri-bildirim|hatalar`): her listede ilk birkaç satır + "Daha fazla göster" (`src/components/ShowMore.tsx`). Kodlar Bekleyen/Kullanılmış/İptal/Hepsi süzgeçli (varsayılan Bekleyen); hesaplarda arama (isim, e-posta, okul), rol süzgeci ve sıralama; geri bildirimde tür süzgeci. Telefonda sekmeler iki satıra sarılır.
+
+### Aşama 52 — Shopier onaylandı, satış açık (4 Kasım 2026, `dreamy-sagan`)
+
+- Ürünler: 1 aylık 50 TL → `https://www.shopier.com/studymode/52567232`, 4 aylık 150 TL → `https://www.shopier.com/studymode/52567292` (`PACKAGES[].payUrl`). /fiyatlar'da "Satın al" ve uygulamadaki "Kod satın al / Süreyi uzat / Yenile" artık görünür.
+- Shopier'in "Dijital Ürün Teslimatı" uygulaması her alıcıya **aynı dosyayı** gönderir, benzersiz kod veremez. Oraya kod değil, "kodun 24 saat içinde link olarak gelecek, şöyle kullan" diyen tek sayfalık PDF konur. Kodun kendisi elle gönderilir: Yönetim → Premium → 1 kod → Link → alıcının e-postasına.
+- Sonraki adım (istenirse): Shopier sipariş bildirimi (OSB/webhook) varsa sunucu kodu kendisi üretip Resend ile gönderebilir.
 
 ## Tasarım dili ("Fosforlu")
 

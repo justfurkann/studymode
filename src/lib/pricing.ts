@@ -22,8 +22,8 @@ export interface PremiumPackage {
 }
 
 export const PACKAGES: PremiumPackage[] = [
-  { id: 'aylik', name: '1 aylık Premium', days: 30, price: 50, note: 'Bir ay boyunca bütün Premium özellikleri.', payUrl: '' },
-  { id: 'donem', name: '4 aylık dönem paketi', days: 120, price: 150, note: 'Bir dönemi baştan sona kapsar; aylığa göre 50 TL daha uygun.', payUrl: '' },
+  { id: 'aylik', name: '1 aylık Premium', days: 30, price: 50, note: 'Bir ay boyunca bütün Premium özellikleri.', payUrl: 'https://www.shopier.com/studymode/52567232' },
+  { id: 'donem', name: '4 aylık dönem paketi', days: 120, price: 150, note: 'Bir dönemi baştan sona kapsar; aylığa göre 50 TL daha uygun.', payUrl: 'https://www.shopier.com/studymode/52567292' },
 ]
 
 /** Where "Satın al" goes for a package, or null while it has no payment link yet. */

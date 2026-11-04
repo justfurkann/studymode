@@ -462,12 +462,17 @@ test('public pricing page: opens signed out, prices, delivery, refunds, contract
   expect(await page.locator('meta[name="description"]').getAttribute('content')).toContain('150 TL')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Premium fiyatları')
   await expect(page.getByText('StudyMode Premium üyelik kodu').first()).toBeVisible()
-  for (const [name, price] of [['1 aylık Premium', '50 TL'], ['4 aylık dönem paketi', '150 TL']]) {
+  for (const [name, price, product] of [
+    ['1 aylık Premium', '50 TL', '52567232'],
+    ['4 aylık dönem paketi', '150 TL', '52567292'],
+  ]) {
     const card = page.getByRole('article', { name })
     await expect(card).toContainText(price)
-    // No payment link yet: no "Satın al", a way to ask instead.
-    await expect(card.getByRole('link', { name: 'Satın al', exact: true })).toHaveCount(0)
-    await expect(card.getByRole('link', { name: 'Satın almak için yaz' })).toHaveAttribute('href', /^mailto:justfurkan42@gmail\.com/)
+    // Each package goes to its own Shopier product, in a new tab.
+    const buy = card.getByRole('link', { name: 'Satın al', exact: true })
+    await expect(buy).toHaveAttribute('href', `https://www.shopier.com/studymode/${product}`)
+    await expect(buy).toHaveAttribute('target', '_blank')
+    await expect(card.getByRole('link', { name: 'Satın almak için yaz' })).toHaveCount(0)
   }
   await expect(page.getByRole('heading', { name: 'Teslimat' })).toBeVisible()
   await expect(page.getByText(/en geç 24 saat/).first()).toBeVisible()
