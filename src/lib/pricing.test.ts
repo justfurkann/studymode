@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buyUrl, formatPrice, PACKAGES } from './pricing'
+import { buyUrl, canBuy, formatPrice, PACKAGES } from './pricing'
 
 describe('pricing', () => {
   it('has the two packages with the prices the seller gave', () => {
@@ -10,9 +10,11 @@ describe('pricing', () => {
     expect(formatPrice(150)).toBe('150 TL')
   })
 
-  it('shows "Satın al" only with a Shopier link: the package’s own, else the general one', () => {
-    expect(buyUrl({ shopierUrl: '' }, '')).toBeNull()
-    expect(buyUrl({ shopierUrl: '' }, 'https://www.shopier.com/genel')).toBe('https://www.shopier.com/genel')
-    expect(buyUrl({ shopierUrl: 'https://www.shopier.com/aylik' }, 'https://www.shopier.com/genel')).toBe('https://www.shopier.com/aylik')
+  it('shows "Satın al" only with the package’s own https payment link', () => {
+    expect(buyUrl({ payUrl: '' })).toBeNull()
+    expect(buyUrl({ payUrl: 'javascript:alert(1)' })).toBeNull()
+    expect(buyUrl({ payUrl: ' https://iyzi.link/AAA ' })).toBe('https://iyzi.link/AAA')
+    expect(canBuy([{ payUrl: '' }, { payUrl: '' }])).toBe(false)
+    expect(canBuy([{ payUrl: '' }, { payUrl: 'https://iyzi.link/BBB' }])).toBe(true)
   })
 })

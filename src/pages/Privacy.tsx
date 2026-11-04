@@ -4,6 +4,7 @@ import { Brand } from '../components/Brand'
 import { FeedbackLink } from '../components/Feedback'
 import { MAKER, SOCIALS } from '../components/MadeBy'
 import { useStore } from '../lib/store'
+import { PAYMENT_PROVIDER } from '../lib/config'
 import { unlock } from '../lib/achievements'
 
 export const PRIVACY_UPDATED = '3 Kasım 2026'
@@ -119,8 +120,8 @@ export function Privacy() {
               bilgiler Cloudflare'e gider; reklam için kullanılmaz.
             </li>
             <li>
-              <strong>Shopier:</strong> Premium kodunu satın alırken ödemeyi Shopier alır. Kart bilgilerin ve sipariş bilgilerin Shopier’de kalır, bize gelmez; Shopier’in kendi
-              koşulları geçerlidir. Biz yalnızca kodun hangi hesapta, ne zaman kullanıldığını ve Premium’un bitiş tarihini saklarız.
+              <strong>{PAYMENT_PROVIDER}:</strong> Premium kodunu satın alırken ödeme {PAYMENT_PROVIDER} üzerinden alınır. Kart bilgilerin ödeme kuruluşunda kalır, bize gelmez;
+              ödeme sayfasında o kuruluşun kendi koşulları geçerlidir. Kodu gönderebilmemiz için ödeme sırasında yazdığın ad ve e-posta bize iletilir. Biz yalnızca kodun hangi hesapta, ne zaman kullanıldığını ve Premium’un bitiş tarihini saklarız.
             </li>
             <li>
               <strong>Resend:</strong> hesap onayı ve şifre sıfırlama e-postalarının gönderimi.

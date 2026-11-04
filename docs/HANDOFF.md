@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (4 Kasım 2026, Aşama 49 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (4 Kasım 2026, Aşama 50 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -880,6 +880,12 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Sohbet cihazda kalır:** sessionStorage yerine localStorage (`studymode.assistant.v2`), ders başına; 7 gün dokunulmayan sohbet silinir; çıkış yapınca hepsi silinir.
 - **Tasarım:** fosforlu başlık bandı ve süzülen karakter, durum satırı, ilk açılışta büyük karakter + 2 sütun ikonlu öneri kartları, kullanıcı balonu fosforlu sarı (lacivert yazı), Fosfor balonları küçük karakterle, gönder butonu kutunun içinde, kutu yazdıkça büyür, açılış animasyonu (reduced-motion'da kapalı).
 - Testler: `src/lib/assistant.test.ts` (liste, kart, öneri, seçim, 7 gün), `tests/extras.spec.ts` "Fosfor: note-aware starters…".
+
+### Aşama 50 — Ödeme iyzico Link'e hazır (4 Kasım 2026, `dreamy-sagan`)
+
+- Shopier onayı gelmedi; satıcı iyzico Link (şirketsiz, link ile ödeme) yolunu seçti. Ödeme sağlayıcısının adı tek yerde: `PAYMENT_PROVIDER` (`src/lib/config.ts`, şu an `'iyzico'`). Fiyatlar sayfası, mesafeli satış sözleşmesi, gizlilik ve koşullar bunu okur; cümleler "… üzerinden" diye kurulu, Türkçe ek isme bağlı değil.
+- Her paketin kendi ödeme linki `PACKAGES[].payUrl` (`src/lib/pricing.ts`). Yalnızca `https://` linkler kabul edilir. Link boşsa pakette "Satın almak için yaz" (e-posta) görünür; en az bir link varsa uygulamadaki "Kod satın al / Süreyi uzat / Yenile" butonları `/fiyatlar#paketler`'e gider (eski tek `SHOPIER_URL` kalktı).
+- **Linkler gelince:** iyzico'da her paket için ayrı link (1 aylık 50 TL, 4 aylık 150 TL); linkleri `payUrl`'lere yaz, test et, merge. Teslimat elle: ödeme bildirimi gelince Yönetim → Premium kodları'ndan kod üret, alıcının e-postasına gönder.
 
 ## Tasarım dili ("Fosforlu")
 

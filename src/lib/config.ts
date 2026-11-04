@@ -29,7 +29,8 @@ export const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite'
 export const DEFAULT_GEMINI_FALLBACKS = ['gemini-flash-lite-latest', 'gemini-3.1-flash-lite']
 
 /**
- * Where Premium codes are sold (Shopier product page). Empty until the owner gives it: then the
- * "Satın al" / "Yenile" buttons stay hidden and only "Kodum var" shows.
+ * Who takes the payment for Premium codes. The sales page, the distance sales contract, the privacy
+ * policy and the terms name it; switching provider is this line plus the links in lib/pricing.ts.
+ * Write sentences around it with "üzerinden" so no Turkish suffix depends on the name.
  */
-export const SHOPIER_URL = ''
+export const PAYMENT_PROVIDER = 'iyzico'

@@ -2,7 +2,7 @@ import { CalendarClock, Copy, Download, Gem, KeyRound, ShoppingBag, Ticket, X } 
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { refreshQuota, useQuota } from '../lib/account'
-import { SHOPIER_URL } from '../lib/config'
+import { canBuy } from '../lib/pricing'
 import { downloadText } from '../lib/noteTools'
 import { usePremium } from '../lib/premium'
 import {
@@ -21,7 +21,7 @@ import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { Alert, Celebrate, Spinner, useToast } from './ui'
 
-/** "Kodum var": type the Shopier code, get Premium. */
+/** "Kodum var": type the bought code, get Premium. */
 export function RedeemCode({ compact = false }: { compact?: boolean }) {
   const { session } = useStore()
   const toast = useToast()
@@ -115,14 +115,14 @@ export function PremiumAccessSection() {
           <Gem size={17} aria-hidden /> Premium hesabında zaten açık.
         </p>
       ) : (
-        <p className="subtle">Premium; iki kişilik sesli not, akıllı arama ve yapay zekâ görselleri. Shopier’den aldığın kodu buraya gir; süre bitince kendiliğinden kapanır, otomatik yenilenmez.</p>
+        <p className="subtle">Premium; iki kişilik sesli not, akıllı arama ve yapay zekâ görselleri. Satın aldığın kodu buraya gir; süre bitince kendiliğinden kapanır, otomatik yenilenmez.</p>
       )}
       <RedeemCode />
       <div className="btn-row">
-        {SHOPIER_URL && (
-          <a className="btn btn-sm" href={SHOPIER_URL} target="_blank" rel="noopener noreferrer">
+        {canBuy() && (
+          <Link className="btn btn-sm" to="/fiyatlar#paketler">
             <ShoppingBag size={15} aria-hidden /> {premium.until ? 'Süreyi uzat' : 'Kod satın al'}
-          </a>
+          </Link>
         )}
         <Link to="/fiyatlar" className="btn btn-ghost btn-sm">
           Fiyatlar ve satın alma
@@ -157,10 +157,10 @@ export function PremiumReminder() {
       <span className="grow">
         Premium’ın {left <= 0 ? 'bugün' : `${left} gün sonra`} bitiyor ({formatUntil(until)}).
       </span>
-      {SHOPIER_URL && (
-        <a className="btn btn-sm prem-btn" href={SHOPIER_URL} target="_blank" rel="noopener noreferrer">
+      {canBuy() && (
+        <Link className="btn btn-sm prem-btn" to="/fiyatlar#paketler">
           Yenile
-        </a>
+        </Link>
       )}
       <button
         type="button"
@@ -303,7 +303,7 @@ export function PremiumCodesAdmin() {
         </div>
         <label className="field">
           <span>Etiket (isteğe bağlı)</span>
-          <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60} placeholder="Örn. Shopier Kasım, çekiliş" />
+          <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60} placeholder="Örn. iyzico Kasım, çekiliş" />
         </label>
         <button type="submit" className="btn btn-primary" disabled={busy} style={{ alignSelf: 'flex-start' }}>
           {busy ? <Spinner size={15} /> : <Ticket size={16} aria-hidden />} Kod üret

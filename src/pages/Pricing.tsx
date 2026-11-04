@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { useStore } from '../lib/store'
+import { PAYMENT_PROVIDER } from '../lib/config'
 import { buyUrl, DELIVERY, formatPrice, PACKAGES, PRICING_UPDATED, SELLER, type PremiumPackage } from '../lib/pricing'
 
 const DESCRIPTION =
@@ -69,7 +70,7 @@ function PackageCard({ pkg }: { pkg: PremiumPackage }) {
 }
 
 /**
- * /fiyatlar: the public sales page (Shopier asks for one that opens without signing in). What is
+ * /fiyatlar: the public sales page (payment providers ask for one that opens without signing in). What is
  * sold, the prices, delivery, cancellation and refunds, the distance sales contract and the seller.
  * Figures and seller details come from src/lib/pricing.ts.
  */
@@ -98,7 +99,7 @@ export function Pricing() {
         <p className="subtle">Son güncelleme: {PRICING_UPDATED}</p>
         <p className="legal-lead">
           Satılan ürün: <strong>StudyMode Premium üyelik kodu</strong>. studymode.fun adresindeki ders çalışma uygulamasında Premium özellikleri belirli bir süre açan, tek
-          kullanımlık <strong>dijital koddur</strong>. Fiziksel ürün ve kargo yoktur. Ödeme Shopier üzerinden alınır; otomatik yenileme ve tekrarlayan ödeme yoktur.
+          kullanımlık <strong>dijital koddur</strong>. Fiziksel ürün ve kargo yoktur. Ödeme {PAYMENT_PROVIDER} üzerinden alınır; otomatik yenileme ve tekrarlayan ödeme yoktur.
         </p>
 
         <section aria-labelledby="paketler">
@@ -109,7 +110,7 @@ export function Pricing() {
             ))}
           </div>
           <p className="subtle">
-            Fiyatlar Türk lirası cinsinden, ödenecek toplam tutardır; ek ücret alınmaz. Ödeme Shopier’in güvenli ödeme sayfasında yapılır, kart bilgilerin bize hiç gelmez.
+            Fiyatlar Türk lirası cinsinden, ödenecek toplam tutardır; ek ücret alınmaz. Ödeme {PAYMENT_PROVIDER} üzerinden, güvenli ödeme sayfasında yapılır; kart bilgilerin bize hiç gelmez.
           </p>
         </section>
 
@@ -149,7 +150,7 @@ export function Pricing() {
         <section aria-labelledby="nasil">
           <h2 id="nasil">Nasıl çalışır?</h2>
           <ol className="price-steps">
-            <li>Yukarıdan paketi seç ve Shopier’den satın al.</li>
+            <li>Yukarıdan paketi seç ve {PAYMENT_PROVIDER} üzerinden satın al.</li>
             <li>
               Premium kodun {DELIVERY.how} {DELIVERY.within} içinde gönderilir.
             </li>
@@ -236,24 +237,24 @@ export function Pricing() {
                 <strong>Satıcı:</strong> {SELLER.name} ({SELLER.kind}). Adres: {SELLER.address}. Telefon: {SELLER.phone}. E-posta: {SELLER.email}.
               </p>
               <p>
-                <strong>Alıcı:</strong> Shopier üzerinden sipariş veren kişi; adı, adresi ve iletişim bilgileri sipariş sırasında verdiği bilgilerdir.
+                <strong>Alıcı:</strong> {PAYMENT_PROVIDER} üzerinden ödeme yapan kişi; adı ve iletişim bilgileri ödeme sırasında verdiği bilgilerdir.
               </p>
 
               <h3>2. Konu</h3>
               <p>
-                Bu sözleşme, Alıcı’nın studymode.fun/fiyatlar sayfasında tanıtılan ve Shopier üzerinden elektronik ortamda satın aldığı dijital ürünün satışı ve teslimine ilişkin
+                Bu sözleşme, Alıcı’nın studymode.fun/fiyatlar sayfasında tanıtılan ve {PAYMENT_PROVIDER} üzerinden elektronik ortamda satın aldığı dijital ürünün satışı ve teslimine ilişkin
                 tarafların hak ve yükümlülüklerini, 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği hükümlerine göre düzenler.
               </p>
 
               <h3>3. Ürün ve fiyat</h3>
               <p>
                 Ürün: StudyMode Premium üyelik kodu (tek kullanımlık dijital kod). {monthly.name}: {monthly.days} gün Premium, {formatPrice(monthly.price)}. {term.name}:{' '}
-                {term.days} gün Premium, {formatPrice(term.price)}. Belirtilen fiyatlar ödenecek toplam tutardır; teslimat ücreti yoktur. Ödeme Shopier aracılığıyla alınır.
+                {term.days} gün Premium, {formatPrice(term.price)}. Belirtilen fiyatlar ödenecek toplam tutardır; teslimat ücreti yoktur. Ödeme {PAYMENT_PROVIDER} üzerinden alınır.
               </p>
 
               <h3>4. Teslimat</h3>
               <p>
-                Ürün fiziksel olarak teslim edilmez. Kod, ödemenin onaylanmasından sonra {DELIVERY.within} içinde, Alıcı’nın siparişte bildirdiği e-posta adresine gönderilir.
+                Ürün fiziksel olarak teslim edilmez. Kod, ödemenin onaylanmasından sonra {DELIVERY.within} içinde, Alıcı’nın ödeme sırasında bildirdiği e-posta adresine gönderilir.
                 Kod, studymode.fun’da Alıcı’nın hesabında “Kodum var” alanına girildiğinde, paketteki gün sayısı kadar Premium açılır; Premium açıksa süre kalan sürenin üstüne
                 eklenir. Otomatik yenileme ve tekrarlayan ödeme yoktur.
               </p>
@@ -286,7 +287,7 @@ export function Pricing() {
 
               <h3>9. Yürürlük</h3>
               <p>
-                Alıcı, siparişi onaylamadan önce bu sözleşmeyi ve <Link to="/kullanim-kosullari">kullanım koşullarını</Link> okuduğunu kabul eder. Sözleşme, siparişin Shopier
+                Alıcı, ödemeyi onaylamadan önce bu sözleşmeyi ve <Link to="/kullanim-kosullari">kullanım koşullarını</Link> okuduğunu kabul eder. Sözleşme, ödemenin {PAYMENT_PROVIDER}
                 üzerinden onaylanmasıyla yürürlüğe girer.
               </p>
             </div>
