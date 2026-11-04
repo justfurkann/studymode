@@ -6,8 +6,7 @@ import { useStore } from '../lib/store'
 import { PAYMENT_PROVIDER } from '../lib/config'
 import { buyUrl, DELIVERY, formatPrice, PACKAGES, PRICING_UPDATED, SELLER, type PremiumPackage } from '../lib/pricing'
 
-const DESCRIPTION =
-  'StudyMode Premium üyelik kodu fiyatları: 1 aylık 50 TL, 4 aylık dönem paketi 150 TL. Tek kullanımlık dijital kod, otomatik yenileme yok. Teslimat, iade ve mesafeli satış sözleşmesi.'
+const DESCRIPTION = `StudyMode Premium üyelik kodu fiyatları: ${PACKAGES.map((p) => `${p.name.replace('Premium', '').trim()} ${formatPrice(p.price)}`).join(', ')}. Tek kullanımlık dijital kod, otomatik yenileme yok. Teslimat, iade ve mesafeli satış sözleşmesi.`
 
 /** Sets the tab title and the search description while the page is open. */
 function usePageMeta(title: string, description: string) {
@@ -39,6 +38,7 @@ function PackageCard({ pkg }: { pkg: PremiumPackage }) {
   const url = buyUrl(pkg)
   return (
     <article className="price-card" aria-labelledby={`paket-${pkg.id}`}>
+      {pkg.badge && <span className="price-badge">{pkg.badge}</span>}
       <h3 id={`paket-${pkg.id}`}>{pkg.name}</h3>
       <p className="price-amount">
         <strong>{formatPrice(pkg.price)}</strong>

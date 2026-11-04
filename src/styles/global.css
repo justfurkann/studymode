@@ -4950,6 +4950,16 @@ a.list-item:hover {
   font-size: 1.0625rem;
   margin: 0;
 }
+.price-badge {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink-line);
+  background: var(--hi);
+  color: var(--on-hi);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
 .price-card p {
   margin: 0;
 }
