@@ -23,6 +23,7 @@ import { NoteDetail } from './pages/NoteDetail'
 import { ResetPassword } from './pages/ResetPassword'
 import { Review } from './pages/Review'
 import { Premium } from './pages/Premium'
+import { RedeemLink } from './pages/RedeemLink'
 import { Privacy } from './pages/Privacy'
 import { Terms } from './pages/Terms'
 import { Pricing } from './pages/Pricing'
@@ -113,6 +114,7 @@ function Routed() {
         <Route path="tekrar" element={<Review />} />
         <Route path="sinav" element={<ExamHub />} />
         <Route path="premium" element={<Premium />} />
+        <Route path="kod" element={<RedeemLink />} />
         <Route path="ayarlar" element={<Settings />} />
         <Route path="yonetim" element={<Admin />} />
         <Route path="paylas/:token" element={<SharedCourse />} />

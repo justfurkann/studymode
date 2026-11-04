@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { codesCsv, daysLeft, hasPremiumUntil, parseRedeem, REDEEM_MESSAGES, tidyCode } from './premiumCodes'
+import { clearPendingCode, codeFromHash, codeLink, codesCsv, daysLeft, hasPremiumUntil, loadPendingCode, maskCode, parseRedeem, PENDING_TTL_MS, REDEEM_MESSAGES, savePendingCode, tidyCode } from './premiumCodes'
 import { currentQuota, parseQuota, setQuota } from './account'
 
 describe('Premium codes', () => {
@@ -27,7 +27,9 @@ describe('Premium codes', () => {
   })
 
   it('makes a CSV for the codes, quoting labels', () => {
-    expect(codesCsv([{ code: 'SM-AAAA-BBBB-CCCC', hint: 'CCCC' }], 30, 'Shopier "Kasım"')).toBe('kod,gun,etiket\n"SM-AAAA-BBBB-CCCC",30,"Shopier ""Kasım"""')
+    expect(codesCsv([{ code: 'SM-AAAA-BBBB-CCCC', hint: 'CCCC' }], 30, 'Shopier "Kasım"')).toBe(
+      'kod,link,gun,etiket\n"SM-AAAA-BBBB-CCCC","https://studymode.fun/kod#SM-AAAA-BBBB-CCCC",30,"Shopier ""Kasım"""',
+    )
   })
 
   it('the allowance carries the Premium end date, and an answer without it does not drop it', () => {
@@ -42,5 +44,30 @@ describe('Premium codes', () => {
     // An answer that says "no Premium" (the field present, null) does close it.
     setQuota({ role: 'normal', used: 3, limit: 40, allowed: true, premium_until: null })
     expect(currentQuota()?.premiumUntil).toBeNull()
+  })
+})
+
+describe('Premium codes as links', () => {
+  it('puts the code after # and reads it back, forgivingly', () => {
+    expect(codeLink('SM-AB2C-DE3F-GH4J', 'https://studymode.fun')).toBe('https://studymode.fun/kod#SM-AB2C-DE3F-GH4J')
+    expect(codeFromHash('#SM-AB2C-DE3F-GH4J')).toBe('SM-AB2C-DE3F-GH4J')
+    expect(codeFromHash('#sm-ab2c-de3f-gh4j')).toBe('SM-AB2C-DE3F-GH4J')
+    expect(codeFromHash('#SM-AB2C-DE3F-GH4J%20')).toBe('SM-AB2C-DE3F-GH4J')
+    // Not a whole code (or letters the alphabet never uses): nothing.
+    expect(codeFromHash('#SM-AB2C-DE3F')).toBeNull()
+    expect(codeFromHash('#SM-AB0C-DE3F-GH4J')).toBeNull()
+    expect(codeFromHash('')).toBeNull()
+    expect(maskCode('SM-AB2C-DE3F-GH4J')).toBe('SM-…-GH4J')
+  })
+
+  it('keeps a code from a link for a week while the student makes an account', () => {
+    const mem = new Map<string, string>()
+    Object.assign(globalThis, { localStorage: { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v), removeItem: (k: string) => void mem.delete(k) } })
+    const now = Date.UTC(2026, 10, 4)
+    savePendingCode('SM-AB2C-DE3F-GH4J', now)
+    expect(loadPendingCode(now + 1000)).toBe('SM-AB2C-DE3F-GH4J')
+    expect(loadPendingCode(now + PENDING_TTL_MS + 1)).toBeNull()
+    clearPendingCode()
+    expect(loadPendingCode(now)).toBeNull()
   })
 })
