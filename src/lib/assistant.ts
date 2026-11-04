@@ -64,43 +64,67 @@ export function placeFromPath(pathname: string, notes: Note[], courses: Course[]
   return { courseId: null, noteId: null }
 }
 
-// ---------- The conversation, per course, for this tab ----------
+// ---------- The conversation, per course, kept on this device ----------
 
 export interface ChatMessage extends ChatTurn {
   id: string
+  /** The answer was saved as a study card (assistant messages only). */
+  carded?: boolean
 }
 
-const KEY = 'studymode.assistant.v1'
+const KEY = 'studymode.assistant.v2'
+const OLD_KEY = 'studymode.assistant.v1'
 /** Kept per conversation; older turns drop off (the AI only sees the last few anyway). */
 const MAX_MESSAGES = 40
+/** A conversation nobody touched for a week starts fresh: by then the question has moved on. */
+export const CONVERSATION_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
-type Store = Record<string, ChatMessage[]>
+type Store = Record<string, { at: number; messages: ChatMessage[] }>
 
-function read(): Store {
+function read(now = Date.now()): Store {
   try {
-    const raw = sessionStorage.getItem(KEY)
+    const raw = localStorage.getItem(KEY)
     const parsed = raw ? (JSON.parse(raw) as unknown) : {}
-    return parsed && typeof parsed === 'object' ? (parsed as Store) : {}
+    if (!parsed || typeof parsed !== 'object') return {}
+    const out: Store = {}
+    for (const [course, entry] of Object.entries(parsed as Store)) {
+      if (entry && Array.isArray(entry.messages) && typeof entry.at === 'number' && now - entry.at < CONVERSATION_TTL_MS) out[course] = entry
+    }
+    return out
   } catch {
     return {}
   }
 }
 
 /** '' is the general conversation (no course picked). */
-export function loadConversation(courseId: string): ChatMessage[] {
-  const list = read()[courseId]
+export function loadConversation(courseId: string, now = Date.now()): ChatMessage[] {
+  const list = read(now)[courseId]?.messages
   return Array.isArray(list) ? list.filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string') : []
 }
 
-export function saveConversation(courseId: string, messages: ChatMessage[]) {
+export function saveConversation(courseId: string, messages: ChatMessage[], now = Date.now()) {
   try {
-    const all = read()
-    all[courseId] = messages.slice(-MAX_MESSAGES)
-    sessionStorage.setItem(KEY, JSON.stringify(all))
+    const all = read(now)
+    if (messages.length) all[courseId] = { at: now, messages: messages.slice(-MAX_MESSAGES) }
+    else delete all[courseId]
+    localStorage.setItem(KEY, JSON.stringify(all))
+    sessionStorage.removeItem(OLD_KEY)
   } catch {
     // Storage full or blocked: the conversation still lives on screen.
   }
 }
+
+/** Forgets every conversation on this device (signing out). */
+export function clearConversations() {
+  try {
+    localStorage.removeItem(KEY)
+    sessionStorage.removeItem(OLD_KEY)
+  } catch {
+    // Nothing to clear.
+  }
+}
+
+// ---------- Showing a reply ----------
 
 /** Splits **bold** out of a reply for display; everything else stays plain text. */
 export function boldParts(text: string): Array<{ text: string; bold: boolean }> {
@@ -114,4 +138,85 @@ export function boldParts(text: string): Array<{ text: string; bold: boolean }> 
   }
   if (last < text.length) out.push({ text: text.slice(last), bold: false })
   return out
+}
+
+export type ReplyBlock = { kind: 'p'; text: string } | { kind: 'ul' | 'ol'; items: string[] }
+
+/** A reply as paragraphs and lists ("- " / "• " items, "1." / "1)" items), the only formatting Fosfor is asked to use. */
+export function replyBlocks(text: string): ReplyBlock[] {
+  const blocks: ReplyBlock[] = []
+  let para: string[] = []
+  const flush = () => {
+    if (para.length) blocks.push({ kind: 'p', text: para.join('\n') })
+    para = []
+  }
+  for (const raw of text.replace(/\r/g, '').split('\n')) {
+    const line = raw.trim()
+    const bullet = line.match(/^[-•*]\s+(.+)$/)
+    const numbered = line.match(/^\d{1,2}[.)]\s+(.+)$/)
+    const kind = bullet ? 'ul' : numbered ? 'ol' : null
+    if (kind) {
+      flush()
+      const item = (bullet ?? numbered)![1]
+      const prev = blocks[blocks.length - 1]
+      if (prev && prev.kind === kind) prev.items.push(item)
+      else blocks.push({ kind, items: [item] })
+    } else if (!line) {
+      flush()
+    } else {
+      para.push(line)
+    }
+  }
+  flush()
+  return blocks
+}
+
+/** A reply as plain text for copying or a card: no ** marks, lists kept as lines. */
+export function plainReply(text: string): string {
+  return text.replace(/\*\*([^*\n]+)\*\*/g, '$1').trim()
+}
+
+/** A study card from a question and Fosfor's answer to it. */
+export function cardFromAnswer(question: string, answer: string): { front: string; back: string } {
+  const front = question.trim().replace(/\s+/g, ' ')
+  return { front: front.length > 200 ? `${front.slice(0, 197)}…` : front, back: plainReply(answer).slice(0, 1200) }
+}
+
+// ---------- What to suggest ----------
+
+export type SuggestionIcon = 'list' | 'quiz' | 'bulb' | 'target' | 'map' | 'clock'
+export interface Suggestion {
+  label: string
+  icon: SuggestionIcon
+}
+
+/** Starter questions for where the student is: a note open, a course picked, or nothing. */
+export function suggestionsFor(where: 'note' | 'course' | 'general'): Suggestion[] {
+  if (where === 'note')
+    return [
+      { label: 'Bu notu 3 maddede özetle', icon: 'list' },
+      { label: 'Bu nottan bana soru sor', icon: 'quiz' },
+      { label: 'En zor kısmı basitçe anlat', icon: 'bulb' },
+      { label: 'Sınavda ne çıkabilir?', icon: 'target' },
+    ]
+  if (where === 'course')
+    return [
+      { label: 'Bu dersin ana konuları ne?', icon: 'map' },
+      { label: 'Bana bir soru sor', icon: 'quiz' },
+      { label: 'Sınavda ne çıkabilir?', icon: 'target' },
+      { label: 'Nereden başlamalıyım?', icon: 'bulb' },
+    ]
+  return [
+    { label: 'Nasıl daha verimli çalışırım?', icon: 'bulb' },
+    { label: 'Sınava 3 gün kaldı, plan yap', icon: 'clock' },
+    { label: 'Aralıklı tekrar nedir?', icon: 'list' },
+  ]
+}
+
+/** The question asked when the student selects a bit of text and taps "Fosfor’a sor". */
+export const SELECTION_MAX = 400
+export function selectionQuestion(selected: string): string {
+  const text = selected.replace(/\s+/g, ' ').trim()
+  const short = text.length > SELECTION_MAX ? `${text.slice(0, SELECTION_MAX - 1)}…` : text
+  return text.split(' ').length <= 4 ? `“${short}” ne demek? Kısaca açıkla.` : `Şu kısmı basitçe açıklar mısın?\n“${short}”`
 }

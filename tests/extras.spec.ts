@@ -1219,6 +1219,54 @@ test('Fosfor: ask about the open note’s course, with its notes; the conversati
   await expect(page.getByRole('button', { name: /Fosfor’a sor/ })).toBeVisible()
 })
 
+test('Fosfor: note-aware starters, lists in replies, an answer becomes a card, ask about selected text', async ({ page }) => {
+  const T = '2026-10-01T00:00:00Z'
+  const course = { id: 'cccccccc-0000-0000-0000-0000000000f3', user_id: 'aaaaaaaa-0000-0000-0000-000000000011', name: 'Fizyoloji', color: '#e5484d', exam_date: null, created_at: T, updated_at: T }
+  const note = { id: 'dddddddd-0000-0000-0000-0000000000f3', user_id: course.user_id, course_id: course.id, title: 'Dolaşım', content: 'Kalp kası kasılır ve kanı pompalar. Sol karıncık en kalın duvarlıdır.', summary: { overview: 'Kalp kası kasılır ve kanı pompalar.', points: ['Sol karıncık en kalındır.'], keyTerms: [] }, questions: [], practice: [], generator: 'ai', created_at: T, updated_at: T }
+  await signedInAs(page, 'normal', {}, { courses: [course], notes: [note] })
+  const asked: Array<{ input: { question: string; context: string } }> = []
+  await page.route('**/api/generate', async (route) => {
+    asked.push(route.request().postDataJSON())
+    const reply = asked.length === 1 ? 'Üç madde:\n- Kalp **kanı** pompalar.\n- Sol karıncık kalındır.\n- Kan damarlarla taşınır.' : 'Kalp kası, kalbin duvarını oluşturan kastır.'
+    await route.fulfill({ json: { result: { reply } } })
+  })
+  await page.goto(`/not/${note.id}`)
+  await page.getByRole('button', { name: /Fosfor’a sor/ }).click()
+  const panel = page.getByRole('dialog', { name: /Fosfor/ })
+  // With a note open the starters are about that note, and the panel says which note it reads.
+  await expect(panel).toContainText('Açık not: Dolaşım')
+  await panel.getByRole('button', { name: 'Bu notu 3 maddede özetle' }).click()
+  await expect(panel.locator('.assistant-msg.is-assistant li')).toHaveCount(3)
+  await expect(panel.locator('.assistant-msg.is-assistant li strong')).toHaveText('kanı')
+  // The answer becomes a card in this course, once.
+  await panel.getByRole('button', { name: 'Karta çevir' }).click()
+  await expect(panel.getByRole('button', { name: 'Kartta' })).toBeDisabled()
+  await expect(page.getByRole('tablist', { name: 'Çalışma adımları' }).getByRole('tab', { name: /Kartlar/ }).locator('.tab-count')).toHaveText('1')
+  await page.keyboard.press('Escape')
+  await expect(panel).toHaveCount(0)
+
+  // Selecting words in the note offers "Fosfor’a sor"; it asks about exactly that.
+  const words = page.locator('main').getByText('Kalp kası kasılır', { exact: false }).first()
+  await words.evaluate((el) => {
+    const text = el.firstChild as Text
+    const range = document.createRange()
+    const start = text.data.indexOf('Kalp kası')
+    range.setStart(text, start)
+    range.setEnd(text, start + 'Kalp kası'.length)
+    const sel = window.getSelection()!
+    sel.removeAllRanges()
+    sel.addRange(range)
+  })
+  await page.locator('.assistant-ask-selection').click()
+  await expect(panel).toContainText('Kalp kası, kalbin duvarını')
+  expect(asked[1].input.question).toBe('“Kalp kası” ne demek? Kısaca açıkla.')
+  expect(asked[1].input.context).toContain('Dolaşım (şu an açık)')
+  // The conversation is still there after a reload (kept on this device).
+  await page.reload()
+  await page.getByRole('button', { name: /Fosfor’a sor/ }).click()
+  await expect(page.getByRole('dialog', { name: /Fosfor/ }).locator('.assistant-msg.is-user')).toHaveCount(2)
+})
+
 test('Fosfor: signed out, it says how to start instead of failing', async ({ page }) => {
   await startDemo(page)
   await page.getByRole('button', { name: /Fosfor’a sor/ }).click()
