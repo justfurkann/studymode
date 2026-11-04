@@ -1,6 +1,6 @@
 import { ArrowLeft, Check, CircleAlert, FileText, FileUp, Plus, Sparkles, Wand2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
-import { checkMerged, mergeContents, mergedTitle, mergeMessage } from '../lib/mergeNotes'
+import { checkMerged, mergeContents, mergedTitle, mergeMessage, SERVER_STUDY_CHUNK_CHARS, STUDY_CHUNK_CHARS } from '../lib/mergeNotes'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../components/ui'
@@ -281,7 +281,9 @@ export function AddNote() {
   const courseOk = courseId !== NEW_COURSE || !!newCourse.trim()
   const mergeable = (batch?.filter((i) => i.status === 'ready' || i.status === 'failed' || i.status === 'reading').length ?? 0) > 1
   const merging = merge && mergeable
-  const mergeCheck = merging && batch ? checkMerged(mergeContents(batch.filter((i) => i.status === 'ready' || i.status === 'failed').map((i) => ({ title: i.title, content: i.content })))) : null
+  // Through our server one request takes a smaller part, so the count (and the time) is higher.
+  const chunkChars = mode === 'ai' && isServerAi(settings.provider) ? SERVER_STUDY_CHUNK_CHARS : STUDY_CHUNK_CHARS
+  const mergeCheck = merging && batch ? checkMerged(mergeContents(batch.filter((i) => i.status === 'ready' || i.status === 'failed').map((i) => ({ title: i.title, content: i.content }))), chunkChars) : null
   const canSubmit = batch
     ? !busy && !stillReading && readyCount > 0 && courseOk && !mergeCheck?.tooLong
     : !busy && !reading && isLongEnough(content) && courseOk
@@ -371,7 +373,8 @@ export function AddNote() {
               </div>
             )}
             <span>
-              {batch.length} dosya {busy ? `· ${doneCount}/${batch.filter((i) => i.status !== 'unreadable').length} hazırlandı` : ''}
+              {batch.length} dosya{' '}
+              {busy ? (merging ? `· tek not olarak hazırlanıyor${chunkStatus ? ` · ${chunkStatus}` : '…'}` : `· ${doneCount}/${batch.filter((i) => i.status !== 'unreadable').length} hazırlandı`) : ''}
             </span>
             <div className="panel panel-tight list">
               {batch.map((item) => (
@@ -392,7 +395,7 @@ export function AddNote() {
                     <div className="subtle">
                       {item.status === 'reading' && (item.message ? `${item.message}…` : 'Okunuyor…')}
                       {item.status === 'ready' && `${item.content.length.toLocaleString('tr-TR')} karakter`}
-                      {item.status === 'working' && (item.message || (mode === 'ai' ? 'Yapay zekâ okuyor…' : 'Hazırlanıyor…'))}
+                      {item.status === 'working' && (item.message || (merging ? 'Birleşik notun içinde' : mode === 'ai' ? 'Yapay zekâ okuyor…' : 'Hazırlanıyor…'))}
                       {item.status === 'done' && item.noteId && (
                         <>
                           <Link to={`/not/${item.noteId}`} style={{ color: 'var(--accent-text)' }}>

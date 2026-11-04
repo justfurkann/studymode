@@ -1,3 +1,4 @@
+import { SERVER_STUDY_CHUNK_CHARS } from '../mergeNotes'
 import Anthropic from '@anthropic-ai/sdk'
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL } from '../config'
@@ -271,8 +272,11 @@ export async function runTask<T extends TaskName>(task: T, input: TaskInput<T>, 
 export type ChunkedStudySet = GeneratedSet & { failedChunks: number; totalChunks: number }
 
 const CHUNK_RETRY_DELAY_MS = 1500
+/** Parts of one long note prepared at the same time: through our server, and with the student's own key. */
+export const STUDY_PARALLEL_SERVER = 3
+export const STUDY_PARALLEL_OWN_KEY = 2
 /** Characters per study-set request through our server (Free+ and the free AI). */
-export const SERVER_CHUNK_CHARS = 12_000
+export const SERVER_CHUNK_CHARS = SERVER_STUDY_CHUNK_CHARS
 /** Parts shorter than this are not split further when they run out of time. */
 const MIN_SPLIT_CHARS = 3_000
 
@@ -309,27 +313,26 @@ export async function generateStudySet(
   sleep: (ms: number) => Promise<unknown> = (ms) => new Promise((r) => setTimeout(r, ms)),
 ): Promise<ChunkedStudySet> {
   // Our server has to answer within 60 s, so its parts are smaller than with the student's own key.
-  const first = splitNoteIntoChunks(text, isServerAi(settings.provider) ? SERVER_CHUNK_CHARS : 20_000)
+  const server = isServerAi(settings.provider)
+  const first = splitNoteIntoChunks(text, server ? SERVER_CHUNK_CHARS : 20_000)
   const many = first.length > 1
-  // Parts still to do, in order. A part that runs out of time is split once and its pieces
-  // go to the front, so a long PDF finishes in smaller steps instead of failing or spinning forever.
-  const queue: Array<{ text: string; label: string; wasSplit?: boolean }> = first.map((chunk, i) => ({
-    text: chunk,
-    label: many ? `Bölüm ${i + 1}/${first.length}` : '',
-  }))
+  // Parts still to do. A part that runs out of time is split once and its pieces go to the front,
+  // so a long PDF finishes in smaller steps instead of failing or spinning forever. Each part keeps
+  // its place in the note (`order`), so the finished set reads in the note's order whatever finishes first.
+  type Part = { text: string; label: string; order: number[]; wasSplit?: boolean }
+  const queue: Part[] = first.map((chunk, i) => ({ text: chunk, label: many ? `Bölüm ${i + 1}/${first.length}` : '', order: [i] }))
   let total = queue.length
   let done = 0
-  const sets: GeneratedSet[] = []
+  const finished: Array<{ order: number[]; set: GeneratedSet }> = []
   let failedChunks = 0
   let lastError: unknown = null
-  while (queue.length) {
-    onProgress?.(done, total)
-    const part = queue.shift()!
+  onProgress?.(done, total)
+
+  async function work(part: Part) {
     const input = { text: part.text, title: part.label ? `${title} (${part.label})` : title }
     let raw: RawStudySet | null = null
-    let split = false
     const maxAttempts = part.wasSplit ? 1 : 2
-    for (let attempt = 0; attempt < maxAttempts && !raw && !split; attempt += 1) {
+    for (let attempt = 0; attempt < maxAttempts && !raw; attempt += 1) {
       try {
         raw = await runTask('study', input, settings)
       } catch (error) {
@@ -342,12 +345,13 @@ export async function generateStudySet(
                 ...halves.map((h, k) => ({
                   text: h,
                   label: `${part.label || 'Bölüm'}${part.label ? '' : ' 1'}.${k + 1}`,
+                  order: [...part.order, k],
                   wasSplit: true,
                 })),
               )
               total += halves.length - 1
-              split = true
-              break
+              onProgress?.(done, total)
+              return
             }
           }
           // A timeout already waited ~50-60s across server fallbacks; do not stall another 60s on the same chunk.
@@ -356,19 +360,34 @@ export async function generateStudySet(
         if (attempt === 0 && maxAttempts > 1) await sleep(CHUNK_RETRY_DELAY_MS)
       }
     }
-    if (split) continue
     done += 1
-    if (!raw) {
-      failedChunks += 1
-      continue
+    if (!raw) failedChunks += 1
+    else {
+      try {
+        finished.push({ order: part.order, set: normalizeStudySet(raw) })
+      } catch {
+        // A chunk with only headings or figures yields nothing useful; the rest still count.
+      }
     }
-    try {
-      sets.push(normalizeStudySet(raw))
-    } catch {
-      // A chunk with only headings or figures yields nothing useful; the rest still count.
-    }
+    onProgress?.(done, total)
   }
-  onProgress?.(total, total)
+
+  // A few parts at a time: a 200-page PDF in 20 parts takes minutes instead of a quarter of an hour.
+  // Each part is still its own request within the server's 60 s.
+  const lanes = Math.min(server ? STUDY_PARALLEL_SERVER : STUDY_PARALLEL_OWN_KEY, queue.length)
+  await Promise.all(
+    Array.from({ length: lanes }, async () => {
+      while (queue.length) await work(queue.shift()!)
+    }),
+  )
+  const byOrder = (a: number[], b: number[]) => {
+    for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+      const d = (a[i] ?? -1) - (b[i] ?? -1)
+      if (d) return d
+    }
+    return 0
+  }
+  const sets = finished.sort((x, y) => byOrder(x.order, y.order)).map((x) => x.set)
   if (!sets.length) {
     if (lastError instanceof Error) throw lastError
     throw new AiError('Bu nottan çalışma seti çıkarılamadı. Notun yeterince açıklayıcı metin içerdiğinden emin ol.')

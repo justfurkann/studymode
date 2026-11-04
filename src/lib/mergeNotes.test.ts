@@ -18,7 +18,11 @@ describe('merging notes and files', () => {
     expect(mergeMessage(short, true)).toBe('Toplam 5.000 karakter.')
     const long = checkMerged('a'.repeat(61_000))
     expect(long.parts).toBe(4)
-    expect(mergeMessage(long, true)).toMatch(/yaklaşık 4 bölümde hazırlar \(4 hak\); metin kesilmez/)
+    expect(mergeMessage(long, true)).toMatch(/yaklaşık 4 bölümde hazırlar \(4 hak, yaklaşık 2 dakika\); metin kesilmez/)
+    // Through our server parts are smaller: a 230 000-character merge is 20 parts, and separate notes are suggested.
+    const big = checkMerged('a'.repeat(230_000), 12_000)
+    expect(big.parts).toBe(20)
+    expect(mergeMessage(big, true)).toMatch(/20 bölümde hazırlar \(20 hak, yaklaşık 5 dakika\).*"Ayrı notlar" daha iyi/)
     expect(mergeMessage(long, false)).toBe('Toplam 61.000 karakter.')
     const huge = checkMerged('a'.repeat(NOTE_MAX_CHARS + 1))
     expect(huge.tooLong).toBe(true)

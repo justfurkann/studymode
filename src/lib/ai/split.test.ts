@@ -89,5 +89,28 @@ describe('generateStudySet through our server', () => {
     expect(text).toBe('Sayfa (2)\n\nSayfa (3)')
     vi.unstubAllGlobals()
   })
+
+  it('prepares three parts at a time and keeps the note’s order even when later parts finish first', async () => {
+    let inFlight = 0
+    let most = 0
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: RequestInit) => {
+      const n = Number(JSON.parse(init.body as string).input.title.match(/Bölüm (\d+)\//)?.[1])
+      inFlight += 1
+      most = Math.max(most, inFlight)
+      // Earlier parts take longer, so they finish last.
+      await new Promise((r) => setTimeout(r, (10 - n) * 5))
+      inFlight -= 1
+      return new Response(JSON.stringify({ result: set(n) }))
+    }))
+    const progress: string[] = []
+    const result = await ai.generateStudySet(paragraphs(30, 2_000), 'Not', settings, (d, t) => progress.push(`${d}/${t}`), async () => undefined)
+    expect(most).toBe(ai.STUDY_PARALLEL_SERVER)
+    const parts = result.totalChunks
+    expect(parts).toBeGreaterThan(3)
+    expect(result.cards.map((c) => c.front)).toEqual(Array.from({ length: parts }, (_, i) => `Soru ${i + 1}?`))
+    expect(progress[0]).toBe(`0/${parts}`)
+    expect(progress.at(-1)).toBe(`${parts}/${parts}`)
+    vi.unstubAllGlobals()
+  })
 })
 
