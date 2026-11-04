@@ -610,6 +610,40 @@ begin
   select p.user_id, u.email::text, p.until from public.premium_access p join auth.users u on u.id = p.user_id order by p.until desc;
 end $$;
 
+-- Admin: end someone's Premium now (a refund, a mistake). Also removes an expired row from the list.
+create or replace function public.admin_end_premium(target uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'not allowed' using errcode = '42501'; end if;
+  delete from public.premium_access where user_id = target;
+  if not found then raise exception 'no premium' using errcode = '22023'; end if;
+end $$;
+
+-- Admin: forget Premium rows whose time is over (the codes they came from stay as the record).
+create or replace function public.admin_clear_expired_premium() returns integer
+language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  if not public.is_admin() then raise exception 'not allowed' using errcode = '42501'; end if;
+  delete from public.premium_access where until <= now();
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+-- Admin: delete cancelled codes from the list. Used codes are kept: they show who used what, and when.
+create or replace function public.admin_delete_revoked_codes() returns integer
+language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  if not public.is_admin() then raise exception 'not allowed' using errcode = '42501'; end if;
+  delete from public.premium_codes where revoked_at is not null and redeemed_at is null;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+revoke all on function public.admin_end_premium(uuid), public.admin_clear_expired_premium(), public.admin_delete_revoked_codes() from public, anon;
+grant execute on function public.admin_end_premium(uuid), public.admin_clear_expired_premium(), public.admin_delete_revoked_codes() to authenticated;
+
 revoke all on function public.limit_role(uuid), public.premium_until_of(uuid), public.premium_code_hash(text) from public, anon, authenticated;
 revoke all on function public.ai_quota(), public.plus_quota(), public.consume_plus(), public.redeem_code(text),
   public.admin_create_codes(integer, integer, text), public.admin_codes(), public.admin_revoke_code(uuid), public.admin_premium() from public, anon;

@@ -1116,7 +1116,11 @@ test('Premium kodu: bitmesine 3 gün kala Bugün’de kapatılabilir hatırlatma
 
 test('Yönetim: kod üret (yalnızca bir kez görünür), listede gör, kullanılmamışı iptal et; Premium kullanıcılar', async ({ page }) => {
   await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
-  const codes = [
+  let premium = [
+    { id: 'u1', email: 'ali@example.com', until: '2026-12-01T12:00:00Z' },
+    { id: 'u2', email: 'eski@example.com', until: '2026-11-01T12:00:00Z' },
+  ]
+  let codes = [
     { id: 'k1', hint: 'SM-…-4M8T', days: 30, label: 'Shopier', created_at: '2026-11-01T10:00:00Z', redeemed_at: '2026-11-01T12:00:00Z', redeemed_email: 'ali@example.com', revoked_at: null },
     { id: 'k2', hint: 'SM-…-9QRS', days: 30, label: 'Shopier', created_at: '2026-11-01T10:00:00Z', redeemed_at: null, redeemed_email: null, revoked_at: null },
   ]
@@ -1126,7 +1130,24 @@ test('Yönetim: kod üret (yalnızca bir kez görünür), listede gör, kullanı
     admin_feedback: () => [],
     admin_errors: () => [],
     admin_codes: () => codes,
-    admin_premium: () => [{ id: 'u1', email: 'ali@example.com', until: '2026-12-01T12:00:00Z' }],
+    admin_premium: () => premium,
+    admin_end_premium: (body) => {
+      calls.push({ fn: 'end', body })
+      premium = premium.filter((p) => p.id !== body.target)
+      return null
+    },
+    admin_clear_expired_premium: () => {
+      calls.push({ fn: 'clear', body: {} })
+      const before = premium.length
+      premium = premium.filter((p) => p.until > '2026-11-02T14:00:00Z')
+      return before - premium.length
+    },
+    admin_delete_revoked_codes: () => {
+      calls.push({ fn: 'delete', body: {} })
+      const before = codes.length
+      codes = codes.filter((c) => !c.revoked_at || c.redeemed_at)
+      return before - codes.length
+    },
     admin_create_codes: (body) => {
       calls.push({ fn: 'create', body })
       return Array.from({ length: Number(body.how_many) }, (_, i) => ({ code: `SM-TEST-000${i}-ABCD`, hint: `SM-…-${i}ABC` }))
@@ -1172,6 +1193,22 @@ test('Yönetim: kod üret (yalnızca bir kez görünür), listede gör, kullanı
   await section.getByRole('group', { name: 'Kodları süz' }).getByRole('button', { name: /İptal/ }).click()
   await expect(section).toContainText('İptal edildi')
   await expect(section.getByRole('region', { name: 'Premium kullanıcılar' }).or(section.locator('[aria-label="Premium kullanıcılar"]'))).toContainText('ali@example.com')
+  // Cancelled codes can be deleted from the list (after a second "yes").
+  await section.getByRole('button', { name: /İptal edilenleri sil \(1\)/ }).click()
+  await section.getByRole('button', { name: 'Evet, sil' }).click()
+  await expect.poll(() => calls.at(-1)?.fn).toBe('delete')
+  await expect(section).toContainText('Bu grupta kod yok.')
+  // Expired Premium is not listed, only counted, and can be cleared in one go.
+  const people = section.locator('[aria-label="Premium kullanıcılar"]')
+  await expect(people).not.toContainText('eski@example.com')
+  await section.getByRole('button', { name: 'Süresi bitenleri temizle' }).click()
+  await expect.poll(() => calls.at(-1)?.fn).toBe('clear')
+  await expect(section.getByText('kişinin Premium süresi bitti')).toHaveCount(0)
+  // Someone's Premium can be ended now, after a second "yes".
+  await people.getByRole('button', { name: 'ali@example.com için Premium’u bitir' }).click()
+  await people.getByRole('button', { name: 'Evet, bitir' }).click()
+  await expect.poll(() => calls.at(-1)).toEqual({ fn: 'end', body: { target: 'u1' } })
+  await expect(section).toContainText('0 Premium kullanıcı')
 })
 
 test('Yönetim: normal kullanıcı Premium kodları bölümünü görmez', async ({ page }) => {

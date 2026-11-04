@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (4 Kasım 2026, Aşama 54 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (4 Kasım 2026, Aşama 55 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -919,6 +919,18 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - **Test notu:** masaüstü Chromium `intent://` denemesinden sonra sayfadaki gerçek fare tıklamalarını yutuyor. Bu yüzden şeridi kapatma testi iPhone görünümünde yapılıyor.
 - **Klavye hatası:** başarım kısayolu, Android uygulama içi tarayıcılarının gönderdiği tuşsuz `keydown` olaylarında `e.key.length` hatası veriyordu (paylaşımdan sonra 1,5 saatte 6 kez); düzeltildi (PR #98).
 - Yönetim → Premium kodları: süre seçeneklerinde hazır **3 gün** (hediye/hikâye linkleri). `/kod`'da kullanılmış bir kod "Bu kodu başkası kaptı" der ve iki paketi satın alma kartlarıyla sunar.
+
+### Aşama 55 — Premium'u bitirme ve temizlik (4 Kasım 2026, `dreamy-sagan`)
+
+- Yeni veritabanı fonksiyonları (`supabase/schema.sql`, migration `premium_admin_cleanup`):
+  - `admin_end_premium(target)`: birinin Premium'unu hemen bitirir (satırı siler).
+  - `admin_clear_expired_premium()`: süresi bitmiş satırları siler.
+  - `admin_delete_revoked_codes()`: iptal edilmiş, kullanılmamış kodları siler.
+  - Kullanılmış kodlar **silinmez**: kim, neyi, ne zaman kullandı kaydı (iade/itiraz için).
+- Yönetim → Premium:
+  - Liste yalnızca süresi devam edenleri gösterir; "Premium'u bitir" ikinci bir "Evet, bitir" ister.
+  - Süresi bitenler sayılır ve "Süresi bitenleri temizle" ile silinir.
+  - "İptal" süzgecinde "İptal edilenleri sil (n)" ikinci bir "Evet, sil" ister.
 
 ## Tasarım dili ("Fosforlu")
 
