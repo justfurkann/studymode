@@ -931,7 +931,6 @@ test('Yönetim: kullanıcıların okulu ve okullar özeti görünür; veritaban�
   await page.goto('/yonetim')
   await expect(page.getByRole('region', { name: 'Okullar' })).toContainText('ODTÜ · 2')
   await expect(page.getByRole('region', { name: 'Okullar' })).toContainText('Lise · 1')
-  await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).toContainText('ODTÜ · Fizik · 2. sınıf')
   const region = page.getByRole('region', { name: 'Okullar' })
   await expect(region).toContainText('Fizik · 2')
   await expect(region).toContainText('Instagram · 2')
@@ -939,11 +938,19 @@ test('Yönetim: kullanıcıların okulu ve okullar özeti görünür; veritaban�
   await expect(region).toContainText('Kadın · 1')
   await expect(region).toContainText('19-22 · 1')
   await expect(region).toContainText('23-26 · 1')
+  await page.getByRole('tab', { name: /Hesaplar/ }).click()
+  await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).toContainText('ODTÜ · Fizik · 2. sınıf')
   // Age and gender are never shown next to a person.
   await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).not.toContainText('Kadın')
+  // Filtering by role.
+  await page.getByRole('group', { name: 'Role göre süz' }).getByRole('button', { name: /VIP/ }).click()
+  await expect(page.locator('.admin-user')).toHaveCount(1)
+  await expect(page.locator('.admin-user')).toContainText('Ece')
   schoolsReady = false
   await page.reload()
+  await page.getByRole('group', { name: 'Role göre süz' }).getByRole('button', { name: /Hepsi/ }).click()
   await expect(page.locator('.admin-user').filter({ hasText: 'Ayşe' })).toBeVisible()
+  await page.getByRole('tab', { name: /Özet/ }).click()
   await expect(page.getByRole('region', { name: 'Okullar' })).toHaveCount(0)
 })
 
@@ -1130,7 +1137,7 @@ test('Yönetim: kod üret (yalnızca bir kez görünür), listede gör, kullanı
       return null
     },
   })
-  await page.goto('/yonetim')
+  await page.goto('/yonetim?bolum=premium')
   const section = page.getByRole('region', { name: 'Premium kodları' })
   await expect(section).toContainText('1 bekleyen · 1 kullanılmış · 1 Premium kullanıcı')
   await section.getByLabel('Kaç kod?').fill('3')
@@ -1145,11 +1152,22 @@ test('Yönetim: kod üret (yalnızca bir kez görünür), listede gör, kullanı
   const download = page.waitForEvent('download')
   await made.getByRole('button', { name: 'CSV indir' }).click()
   expect((await download).suggestedFilename()).toBe('premium-kodlari-120-gun.csv')
+  // Each code also as a link that opens Premium, and as a QR code (with a card to send).
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await made.getByRole('button', { name: 'SM-TEST-0000-ABCD linkini kopyala' }).click()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/kod#SM-TEST-0000-ABCD$/)
+  await made.getByRole('button', { name: 'SM-TEST-0000-ABCD QR kodu' }).click()
+  await expect(made.getByRole('img', { name: 'SM-TEST-0000-ABCD kodunun QR kodu' })).toBeVisible()
+  const card = page.waitForEvent('download')
+  await made.getByRole('button', { name: 'QR kartını indir' }).click()
+  expect((await card).suggestedFilename()).toBe('studymode-premium-120-gun-ABCD.png')
   // The used one has no cancel button; the waiting one does.
   await expect(section.getByRole('button', { name: 'SM-…-4M8T kodunu iptal et' })).toHaveCount(0)
   await section.getByRole('button', { name: 'SM-…-9QRS kodunu iptal et' }).click()
   // The request is recorded when it reaches the (mocked) server, a moment after the click.
   await expect.poll(() => calls.at(-1)).toEqual({ fn: 'revoke', body: { code_id: 'k2' } })
+  // The list shows the waiting codes first; the others are a tap away.
+  await section.getByRole('group', { name: 'Kodları süz' }).getByRole('button', { name: /İptal/ }).click()
   await expect(section).toContainText('İptal edildi')
   await expect(section.getByRole('region', { name: 'Premium kullanıcılar' }).or(section.locator('[aria-label="Premium kullanıcılar"]'))).toContainText('ali@example.com')
 })
@@ -1161,6 +1179,52 @@ test('Yönetim: normal kullanıcı Premium kodları bölümünü görmez', async
   await expect(page.locator('main')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Premium kodları' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Kod üret' })).toHaveCount(0)
+})
+
+test('Premium kodu link olarak: girişliyse açar açmaz Premium gelir, adres çubuğunda kod kalmaz', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  const redeemed: unknown[] = []
+  await signedInAs(page, 'normal', {}, {}, {
+    redeem_code: (body) => {
+      redeemed.push(body)
+      return { ok: true, days: 30, premium_until: '2026-12-02T14:00:00Z' }
+    },
+  })
+  await page.goto('/kod#SM-AB2C-DE3F-GH4J')
+  await expect(page.getByRole('heading', { name: /Premium açıldı!/ })).toBeVisible()
+  await expect(page.getByText(/30 gün eklendi/)).toBeVisible()
+  expect(redeemed).toEqual([{ code: 'SM-AB2C-DE3F-GH4J' }])
+  expect(new URL(page.url()).hash).toBe('')
+  // Used once: going home does not try it again.
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/$/)
+  expect(redeemed).toHaveLength(1)
+})
+
+test('Premium kodu link olarak: hesapsız açılınca hesap açtırır, kod bu cihazda bekler', async ({ page }) => {
+  await page.goto('/kod#SM-AB2C-DE3F-GH4J')
+  await expect(page.getByRole('heading', { name: /Sana bir Premium kodu geldi/ })).toBeVisible()
+  await expect(page.getByText('SM-…-GH4J')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Hesap aç' })).toHaveAttribute('href', '/giris?mod=kayit')
+  await expect(page.getByRole('dialog', { name: /Tanıtım/ })).toHaveCount(0)
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('studymode.pendingCode') ?? '{}').code)).toBe('SM-AB2C-DE3F-GH4J')
+})
+
+test('Premium kodu link olarak: bekleyen kod, giriş yapınca ana sayfadan /kod’a götürüp kullanılır', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('studymode.pendingCode', JSON.stringify({ code: 'SM-AB2C-DE3F-GH4J', at: Date.now() })))
+  const redeemed: unknown[] = []
+  await signedInAs(page, 'normal', {}, {}, {
+    redeem_code: (body) => {
+      redeemed.push(body)
+      return { ok: false, error: 'used' }
+    },
+  })
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/kod$/)
+  await expect(page.getByRole('alert')).toContainText('Bu kod daha önce kullanılmış.')
+  expect(redeemed).toEqual([{ code: 'SM-AB2C-DE3F-GH4J' }])
+  // A code that can never work is forgotten.
+  expect(await page.evaluate(() => localStorage.getItem('studymode.pendingCode'))).toBeNull()
 })
 
 test('Fosfor: ask about the open note’s course, with its notes; the conversation stays per course; phone layout', async ({ page }) => {

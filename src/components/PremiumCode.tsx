@@ -1,22 +1,15 @@
-import { CalendarClock, Copy, Download, Gem, KeyRound, ShoppingBag, Ticket, X } from 'lucide-react'
+import { CalendarClock, Copy, Download, Gem, KeyRound, Link2, QrCode as QrIcon, ShoppingBag, Ticket, X } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { refreshQuota, useQuota } from '../lib/account'
 import { canBuy } from '../lib/pricing'
-import { downloadText } from '../lib/noteTools'
+import { codeCardPng } from '../lib/codeCard'
+import { downloadBlob, downloadText } from '../lib/noteTools'
 import { usePremium } from '../lib/premium'
-import {
-  codesCsv,
-  daysLeft,
-  formatUntil,
-  redeemCode,
-  REDEEM_MESSAGES,
-  tidyCode,
-  type AdminCode,
-  type AdminPremiumUser,
-  type NewCode,
-} from '../lib/premiumCodes'
+import { codeLink, codesCsv, daysLeft, formatUntil, redeemCode, REDEEM_MESSAGES, tidyCode, type AdminCode, type AdminPremiumUser, type NewCode } from '../lib/premiumCodes'
 import { playSound } from '../lib/sound'
+import { QrCode } from './ShareCourse'
+import { useShowMore } from './ShowMore'
 import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { Alert, Celebrate, Spinner, useToast } from './ui'
@@ -115,7 +108,9 @@ export function PremiumAccessSection() {
           <Gem size={17} aria-hidden /> Premium hesabında zaten açık.
         </p>
       ) : (
-        <p className="subtle">Premium; iki kişilik sesli not, akıllı arama ve yapay zekâ görselleri. Satın aldığın kodu buraya gir; süre bitince kendiliğinden kapanır, otomatik yenilenmez.</p>
+        <p className="subtle">
+          Premium; iki kişilik sesli not, akıllı arama ve yapay zekâ görselleri. Satın aldığın kodu buraya gir; süre bitince kendiliğinden kapanır, otomatik yenilenmez.
+        </p>
       )}
       <RedeemCode />
       <div className="btn-row">
@@ -185,6 +180,9 @@ export function PremiumReminder() {
 
 const DAY_CHOICES = [30, 120] as const
 
+type CodeFilter = 'open' | 'used' | 'revoked' | 'all'
+const codeState = (c: AdminCode): Exclude<CodeFilter, 'all'> => (c.revoked_at ? 'revoked' : c.redeemed_at ? 'used' : 'open')
+
 /**
  * Admin: make codes (shown once), list them, revoke unused ones, see who has Premium. Hidden when
  * the database functions are not there yet, like the other optional admin sections.
@@ -200,9 +198,18 @@ export function PremiumCodesAdmin() {
   const [days, setDays] = useState<number>(30)
   const [custom, setCustom] = useState(false)
   const [label, setLabel] = useState('')
-  const [made, setMade] = useState<{ codes: NewCode[]; days: number; label: string } | null>(null)
+  const [made, setMade] = useState<{
+    codes: NewCode[]
+    days: number
+    label: string
+  } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [qrFor, setQrFor] = useState<string | null>(null)
+  const [filter, setFilter] = useState<CodeFilter>('open')
+  const shown = codes.filter((c) => codeState(c) === filter || filter === 'all')
+  const codeList = useShowMore(shown, 8, filter)
+  const userList = useShowMore(users, 5)
 
   const load = useCallback(async () => {
     if (!supabase) return
@@ -229,7 +236,11 @@ export function PremiumCodesAdmin() {
     setError('')
     const n = Math.max(1, Math.min(200, Math.round(howMany)))
     const d = Math.max(1, Math.min(400, Math.round(days)))
-    const { data, error: err } = await supabase.rpc('admin_create_codes', { how_many: n, days: d, label: label.trim() || null })
+    const { data, error: err } = await supabase.rpc('admin_create_codes', {
+      how_many: n,
+      days: d,
+      label: label.trim() || null,
+    })
     setBusy(false)
     if (err) {
       setError('Kodlar üretilemedi.')
@@ -241,7 +252,9 @@ export function PremiumCodesAdmin() {
 
   async function revoke(code: AdminCode) {
     if (!supabase) return
-    const { error: err } = await supabase.rpc('admin_revoke_code', { code_id: code.id })
+    const { error: err } = await supabase.rpc('admin_revoke_code', {
+      code_id: code.id,
+    })
     if (err) {
       toast(err.message.includes('already') ? 'Bu kod kullanılmış ya da zaten iptal.' : 'İptal edilemedi.')
       return
@@ -250,18 +263,26 @@ export function PremiumCodesAdmin() {
     void load()
   }
 
-  async function copyAll() {
-    if (!made) return
+  async function copy(text: string, done: string) {
     try {
-      await navigator.clipboard.writeText(made.codes.map((c) => c.code).join('\n'))
-      toast(`${made.codes.length} kod kopyalandı`)
+      await navigator.clipboard.writeText(text)
+      toast(done)
     } catch {
       toast('Kopyalanamadı; listeden elle seçebilirsin')
     }
   }
 
-  const used = codes.filter((c) => c.redeemed_at).length
-  const open = codes.filter((c) => !c.redeemed_at && !c.revoked_at).length
+  async function downloadCard(code: string, days: number) {
+    try {
+      downloadBlob(`studymode-premium-${days}-gun-${code.slice(-4)}.png`, await codeCardPng(code, days))
+    } catch {
+      toast('Kart hazırlanamadı')
+    }
+  }
+
+  const used = codes.filter((c) => codeState(c) === 'used').length
+  const open = codes.filter((c) => codeState(c) === 'open').length
+  const revoked = codes.length - used - open
 
   return (
     <section className="section" aria-label="Premium kodları">
@@ -313,19 +334,56 @@ export function PremiumCodesAdmin() {
 
       {made && (
         <div className="panel codes-made" aria-label="Üretilen kodlar">
-          <Alert tone="warning">Bu kodlar yalnızca şimdi görünür; bir daha gösterilemez. Hemen kopyala ya da indir ve bir yere kaydet.</Alert>
+          <Alert tone="warning">
+            Bu kodlar, linkleri ve QR’ları yalnızca şimdi görünür; bir daha gösterilemez. Hemen kopyala ya da indir ve bir yere kaydet. Link açıldığında Premium o hesapta
+            kendiliğinden açılır; hesabı yoksa önce hesap açtırır.
+          </Alert>
           <ol className="codes-list">
             {made.codes.map((c) => (
               <li key={c.code}>
-                <code>{c.code}</code>
+                <div className="codes-row">
+                  <code>{c.code}</code>
+                  <span className="codes-actions">
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => void copy(codeLink(c.code), 'Link kopyalandı')} aria-label={`${c.code} linkini kopyala`}>
+                      <Link2 size={15} aria-hidden /> Link
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      aria-pressed={qrFor === c.code}
+                      onClick={() => setQrFor(qrFor === c.code ? null : c.code)}
+                      aria-label={`${c.code} QR kodu`}
+                    >
+                      <QrIcon size={15} aria-hidden /> QR
+                    </button>
+                  </span>
+                </div>
+                {qrFor === c.code && (
+                  <div className="codes-qr">
+                    <QrCode text={codeLink(c.code)} size={176} label={`${c.code} kodunun QR kodu`} />
+                    <div className="codes-qr-side">
+                      <p className="subtle">Telefonla okutulunca Premium’u açan link. Kart olarak indirip WhatsApp’tan ya da e-postayla gönderebilirsin.</p>
+                      <button type="button" className="btn btn-sm" onClick={() => void downloadCard(c.code, made.days)}>
+                        <Download size={15} aria-hidden /> QR kartını indir
+                      </button>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ol>
           <div className="btn-row">
-            <button type="button" className="btn btn-sm" onClick={copyAll}>
-              <Copy size={15} /> Hepsini kopyala
+            <button type="button" className="btn btn-sm" onClick={() => void copy(made.codes.map((c) => c.code).join('\n'), `${made.codes.length} kod kopyalandı`)}>
+              <Copy size={15} /> Kodları kopyala
             </button>
-            <button type="button" className="btn btn-sm" onClick={() => downloadText(`premium-kodlari-${made.days}-gun.csv`, codesCsv(made.codes, made.days, made.label), 'text/csv;charset=utf-8')}>
+            <button type="button" className="btn btn-sm" onClick={() => void copy(made.codes.map((c) => codeLink(c.code)).join('\n'), `${made.codes.length} link kopyalandı`)}>
+              <Link2 size={15} /> Linkleri kopyala
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => downloadText(`premium-kodlari-${made.days}-gun.csv`, codesCsv(made.codes, made.days, made.label, window.location.origin), 'text/csv;charset=utf-8')}
+            >
               <Download size={15} /> CSV indir
             </button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMade(null)}>
@@ -336,12 +394,30 @@ export function PremiumCodesAdmin() {
       )}
 
       {codes.length > 0 && (
-        <div className="panel panel-tight list" aria-label="Kod listesi">
-          {codes.map((c) => (
+        <div className="segmented admin-filter" role="group" aria-label="Kodları süz">
+          {(
+            [
+              ['open', `Bekleyen (${open})`],
+              ['used', `Kullanılmış (${used})`],
+              ['revoked', `İptal (${revoked})`],
+              ['all', `Hepsi (${codes.length})`],
+            ] as const
+          ).map(([id, text]) => (
+            <button key={id} type="button" aria-pressed={filter === id} onClick={() => setFilter(id)}>
+              {text}
+            </button>
+          ))}
+        </div>
+      )}
+      {codes.length > 0 && (
+        <div className="panel panel-tight list admin-compact" aria-label="Kod listesi">
+          {shown.length === 0 && <p className="subtle admin-empty">Bu grupta kod yok.</p>}
+          {codeList.visible.map((c) => (
             <div key={c.id} className="list-item">
               <div className="grow">
                 <div className="title">
-                  <code>{c.hint}</code> · {c.days} gün{c.label ? ` · ${c.label}` : ''}
+                  <code>{c.hint}</code> · {c.days} gün
+                  {c.label ? ` · ${c.label}` : ''}
                 </div>
                 <div className="subtle">
                   {c.revoked_at
@@ -358,12 +434,13 @@ export function PremiumCodesAdmin() {
               )}
             </div>
           ))}
+          {codeList.more}
         </div>
       )}
 
       {users.length > 0 && (
-        <div className="panel panel-tight list" aria-label="Premium kullanıcılar">
-          {users.map((u) => (
+        <div className="panel panel-tight list admin-compact" aria-label="Premium kullanıcılar">
+          {userList.visible.map((u) => (
             <div key={u.id} className="list-item">
               <Gem size={16} aria-hidden />
               <div className="grow">
@@ -374,6 +451,7 @@ export function PremiumCodesAdmin() {
               </div>
             </div>
           ))}
+          {userList.more}
         </div>
       )}
     </section>
