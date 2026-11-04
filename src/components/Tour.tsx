@@ -45,7 +45,7 @@ function visibleTarget(key: string): HTMLElement | null {
 const isPhone = () => window.matchMedia('(max-width: 860px)').matches
 
 /** Pages where a tour would get in the way: signing in or up, a new password, a friend's shared course. */
-const NO_TOUR = [/^\/giris/, /^\/sifre-yenile/, /^\/paylas\//]
+const NO_TOUR = [/^\/giris/, /^\/sifre-yenile/, /^\/paylas\//, /^\/kod/]
 const tourFits = (path: string) => !NO_TOUR.some((re) => re.test(path))
 
 function anyOverlay() {

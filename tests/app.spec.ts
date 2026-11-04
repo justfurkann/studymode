@@ -2059,8 +2059,17 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Yönetim' })).toBeVisible()
     await expect(page.locator('.admin-stats')).toContainText('2hesap')
     await expect(page.locator('.admin-stats')).toContainText('10bugünkü istek')
+    // One part at a time: the lists sit behind their tabs, each with its count.
+    await page.getByRole('tab', { name: /Geri bildirim/ }).click()
     await expect(page.getByText('Karanlık tema çok iyi')).toBeVisible()
+    await page.getByRole('tab', { name: /Hatalar/ }).click()
     await expect(page.getByText('TypeError: x is undefined')).toBeVisible()
+    await page.getByRole('tab', { name: /Hesaplar/ }).click()
+    await expect(page).toHaveURL(/bolum=hesaplar/)
+    // Search narrows the accounts.
+    await page.getByPlaceholder('İsim, e-posta ya da okul ara').fill('ayse')
+    await expect(page.locator('.admin-user')).toHaveCount(1)
+    await page.getByPlaceholder('İsim, e-posta ya da okul ara').fill('')
     // Your own role cannot be changed from here.
     await expect(page.getByLabel('Furkan rolü')).toBeDisabled()
     await page.getByLabel('Ayşe rolü').selectOption('vip')

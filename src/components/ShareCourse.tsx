@@ -8,7 +8,7 @@ import { useStore } from '../lib/store'
 import { Alert, Modal, Spinner, useToast } from './ui'
 
 /** A QR code drawn as SVG: ink on the highlighter yellow, which scans well in both themes. */
-export function QrCode({ text, size = 200 }: { text: string; size?: number }) {
+export function QrCode({ text, size = 200, label = 'Paylaşım bağlantısının QR kodu' }: { text: string; size?: number; label?: string }) {
   const path = useMemo(() => {
     const qr = qrcode(0, 'M')
     qr.addData(text)
@@ -19,7 +19,7 @@ export function QrCode({ text, size = 200 }: { text: string; size?: number }) {
     return { d, n: n + 8 }
   }, [text])
   return (
-    <svg className="qr" width={size} height={size} viewBox={`0 0 ${path.n} ${path.n}`} role="img" aria-label="Paylaşım bağlantısının QR kodu" shapeRendering="crispEdges">
+    <svg className="qr" width={size} height={size} viewBox={`0 0 ${path.n} ${path.n}`} role="img" aria-label={label} shapeRendering="crispEdges">
       <rect width={path.n} height={path.n} className="qr-bg" />
       <path d={path.d} className="qr-ink" />
     </svg>

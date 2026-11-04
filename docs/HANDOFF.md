@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (4 Kasım 2026, Aşama 50 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (4 Kasım 2026, Aşama 51 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -887,6 +887,14 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Her paketin kendi ödeme linki `PACKAGES[].payUrl` (`src/lib/pricing.ts`), yalnızca `https://`. Link boşsa pakette "Satın almak için yaz" görünür; en az bir link varsa uygulamadaki "Kod satın al / Süreyi uzat / Yenile" butonları `/fiyatlar#paketler`'e gider (eski tek `SHOPIER_URL` kalktı).
 - **Shopier onaylayınca:** her paket için ayrı Shopier ürünü (1 aylık 50 TL, 4 aylık 150 TL); linkleri `payUrl`'lere yaz, test et, merge. Teslimat elle: sipariş gelince Yönetim → Premium kodları'ndan kod üret, alıcının e-postasına gönder.
 - Odak sayacı testi (`tests/app.spec.ts` "focus timer runs…") ~40 dk sahte zamanı sardığı için tek başına ~32 sn sürüyordu, 30 sn sınırını aşıp ara ara düşüyordu; süresi 90 sn yapıldı (kontrollerin hiçbiri değişmedi).
+
+### Aşama 51 — Premium kodu link ve QR olarak; yönetim paneli sekmeli (4 Kasım 2026, `dreamy-sagan`)
+
+- **Kod linki:** `https://studymode.fun/kod#SM-XXXX-XXXX-XXXX` (`codeLink` in `src/lib/premiumCodes.ts`). Kod `#`'den sonra: tarayıcı bunu sunucuya hiç göndermez, Vercel loglarına ve analitiğe düşmez. `/kod` sayfası (`src/pages/RedeemLink.tsx`) kodu okur okumaz adres çubuğundan siler.
+  - Girişliyse kod hemen kullanılır, "Premium açıldı!" görünür.
+  - Girişsizse kod bu cihazda 7 gün bekler (`studymode.pendingCode`), sayfa "Hesap aç / Giriş yap" der. Giriş ya da hesap onayından sonra `PendingCodeReturn` (Layout'ta) kullanıcıyı `/kod`'a döndürür ve kod kullanılır. Hiç çalışmayacak kod (kullanılmış, geçersiz) unutulur; bağlantı hatasında saklanır. Tur `/kod`'da açılmaz.
+- **Yönetimde:** kod üretince her kodun yanında "Link" (kopyalar) ve "QR" (QR'ı gösterir + "QR kartını indir": `src/lib/codeCard.ts`, 720×980 PNG, okutunca link, altında kod). "Linkleri kopyala" ve CSV'de `link` sütunu. Veritabanı kodun yalnızca özetini tuttuğu için link/QR **yalnızca üretildiği an** alınabilir; eski bekleyen kodların linki sonradan çıkarılamaz.
+- **Yönetim sekmeli** (`?bolum=ozet|premium|hesaplar|geri-bildirim|hatalar`): her listede ilk birkaç satır + "Daha fazla göster" (`src/components/ShowMore.tsx`). Kodlar Bekleyen/Kullanılmış/İptal/Hepsi süzgeçli (varsayılan Bekleyen); hesaplarda arama (isim, e-posta, okul), rol süzgeci ve sıralama; geri bildirimde tür süzgeci. Telefonda sekmeler iki satıra sarılır.
 
 ## Tasarım dili ("Fosforlu")
 
