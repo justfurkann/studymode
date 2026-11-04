@@ -864,6 +864,13 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - `assistant.test.ts` (5): bağlam sırası ve bütçesi, adresten ders, kalın yazı, sunucu sınırları.
   - e2e (2): açık notun dersiyle soru, bağlam ve geçmiş, ders başına sohbet, telefonda panel alt barın üstünde; girişsiz durumda yol gösterme.
 
+### Aşama 48 — Free+ yeniden çalışıyor (4 Kasım 2026, `dreamy-sagan`)
+
+- **Hata:** 1 Kasım'daki AI Studio commit'i (`6872467`) `thinkingLevel: 'MINIMAL'`'ı adında "flash" geçen bütün modellere uyguladı. Vertex'teki gemini-3.8-flash / 3.6-flash bunu reddediyor (400 "Thinking level is unsupported"); Free+ iki gün boyunca her istekte başarısız olup sessizce ücretsize düştü (Vercel'de 94 kayıt, 4 kullanıcı).
+- **Düzeltme (`src/lib/ai/gemini.ts`):** MINIMAL yalnızca `flash-lite`; diğer Flash, Pro, argon → LOW. Bir model düşünme ayarını 400 ile reddederse aynı model ayarsız bir kez daha denenir. Testler: `src/lib/ai/thinking.test.ts`.
+- **Kural:** Model/thinking ayarı değiştiren her değişiklikten sonra Vercel runtime hatalarında "Free+ failed" aranmalı.
+- Poster S işareti artık `src/assets/brand-symbol-yellow.svg`'den (public'ten `?raw` Vite uyarısı veriyordu).
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
