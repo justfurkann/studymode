@@ -471,9 +471,8 @@ test('public pricing page: opens signed out, prices, delivery, refunds, contract
   }
   await expect(page.getByRole('heading', { name: 'Teslimat' })).toBeVisible()
   await expect(page.getByText(/en geç 24 saat/).first()).toBeVisible()
-  // The payment provider is named, and the old one is gone.
-  await expect(page.getByText(/iyzico üzerinden/).first()).toBeVisible()
-  await expect(page.locator('main')).not.toContainText('Shopier')
+  // The payment provider is named.
+  await expect(page.getByText(/Shopier üzerinden/).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: 'İptal ve iade' })).toBeVisible()
   await expect(page.getByText(/Kullanılmış kod:/)).toBeVisible()
   await expect(page.getByText(/Otomatik yenileme yok/).first()).toBeVisible()
@@ -1343,6 +1342,8 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
   })
 
   test('focus timer runs pomodoro rounds: focus, automatic break, next round, on any page', async ({ page }) => {
+    // About 40 minutes of fake time with a tick every second: the clock alone takes most of the default 30 s, so it gets more room.
+    test.setTimeout(90_000)
     const errors = watchErrors(page)
     await page.clock.install()
     await page.goto('/tekrar?bolum=mola')

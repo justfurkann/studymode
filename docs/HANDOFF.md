@@ -881,11 +881,12 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Tasarım:** fosforlu başlık bandı ve süzülen karakter, durum satırı, ilk açılışta büyük karakter + 2 sütun ikonlu öneri kartları, kullanıcı balonu fosforlu sarı (lacivert yazı), Fosfor balonları küçük karakterle, gönder butonu kutunun içinde, kutu yazdıkça büyür, açılış animasyonu (reduced-motion'da kapalı).
 - Testler: `src/lib/assistant.test.ts` (liste, kart, öneri, seçim, 7 gün), `tests/extras.spec.ts` "Fosfor: note-aware starters…".
 
-### Aşama 50 — Ödeme iyzico Link'e hazır (4 Kasım 2026, `dreamy-sagan`)
+### Aşama 50 — Ödeme sağlayıcısı tek ayardan (4 Kasım 2026, `dreamy-sagan`)
 
-- Shopier onayı gelmedi; satıcı iyzico Link (şirketsiz, link ile ödeme) yolunu seçti. Ödeme sağlayıcısının adı tek yerde: `PAYMENT_PROVIDER` (`src/lib/config.ts`, şu an `'iyzico'`). Fiyatlar sayfası, mesafeli satış sözleşmesi, gizlilik ve koşullar bunu okur; cümleler "… üzerinden" diye kurulu, Türkçe ek isme bağlı değil.
-- Her paketin kendi ödeme linki `PACKAGES[].payUrl` (`src/lib/pricing.ts`). Yalnızca `https://` linkler kabul edilir. Link boşsa pakette "Satın almak için yaz" (e-posta) görünür; en az bir link varsa uygulamadaki "Kod satın al / Süreyi uzat / Yenile" butonları `/fiyatlar#paketler`'e gider (eski tek `SHOPIER_URL` kalktı).
-- **Linkler gelince:** iyzico'da her paket için ayrı link (1 aylık 50 TL, 4 aylık 150 TL); linkleri `payUrl`'lere yaz, test et, merge. Teslimat elle: ödeme bildirimi gelince Yönetim → Premium kodları'ndan kod üret, alıcının e-postasına gönder.
+- iyzico Link denendi ama bireysel hesapta da şirket istedi; satıcı şirket açmıyor, **Shopier'de kalındı**. Sağlayıcının adı tek yerde: `PAYMENT_PROVIDER` (`src/lib/config.ts`, `'Shopier'`). Fiyatlar sayfası, mesafeli satış sözleşmesi, gizlilik ve koşullar bunu okur; cümleler "… üzerinden" diye kurulu, Türkçe ek isme bağlı değil. İleride şirket açılıp iyzico/PayTR'ye geçilirse bu satır ve linkler değişir.
+- Her paketin kendi ödeme linki `PACKAGES[].payUrl` (`src/lib/pricing.ts`), yalnızca `https://`. Link boşsa pakette "Satın almak için yaz" görünür; en az bir link varsa uygulamadaki "Kod satın al / Süreyi uzat / Yenile" butonları `/fiyatlar#paketler`'e gider (eski tek `SHOPIER_URL` kalktı).
+- **Shopier onaylayınca:** her paket için ayrı Shopier ürünü (1 aylık 50 TL, 4 aylık 150 TL); linkleri `payUrl`'lere yaz, test et, merge. Teslimat elle: sipariş gelince Yönetim → Premium kodları'ndan kod üret, alıcının e-postasına gönder.
+- Odak sayacı testi (`tests/app.spec.ts` "focus timer runs…") ~40 dk sahte zamanı sardığı için tek başına ~32 sn sürüyordu, 30 sn sınırını aşıp ara ara düşüyordu; süresi 90 sn yapıldı (kontrollerin hiçbiri değişmedi).
 
 ## Tasarım dili ("Fosforlu")
 
