@@ -303,7 +303,7 @@ export function PremiumCodesAdmin() {
         </div>
         <label className="field">
           <span>Etiket (isteğe bağlı)</span>
-          <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60} placeholder="Örn. iyzico Kasım, çekiliş" />
+          <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60} placeholder="Örn. Shopier Kasım, çekiliş" />
         </label>
         <button type="submit" className="btn btn-primary" disabled={busy} style={{ alignSelf: 'flex-start' }}>
           {busy ? <Spinner size={15} /> : <Ticket size={16} aria-hidden />} Kod üret

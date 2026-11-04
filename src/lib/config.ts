@@ -33,4 +33,4 @@ export const DEFAULT_GEMINI_FALLBACKS = ['gemini-flash-lite-latest', 'gemini-3.1
  * policy and the terms name it; switching provider is this line plus the links in lib/pricing.ts.
  * Write sentences around it with "üzerinden" so no Turkish suffix depends on the name.
  */
-export const PAYMENT_PROVIDER = 'iyzico'
+export const PAYMENT_PROVIDER = 'Shopier'

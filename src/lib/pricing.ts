@@ -15,7 +15,7 @@ export interface PremiumPackage {
   price: number
   note: string
   /**
-   * This package's payment link (an iyzico Link made for exactly this package and price). Empty
+   * This package's payment link (a Shopier product page made for exactly this package and price). Empty
    * until the seller makes it: the package then shows "ask us" instead of "Satın al".
    */
   payUrl: string

@@ -13,8 +13,8 @@ describe('pricing', () => {
   it('shows "Satın al" only with the package’s own https payment link', () => {
     expect(buyUrl({ payUrl: '' })).toBeNull()
     expect(buyUrl({ payUrl: 'javascript:alert(1)' })).toBeNull()
-    expect(buyUrl({ payUrl: ' https://iyzi.link/AAA ' })).toBe('https://iyzi.link/AAA')
+    expect(buyUrl({ payUrl: ' https://www.shopier.com/AAA ' })).toBe('https://www.shopier.com/AAA')
     expect(canBuy([{ payUrl: '' }, { payUrl: '' }])).toBe(false)
-    expect(canBuy([{ payUrl: '' }, { payUrl: 'https://iyzi.link/BBB' }])).toBe(true)
+    expect(canBuy([{ payUrl: '' }, { payUrl: 'https://www.shopier.com/BBB' }])).toBe(true)
   })
 })
