@@ -1099,7 +1099,7 @@ test('Premium kodu: bitmesine 3 gün kala Bugün’de kapatılabilir hatırlatma
   await page.goto('/')
   const reminder = page.locator('.premium-reminder')
   await expect(reminder).toContainText('Premium’ın 3 gün sonra bitiyor')
-  // No Shopier link set yet: no "Yenile" button.
+  // No payment link set yet: no "Yenile" button.
   await expect(reminder.getByRole('link', { name: 'Yenile' })).toHaveCount(0)
   await reminder.getByRole('button', { name: 'Hatırlatmayı kapat' }).click()
   await expect(reminder).toHaveCount(0)

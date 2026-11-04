@@ -452,7 +452,7 @@ test('AI mock exam with past questions, written answers graded by AI', async ({ 
   expect(errors).toEqual([])
 })
 
-test('public pricing page (Shopier): opens signed out, prices, delivery, refunds, contract and seller; fits a 360 px phone', async ({ page }) => {
+test('public pricing page: opens signed out, prices, delivery, refunds, contract and seller; fits a 360 px phone', async ({ page }) => {
   const errors = watchErrors(page)
   await page.setViewportSize({ width: 360, height: 780 })
   await page.goto('/')
@@ -465,12 +465,14 @@ test('public pricing page (Shopier): opens signed out, prices, delivery, refunds
   for (const [name, price] of [['1 aylık Premium', '50 TL'], ['4 aylık dönem paketi', '150 TL']]) {
     const card = page.getByRole('article', { name })
     await expect(card).toContainText(price)
-    // No Shopier link yet: no "Satın al", a way to ask instead.
+    // No payment link yet: no "Satın al", a way to ask instead.
     await expect(card.getByRole('link', { name: 'Satın al', exact: true })).toHaveCount(0)
     await expect(card.getByRole('link', { name: 'Satın almak için yaz' })).toHaveAttribute('href', /^mailto:justfurkan42@gmail\.com/)
   }
   await expect(page.getByRole('heading', { name: 'Teslimat' })).toBeVisible()
   await expect(page.getByText(/en geç 24 saat/).first()).toBeVisible()
+  // The payment provider is named.
+  await expect(page.getByText(/Shopier üzerinden/).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: 'İptal ve iade' })).toBeVisible()
   await expect(page.getByText(/Kullanılmış kod:/)).toBeVisible()
   await expect(page.getByText(/Otomatik yenileme yok/).first()).toBeVisible()
@@ -1340,6 +1342,8 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
   })
 
   test('focus timer runs pomodoro rounds: focus, automatic break, next round, on any page', async ({ page }) => {
+    // About 40 minutes of fake time with a tick every second: the clock alone takes most of the default 30 s, so it gets more room.
+    test.setTimeout(90_000)
     const errors = watchErrors(page)
     await page.clock.install()
     await page.goto('/tekrar?bolum=mola')

@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (4 Kasım 2026, Aşama 49 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (4 Kasım 2026, Aşama 50 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -880,6 +880,13 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Sohbet cihazda kalır:** sessionStorage yerine localStorage (`studymode.assistant.v2`), ders başına; 7 gün dokunulmayan sohbet silinir; çıkış yapınca hepsi silinir.
 - **Tasarım:** fosforlu başlık bandı ve süzülen karakter, durum satırı, ilk açılışta büyük karakter + 2 sütun ikonlu öneri kartları, kullanıcı balonu fosforlu sarı (lacivert yazı), Fosfor balonları küçük karakterle, gönder butonu kutunun içinde, kutu yazdıkça büyür, açılış animasyonu (reduced-motion'da kapalı).
 - Testler: `src/lib/assistant.test.ts` (liste, kart, öneri, seçim, 7 gün), `tests/extras.spec.ts` "Fosfor: note-aware starters…".
+
+### Aşama 50 — Ödeme sağlayıcısı tek ayardan (4 Kasım 2026, `dreamy-sagan`)
+
+- iyzico Link denendi ama bireysel hesapta da şirket istedi; satıcı şirket açmıyor, **Shopier'de kalındı**. Sağlayıcının adı tek yerde: `PAYMENT_PROVIDER` (`src/lib/config.ts`, `'Shopier'`). Fiyatlar sayfası, mesafeli satış sözleşmesi, gizlilik ve koşullar bunu okur; cümleler "… üzerinden" diye kurulu, Türkçe ek isme bağlı değil. İleride şirket açılıp iyzico/PayTR'ye geçilirse bu satır ve linkler değişir.
+- Her paketin kendi ödeme linki `PACKAGES[].payUrl` (`src/lib/pricing.ts`), yalnızca `https://`. Link boşsa pakette "Satın almak için yaz" görünür; en az bir link varsa uygulamadaki "Kod satın al / Süreyi uzat / Yenile" butonları `/fiyatlar#paketler`'e gider (eski tek `SHOPIER_URL` kalktı).
+- **Shopier onaylayınca:** her paket için ayrı Shopier ürünü (1 aylık 50 TL, 4 aylık 150 TL); linkleri `payUrl`'lere yaz, test et, merge. Teslimat elle: sipariş gelince Yönetim → Premium kodları'ndan kod üret, alıcının e-postasına gönder.
+- Odak sayacı testi (`tests/app.spec.ts` "focus timer runs…") ~40 dk sahte zamanı sardığı için tek başına ~32 sn sürüyordu, 30 sn sınırını aşıp ara ara düşüyordu; süresi 90 sn yapıldı (kontrollerin hiçbiri değişmedi).
 
 ## Tasarım dili ("Fosforlu")
 

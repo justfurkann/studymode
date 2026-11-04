@@ -1,6 +1,6 @@
 import { ArrowRight, AudioLines, FileText, Gem, Headphones, Image as ImageIcon, KeyRound, Lock, Search, Sparkles, Ticket } from 'lucide-react'
 import { RedeemCode } from '../components/PremiumCode'
-import { SHOPIER_URL } from '../lib/config'
+import { canBuy } from '../lib/pricing'
 import { formatUntil } from '../lib/premiumCodes'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -208,9 +208,9 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
             <li className="prem-how-code">
               <Ticket size={17} aria-hidden />
               <span className="grow">
-                <strong>Premium kodu kullan.</strong> {SHOPIER_URL ? (
+                <strong>Premium kodu kullan.</strong> {canBuy() ? (
                   <>
-                    Kodu <a href={SHOPIER_URL} target="_blank" rel="noopener noreferrer">Shopier’den</a> al, buraya gir. Süre bitince kendiliğinden kapanır, otomatik yenilenmez.
+                    Kodu <Link to="/fiyatlar#paketler">fiyatlar sayfasından</Link> al, buraya gir. Süre bitince kendiliğinden kapanır, otomatik yenilenmez.
                   </>
                 ) : (
                   'Elinde bir Premium kodu varsa buraya gir. Süre bitince kendiliğinden kapanır, otomatik yenilenmez.'
