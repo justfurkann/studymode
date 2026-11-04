@@ -1,6 +1,7 @@
 import { Gem, LogIn, Ticket, UserPlus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { BuyPremium } from '../components/BuyPremium'
 import { Celebrate, Spinner } from '../components/ui'
 import { refreshQuota } from '../lib/account'
 import { clearPendingCode, codeFromHash, formatUntil, loadPendingCode, maskCode, REDEEM_MESSAGES, redeemCode, savePendingCode, type RedeemError } from '../lib/premiumCodes'
@@ -113,7 +114,21 @@ export function RedeemLink() {
           </div>
         )}
 
-        {state.kind === 'failed' && (
+        {state.kind === 'failed' && state.error === 'used' && (
+          <>
+            <span className="redeem-link-icon" aria-hidden>
+              <Ticket size={26} />
+            </span>
+            <h1>Bu kodu başkası kaptı</h1>
+            <p className="redeem-error" role="alert">
+              {REDEEM_MESSAGES.used} <code>{maskCode(state.code)}</code>
+            </p>
+            <p className="subtle">Hediye kodları tek kişilik; ilk tıklayan alıyor. Premium’u lansman fiyatıyla hemen açabilirsin:</p>
+            <BuyPremium compact />
+          </>
+        )}
+
+        {state.kind === 'failed' && state.error !== 'used' && (
           <>
             <span className="redeem-link-icon" aria-hidden>
               <Ticket size={26} />

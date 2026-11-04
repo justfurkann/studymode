@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (4 Kasım 2026, Aşama 53 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (4 Kasım 2026, Aşama 54 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -908,6 +908,17 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Pop-up** (`src/components/PremiumNudge.tsx`, kurallar `src/lib/nudge.ts` + testleri): yalnızca giriş yapmış, rolü **normal** ve Premium'u kilitli hesaplara (VIP, yönetici, Premium kodu olan, kendi Gemini anahtarını kullanan **asla** görmez). Hesap 1 günlük ya da 3 notlu olmadan çıkmaz. En fazla 3 günde bir; iki kez "Şimdi değil" denince haftada bir; "Hemen al"a basılınca 2 hafta hiç. Sayfada 20 sn durulmadan, başka bir pencere ya da Fosfor açıkken, tanıtım turunda ve /giris, /fiyatlar, /premium, /kod, sınav provası, paylaşım, yönetim sayfalarında çıkmaz. Hafıza: `studymode.nudge.<kullanıcı id>`.
 - **Testlerde:** `playwright.config.ts` her teste `studymode.nudge.off` koyar (pop-up sayfayı kapatmasın); pop-up testleri `studymode.nudge.force` ile açar (bekleme atlanır, rol kuralı atlanmaz).
 - **Hemen al** (`src/components/BuyPremium.tsx`): iki paket büyük kartlarla, doğrudan Shopier'e. Premium sayfasında kilitliyken başlıkta "Premium'u al · 49 TL'den başlayan" butonu (#premium-al'a iner) ve "Premium'u hemen al" bölümü; pop-up'ta da aynı kartlar.
+
+### Aşama 54 — Instagram tarayıcısından çıkış, 3 günlük hediye kodları (4 Kasım 2026, `dreamy-sagan`)
+
+- **Paylaşım günü verisi:** 1,5 saatte 46 ziyaretçi, %94 telefon, çoğu Instagram'ın kendi tarayıcısından; 22 kayıt, ama yalnızca 5 kişi not ekledi ("Not ekle"yi açan 12 kişi).
+- **Uygulama içi tarayıcı** (`src/lib/inApp.ts` + testleri, `src/components/InAppBrowser.tsx`): Instagram, Facebook, TikTok, Snapchat, LinkedIn, X, LINE ve adsız Android web görünümleri ("; wv)") tanınır.
+  - **Android:** ziyarette bir kez kendiliğinden `intent://…;package=com.android.chrome;S.browser_fallback_url=…` ile Chrome'a geçmeyi dener (orada zaten oturumu açık olana dokunmaz), ayrıca "Chrome'da aç" şeridi gösterir. Adresin `#` kısmı korunur, yani `/kod#kod` linkleri kodla birlikte geçer.
+  - **iPhone:** otomatik yol yok; şerit "sağ üstteki ••• menüsünden tarayıcıda aç" der ve "Linki kopyala" sunar.
+  - Şerit kapatılınca o ziyaret boyunca kapalı kalır. Meta bu davranışı zaman zaman değiştirir; gerçek telefonda kontrol edilmeli.
+  - **Test notu:** masaüstü Chromium `intent://` denemesinden sonra sayfadaki gerçek fare tıklamalarını yutuyor. Bu yüzden şeridi kapatma testi iPhone görünümünde yapılıyor.
+- **Klavye hatası:** başarım kısayolu, Android uygulama içi tarayıcılarının gönderdiği tuşsuz `keydown` olaylarında `e.key.length` hatası veriyordu (paylaşımdan sonra 1,5 saatte 6 kez); düzeltildi (PR #98).
+- Yönetim → Premium kodları: süre seçeneklerinde hazır **3 gün** (hediye/hikâye linkleri). `/kod`'da kullanılmış bir kod "Bu kodu başkası kaptı" der ve iki paketi satın alma kartlarıyla sunar.
 
 ## Tasarım dili ("Fosforlu")
 

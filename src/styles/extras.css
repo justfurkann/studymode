@@ -1393,6 +1393,10 @@
   margin: 0;
   line-height: 1.55;
 }
+.redeem-link-card .buy-premium {
+  width: 100%;
+  text-align: left;
+}
 .redeem-link-card .btn-row {
   justify-content: center;
 }
@@ -1736,4 +1740,28 @@
   .buy-option {
     transition: none;
   }
+}
+
+/* ============ Opened inside Instagram & co. (components/InAppBrowser.tsx) ============ */
+.inapp-bar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px 9px 14px;
+  padding-top: calc(9px + env(safe-area-inset-top));
+  background: var(--hi-soft);
+  color: var(--text);
+  border-bottom: 1.5px solid var(--ink-line);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+.inapp-bar .grow {
+  flex: 1;
+  min-width: 0;
+}
+.inapp-bar .btn {
+  flex-shrink: 0;
 }

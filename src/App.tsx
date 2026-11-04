@@ -1,3 +1,4 @@
+import { InAppBrowser } from './components/InAppBrowser'
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation, useNavigationType, useParams } from 'react-router-dom'
 import { Layout } from './components/Layout'
@@ -132,6 +133,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <InAppBrowser />
       <UpdateWatcher />
       <StoreProvider>
         <ToastProvider>
