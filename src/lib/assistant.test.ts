@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { userPrompt } from './ai/tasks'
-import { boldParts, buildAssistantContext, placeFromPath } from './assistant'
+import { boldParts, buildAssistantContext, cardFromAnswer, CONVERSATION_TTL_MS, loadConversation, placeFromPath, plainReply, replyBlocks, saveConversation, selectionQuestion, suggestionsFor } from './assistant'
 import type { Course, Note } from './types'
 
 const T = '2026-11-01T00:00:00Z'
@@ -59,5 +59,52 @@ describe('Fosfor context', () => {
     expect(prompt).not.toContain('tur 19 ')
     expect(prompt).toContain('tur 29 ')
     expect(prompt.length).toBeLessThan(18_000 + 10 * 1_600 + 500)
+  })
+})
+
+describe('Fosfor replies and extras', () => {
+  it('reads paragraphs, bullet and numbered lists', () => {
+    expect(replyBlocks('Kısaca:\n- Bir\n- **İki**\n\n1. İlk\n2) İkinci\nSon söz.')).toEqual([
+      { kind: 'p', text: 'Kısaca:' },
+      { kind: 'ul', items: ['Bir', '**İki**'] },
+      { kind: 'ol', items: ['İlk', 'İkinci'] },
+      { kind: 'p', text: 'Son söz.' },
+    ])
+    expect(replyBlocks('Tek satır.')).toEqual([{ kind: 'p', text: 'Tek satır.' }])
+  })
+
+  it('makes a card from a question and an answer, without bold marks', () => {
+    expect(plainReply('Kalp **kanı** pompalar.')).toBe('Kalp kanı pompalar.')
+    const card = cardFromAnswer('  Sol karıncık   neden kalın? ', 'Çünkü **bütün vücuda** pompalar.')
+    expect(card).toEqual({ front: 'Sol karıncık neden kalın?', back: 'Çünkü bütün vücuda pompalar.' })
+    expect(cardFromAnswer('x'.repeat(300), 'y').front.length).toBe(198)
+  })
+
+  it('suggests starters for a note, a course or nothing', () => {
+    expect(suggestionsFor('note')[0].label).toBe('Bu notu 3 maddede özetle')
+    expect(suggestionsFor('course').map((s) => s.label)).toContain('Bana bir soru sor')
+    expect(suggestionsFor('general').length).toBeGreaterThan(0)
+  })
+
+  it('asks about a selected word or a longer passage', () => {
+    expect(selectionQuestion('  Kalp   kası ')).toBe('“Kalp kası” ne demek? Kısaca açıkla.')
+    expect(selectionQuestion('Sol karıncık en kalın duvarlı odadır çünkü')).toMatch(/^Şu kısmı basitçe açıklar mısın\?\n“Sol karıncık/)
+    expect(selectionQuestion('a '.repeat(600)).length).toBeLessThan(460)
+  })
+})
+
+describe('Fosfor conversations on this device', () => {
+  const mem = new Map<string, string>()
+  const fake = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v), removeItem: (k: string) => void mem.delete(k) }
+  Object.assign(globalThis, { localStorage: fake, sessionStorage: fake })
+
+  it('keeps a conversation per course and forgets it after a week', () => {
+    const now = Date.UTC(2026, 10, 4)
+    saveConversation('fiz', [{ id: '1', role: 'user', text: 'Soru' }], now)
+    expect(loadConversation('fiz', now + 1000).map((m) => m.text)).toEqual(['Soru'])
+    expect(loadConversation('kim', now)).toEqual([])
+    expect(loadConversation('fiz', now + CONVERSATION_TTL_MS + 1)).toEqual([])
+    saveConversation('fiz', [], now)
+    expect(loadConversation('fiz', now)).toEqual([])
   })
 })

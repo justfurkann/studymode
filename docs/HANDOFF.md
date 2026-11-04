@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (3 Kasım 2026, Aşama 47 sonrası, `main` üzerinde): 289 birim testi, 120 tarayıcı testi.
+Son yeşil durum (4 Kasım 2026, Aşama 49 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -870,6 +870,16 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Düzeltme (`src/lib/ai/gemini.ts`):** MINIMAL yalnızca `flash-lite`; diğer Flash, Pro, argon → LOW. Bir model düşünme ayarını 400 ile reddederse aynı model ayarsız bir kez daha denenir. Testler: `src/lib/ai/thinking.test.ts`.
 - **Kural:** Model/thinking ayarı değiştiren her değişiklikten sonra Vercel runtime hatalarında "Free+ failed" aranmalı.
 - Poster S işareti artık `src/assets/brand-symbol-yellow.svg`'den (public'ten `?raw` Vite uyarısı veriyordu).
+
+### Aşama 49 — Fosfor 2: daha akıllı ve daha güzel (4 Kasım 2026, `dreamy-sagan`)
+
+- **Duruma göre öneriler** (`suggestionsFor` in `src/lib/assistant.ts`): not açıksa "Bu notu 3 maddede özetle / Bu nottan bana soru sor / En zor kısmı basitçe anlat / Sınavda ne çıkabilir?"; yalnız ders seçiliyse ders önerileri; hiçbiri yoksa genel çalışma önerileri. Panel hangi notu okuduğunu söylüyor ("Açık not: …").
+- **Biçimli cevap:** `replyBlocks` paragrafları, "- " ve "1." listelerini ayırır; **kalın** fosforlu altı çizgiyle görünür.
+- **Cevap eylemleri:** "Kopyala" ve (ders seçiliyse) "Karta çevir": ön yüz soru, arka yüz cevap; kart o derse ve açık nota eklenir, mesaj "Kartta" olur.
+- **Metni seç, sor:** uygulamanın `main` alanında metin seçilince yanında "Fosfor’a sor" çıkar (telefonda seçimin altında, sistem menüsüyle çakışmasın diye). Kısa seçim → "“…” ne demek?", uzun → "Şu kısmı basitçe açıklar mısın?". Yazı kutuları ve Fosfor paneli hariç.
+- **Sohbet cihazda kalır:** sessionStorage yerine localStorage (`studymode.assistant.v2`), ders başına; 7 gün dokunulmayan sohbet silinir; çıkış yapınca hepsi silinir.
+- **Tasarım:** fosforlu başlık bandı ve süzülen karakter, durum satırı, ilk açılışta büyük karakter + 2 sütun ikonlu öneri kartları, kullanıcı balonu fosforlu sarı (lacivert yazı), Fosfor balonları küçük karakterle, gönder butonu kutunun içinde, kutu yazdıkça büyür, açılış animasyonu (reduced-motion'da kapalı).
+- Testler: `src/lib/assistant.test.ts` (liste, kart, öneri, seçim, 7 gün), `tests/extras.spec.ts` "Fosfor: note-aware starters…".
 
 ## Tasarım dili ("Fosforlu")
 

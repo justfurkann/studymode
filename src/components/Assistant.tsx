@@ -1,7 +1,21 @@
-import { RotateCcw, Send, X } from 'lucide-react'
+import { BookOpen, Check, Clock, Copy, Lightbulb, ListChecks, Map as MapIcon, MessageCircleQuestion, RotateCcw, Send, SquarePlus, Target, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { boldParts, buildAssistantContext, loadConversation, placeFromPath, saveConversation, type ChatMessage } from '../lib/assistant'
+import {
+  boldParts,
+  buildAssistantContext,
+  cardFromAnswer,
+  clearConversations,
+  loadConversation,
+  placeFromPath,
+  plainReply,
+  replyBlocks,
+  saveConversation,
+  selectionQuestion,
+  suggestionsFor,
+  type ChatMessage,
+  type SuggestionIcon,
+} from '../lib/assistant'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import { freshImport } from '../lib/version'
@@ -11,6 +25,8 @@ import { Alert } from './ui'
  * Fosfor, the study assistant: a little highlighter in the corner of every app page. A tap opens a
  * chat; the student picks the course and asks whatever came up while reading or solving a test,
  * without leaving for Google or another AI. Answers come from their own notes when they cover it.
+ * Selecting a bit of text on the page offers "Fosfor’a sor" right there; a good answer can become
+ * a study card in one tap.
  */
 
 /** The character: a highlighter with a face. Colours follow the theme and the chosen pen. */
@@ -35,14 +51,59 @@ export function FosforCharacter({ size = 56, talking = false }: { size?: number;
   )
 }
 
-const SUGGESTIONS = ['Bu konuyu kısaca anlat', 'Sınavda ne çıkabilir?', 'Bana bir soru sor', 'Bir örnekle açıkla']
+const SUGGESTION_ICONS: Record<SuggestionIcon, LucideIcon> = { list: ListChecks, quiz: MessageCircleQuestion, bulb: Lightbulb, target: Target, map: MapIcon, clock: Clock }
 
-function Reply({ text }: { text: string }) {
+function Inline({ text }: { text: string }) {
   return (
     <>
       {boldParts(text).map((part, i) => (part.bold ? <strong key={i}>{part.text}</strong> : <span key={i}>{part.text}</span>))}
     </>
   )
+}
+
+/** A reply with its paragraphs and lists. */
+function Reply({ text }: { text: string }) {
+  return (
+    <>
+      {replyBlocks(text).map((block, i) =>
+        block.kind === 'p' ? (
+          <p key={i}>
+            <Inline text={block.text} />
+          </p>
+        ) : block.kind === 'ul' ? (
+          <ul key={i}>
+            {block.items.map((item, j) => (
+              <li key={j}>
+                <Inline text={item} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <ol key={i}>
+            {block.items.map((item, j) => (
+              <li key={j}>
+                <Inline text={item} />
+              </li>
+            ))}
+          </ol>
+        ),
+      )}
+    </>
+  )
+}
+
+/** Where a selection on the page can be asked about: not in a box the student is typing in, not in Fosfor itself. */
+function selectionToAsk(): { text: string; rect: DOMRect } | null {
+  const sel = window.getSelection()
+  if (!sel || sel.isCollapsed || sel.rangeCount === 0) return null
+  const text = sel.toString().trim()
+  if (text.length < 2) return null
+  const node = sel.anchorNode
+  const el = node instanceof Element ? node : node?.parentElement
+  if (!el || !el.closest('main') || el.closest('input, textarea, select, [contenteditable="true"], .assistant-panel')) return null
+  const rect = sel.getRangeAt(0).getBoundingClientRect()
+  if (!rect.width && !rect.height) return null
+  return { text, rect }
 }
 
 export function Assistant() {
@@ -59,6 +120,8 @@ export function Assistant() {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [copied, setCopied] = useState('')
+  const [picked, setPicked] = useState<{ text: string; x: number; y: number; below: boolean } | null>(null)
   const log = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const launcher = useRef<HTMLButtonElement>(null)
@@ -67,6 +130,18 @@ export function Assistant() {
   activeCourse.current = courseId
 
   const course = courses.find((c) => c.id === courseId) ?? null
+  const openNote = place.noteId && place.courseId === courseId ? notes.find((n) => n.id === place.noteId) ?? null : null
+  const suggestions = suggestionsFor(openNote ? 'note' : course ? 'course' : 'general')
+
+  // Signing out forgets the conversations on this device.
+  const hadSession = useRef(!!store.session)
+  useEffect(() => {
+    if (hadSession.current && !store.session) {
+      clearConversations()
+      setMessages([])
+    }
+    hadSession.current = !!store.session
+  }, [store.session])
 
   function openPanel() {
     // Start where the student is: the course of the open note or course page.
@@ -82,6 +157,7 @@ export function Assistant() {
 
   function switchCourse(id: string) {
     setCourseId(id)
+    activeCourse.current = id
     setMessages(loadConversation(id))
     setError('')
   }
@@ -99,8 +175,45 @@ export function Assistant() {
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, busy, error, open])
 
-  async function ask(question: string, before: ChatMessage[]) {
-    const forCourse = courseId
+  // The box grows with what is typed, up to a few lines.
+  useEffect(() => {
+    const el = input.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }, [draft, open])
+
+  // Selecting text on the page offers a small "Fosfor’a sor" button next to it.
+  useEffect(() => {
+    let timer = 0
+    const update = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        const found = selectionToAsk()
+        if (!found) return setPicked(null)
+        const touch = window.matchMedia('(hover: none)').matches
+        // On phones the system's copy menu sits above the selection, so the button goes below it.
+        const below = touch || found.rect.top < 70
+        const x = Math.min(Math.max(found.rect.left + found.rect.width / 2, 80), window.innerWidth - 80)
+        const y = below ? found.rect.bottom + 10 : found.rect.top - 10
+        setPicked({ text: found.text, x, y, below })
+      }, 180)
+    }
+    const hide = () => setPicked(null)
+    document.addEventListener('selectionchange', update)
+    window.addEventListener('scroll', hide, true)
+    window.addEventListener('resize', hide)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('selectionchange', update)
+      window.removeEventListener('scroll', hide, true)
+      window.removeEventListener('resize', hide)
+    }
+  }, [])
+
+  useEffect(() => setPicked(null), [pathname])
+
+  async function ask(question: string, before: ChatMessage[], forCourse = courseId) {
     const asked: ChatMessage = { id: crypto.randomUUID(), role: 'user', text: question }
     const withQuestion = [...before, asked]
     setMessages(withQuestion)
@@ -112,7 +225,7 @@ export function Assistant() {
       const { askAssistant } = await freshImport(() => import('../lib/ai'))
       const reply = await askAssistant(
         {
-          course: course?.name ?? '',
+          course: courses.find((c) => c.id === forCourse)?.name ?? '',
           context: buildAssistantContext(notes, forCourse || null, place.noteId),
           history: before.slice(-10).map(({ role, text }) => ({ role, text })),
           question,
@@ -142,6 +255,21 @@ export function Assistant() {
     void ask(last.text, messages.slice(0, -1))
   }
 
+  function askAboutSelection() {
+    if (!picked) return
+    const question = selectionQuestion(picked.text)
+    setPicked(null)
+    window.getSelection()?.removeAllRanges()
+    const target = place.courseId ?? (courses.some((c) => c.id === courseId) ? courseId : '')
+    if (target !== courseId) switchCourse(target)
+    setOpen(true)
+    if (!ai.ok || busy) {
+      setDraft(question)
+      return
+    }
+    void ask(question, loadConversation(target), target)
+  }
+
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     // Enter sends, Shift+Enter makes a new line (on phones the keyboard's return key adds a line).
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia('(hover: hover)').matches) {
@@ -157,6 +285,26 @@ export function Assistant() {
     input.current?.focus()
   }
 
+  async function copy(m: ChatMessage) {
+    try {
+      await navigator.clipboard.writeText(plainReply(m.text))
+      setCopied(m.id)
+      window.setTimeout(() => setCopied((id) => (id === m.id ? '' : id)), 1600)
+    } catch {
+      // Copying is blocked here; the text can still be selected by hand.
+    }
+  }
+
+  function toCard(m: ChatMessage, index: number) {
+    if (!course || m.carded) return
+    const question = [...messages.slice(0, index)].reverse().find((x) => x.role === 'user')?.text ?? 'Fosfor’un açıklaması'
+    const { front, back } = cardFromAnswer(question, m.text)
+    store.addCard({ courseId: course.id, noteId: openNote?.id ?? null, front, back, source: 'Fosfor' })
+    const next = messages.map((x) => (x.id === m.id ? { ...x, carded: true } : x))
+    setMessages(next)
+    saveConversation(courseId, next)
+  }
+
   const greeting = course
     ? `Selam! Nasıl yardımcı olabilirim? ${course.name} notlarına bakarak cevaplarım.`
     : courses.length
@@ -166,6 +314,20 @@ export function Assistant() {
 
   return (
     <>
+      {picked && (
+        <button
+          type="button"
+          className={`assistant-ask-selection ${picked.below ? 'is-below' : ''}`}
+          style={{ left: picked.x, top: picked.y }}
+          // Keeps the selection while the button is pressed.
+          onPointerDown={(e) => e.preventDefault()}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={askAboutSelection}
+        >
+          <FosforCharacter size={20} />
+          Fosfor’a sor
+        </button>
+      )}
       {!open && (
         <button ref={launcher} type="button" className="assistant-launcher" aria-label="Fosfor’a sor: çalışma asistanı" aria-haspopup="dialog" onClick={openPanel}>
           <FosforCharacter size={46} />
@@ -174,10 +336,15 @@ export function Assistant() {
       {open && (
         <section className="assistant-panel" role="dialog" aria-label="Fosfor: çalışma asistanı">
           <header className="assistant-head">
-            <FosforCharacter size={40} talking={busy} />
+            <span className="assistant-head-avatar">
+              <FosforCharacter size={38} talking={busy} />
+            </span>
             <div className="grow">
               <strong>Fosfor</strong>
-              <span className="subtle">Çalışma arkadaşın</span>
+              <span className="assistant-status">
+                <i aria-hidden="true" />
+                {busy ? 'Düşünüyor…' : openNote ? 'Açık notuna bakıyor' : course ? 'Ders notlarına bakıyor' : 'Çalışma arkadaşın'}
+              </span>
             </div>
             {messages.length > 0 && (
               <button type="button" className="btn btn-ghost btn-icon" aria-label="Yeni sohbet" title="Yeni sohbet" onClick={reset} disabled={busy}>
@@ -189,44 +356,102 @@ export function Assistant() {
             </button>
           </header>
 
-          <label className="assistant-course">
-            <span>Hangi ders?</span>
-            <select className="input" value={courseId} onChange={(e) => switchCourse(e.target.value)} disabled={busy}>
-              <option value="">Genel soru (ders seçmeden)</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="assistant-context">
+            <label className="assistant-course">
+              <BookOpen size={16} aria-hidden="true" />
+              <span className="sr-only">Hangi ders?</span>
+              <select value={courseId} onChange={(e) => switchCourse(e.target.value)} disabled={busy}>
+                <option value="">Genel soru (ders seçmeden)</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {openNote && (
+              <span className="assistant-note" title={openNote.title}>
+                Açık not: <strong>{openNote.title}</strong>
+              </span>
+            )}
+          </div>
 
           <div className="assistant-log" ref={log} aria-live="polite">
-            <div className="assistant-msg is-assistant">
-              <Reply text={greeting} />
-            </div>
-            {messages.length === 0 && ai.ok && (
-              <div className="assistant-suggestions">
-                {SUGGESTIONS.map((s) => (
-                  <button key={s} type="button" className="assistant-chip" onClick={() => void ask(s, messages)} disabled={busy}>
-                    {s}
-                  </button>
-                ))}
+            {messages.length === 0 ? (
+              <div className="assistant-hello">
+                <FosforCharacter size={64} />
+                <p className="assistant-hello-title">Selam, ben Fosfor!</p>
+                <p className="subtle">{greeting.replace(/^Selam! /, '')}</p>
+                {ai.ok && (
+                  <div className="assistant-suggestions">
+                    {suggestions.map((s) => {
+                      const Icon = SUGGESTION_ICONS[s.icon]
+                      return (
+                        <button key={s.label} type="button" className="assistant-chip" onClick={() => void ask(s.label, messages)} disabled={busy}>
+                          <span className="assistant-chip-icon" aria-hidden="true">
+                            <Icon size={15} />
+                          </span>
+                          {s.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+                {ai.ok && <p className="assistant-tip">İpucu: Sayfada bir yeri seçip “Fosfor’a sor”a dokunabilirsin.</p>}
+              </div>
+            ) : (
+              <div className="assistant-row is-assistant">
+                <span className="assistant-avatar" aria-hidden="true">
+                  <FosforCharacter size={24} />
+                </span>
+                <div className="assistant-msg is-assistant">
+                  <p>{greeting}</p>
+                </div>
               </div>
             )}
-            {messages.map((m) => (
-              <div key={m.id} className={`assistant-msg ${m.role === 'user' ? 'is-user' : 'is-assistant'}`}>
-                {m.role === 'assistant' ? <Reply text={m.text} /> : m.text}
-              </div>
-            ))}
+            {messages.map((m, i) =>
+              m.role === 'user' ? (
+                <div key={m.id} className="assistant-msg is-user">
+                  {m.text}
+                </div>
+              ) : (
+                <div key={m.id} className="assistant-row is-assistant">
+                  <span className="assistant-avatar" aria-hidden="true">
+                    <FosforCharacter size={24} />
+                  </span>
+                  <div className="assistant-bubble">
+                    <div className="assistant-msg is-assistant">
+                      <Reply text={m.text} />
+                    </div>
+                    <div className="assistant-actions">
+                      <button type="button" onClick={() => void copy(m)}>
+                        {copied === m.id ? <Check size={14} /> : <Copy size={14} />}
+                        {copied === m.id ? 'Kopyalandı' : 'Kopyala'}
+                      </button>
+                      {course && (
+                        <button type="button" onClick={() => toCard(m, i)} disabled={m.carded}>
+                          {m.carded ? <Check size={14} /> : <SquarePlus size={14} />}
+                          {m.carded ? 'Kartta' : 'Karta çevir'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ),
+            )}
             {busy && (
-              <div className="assistant-msg is-assistant is-typing" role="status">
-                <span className="assistant-dots" aria-hidden="true">
-                  <i />
-                  <i />
-                  <i />
+              <div className="assistant-row is-assistant" role="status">
+                <span className="assistant-avatar" aria-hidden="true">
+                  <FosforCharacter size={24} talking />
                 </span>
-                <span className="sr-only">Fosfor yazıyor…</span>
+                <div className="assistant-msg is-assistant is-typing">
+                  <span className="assistant-dots" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <span className="sr-only">Fosfor yazıyor…</span>
+                </div>
               </div>
             )}
             {error && !busy && (
@@ -249,11 +474,10 @@ export function Assistant() {
             <form className="assistant-form" onSubmit={submit}>
               <textarea
                 ref={input}
-                className="input"
                 rows={1}
                 value={draft}
                 maxLength={2000}
-                placeholder={course ? `${course.name} hakkında sor…` : 'Sorunu yaz…'}
+                placeholder={openNote ? 'Bu not hakkında sor…' : course ? `${course.name} hakkında sor…` : 'Sorunu yaz…'}
                 aria-label="Fosfor’a sorun"
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={onKeyDown}
