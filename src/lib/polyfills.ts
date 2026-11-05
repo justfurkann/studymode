@@ -12,12 +12,36 @@ export const NEEDS_WORKER_POLYFILL =
   typeof (Promise as unknown as { withResolvers?: unknown }).withResolvers !== 'function'
 
 /**
- * Whether this browser can run pdf.js's normal (fast) build as it is: it needs native
- * Promise.withResolvers and URL.parse (iOS 18+, any current desktop browser). Read before the
- * polyfills are installed, so it reflects the browser itself. Older ones get the legacy build.
+ * What pdf.js 6's normal (fast) build calls without checking, in the page or in its worker. Safari
+ * only has all of them from 18.4 (Math.sumPrecise later still), so checking just URL.parse and
+ * Promise.withResolvers gave an iPhone on Safari 18.0-18.3 the normal build, and every PDF failed
+ * with "PDF okunamadı". Keep this list in step with pdf.js when it is updated (see the test
+ * "PDF upload works on Safari 18.0-18.3" in tests/app.spec.ts).
  */
-export const MODERN_PDF =
-  !NEEDS_WORKER_POLYFILL && typeof (URL as unknown as { parse?: unknown }).parse === 'function'
+export function missingForModernPdf(g: typeof globalThis = globalThis): string[] {
+  const any = g as unknown as Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+  const checks: Array<[string, () => unknown]> = [
+    ['Promise.withResolvers', () => any.Promise?.withResolvers],
+    ['Promise.try', () => any.Promise?.try],
+    ['URL.parse', () => any.URL?.parse],
+    ['Uint8Array.prototype.toHex', () => any.Uint8Array?.prototype?.toHex],
+    ['Uint8Array.fromBase64', () => any.Uint8Array?.fromBase64],
+    ['ArrayBuffer.prototype.transferToFixedLength', () => any.ArrayBuffer?.prototype?.transferToFixedLength],
+    ['Math.sumPrecise', () => any.Math?.sumPrecise],
+    ['Iterator helpers', () => any.Iterator?.prototype?.filter],
+    ['Set.prototype.intersection', () => any.Set?.prototype?.intersection],
+  ]
+  return checks.filter(([, get]) => typeof get() !== 'function').map(([name]) => name)
+}
+
+/**
+ * Whether this browser can run pdf.js's normal (fast) build as it is. Read before the polyfills
+ * are installed, so it reflects the browser itself. Every other browser gets the legacy build,
+ * which carries its own stand-ins (slower, but it reads every PDF).
+ */
+/** What this browser itself lacks of that list (read before the polyfills go in); shown in error reports. */
+export const MISSING_FOR_MODERN_PDF = missingForModernPdf()
+export const MODERN_PDF = MISSING_FOR_MODERN_PDF.length === 0
 
 export function installPolyfills() {
   const P = Promise as unknown as { withResolvers?: () => unknown }
