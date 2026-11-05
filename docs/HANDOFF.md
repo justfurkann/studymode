@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (4 Kasım 2026, Aşama 56 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (5 Kasım 2026, Aşama 57 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -938,6 +938,18 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - `generateStudySet` (`src/lib/ai/index.ts`): parçalar aynı anda **3** (kendi anahtarla 2) hazırlanır. Her parça yine kendi isteği; sonuçlar notun sırasıyla birleşir (`order`, zaman aşımında bölünen parçalar da yerini korur). Test: `split.test.ts` "prepares three parts at a time…".
 - Birleştirme uyarısı (`mergeMessage`): sunucuda 12 000'lik parçayla sayar, tahmini dakika söyler, 9+ parçada "Ayrı notlar daha iyi" önerir. Birleşik hazırlanırken dosya listesinin başlığında "tek not olarak hazırlanıyor · Bölüm x/y", satırlarda "Birleşik notun içinde" yazar.
 - Kalan: aynı anda birden çok **ayrı** not hâlâ sırayla hazırlanıyor (her biri kendi içinde 3 parça birden).
+
+### Aşama 57 — iPhone'da "PDF okunamadı"nın kök nedeni (5 Kasım 2026, `dreamy-sagan`)
+
+- **Neden:** pdf.js 6.4'ün normal (hızlı) sürümü sayfada ve worker'da şunları kontrol etmeden kullanıyor: `Promise.try`, `Uint8Array.prototype.toHex`/`fromBase64`, `ArrayBuffer.prototype.transferToFixedLength`, `Math.sumPrecise`, yineleyici yardımcıları, `Set.prototype.intersection`. Safari bunların çoğunu 18.2–18.4'te, `Math.sumPrecise`'ı daha sonra aldı.
+  - Bizim `MODERN_PDF` sadece `URL.parse` + `withResolvers`'a bakıyordu (Safari 18.0'da var). Bu yüzden Safari 18.0–18.3 (ve bazı yazı tiplerinde daha yenileri) normal sürümü alıyor, worker eksik özellikte **sessizce asılı kalıyordu**.
+  - Yeniden deneme de aynı sürümle yapıldığı için her seferinde "PDF okunamadı" çıkıyordu.
+  - Gerçek hata yakalanıp atıldığından hata kayıtlarında hiç görünmüyordu.
+- **Düzeltme** (`src/lib/polyfills.ts`, `src/lib/importNote.ts`):
+  - `missingForModernPdf()` bütün listeyi kontrol eder; biri eksikse legacy sürüm kullanılır. pdf.js güncellenince bu liste kontrol edilmeli.
+  - İlk deneme 20 sn'de cevap vermezse ya da hata verirse ikinci deneme **legacy** ile yapılır. Önce legacy yüklenir, sonra onun worker'ı ana sayfaya alınır.
+  - Okunamayan her PDF'in gerçek hatası, dosya boyutu, kullanılan sürüm ve eksik özellikler `client_errors`'a yazılır (Yönetim → Hatalar).
+- **Testler** (`tests/app.spec.ts`): "PDF upload works on Safari 18.0-18.3…" (özellikler sayfadan ve worker'dan silinir) ve "if the normal pdf.js build still fails…" (yalnızca worker'da eksik; legacy'ye geçiş).
 
 ## Tasarım dili ("Fosforlu")
 

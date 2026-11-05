@@ -1,6 +1,7 @@
 import type { ImageMimeType, TranscribeImage } from './ai/tasks'
 import { freshImport, StaleVersionError } from './version'
-import { MODERN_PDF, NEEDS_WORKER_POLYFILL, POLYFILL_SOURCE } from './polyfills'
+import { reportError } from './feedback'
+import { MISSING_FOR_MODERN_PDF, MODERN_PDF, NEEDS_WORKER_POLYFILL, POLYFILL_SOURCE } from './polyfills'
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024
 export const MAX_PDF_PAGES = 150
@@ -183,13 +184,15 @@ function workerWithPolyfills(src: string): string {
 }
 let pdfLoad: Promise<PdfJs> | null = null
 let rawWorkerUrl = ''
+/** Set once the normal build failed on this browser: from then on only the legacy build is used. */
+let useLegacy = !MODERN_PDF
 
 function loadPdfReader(): Promise<PdfJs> {
   pdfLoad ??= (async () => {
-    // Current browsers: the normal build, as fast as before. Only older ones (iOS before 18) get
-    // the slower legacy build with its stand-ins; giving it to everyone made every phone slower.
+    // Browsers with everything pdf.js's normal build needs get it (fast); the others, and any browser
+    // where it already failed once, get the legacy build with its stand-ins.
     const [pdfjs, worker] = (await Promise.all(
-      MODERN_PDF
+      !useLegacy
         ? [freshImport(() => import('pdfjs-dist')), freshImport(() => import('pdfjs-dist/build/pdf.worker.min.mjs?url'))]
         : [freshImport(() => import('pdfjs-dist/legacy/build/pdf.mjs')), freshImport(() => import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'))],
     )) as [PdfJs, { default: string }]
@@ -215,6 +218,7 @@ export function preloadNoteReaders() {
 
 async function extractPdfText(file: File, options?: NoteImportOptions): Promise<string> {
   let loadingTask: import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentLoadingTask | undefined
+  let firstFailure: unknown = null
 
   try {
     const rawBytes = await readFileBytes(file)
@@ -229,22 +233,28 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
         enableXfa: false,
         useSystemFonts: true,
       })
-      // Generous: a big PDF on a slow phone can take a while to open, and a retry starts over.
-      document = await withTimeout(loadingTask.promise, 30_000, 'PDF open')
+      // Opening only reads the file's table of contents (pages come later), so even a big PDF on a slow
+      // phone opens in a few seconds. A reader that broke inside its worker never answers at all, so
+      // this is also how long we wait before trying again with the legacy build.
+      document = await withTimeout(loadingTask.promise, 20_000, 'PDF open')
     } catch (firstError) {
       if (firstError instanceof Error && firstError.name === 'PasswordException') {
         throw firstError
       }
       await closePdf(loadingTask, 1_000)
       loadingTask = undefined
-      // Reset cached reader state, register main-thread worker handler as a guaranteed fallback
-      // (populates globalThis.pdfjsWorker so older iOS WebViews don't need a Web Worker), and retry.
+      firstFailure = firstError
+      // The retry uses the legacy build: if the normal one failed, the same one fails again (that is
+      // how Safari 18.0-18.3 showed "PDF okunamadı" for every PDF). Also register the main-thread
+      // worker handler as a fallback (globalThis.pdfjsWorker, for WebViews that cannot start a worker).
+      useLegacy = true
       pdfLoad = null
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      pdfjs = await loadPdfReader()
+      // Now the legacy worker's address: never the normal one, which would fail here the same way.
       if (rawWorkerUrl) {
         await import(/* @vite-ignore */ rawWorkerUrl).catch(() => undefined)
       }
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      pdfjs = await loadPdfReader()
       loadingTask = pdfjs.getDocument({
         data: rawBytes.slice(0),
         enableXfa: false,
@@ -367,6 +377,12 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
     if (error instanceof Error && error.name === 'PasswordException') {
       throw new Error('Bu PDF şifre korumalı. Şifresiz bir kopyasını yükle.')
     }
+    // The real reason goes to the error log (Yönetim → Hatalar): "PDF okunamadı" alone left us guessing.
+    reportError(error, [
+      `PDF okunamadı · ${Math.round(file.size / 1024)} KB · ${useLegacy ? 'legacy' : 'normal'} pdf.js`,
+      `eksik: ${MISSING_FOR_MODERN_PDF.join(', ') || '-'}`,
+      firstFailure ? `ilk deneme: ${firstFailure instanceof Error ? `${firstFailure.name}: ${firstFailure.message}` : String(firstFailure)}` : '',
+    ].filter(Boolean).join('\n'))
     throw new Error('PDF okunamadı. Dosyanın açılabildiğini kontrol et veya notunu TXT olarak yükle.')
   } finally {
     // Close the reader even after invalid, encrypted, or oversized PDFs, but never wait for it: the

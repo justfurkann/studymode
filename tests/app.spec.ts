@@ -169,6 +169,60 @@ test('PDF upload works on an older iPhone browser (no URL.parse / Promise.withRe
   expect(legacy.length).toBeGreaterThan(0)
 })
 
+test('PDF upload works on Safari 18.0-18.3 (URL.parse is there, but not Promise.try, toHex, iterator helpers…)', async ({ page }) => {
+  const legacy: string[] = []
+  page.on('request', (r) => /legacy/.test(r.url()) && legacy.push(r.url()))
+  // pdf.js's normal build calls these without checking; Safari only has them from 18.2-18.4 on, so a
+  // fairly new iPhone got the normal build (it has URL.parse) and every PDF failed with "PDF okunamadı".
+  await page.addInitScript(() => {
+    const strip = [
+      'delete Promise.try;',
+      'delete Uint8Array.prototype.toHex; delete Uint8Array.prototype.toBase64; delete Uint8Array.fromBase64; delete Uint8Array.fromHex;',
+      'delete ArrayBuffer.prototype.transferToFixedLength; delete Math.sumPrecise;',
+      "if (globalThis.Iterator) for (const k of ['map','filter','take','drop','flatMap','reduce','toArray','forEach','some','every','find']) delete Iterator.prototype[k];",
+    ].join('\n')
+    eval(strip)
+    const Original = window.Worker
+    window.Worker = class extends Original {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        const absolute = new URL(String(url), location.href).href
+        super(URL.createObjectURL(new Blob([`${strip}\nawait import(${JSON.stringify(absolute)});`], { type: 'text/javascript' })), { ...options, type: 'module' })
+      }
+    }
+  })
+  await createCourse(page, 'Biyoloji 105')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'safari18.pdf', mimeType: 'application/pdf', buffer: makePdf(biologyNotes.split('\n').filter(Boolean)) })
+  await expect(page.getByLabel('Ders notun')).toHaveValue(/Mitokondri/)
+  await expect(page.getByText('PDF okunamadı')).toHaveCount(0)
+  expect(legacy.length).toBeGreaterThan(0)
+})
+
+test('if the normal pdf.js build still fails on a phone, the PDF is read again with the legacy build', async ({ page }) => {
+  // A broken reader never answers, so the first try waits for its 20 s limit.
+  test.setTimeout(75_000)
+  const legacy: string[] = []
+  page.on('request', (r) => /legacy/.test(r.url()) && legacy.push(r.url()))
+  // The page has everything (so it picks the normal build), but the reader's worker lacks a feature.
+  await page.addInitScript(() => {
+    const strip = 'delete Uint8Array.prototype.toHex; delete Promise.try;'
+    const Original = window.Worker
+    window.Worker = class extends Original {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        const absolute = new URL(String(url), location.href).href
+        const legacyWorker = /legacy/.test(absolute)
+        super(URL.createObjectURL(new Blob([`${legacyWorker ? '' : strip}\nawait import(${JSON.stringify(absolute)});`], { type: 'text/javascript' })), { ...options, type: 'module' })
+      }
+    }
+  })
+  await createCourse(page, 'Biyoloji 106')
+  await page.getByRole('link', { name: 'Not ekle' }).last().click()
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'yedek.pdf', mimeType: 'application/pdf', buffer: makePdf(biologyNotes.split('\n').filter(Boolean)) })
+  await expect(page.getByLabel('Ders notun')).toHaveValue(/Mitokondri/, { timeout: 45_000 })
+  await expect(page.getByText('PDF okunamadı')).toHaveCount(0)
+  expect(legacy.length).toBeGreaterThan(0)
+})
+
 test('a deploy while the add page is open does not stop a PDF from being added', async ({ page }) => {
   await createCourse(page, 'Biyoloji 103')
   const loaded: string[] = []
