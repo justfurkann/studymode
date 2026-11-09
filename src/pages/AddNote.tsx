@@ -6,7 +6,8 @@ import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../components/ui'
 import { ACCEPTED_NOTE_EXTENSIONS, extractNoteText, preloadNoteReaders } from '../lib/importNote'
 import { generateLocally } from '../lib/localGenerator'
-import { aiAvailability, useSettings, isServerAi } from '../lib/settings'
+import { aiAvailability, updateSettings, useSettings, isServerAi } from '../lib/settings'
+import { useCanPlus } from '../lib/account'
 import { useStore } from '../lib/store'
 import type { GeneratedSet, Generator } from '../lib/types'
 import { freshImport } from '../lib/version'
@@ -38,6 +39,7 @@ export function AddNote() {
   const [params] = useSearchParams()
   const courses = store.data.courses
   const ai = aiAvailability(settings, !!store.session)
+  const canPlus = useCanPlus(store.session?.user.id ?? null)
 
   const [courseId, setCourseId] = useState(params.get('ders') ?? courses[0]?.id ?? NEW_COURSE)
   const [newCourse, setNewCourse] = useState('')
@@ -539,6 +541,18 @@ export function AddNote() {
                 Ayarlara git
               </Link>
             </p>
+          )}
+          {canPlus && settings.provider === 'free' && mode === 'ai' && (
+            <Alert
+              tone="info"
+              action={
+                <button type="button" className="btn btn-sm" onClick={() => updateSettings({ provider: 'plus' })}>
+                  Free+ kullan
+                </button>
+              }
+            >
+              Notun ücretsiz modelle hazırlanacak; Free+ hakkın var ama Ayarlar’da “Ücretsiz” seçili.
+            </Alert>
           )}
           {ai.ok && mode === 'ai' && isServerAi(settings.provider) && (
             <p className="subtle">Ücretsiz modda notun Google Gemini ile işlenir; Google ücretsiz kullanımdaki içerikleri ürünlerini geliştirmek için kullanabilir. Kişisel bilgi içeren notları yükleme.</p>

@@ -1353,6 +1353,31 @@ test('Instagram tarayıcısı: Android’de Chrome’a geçmeyi bir kez dener ve
   await normal.close()
 })
 
+test('Free+: VIP’in kayıtlı seçimi Free+ olur ve not sayfası da Free+ der; “Ücretsiz”i seçen VIP not eklerken hatırlatılır', async ({ page }) => {
+  await signedInAs(page, 'vip')
+  await page.goto('/not-ekle')
+  // A fresh VIP (stored choice still the starting "shared"): everything says Free+, not "Ücretsiz".
+  await expect(page.getByRole('button', { name: /Yapay zekâ/ })).toContainText('Free+')
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('studymode.settings.v1') ?? '{}').provider)).toBe('plus')
+  await page.goto('/ayarlar')
+  await expect(page.getByRole('group', { name: 'Yapay zekâ servisi' }).getByRole('button', { name: 'Free+' })).toHaveAttribute('aria-pressed', 'true')
+  // "Ücretsiz" on purpose stays, but adding a note says so, with a way back.
+  await page.getByRole('group', { name: 'Yapay zekâ servisi' }).getByRole('button', { name: 'Ücretsiz' }).click()
+  await page.goto('/not-ekle')
+  await expect(page.getByText(/Free\+ hakkın var ama Ayarlar’da “Ücretsiz” seçili/)).toBeVisible()
+  await page.getByRole('button', { name: 'Free+ kullan' }).click()
+  await expect(page.getByText(/Free\+ hakkın var ama/)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Yapay zekâ/ })).toContainText('Free+')
+})
+
+test('Free+: Premium’u biten hesabın Free+ seçimi ücretsize döner', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('studymode.settings.v1', JSON.stringify({ provider: 'plus' })))
+  await signedInAs(page, 'normal')
+  await page.goto('/not-ekle')
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('studymode.settings.v1') ?? '{}').provider)).toBe('shared')
+  await expect(page.getByRole('button', { name: /Yapay zekâ/ })).toContainText('Ücretsiz yapay zekâ')
+})
+
 test('Fosfor: ask about the open note’s course, with its notes; the conversation stays per course; phone layout', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   const T = '2026-10-01T00:00:00Z'

@@ -21,6 +21,7 @@ import { Alert } from './ui'
 import { Assistant } from './Assistant'
 import { PendingCodeReturn } from '../pages/RedeemLink'
 import { PremiumNudge } from './PremiumNudge'
+import { AiChoiceSync } from './AiChoiceSync'
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -278,6 +279,7 @@ export function Layout() {
       <Assistant />
       <PendingCodeReturn />
       <PremiumNudge />
+      <AiChoiceSync />
 
       <nav className="mobile-bar" aria-label="Alt menü">
         <NavLink to="/" end data-tour="bugun">

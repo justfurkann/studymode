@@ -94,6 +94,17 @@ export function useQuotaSettled(userId: string | null): boolean {
 /** VIP and admin get the Premium tab. */
 export const isPremiumRole = (role: Role | undefined | null) => role === 'vip' || role === 'admin'
 
+/**
+ * Whether this account gets Free+ (VIP, admin, or a Premium code still running), or null while
+ * that is not known yet (signed out, still loading, or the allowance could not be read).
+ */
+export function useCanPlus(userId: string | null): boolean | null {
+  const quota = useQuota(userId)
+  const settled = useQuotaSettled(userId)
+  if (!userId || !settled || !quota) return null
+  return isPremiumRole(quota.role) || (!!quota.premiumUntil && new Date(quota.premiumUntil).getTime() > Date.now())
+}
+
 export const ROLE_LABEL: Record<Role, string> = { normal: 'Normal', vip: 'VIP', admin: 'Yönetici' }
 
 export function quotaText(q: Quota): string {
