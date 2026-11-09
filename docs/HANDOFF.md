@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (5 Kasım 2026, Aşama 57 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (9 Kasım 2026, Aşama 58 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -950,6 +950,15 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - İlk deneme 20 sn'de cevap vermezse ya da hata verirse ikinci deneme **legacy** ile yapılır. Önce legacy yüklenir, sonra onun worker'ı ana sayfaya alınır.
   - Okunamayan her PDF'in gerçek hatası, dosya boyutu, kullanılan sürüm ve eksik özellikler `client_errors`'a yazılır (Yönetim → Hatalar).
 - **Testler** (`tests/app.spec.ts`): "PDF upload works on Safari 18.0-18.3…" (özellikler sayfadan ve worker'dan silinir) ve "if the normal pdf.js build still fails…" (yalnızca worker'da eksik; legacy'ye geçiş).
+
+### Aşama 58 — Ayardaki "Free+" ile her yer aynı şeyi söylüyor (9 Kasım 2026, `dreamy-sagan`)
+
+- **Sorun:** herkes `provider: 'shared'` ile başlıyor. VIP/Premium için sunucu bunu zaten Free+ ile çalıştırıyor ve Ayarlar "Free+" seçili gösteriyordu. Ama not sayfaları (`aiAvailability`) aynı değeri "Ücretsiz yapay zekâ" diye okuyordu. Kullanıcı ancak "Ücretsiz"e basıp tekrar "Free+"ya basınca kayıt `plus` oluyor, her yer düzeliyordu.
+- **Düzeltme:**
+  - `src/lib/aiChoice.ts` (`syncedAiChoice`, testli) ve `AiChoiceSync` (Layout): Free+ hakkı olan hesapta `shared` → `plus`; hakkı bitmiş hesapta `plus`/`free` → `shared`. Bilerek seçilmiş `free` ve kendi API anahtarı seçimleri dokunulmadan kalır.
+  - `useCanPlus` (`src/lib/account.ts`): hak bilinmiyorken `null` döner, o sırada hiçbir şey değiştirilmez.
+  - Not eklerken VIP'te "Ücretsiz" seçiliyse uyarı ve tek dokunuşla **"Free+ kullan"** çıkar.
+- **Testler:** `src/lib/aiChoice.test.ts`; `tests/extras.spec.ts` "Free+: VIP’in kayıtlı seçimi…" ve "Free+: Premium’u biten…".
 
 ## Tasarım dili ("Fosforlu")
 
