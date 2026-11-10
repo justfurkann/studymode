@@ -1,4 +1,4 @@
-# StudyMode — Devir Notu (Claude Code oturumları, son güncelleme 1 Kasım 2026)
+# StudyMode — Devir Notu (Claude Code oturumları, son güncelleme 10 Kasım 2026)
 
 Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yeni bir oturuma (Claude Code veya Google AI Studio) bağlam vermek için yazıldı.
 
@@ -16,7 +16,7 @@ Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yen
 
 | Parça | Durum |
 |---|---|
-| **GitHub** | `justfurkann/studymode`. Claude'un çalışma dalı: `claude/dreamy-sagan-5di1al`. `main` canlıya çıkar. |
+| **GitHub** | `justfurkann/studymode`. Claude her oturumda yeni bir `claude/...` dalında çalışır (son: `claude/sharp-shannon-wjcq0a`). `main` canlıya çıkar. |
 | **Vercel** | `main`e gelen her birleştirme otomatik yayınlanır. Ortam değişkenleri: `GEMINI_API_KEY` (var), isteğe bağlı `GEMINI_MODEL`, `GEMINI_FALLBACK_MODELS`. |
 | **Alan adı** | `studymode.fun`, Hostinger'den alındı; DNS Hostinger'de, Vercel'e bağlı. |
 | **Supabase** | Proje kimliği `jpcatyopkpnudgdyncas`. Adres ve **publishable** anahtar `src/lib/config.ts` içinde (tarayıcıya açık olması normal; güvenliği RLS sağlar). Auth: e-posta + şifre, e-posta onayı açık. Site URL / Redirect URLs: `https://studymode.fun`. |
@@ -970,6 +970,23 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - `src/lib/importNote.ts`: engellenen taranmış sayfa atlanır ve notta "[Sayfa N: … okunamadı]" diye belirtilir. Hiçbir sayfa okunamazsa net bir hata verir.
 - **Tekrar:** `/tekrar` sekmesinde "Hangi dersi tekrar edeceksin?" seçicisi (`CoursePicker`): Tümü ve bekleyen kartı olan her ders, sayılarıyla. Seçim `?ders=…&secim=1` olarak saklanır; sekme ve Tekrar/Mola düğmesi yerinde kalır. Ders sayfasından gelen `?ders=` eskisi gibi yalnızca o derse odaklanır.
 - **Testler:** `thinking.test.ts` (güvenlik ayarları gönderiliyor mu, filtre engeli tanınıyor mu); `extras.spec.ts` "Tekrar: bekleyen kartlar…" ve "Google içeriği filtreye takarsa…".
+
+### Aşama 60 — Biten sınav: "Bitti · not bekleniyor", sınav saati, sıradaki final (10 Kasım 2026, `sharp-shannon`)
+
+- **Sorun:** tarihi geçen sınav öylece kayboluyordu: ders sayfasında "1 sınavın tarihi geçti", Sınavlar sekmesinde kapalı bir "Geçmiş sınavlar" listesi; vizeler bitince Sınavlar sekmesi boş dönem tablosuyla açılıyordu.
+- **Yeni alanlar** (`CourseExam`): `time` ("09:30", isteğe bağlı) ve `grade` (0-100, sınavdan sonra girilir). İkisi de eski kayıtlarda yok (undefined) sayılır.
+- **Ne zaman "bitti"** (`src/lib/courseExams.ts`, `examEnd` / `examEnded`): saat girildiyse başlangıçtan **1 saat sonra**; girilmediyse gün bitince. `upcomingExams`, `examCountdown`, `nextExamDate` ve kart tekrar aralığı artık buna bakıyor (saatli sınav bitince aynı gün takvimden düşer). Sayaç: "Vize bugün 10:00".
+- **Arayüz** (`src/components/FinishedExams.tsx`):
+  - `FinishedExamRow`: "Bitti · not bekleniyor" etiketi ve not alanı; not girilince "Notun: 78,5", kalemle düzeltme / silme.
+  - `NextExamPrompt`: vizesi bitmiş, finali ve başka yaklaşan sınavı olmayan derste "Sırada final var" → "Final tarihi ekle" (tarih + isteğe bağlı saat).
+  - `FinishedExams`: ikisini bir arada gösteren "Biten sınavlar" bölümü. Sınavlar sekmesinde tam, Bugün'de en fazla 2 satır. Ders sayfasında sınav listesinin içinde.
+  - Notu girilen sınav "Geçmiş sınavlar"a iner (notuyla). 45 günden eski sınavlar not sormaz, final de sormaz (`GRADE_WAIT_DAYS`).
+  - Ders formunda (`CourseForm`) her sınava "Saat (isteğe bağlı)"; bitmiş sınavda "Notun" alanı. Dönem tablosu (`SemesterEditor`) yalnızca tarih alır, saat ve notu korur.
+  - Sınavlar sekmesi, biten sınav varken dönem tablosuyla açılmaz.
+- **Veritabanı:** `course_exams` tablosuna `"time" text` ve `grade real` sütunları (`schema.sql`'de "add column if not exists"). `backend.ts` `OPTIONAL_COLUMNS`'a eklendi: sütunlar yokken kayıt bozulmaz ama saat ve not hesaba **yazılmaz** (yalnızca o oturumda görünür). **Canlıya almadan önce bu iki sütun eklenmeli.**
+- **Paylaşım:** arkadaşla paylaşılan derste not ve saat gitmez (anlık görüntüde bu alanlar yok).
+- **Testler:** `courseExams.test.ts` "finished exams: time, grade, what comes next"; `tests/app.spec.ts` "a finished exam waits for its grade…" ve "an exam with a time counts as finished one hour after it starts".
+- **Yapılmayan:** ağırlıklı ortalama / "finalden kaç almam lazım" hesabı (geçme kuralları okula göre değişiyor); takvim dosyasında (.ics) saat; dönem tablosunda saat sütunu.
 
 ## Tasarım dili ("Fosforlu")
 

@@ -3,9 +3,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { examPercent } from '../components/ExamReview'
 import { ExamFocusCard } from '../components/ExamFocusCard'
+import { FinishedExamRow, FinishedExams } from '../components/FinishedExams'
 import { SemesterEditor } from '../components/SemesterEditor'
 import { useToast } from '../components/ui'
-import { examCountdown, examName, examsForCourse, upcomingExams } from '../lib/courseExams'
+import { cleanExamTime, examCountdown, examName, examsAwaitingGrade, examsForCourse, finishedExams, upcomingExams } from '../lib/courseExams'
 import { buildIcs, examReadiness, pickExamFocus } from '../lib/examFocus'
 import { daysUntil } from '../lib/srs'
 import { useStore } from '../lib/store'
@@ -30,13 +31,15 @@ export function ExamHub() {
   const loadDemo = useLoadDemo()
   const now = new Date()
   const upcoming = upcomingExams(data, now)
-  const [editing, setEditing] = useState(() => !data.courses.length || !upcoming.length)
+  const finished = finishedExams(data, now)
+  // With finished exams the page has something to show (grades to enter, the final to add), so the
+  // semester table does not open by itself.
+  const [editing, setEditing] = useState(() => !data.courses.length || (!upcoming.length && !finished.length))
   const focus = pickExamFocus(data, now)
 
-  const past = data.courses
-    .flatMap((course) => examsForCourse(data, course.id).map((exam) => ({ exam, course, days: daysUntil(exam.date, now) ?? 0 })))
-    .filter((e) => e.days < 0)
-    .sort((a, b) => b.exam.date.localeCompare(a.exam.date))
+  // Exams still waiting for a grade are shown in the open; the rest go under "Geçmiş sınavlar".
+  const waiting = new Set(examsAwaitingGrade(data, now).map((e) => e.exam.id))
+  const past = finished.filter((e) => !waiting.has(e.exam.id))
   const withoutExam = data.courses.filter((c) => !examsForCourse(data, c.id).length)
 
   const rows = data.courses
@@ -74,6 +77,8 @@ export function ExamHub() {
 
       {!editing && focus && <ExamFocusCard focus={focus} />}
 
+      {!editing && <FinishedExams />}
+
       {upcoming.length > 0 && (
         <section className="section" aria-label="Sınav takvimi">
           <div className="section-head">
@@ -99,6 +104,7 @@ export function ExamHub() {
                     </div>
                     <div className="subtle">
                       {d.toLocaleDateString('tr-TR', { weekday: 'long' })}
+                      {cleanExamTime(exam.time) ? ` · ${cleanExamTime(exam.time)}` : ''}
                       {exam.weight != null ? ` · Ağırlık %${exam.weight}` : ''}
                       {readiness === null ? ' · Henüz not yok' : ` · Hazırlık %${readiness}`}
                     </div>
@@ -124,16 +130,9 @@ export function ExamHub() {
       {past.length > 0 && (
         <details className="exam-past">
           <summary>Geçmiş sınavlar ({past.length})</summary>
-          <div className="list">
+          <div className="panel panel-tight exam-done-list">
             {past.map(({ exam, course }) => (
-              <Link key={exam.id} to={`/ders/${course.id}`} className="list-item">
-                <div className="grow">
-                  <div className="title">
-                    {course.name} · {examName(exam)}
-                  </div>
-                  <div className="subtle">{new Date(`${exam.date}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-                </div>
-              </Link>
+              <FinishedExamRow key={exam.id} exam={exam} course={course} showCourse />
             ))}
           </div>
         </details>

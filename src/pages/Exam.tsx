@@ -5,12 +5,11 @@ import { AiSignupPrompt } from '../components/AiSignupPrompt'
 import { ExamReview } from '../components/ExamReview'
 import { Alert, Empty, Spinner, useToast, useConfirm } from '../components/ui'
 import type { ExamDifficulty } from '../lib/ai/tasks'
-import { examCountdown, examName, examsForCourse } from '../lib/courseExams'
+import { examCountdown, examEnded, examName, examsForCourse } from '../lib/courseExams'
 import { blankParts, examFromNotes, formatOfQuestions, normalizeExam, noteForSource, scoreExam, type ExamQuestion, type ExamResult } from '../lib/exam'
 import { BLANK_COUNTS, DISTRACTOR_COUNTS, EXAM_INFO_MAX, loadExamPlan, MCQ_COUNTS, OPEN_COUNTS, planFormat, saveExamPlan, type ExamPlan } from '../lib/examPlan'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { clearActiveExam, loadActiveExam, saveActiveExam, secondsRemaining, type ActiveExamDraft, type ExamAnswer } from '../lib/examSession'
-import { daysUntil } from '../lib/srs'
 import { useStore } from '../lib/store'
 import { freshImport } from '../lib/version'
 
@@ -63,7 +62,7 @@ export function Exam() {
 
   const initialDraft = useMemo(() => loadActiveExam(session, id), [id])
   const [params] = useSearchParams()
-  const upcoming = examsForCourse(store.data, id ?? '').filter((e) => (daysUntil(e.date) ?? -1) >= 0)
+  const upcoming = examsForCourse(store.data, id ?? '').filter((e) => !examEnded(e))
   /** Notes an exam covers; an exam without a list covers the whole course. */
   const notesFor = (examId: string) => {
     const exam = upcoming.find((e) => e.id === examId)

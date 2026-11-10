@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { clearLocalData, localBackend, readLocalData, supabaseBackend, type Backend, type Change } from './backend'
 import { newCardState, schedule, type Grade } from './srs'
-import { examDateForCard, nextExamDate } from './courseExams'
+import { cleanExamTime, examDateForCard, nextExamDate } from './courseExams'
 import { mergeStudyDays, recordStudyActivity } from './streak'
 import type { ShareSnapshot } from './share'
 import { supabase } from './supabase'
@@ -56,7 +56,8 @@ interface StoreValue {
 }
 
 /** A course exam as edited in the form; `id` is set when editing an existing one. */
-export type CourseExamDraft = Pick<CourseExam, 'kind' | 'date' | 'noteIds'> & { id?: string; title?: string | null; weight?: number | null }
+/** `time` and `grade` left out (undefined) keep what the exam already has. */
+export type CourseExamDraft = Pick<CourseExam, 'kind' | 'date' | 'noteIds'> & { id?: string; title?: string | null; weight?: number | null; time?: string | null; grade?: number | null }
 
 const StoreContext = createContext<StoreValue | null>(null)
 
@@ -429,7 +430,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             kind: draft.kind,
             title: draft.title?.trim() || null,
             date: draft.date,
+            time: cleanExamTime(draft.time !== undefined ? draft.time : old?.time),
             weight: draft.weight ?? null,
+            grade: (draft.grade !== undefined ? draft.grade : old?.grade) ?? null,
             noteIds: draft.noteIds,
             createdAt: old?.createdAt ?? now,
             updatedAt: now,

@@ -89,7 +89,7 @@ export function SemesterEditor({ onDone }: { onDone: () => void }) {
           <Plus size={15} /> Ders ekle
         </button>
       </div>
-      <p className="subtle">Bütünleme, quiz ve sınav ağırlıklarını dersin sayfasından ekleyebilirsin. Boş bıraktığın tarih hiçbir sınavı silmez.</p>
+      <p className="subtle">Bütünleme, quiz, sınav saati ve ağırlıkları dersin sayfasından ekleyebilirsin. Boş bıraktığın tarih hiçbir sınavı silmez.</p>
       {error && (
         <p role="alert" style={{ color: 'var(--danger)' }}>
           {error}
