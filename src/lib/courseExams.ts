@@ -128,7 +128,7 @@ export function finishedExams(data: Pick<StudyData, 'courses' | 'courseExams'>, 
 export const hasGrade = (exam: Pick<CourseExam, 'grade'>) => typeof exam.grade === 'number'
 
 /** After this long nobody is still waiting for a grade; the exam stops asking on the home page. */
-export const GRADE_WAIT_DAYS = 45
+export const GRADE_WAIT_DAYS = 21
 
 /** Finished exams whose grade has not been entered yet and that are recent enough to still ask about. */
 export function examsAwaitingGrade(data: Pick<StudyData, 'courses' | 'courseExams'>, now = new Date()) {

@@ -1573,28 +1573,32 @@ test.describe('exams tab: semester setup, what to start with, calendar export', 
     const errors = watchErrors(page)
     await createCourse(page, 'Anatomi', -2)
 
-    // The course page no longer just says the date has passed.
+    // The course page no longer just says the date has passed; the final is offered on the same row.
     const courseExams = page.getByRole('region', { name: 'Sınavlar' })
     await expect(courseExams).toContainText('Bitti · not bekleniyor')
-    await expect(courseExams).toContainText('Sırada final var')
+    await expect(courseExams.getByRole('button', { name: 'Final tarihi ekle' })).toBeVisible()
 
-    // The home page asks too.
+    // The home page says it in one line that leads to the exams tab.
     await page.goto('/')
-    await expect(page.getByRole('region', { name: 'Biten sınavlar' })).toContainText('Anatomi · Vize')
+    const notice = page.getByRole('group', { name: 'Biten sınavlar' })
+    await expect(notice).toContainText('1 sınavın bitti')
+    await notice.getByRole('link').click()
 
-    // The exams tab opens on what is waiting, not on the empty semester table.
-    await page.goto('/sinav')
+    // The exams tab opens on what is waiting, not on the empty semester table. Nothing is open yet.
+    await expect(page).toHaveURL(/\/sinav$/)
     await expect(page.getByRole('form', { name: 'Dönemini kur' })).toBeHidden()
     const done = page.getByRole('region', { name: 'Biten sınavlar' })
     const row = done.getByRole('group', { name: 'Anatomi · Vize, bitti' })
     await expect(row).toContainText('Bitti · not bekleniyor')
+    await expect(row.getByLabel('Anatomi · Vize notu')).toBeHidden()
 
     // A wrong grade is refused, a right one is saved.
+    await row.getByRole('button', { name: 'Not gir' }).click()
     await row.getByLabel('Anatomi · Vize notu').fill('140')
-    await row.getByRole('button', { name: 'Notu kaydet' }).click()
+    await row.getByRole('button', { name: 'Kaydet' }).click()
     await expect(row.getByRole('alert')).toContainText('0 ile 100')
     await row.getByLabel('Anatomi · Vize notu').fill('78,5')
-    await row.getByRole('button', { name: 'Notu kaydet' }).click()
+    await row.getByRole('button', { name: 'Kaydet' }).click()
     await expect(page.getByText('notun kaydedildi')).toBeVisible()
     await expect(row).toBeHidden()
 
@@ -1602,9 +1606,9 @@ test.describe('exams tab: semester setup, what to start with, calendar export', 
     await page.getByText('Geçmiş sınavlar (1)').click()
     await expect(page.getByRole('group', { name: 'Anatomi · Vize, bitti' })).toContainText('Notun: 78,5')
 
-    // The final gets its date and time right there.
+    // What is left is the final: its date and time are entered right there.
+    await done.getByRole('button', { name: 'Final tarihi ekle' }).click()
     const next = done.getByRole('form', { name: 'Anatomi final tarihi' })
-    await next.getByRole('button', { name: 'Final tarihi ekle' }).click()
     await next.getByLabel('Final tarihi').fill(isoDaysFromNow(30))
     await next.getByLabel('Saat (isteğe bağlı)').fill('09:30')
     await next.getByRole('button', { name: 'Ekle' }).click()
@@ -1625,8 +1629,37 @@ test.describe('exams tab: semester setup, what to start with, calendar export', 
     const past = page.getByRole('group', { name: 'Anatomi · Vize, bitti' })
     await past.getByRole('button', { name: 'Anatomi · Vize notunu düzelt' }).click()
     await past.getByLabel('Anatomi · Vize notu').fill('80')
-    await past.getByRole('button', { name: 'Notu kaydet' }).click()
+    await past.getByRole('button', { name: 'Kaydet' }).click()
     await expect(past).toContainText('Notun: 80')
+    expect(errors).toEqual([])
+  })
+
+  test('finished exams can be hidden: they stop asking and rest under past exams', async ({ page }) => {
+    const errors = watchErrors(page)
+    await createCourse(page, 'Anatomi', -2)
+    await createCourse(page, 'Fizyoloji', -3)
+
+    await page.goto('/sinav')
+    const done = page.getByRole('region', { name: 'Biten sınavlar' })
+    await expect(done.getByRole('group')).toHaveCount(2)
+    await done.getByRole('button', { name: 'Anatomi · Vize: gizle' }).click()
+    await expect(done.getByRole('group')).toHaveCount(1)
+    // Hidden, not lost: the grade can still be entered under past exams.
+    await page.getByText('Geçmiş sınavlar (1)').click()
+    await expect(page.getByRole('group', { name: 'Anatomi · Vize, bitti' }).getByRole('button', { name: 'Not gir' })).toBeVisible()
+
+    // The home page counts only what is left, and its cross hides the rest for good.
+    await page.goto('/')
+    const notice = page.getByRole('group', { name: 'Biten sınavlar' })
+    await expect(notice).toContainText('1 sınavın bitti')
+    await notice.getByRole('button', { name: 'Biten sınavları gizle' }).click()
+    await expect(notice).toBeHidden()
+    await page.reload()
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('group', { name: 'Biten sınavlar' })).toBeHidden()
+    await page.goto('/sinav')
+    await expect(page.getByRole('region', { name: 'Biten sınavlar' })).toBeHidden()
+    await expect(page.getByText('Geçmiş sınavlar (2)')).toBeVisible()
     expect(errors).toEqual([])
   })
 

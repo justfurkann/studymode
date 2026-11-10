@@ -988,6 +988,17 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Testler:** `courseExams.test.ts` "finished exams: time, grade, what comes next"; `tests/app.spec.ts` "a finished exam waits for its grade…" ve "an exam with a time counts as finished one hour after it starts".
 - **Yapılmayan:** ağırlıklı ortalama / "finalden kaç almam lazım" hesabı (geçme kuralları okula göre değişiyor); takvim dosyasında (.ics) saat; dönem tablosunda saat sütunu.
 
+### Aşama 61 — Biten sınavlar sıkıştırıldı ve gizlenebilir (10 Kasım 2026, `sharp-shannon`)
+
+- **Geri bildirim (kurucu, telefonda):** Aşama 60'ın satırları çok yer kaplıyordu (her sınavda açık not kutusu, her derse ayrı "sırada final var" kutusu, uzun ders adı üç satıra bölünüyordu) ve kapatmanın yolu yoktu.
+- **Değişiklik** (`src/components/FinishedExams.tsx`):
+  - Satır kısa: ders adı tek satır (sığmazsa üç nokta), altında etiket + tarih, onun altında küçük düğmeler. Not kutusu ancak **"Not gir"**e basınca açılır.
+  - "Final tarihi ekle" ayrı satır değil, dersin bekleyen sınavının satırında düğme. Bekleyen sınavı olmayan derste tek kısa satır.
+  - Her satırda **çarpı (Gizle)**: o sınav bir daha sorulmaz, "Geçmiş sınavlar"a iner (notu oradan yine girilir). `src/lib/hiddenExams.ts`, bu tarayıcıda saklanır (`studymode.exams.hidden.v1`); başka cihazda yeniden görünür.
+  - **Bugün**'de liste yok; tek satır: "2 sınavın bitti. Notun açıklandıysa gir." → Sınavlar sekmesi. Çarpısı hepsini gizler.
+  - Kendiliğinden kaybolma 45 günden **21 güne** indi (`GRADE_WAIT_DAYS`).
+- **Testler:** `tests/app.spec.ts` "a finished exam waits for its grade…" güncellendi; yeni "finished exams can be hidden…".
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

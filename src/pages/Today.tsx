@@ -4,7 +4,7 @@ import { LevelBadge } from '../components/Level'
 import { StudentTypeLink } from '../components/StudentTypeCard'
 import { Link } from 'react-router-dom'
 import { ExamFocusCard } from '../components/ExamFocusCard'
-import { FinishedExams } from '../components/FinishedExams'
+import { FinishedExamsNotice } from '../components/FinishedExams'
 import { ReceiptButton } from '../components/ReceiptButton'
 import { Welcome } from '../components/Welcome'
 import { pickExamFocus } from '../lib/examFocus'
@@ -145,7 +145,7 @@ export function Today() {
 
       {focus && <ExamFocusCard focus={focus} />}
 
-      <FinishedExams limit={2} moreLink />
+      <FinishedExamsNotice />
 
       {/* Phones have no sidebar; the quiz card sits here instead. */}
       <StudentTypeLink className="side-quiz home-quiz" />
