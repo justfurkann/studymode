@@ -1569,6 +1569,101 @@ test.describe('exams tab: semester setup, what to start with, calendar export', 
     expect(errors).toEqual([])
   })
 
+  test('a finished exam waits for its grade, then asks for the final date', async ({ page }) => {
+    const errors = watchErrors(page)
+    await createCourse(page, 'Anatomi', -2)
+
+    // The course page no longer just says the date has passed.
+    const courseExams = page.getByRole('region', { name: 'Sınavlar' })
+    await expect(courseExams).toContainText('Bitti · not bekleniyor')
+    await expect(courseExams).toContainText('Sırada final var')
+
+    // The home page asks too.
+    await page.goto('/')
+    await expect(page.getByRole('region', { name: 'Biten sınavlar' })).toContainText('Anatomi · Vize')
+
+    // The exams tab opens on what is waiting, not on the empty semester table.
+    await page.goto('/sinav')
+    await expect(page.getByRole('form', { name: 'Dönemini kur' })).toBeHidden()
+    const done = page.getByRole('region', { name: 'Biten sınavlar' })
+    const row = done.getByRole('group', { name: 'Anatomi · Vize, bitti' })
+    await expect(row).toContainText('Bitti · not bekleniyor')
+
+    // A wrong grade is refused, a right one is saved.
+    await row.getByLabel('Anatomi · Vize notu').fill('140')
+    await row.getByRole('button', { name: 'Notu kaydet' }).click()
+    await expect(row.getByRole('alert')).toContainText('0 ile 100')
+    await row.getByLabel('Anatomi · Vize notu').fill('78,5')
+    await row.getByRole('button', { name: 'Notu kaydet' }).click()
+    await expect(page.getByText('notun kaydedildi')).toBeVisible()
+    await expect(row).toBeHidden()
+
+    // With the grade in, the exam rests under past exams and shows the grade.
+    await page.getByText('Geçmiş sınavlar (1)').click()
+    await expect(page.getByRole('group', { name: 'Anatomi · Vize, bitti' })).toContainText('Notun: 78,5')
+
+    // The final gets its date and time right there.
+    const next = done.getByRole('form', { name: 'Anatomi final tarihi' })
+    await next.getByRole('button', { name: 'Final tarihi ekle' }).click()
+    await next.getByLabel('Final tarihi').fill(isoDaysFromNow(30))
+    await next.getByLabel('Saat (isteğe bağlı)').fill('09:30')
+    await next.getByRole('button', { name: 'Ekle' }).click()
+    const calendar = page.getByRole('region', { name: 'Sınav takvimi' })
+    await expect(calendar.getByRole('link')).toContainText('Anatomi · Final')
+    await expect(calendar.getByRole('link')).toContainText('09:30')
+    await expect(done).toBeHidden()
+
+    // Grade and time survive a reload; the grade can be corrected.
+    await page.reload()
+    await expect(page.getByRole('region', { name: 'Sınav takvimi' })).toContainText('Finale 30 gün')
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('studymode.data.v2')!).courseExams)
+    expect(saved.map((e: { kind: string; grade: number | null; time: string | null }) => [e.kind, e.grade, e.time]).sort()).toEqual([
+      ['final', null, '09:30'],
+      ['vize', 78.5, null],
+    ])
+    await page.getByText('Geçmiş sınavlar (1)').click()
+    const past = page.getByRole('group', { name: 'Anatomi · Vize, bitti' })
+    await past.getByRole('button', { name: 'Anatomi · Vize notunu düzelt' }).click()
+    await past.getByLabel('Anatomi · Vize notu').fill('80')
+    await past.getByRole('button', { name: 'Notu kaydet' }).click()
+    await expect(past).toContainText('Notun: 80')
+    expect(errors).toEqual([])
+  })
+
+  test('an exam with a time counts as finished one hour after it starts', async ({ page }) => {
+    const errors = watchErrors(page)
+    const today = new Date()
+    const at = (hours: number, minutes: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes)
+    await page.clock.setFixedTime(at(9, 0))
+    await page.goto('/dersler')
+    await page.getByRole('button', { name: 'Yeni ders' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Yeni ders' })
+    await dialog.getByLabel('Ders adı').fill('Fizyoloji')
+    await dialog.getByRole('button', { name: 'Sınav ekle' }).click()
+    await dialog.getByLabel('Sınav tarihi').fill(isoDaysFromNow(0))
+    await dialog.getByLabel('Sınav saati').fill('10:00')
+    await dialog.getByRole('button', { name: 'Dersi oluştur' }).click()
+    const exams = page.getByRole('region', { name: 'Sınavlar' })
+    await expect(exams).toContainText('Vize bugün 10:00')
+
+    // Still running at 10:59.
+    await page.clock.setFixedTime(at(10, 59))
+    await page.reload()
+    await expect(page.getByRole('region', { name: 'Sınavlar' })).toContainText('Vize bugün 10:00')
+
+    // Over at 11:00: the grade is awaited and the form offers the grade field.
+    await page.clock.setFixedTime(at(11, 0))
+    await page.reload()
+    await expect(page.getByRole('region', { name: 'Sınavlar' })).toContainText('Bitti · not bekleniyor')
+    await page.getByRole('button', { name: 'Dersi düzenle' }).click()
+    const edit = page.getByRole('dialog', { name: 'Dersi düzenle' })
+    await expect(edit.getByLabel('Sınav saati')).toHaveValue('10:00')
+    await edit.getByLabel('Sınav notu').fill('65')
+    await edit.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByRole('region', { name: 'Sınavlar' })).toContainText('Notun: 65')
+    expect(errors).toEqual([])
+  })
+
   test('exams can be exported to the phone calendar', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('button', { name: 'Örnek notla dene' }).click()

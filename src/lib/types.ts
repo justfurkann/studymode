@@ -11,8 +11,12 @@ export interface CourseExam {
   title: string | null
   /** YYYY-MM-DD, local calendar day. */
   date: string
+  /** HH:MM start time, if the student entered one. Missing in older rows. */
+  time?: string | null
   /** Share of the final grade in percent, if known. */
   weight: number | null
+  /** The grade the student got (0-100), entered after the exam. Missing until then. */
+  grade?: number | null
   /** Notes the exam covers; empty means the whole course. */
   noteIds: string[]
   createdAt: string

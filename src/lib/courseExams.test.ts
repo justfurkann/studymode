@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { courseExamPhrase, examCountdown, examDateForCard, examsForCourse, nearestExamFor, nextExamDate, upcomingExams } from './courseExams'
+import {
+  cleanExamTime,
+  courseExamPhrase,
+  examCountdown,
+  examDateForCard,
+  examDrafts,
+  examEnded,
+  examsAwaitingGrade,
+  examsForCourse,
+  finishedExams,
+  nearestExamFor,
+  nextExamDate,
+  nextExamToAdd,
+  parseGrade,
+  upcomingExams,
+} from './courseExams'
 import { schedule } from './srs'
 import type { Course, CourseExam } from './types'
 
@@ -64,5 +79,86 @@ describe('course exams', () => {
     expect(courseExamPhrase('Biyoloji', { kind: 'final', title: null }, 1)).toBe('Biyoloji finali yarın')
     expect(courseExamPhrase('Biyoloji', { kind: 'diger', title: null }, 0)).toBe('Biyoloji sınavı bugün')
     expect(courseExamPhrase('Biyoloji', { kind: 'diger', title: 'Proje sunumu' }, 5)).toBe('Biyoloji · Proje sunumu: 5 gün kaldı')
+  })
+})
+
+describe('finished exams: time, grade, what comes next', () => {
+  it('ends an exam one hour after its start time, or at the end of the day without one', () => {
+    const timed = exam({ date: '2026-10-30', time: '10:00' })
+    expect(examEnded(timed, new Date(2026, 9, 30, 10, 59))).toBe(false)
+    expect(examEnded(timed, new Date(2026, 9, 30, 11, 0))).toBe(true)
+    const untimed = exam({ date: '2026-10-30' })
+    expect(examEnded(untimed, new Date(2026, 9, 30, 23, 59))).toBe(false)
+    expect(examEnded(untimed, new Date(2026, 9, 31, 0, 0))).toBe(true)
+    // An evening exam that runs past midnight is still "today" until it ends.
+    const late = exam({ date: '2026-10-30', time: '23:30' })
+    expect(examCountdown(late, new Date(2026, 9, 31, 0, 10))?.text).toBe('Vize bugün 23:30')
+    expect(examCountdown(late, new Date(2026, 9, 31, 0, 30))).toBeNull()
+  })
+
+  it('accepts the time formats people type and rejects the rest', () => {
+    expect(cleanExamTime('9:30')).toBe('09:30')
+    expect(cleanExamTime('09.30')).toBe('09:30')
+    expect(cleanExamTime('13:45:00')).toBe('13:45')
+    expect(cleanExamTime('25:00')).toBeNull()
+    expect(cleanExamTime('')).toBeNull()
+    expect(cleanExamTime(undefined)).toBeNull()
+  })
+
+  it('moves an exam from the calendar to the finished list once it is over', () => {
+    const data = { courses: [course('c1')], courseExams: [exam({ id: 'v', date: '2026-10-30', time: '10:00' }), exam({ id: 'f', kind: 'final', date: '2026-12-20' })] }
+    const before = new Date(2026, 9, 30, 9)
+    expect(upcomingExams(data, before).map((e) => e.exam.id)).toEqual(['v', 'f'])
+    expect(examCountdown(data.courseExams[0], before)?.text).toBe('Vize bugün 10:00')
+    expect(finishedExams(data, before)).toEqual([])
+    expect(upcomingExams(data, now).map((e) => e.exam.id)).toEqual(['f'])
+    expect(finishedExams(data, now).map((e) => e.exam.id)).toEqual(['v'])
+    // The old single course date and card scheduling follow the next exam that is still ahead.
+    expect(nextExamDate(data.courseExams, now)).toBe('2026-12-20')
+    expect(examDateForCard(data, { courseId: 'c1', noteId: null }, now)).toBe('2026-12-20')
+  })
+
+  it('waits for a grade until one is entered, and stops asking about old exams', () => {
+    const data = {
+      courses: [course('c1')],
+      courseExams: [
+        exam({ id: 'recent', date: '2026-10-20' }),
+        exam({ id: 'graded', kind: 'quiz', date: '2026-10-22', grade: 0 }),
+        exam({ id: 'old', kind: 'quiz', date: '2026-05-01' }),
+        exam({ id: 'ahead', kind: 'final', date: '2026-12-20' }),
+      ],
+    }
+    expect(examsAwaitingGrade(data, now).map((e) => e.exam.id)).toEqual(['recent'])
+    expect(finishedExams(data, now).map((e) => e.exam.id)).toEqual(['graded', 'recent', 'old'])
+  })
+
+  it('reads grades with a comma or a dot and refuses anything outside 0-100', () => {
+    expect(parseGrade('78')).toBe(78)
+    expect(parseGrade(' 78,5 ')).toBe(78.5)
+    expect(parseGrade('100')).toBe(100)
+    expect(parseGrade('0')).toBe(0)
+    expect(parseGrade('101')).toBeNull()
+    expect(parseGrade('-5')).toBeNull()
+    expect(parseGrade('AA')).toBeNull()
+    expect(parseGrade('')).toBeNull()
+  })
+
+  it('asks for the final once the midterm is over and nothing else is planned', () => {
+    const vize = exam({ date: '2026-10-20' })
+    expect(nextExamToAdd([vize], now)).toBe('final')
+    expect(nextExamToAdd([exam({ date: '2026-11-07' })], now)).toBeNull() // midterm still ahead
+    expect(nextExamToAdd([vize, exam({ kind: 'final', date: '2026-12-20' })], now)).toBeNull()
+    expect(nextExamToAdd([vize, exam({ kind: 'quiz', date: '2026-11-05' })], now)).toBeNull() // something is planned
+    expect(nextExamToAdd([exam({ date: '2026-03-01' })], now)).toBeNull() // last term
+    expect(nextExamToAdd([exam({ kind: 'quiz', date: '2026-10-20' })], now)).toBeNull()
+    expect(nextExamToAdd([], now)).toBeNull()
+  })
+
+  it('turns the old single exam date into a draft without an id, keeping time and grade of real exams', () => {
+    expect(examDrafts({ courses: [course('c1', '2026-10-01')], courseExams: [] }, 'c1')).toEqual([
+      { id: undefined, kind: 'diger', title: null, date: '2026-10-01', time: null, weight: null, grade: null, noteIds: [] },
+    ])
+    const real = exam({ id: 'v', date: '2026-10-20', time: '09:30', grade: 82, weight: 40 })
+    expect(examDrafts({ courses: [course('c1')], courseExams: [real] }, 'c1')[0]).toMatchObject({ id: 'v', time: '09:30', grade: 82, weight: 40 })
   })
 })

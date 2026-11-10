@@ -108,7 +108,7 @@ const PAGE = 1000
 const isMissingTable = (error: { code?: string }) => error.code === 'PGRST205' || error.code === '42P01'
 
 /** Columns added after their table; saving works (without them) before the migration is run. */
-const OPTIONAL_COLUMNS = new Set(['actions', 'answers'])
+const OPTIONAL_COLUMNS = new Set(['actions', 'answers', 'time', 'grade'])
 
 /** Name of the column PostgREST reports as unknown (code PGRST204), if any. */
 export function missingColumn(error: { code?: string; message?: string }): string | null {

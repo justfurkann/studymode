@@ -3,13 +3,13 @@ import { checkMerged, mergeContents, mergedTitle, mergeMessage } from '../lib/me
 import type { Note } from '../lib/types'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { FinishedExamRow, NextExamPrompt } from '../components/FinishedExams'
 import { CourseForm } from '../components/CourseForm'
 import { ShareCourse } from '../components/ShareCourse'
 import { examFormatLabel, examPercent } from '../components/ExamReview'
 import { Empty, useConfirm, useToast } from '../components/ui'
-import { examCountdown, examDateText, examName, examsForCourse } from '../lib/courseExams'
+import { examCountdown, examDateText, examEnded, examName, examsForCourse, nextExamToAdd } from '../lib/courseExams'
 import { cardMastery, courseStats, relativeDate } from '../lib/format'
-import { daysUntil } from '../lib/srs'
 import { computeNoteProgress } from '../lib/learningPath'
 import {
   buildNoteEmbeddingText,
@@ -316,10 +316,13 @@ export function CourseDetail() {
 function CourseExams({ courseId, hasNotes, onEdit }: { courseId: string; hasNotes: boolean; onEdit: () => void }) {
   const store = useStore()
   const exams = examsForCourse(store.data, courseId)
-  if (!exams.length) return null
+  const course = store.data.courses.find((c) => c.id === courseId)
+  if (!exams.length || !course) return null
   const now = new Date()
-  const upcoming = exams.filter((e) => (daysUntil(e.date, now) ?? -1) >= 0)
-  const past = exams.length - upcoming.length
+  const upcoming = exams.filter((e) => !examEnded(e, now))
+  // The most recent finished exam first: that is the one whose grade is awaited.
+  const past = exams.filter((e) => examEnded(e, now)).reverse()
+  const next = nextExamToAdd(exams, now)
 
   return (
     <section className="section" aria-label="Sınavlar">
@@ -341,7 +344,7 @@ function CourseExams({ courseId, hasNotes, onEdit }: { courseId: string; hasNote
                   {exam.weight != null && <span className="subtle"> · %{exam.weight}</span>}
                 </div>
                 <div className="subtle">
-                  {examDateText(exam.date)} · {exam.noteIds.length ? `${exam.noteIds.length} not` : 'Tüm notlar'}
+                  {examDateText(exam.date, exam.time)} · {exam.noteIds.length ? `${exam.noteIds.length} not` : 'Tüm notlar'}
                 </div>
               </div>
               <span className={`chip ${countdown.tone === 'neutral' ? '' : `chip-${countdown.tone}`}`}>{countdown.text}</span>
@@ -353,8 +356,10 @@ function CourseExams({ courseId, hasNotes, onEdit }: { courseId: string; hasNote
             </div>
           )
         })}
-        {!upcoming.length && <p className="subtle">Yaklaşan sınav yok.</p>}
-        {past > 0 && <p className="subtle">{past} sınavın tarihi geçti.</p>}
+        {past.map((exam) => (
+          <FinishedExamRow key={exam.id} exam={exam} course={course} />
+        ))}
+        {next && <NextExamPrompt course={course} kind={next} />}
       </div>
     </section>
   )

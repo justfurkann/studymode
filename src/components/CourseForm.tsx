@@ -1,6 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { EXAM_KINDS, examsForCourse, isLegacyExam } from '../lib/courseExams'
+import { EXAM_KINDS, examDrafts, examEnded, gradeText, parseGrade } from '../lib/courseExams'
 import { COURSE_COLORS, useStore, type CourseExamDraft } from '../lib/store'
 import type { Course, CourseExamKind } from '../lib/types'
 import { ColorPicker, Modal } from './ui'
@@ -14,23 +14,22 @@ export interface CourseInput {
 }
 
 /** A row in the form; `key` keeps React rows stable while ids are still unknown. */
-type ExamRow = CourseExamDraft & { key: string; weightText: string }
+type ExamRow = CourseExamDraft & { key: string; weightText: string; gradeText: string }
 
-const toRow = (draft: CourseExamDraft): ExamRow => ({ ...draft, key: crypto.randomUUID(), weightText: draft.weight == null ? '' : String(draft.weight) })
+const toRow = (draft: CourseExamDraft): ExamRow => ({
+  ...draft,
+  key: crypto.randomUUID(),
+  weightText: draft.weight == null ? '' : String(draft.weight),
+  gradeText: draft.grade == null ? '' : gradeText(draft.grade),
+})
 
 export function CourseForm({ course, onSave, onClose }: { course?: Course; onSave: (input: CourseInput) => void; onClose: () => void }) {
   const store = useStore()
   const notes = course ? store.data.notes.filter((n) => n.courseId === course.id) : []
   const [name, setName] = useState(course?.name ?? '')
   const [color, setColor] = useState(course?.color ?? COURSE_COLORS[0])
-  const [initialRows] = useState<ExamRow[]>(() =>
-    course
-      ? examsForCourse(store.data, course.id).map((e) =>
-          // The old single date becomes an editable row; saving turns it into a real exam record.
-          toRow({ id: isLegacyExam(e) ? undefined : e.id, kind: e.kind, title: e.title, date: e.date, weight: e.weight, noteIds: e.noteIds }),
-        )
-      : [],
-  )
+  // The old single date becomes an editable row; saving turns it into a real exam record.
+  const [initialRows] = useState<ExamRow[]>(() => (course ? examDrafts(store.data, course.id).map(toRow) : []))
   const [rows, setRows] = useState<ExamRow[]>(initialRows)
   const [error, setError] = useState('')
 
@@ -49,7 +48,11 @@ export function CourseForm({ course, onSave, onClose }: { course?: Course; onSav
     for (const row of rows) {
       const weight = row.weightText.trim() === '' ? null : Number(row.weightText.replace(',', '.'))
       if (weight !== null && (!Number.isFinite(weight) || weight < 0 || weight > 100)) return setError('Ağırlık 0 ile 100 arasında olmalı.')
-      exams.push({ id: row.id, kind: row.kind, title: row.kind === 'diger' ? row.title ?? null : null, date: row.date, weight, noteIds: row.noteIds })
+      // The grade field only shows for a finished exam; a date moved into the future keeps no grade.
+      const finished = examEnded({ date: row.date, time: row.time })
+      const grade = finished && row.gradeText.trim() !== '' ? parseGrade(row.gradeText) : null
+      if (finished && row.gradeText.trim() !== '' && grade === null) return setError('Not 0 ile 100 arasında olmalı.')
+      exams.push({ id: row.id, kind: row.kind, title: row.kind === 'diger' ? row.title ?? null : null, date: row.date, time: row.time || null, weight, grade, noteIds: row.noteIds })
     }
     const signature = (list: ExamRow[]) => JSON.stringify(list.map(({ key: _key, ...r }) => r))
     onSave({ name: name.trim(), color, exams, examsChanged: signature(rows) !== signature(initialRows) })
@@ -66,6 +69,7 @@ export function CourseForm({ course, onSave, onClose }: { course?: Course; onSav
         <div className="field">
           <span>Sınavlar</span>
           {rows.length === 0 && <p className="subtle">Vize, final gibi sınavları eklersen tekrarlar sınavdan önce bitecek şekilde planlanır.</p>}
+          {rows.length > 0 && <p className="subtle">Saat girersen sınav, başlamasından bir saat sonra “bitti” sayılır; girmezsen gün bitince.</p>}
           {rows.map((row, i) => (
             <fieldset className="exam-row" key={row.key} aria-label={`${i + 1}. sınav`}>
               <div className="exam-row-main">
@@ -88,6 +92,18 @@ export function CourseForm({ course, onSave, onClose }: { course?: Course; onSav
                 <button type="button" className="btn btn-ghost btn-icon btn-danger" aria-label="Sınavı kaldır" onClick={() => setRows(rows.filter((r) => r.key !== row.key))}>
                   <Trash2 size={16} />
                 </button>
+              </div>
+              <div className="exam-row-extra">
+                <label className="exam-row-field">
+                  <span>Saat (isteğe bağlı)</span>
+                  <input className="input" type="time" aria-label="Sınav saati" value={row.time ?? ''} onChange={(e) => update(row.key, { time: e.target.value || null })} />
+                </label>
+                {!!row.date && examEnded({ date: row.date, time: row.time }) && (
+                  <label className="exam-row-field">
+                    <span>Notun (0-100)</span>
+                    <input className="input" inputMode="decimal" aria-label="Sınav notu" placeholder="Bekleniyor" maxLength={6} value={row.gradeText} onChange={(e) => update(row.key, { gradeText: e.target.value })} />
+                  </label>
+                )}
               </div>
               {row.kind === 'diger' && (
                 <input className="input" aria-label="Sınav adı" placeholder="Adı (ör. Proje sunumu)" maxLength={80} value={row.title ?? ''} onChange={(e) => update(row.key, { title: e.target.value })} />

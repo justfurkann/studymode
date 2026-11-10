@@ -99,6 +99,10 @@ create table if not exists public.course_exams (
   updated_at timestamptz not null default now()
 );
 
+-- Optional start time ("09:30") and the grade the student got, entered after the exam.
+alter table public.course_exams add column if not exists "time" text check ("time" is null or "time" ~ '^([01]\d|2[0-3]):[0-5]\d$');
+alter table public.course_exams add column if not exists grade real check (grade is null or (grade >= 0 and grade <= 100));
+
 -- Options chosen in a note's test, so the last result can be shown again later.
 alter table public.quiz_attempts add column if not exists answers jsonb;
 
