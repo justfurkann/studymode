@@ -983,7 +983,7 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - Notu girilen sınav "Geçmiş sınavlar"a iner (notuyla). 45 günden eski sınavlar not sormaz, final de sormaz (`GRADE_WAIT_DAYS`).
   - Ders formunda (`CourseForm`) her sınava "Saat (isteğe bağlı)"; bitmiş sınavda "Notun" alanı. Dönem tablosu (`SemesterEditor`) yalnızca tarih alır, saat ve notu korur.
   - Sınavlar sekmesi, biten sınav varken dönem tablosuyla açılmaz.
-- **Veritabanı:** `course_exams` tablosuna `"time" text` ve `grade real` sütunları (`schema.sql`'de "add column if not exists"). `backend.ts` `OPTIONAL_COLUMNS`'a eklendi: sütunlar yokken kayıt bozulmaz ama saat ve not hesaba **yazılmaz** (yalnızca o oturumda görünür). **Canlıya almadan önce bu iki sütun eklenmeli.**
+- **Veritabanı:** `course_exams` tablosuna `"time" text` ve `grade real` sütunları (`schema.sql`'de "add column if not exists"). `backend.ts` `OPTIONAL_COLUMNS`'a eklendi: sütunlar yokken kayıt bozulmaz ama saat ve not hesaba **yazılmaz** (yalnızca o oturumda görünür). **Canlıya uygulandı** (10 Kasım 2026, migration `course_exams_time_and_grade`). Bekleyen SQL yok.
 - **Paylaşım:** arkadaşla paylaşılan derste not ve saat gitmez (anlık görüntüde bu alanlar yok).
 - **Testler:** `courseExams.test.ts` "finished exams: time, grade, what comes next"; `tests/app.spec.ts` "a finished exam waits for its grade…" ve "an exam with a time counts as finished one hour after it starts".
 - **Yapılmayan:** ağırlıklı ortalama / "finalden kaç almam lazım" hesabı (geçme kuralları okula göre değişiyor); takvim dosyasında (.ics) saat; dönem tablosunda saat sütunu.
