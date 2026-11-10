@@ -65,7 +65,7 @@ npm run build
 npx tsc -p tsconfig.api.json
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e   # Claude'un bulut ortamında
 ```
-Son yeşil durum (9 Kasım 2026, Aşama 58 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
+Son yeşil durum (10 Kasım 2026, Aşama 59 sonrası, `main` üzerinde): 297 birim testi, 121 tarayıcı testi.
 
 **Kodu yalnızca bir Claude oturumu değiştirmeli.** 1 Kasım'da iki oturum (`dreamy-sagan`: Premium; `keen-albattani`: Aşama 14-19) aynı anda `main`e gönderdi; çakışma olmadan birleşti ama riskliydi. Bundan sonra tek oturum çalışsın; iş devredilecekse önce bu dosya güncellenip `main`e alınsın.
 
@@ -959,6 +959,17 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - `useCanPlus` (`src/lib/account.ts`): hak bilinmiyorken `null` döner, o sırada hiçbir şey değiştirilmez.
   - Not eklerken VIP'te "Ücretsiz" seçiliyse uyarı ve tek dokunuşla **"Free+ kullan"** çıkar.
 - **Testler:** `src/lib/aiChoice.test.ts`; `tests/extras.spec.ts` "Free+: VIP’in kayıtlı seçimi…" ve "Free+: Premium’u biten…".
+
+### Aşama 59 — Google içerik filtresi ve Tekrar'da ders seçimi (10 Kasım 2026, `dreamy-sagan`)
+
+- **Olay:** 9 Kasım 07:37'de bir kullanıcı 32 saniyede 8 kez "Gemini error 422 blocked: PROHIBITED_CONTENT" aldı. Muhtemelen taranmış PDF sayfaları okunurken oldu (not kaydedilmemişti). Ekranda "Sunucu hata verdi (502, upstream)… Biraz sonra tekrar dene" yazıyordu: anlaşılmaz ve yanlış yönlendiren bir mesaj.
+- **Düzeltme:**
+  - `src/lib/ai/gemini.ts`: çalışma görevlerinde `safetySettings` dört kategoride `BLOCK_ONLY_HIGH` (afet, tıp, hukuk gibi ders konuları için). `isBlockedByFilter` filtre engellerini tanır.
+  - `api/generate.ts`: filtre engelinde 422 `{ error: 'blocked' }` döner. `PROHIBITED_CONTENT` Google tarafında kapatılamaz.
+  - İstemci (`src/lib/ai/index.ts`): `blocked` için anlaşılır bir Türkçe mesaj gösterir. `transcribeImages` engelde aynı isteği tekrarlamaz; birden çok sayfa varsa tek tek dener.
+  - `src/lib/importNote.ts`: engellenen taranmış sayfa atlanır ve notta "[Sayfa N: … okunamadı]" diye belirtilir. Hiçbir sayfa okunamazsa net bir hata verir.
+- **Tekrar:** `/tekrar` sekmesinde "Hangi dersi tekrar edeceksin?" seçicisi (`CoursePicker`): Tümü ve bekleyen kartı olan her ders, sayılarıyla. Seçim `?ders=…&secim=1` olarak saklanır; sekme ve Tekrar/Mola düğmesi yerinde kalır. Ders sayfasından gelen `?ders=` eskisi gibi yalnızca o derse odaklanır.
+- **Testler:** `thinking.test.ts` (güvenlik ayarları gönderiliyor mu, filtre engeli tanınıyor mu); `extras.spec.ts` "Tekrar: bekleyen kartlar…" ve "Google içeriği filtreye takarsa…".
 
 ## Tasarım dili ("Fosforlu")
 

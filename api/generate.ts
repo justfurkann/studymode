@@ -2,7 +2,7 @@
 // the GEMINI_API_KEY environment variable and never reaches the browser.
 // Prompts are fixed per task here, so this endpoint cannot be used as a general-purpose proxy.
 import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../src/lib/config.js'
-import { callGeminiWithFallback, GeminiError } from '../src/lib/ai/gemini.js'
+import { callGeminiWithFallback, GeminiError, isBlockedByFilter } from '../src/lib/ai/gemini.js'
 import { isTaskName, jsonModeSystem, parseTaskOutput, userPrompt } from '../src/lib/ai/tasks.js'
 import { vertexAccessToken, vertexConfigured, vertexModels, vertexTarget } from './vertex.js'
 
@@ -212,6 +212,11 @@ export async function handleGenerate(
       if (error.status === 504 && left() < 6_000) return json(504, { error: 'too_slow' })
       if (error.status === 503 || error.status === 504) return json(503, { error: 'busy' })
       if (error.status === 413) return json(413, { error: 'too_large' })
+      // Google's content filter refused it: retrying cannot help, so say what happened.
+      if (isBlockedByFilter(error)) {
+        console.error('Gemini blocked', task, error.message.slice(0, 120))
+        return json(422, { error: 'blocked' })
+      }
       console.error('Gemini error', error.status, error.message)
       return json(502, { error: 'upstream', status: error.status, detail: error.message.slice(0, 200) })
     }

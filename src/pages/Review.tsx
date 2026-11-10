@@ -21,10 +21,41 @@ const GRADES: Array<{ grade: Grade; label: string; key: string }> = [
 /** The Tekrar tab: today's reviews, and next to them "Mola" (games and the focus timer). */
 export function Review() {
   const [params] = useSearchParams()
-  // A review started from a note or a course stays focused on it; the switch is for the tab itself.
-  const scoped = !!(params.get('not') || params.get('ders'))
+  // A review started from a note or a course page stays focused on it; the switch is for the tab
+  // itself. A course picked on this tab (secim=1) keeps the tab's switch and course picker.
+  const picked = params.get('secim') === '1'
+  const scoped = !!(params.get('not') || (params.get('ders') && !picked))
   if (!scoped && params.get('bolum') === 'mola') return <Mola />
-  return <ReviewSession showSwitch={!scoped} />
+  // A new course starts a new session (the queue is fixed when a session starts).
+  return <ReviewSession key={`${params.get('not') ?? ''}|${params.get('ders') ?? ''}`} showSwitch={!scoped} />
+}
+
+/**
+ * "Hangi ders?": on the Tekrar tab, today's cards per course, so the student can review one course
+ * instead of everything mixed. Shown when cards from more than one course are waiting.
+ */
+function CoursePicker({ selected }: { selected: string | null }) {
+  const store = useStore()
+  const [, setParams] = useSearchParams()
+  const due = dueCards(store.data.cards)
+  const counts = new Map<string, number>()
+  for (const c of due) counts.set(c.courseId, (counts.get(c.courseId) ?? 0) + 1)
+  const courses = store.data.courses.filter((c) => counts.has(c.id)).sort((a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0))
+  if (courses.length < 2 && !selected) return null
+  const pick = (id: string | null) => setParams(id ? { ders: id, secim: '1' } : {}, { replace: true })
+  return (
+    <div className="review-courses" role="group" aria-label="Hangi dersi tekrar edeceksin?">
+      <button type="button" className="review-course" aria-pressed={!selected} onClick={() => pick(null)}>
+        Tümü <span className="tab-count">{due.length}</span>
+      </button>
+      {courses.map((c) => (
+        <button key={c.id} type="button" className="review-course" aria-pressed={selected === c.id} onClick={() => pick(c.id)}>
+          <span className="course-swatch" style={{ background: c.color, width: 9, height: 9 }} aria-hidden />
+          {c.name} <span className="tab-count">{counts.get(c.id)}</span>
+        </button>
+      ))}
+    </div>
+  )
 }
 
 function ReviewSession({ showSwitch }: { showSwitch: boolean }) {
@@ -110,13 +141,18 @@ function ReviewSession({ showSwitch }: { showSwitch: boolean }) {
     if (queue.length && !card) setQueue((q) => q.slice(1))
   }, [queue, card])
 
-  const back = noteId ? `/not/${noteId}?sekme=kartlar` : courseId ? `/ders/${courseId}` : '/'
+  const picked = params.get('secim') === '1'
+  const back = noteId ? `/not/${noteId}?sekme=kartlar` : courseId && !picked ? `/ders/${courseId}` : '/'
+  const picker = showSwitch && !noteId ? <CoursePicker selected={courseId} /> : null
 
   if (!card) {
     return (
       <div className="page page-narrow">
         {showSwitch ? (
-          <ReviewSwitch active="tekrar" />
+          <>
+            <ReviewSwitch active="tekrar" />
+            {picker}
+          </>
         ) : (
           <Link to={back} className="back-link">
             <ArrowLeft size={16} /> Geri
@@ -172,6 +208,7 @@ function ReviewSession({ showSwitch }: { showSwitch: boolean }) {
       <div className="review">
         <h1 className="sr-only">Kart tekrarı</h1>
         {showSwitch && <ReviewSwitch active="tekrar" />}
+        {picker}
         <div className="section-head">
           <Link to={back} className="back-link">
             <ArrowLeft size={16} /> Bitir

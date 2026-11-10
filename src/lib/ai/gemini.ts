@@ -201,6 +201,10 @@ export async function callGemini(options: {
   }
 
   // 4. Standard Structured JSON / Text Generation
+  // Course material covers disasters, injuries, medicine, crime and law. With the default filters a
+  // lecture on earthquake casualties could be refused as "dangerous"; only clearly harmful content
+  // is blocked here. (Google's own PROHIBITED_CONTENT filter cannot be turned off; see generate.ts.)
+  const safetySettings = STUDY_SAFETY_SETTINGS
   const generationConfig: Record<string, unknown> = {
     responseMimeType: 'application/json',
     maxOutputTokens: 32768,
@@ -222,6 +226,7 @@ export async function callGemini(options: {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: buildUserParts(user) }],
+        safetySettings,
         generationConfig,
       }),
       signal: AbortSignal.timeout(timeoutMs),
@@ -255,6 +260,15 @@ export async function callGemini(options: {
   if (!text) throw new GeminiError(`empty response (${candidate?.finishReason ?? 'unknown'})`, 502)
   return text
 }
+
+/** Safety thresholds for study tasks: block only content Google rates as highly likely harmful. */
+export const STUDY_SAFETY_SETTINGS = ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT'].map((category) => ({
+  category,
+  threshold: 'BLOCK_ONLY_HIGH',
+}))
+
+/** True when Google refused the content itself (a filter), so trying again cannot help. */
+export const isBlockedByFilter = (error: { message: string }) => /^blocked:|\((SAFETY|PROHIBITED_CONTENT|BLOCKLIST|SPII|IMAGE_SAFETY)\)/.test(error.message)
 
 /** Statuses where trying the same model again can help. Timeouts (504) skip straight to the next model. */
 const RETRYABLE = new Set([500, 502, 503])

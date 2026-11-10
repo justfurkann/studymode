@@ -1378,6 +1378,46 @@ test('Free+: Premium’u biten hesabın Free+ seçimi ücretsize döner', async 
   await expect(page.getByRole('button', { name: /Yapay zekâ/ })).toContainText('Ücretsiz yapay zekâ')
 })
 
+test('Tekrar: bekleyen kartlar dersler arasında seçilebilir; seçilen ders yalnızca kendi kartlarını getirir', async ({ page }) => {
+  const T = '2026-10-01T00:00:00Z'
+  const uid = 'aaaaaaaa-0000-0000-0000-000000000011'
+  const fiz = { id: 'cccccccc-0000-0000-0000-0000000000a1', user_id: uid, name: 'Fizyoloji', color: '#e5484d', exam_date: null, created_at: T, updated_at: T }
+  const kim = { ...fiz, id: 'cccccccc-0000-0000-0000-0000000000a2', name: 'Kimya', color: '#3ccf91' }
+  const card = (n: number, course: typeof fiz, front: string) => ({ id: `eeeeeeee-0000-0000-0000-0000000000${String(n).padStart(2, '0')}`, user_id: uid, course_id: course.id, note_id: null, front, back: 'Cevap', source: null, due: T, interval: 0, ease: 2.5, reps: 0, lapses: 0, created_at: T, updated_at: T })
+  const cards = [card(1, fiz, 'Kalp kaç odalıdır?'), card(2, fiz, 'Sol karıncık ne yapar?'), card(3, fiz, 'Nabız nedir?'), card(4, kim, 'Mol nedir?'), card(5, kim, 'pH neyi ölçer?')]
+  await signedInAs(page, 'normal', {}, { courses: [fiz, kim], cards })
+  await page.goto('/tekrar')
+  const picker = page.getByRole('group', { name: 'Hangi dersi tekrar edeceksin?' })
+  await expect(picker.getByRole('button', { name: /Tümü/ })).toContainText('5')
+  await expect(picker.getByRole('button', { name: /Fizyoloji/ })).toContainText('3')
+  await expect(picker.getByRole('button', { name: /Kimya/ })).toContainText('2')
+  await picker.getByRole('button', { name: /Kimya/ }).click()
+  await expect(page).toHaveURL(/ders=cccccccc-0000-0000-0000-0000000000a2/)
+  await expect(page.getByText('Kimya · 2 kart kaldı')).toBeVisible()
+  await expect(page.locator('.flashcard .front')).toHaveText(/Mol nedir\?|pH neyi ölçer\?/)
+  // The tab stays a tab: the Tekrar / Mola switch and the picker are still there.
+  await expect(picker.getByRole('button', { name: /Kimya/ })).toHaveAttribute('aria-pressed', 'true')
+  await picker.getByRole('button', { name: /Tümü/ }).click()
+  await expect(page.getByText(/^5 kart kaldı/)).toBeVisible()
+})
+
+test('Google içeriği filtreye takarsa kullanıcı “Sunucu hata verdi” değil, ne olduğunu ve ne yapacağını görür', async ({ page }) => {
+  const tinyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==', 'base64')
+  await signedInAs(page, 'normal')
+  let calls = 0
+  await page.route('**/api/generate', (route) => {
+    calls += 1
+    return route.fulfill({ status: 422, json: { error: 'blocked' } })
+  })
+  await page.goto('/not-ekle')
+  await page.getByLabel('Not dosyası').setInputFiles({ name: 'sayfa.png', mimeType: 'image/png', buffer: tinyPng })
+  const alert = page.getByRole('alert').filter({ hasText: 'güvenlik filtresine' })
+  await expect(alert).toBeVisible()
+  await expect(alert).toContainText('Tekrar denemek işe yaramaz')
+  await expect(page.getByText(/Sunucu hata verdi/)).toHaveCount(0)
+  expect(calls).toBe(1)
+})
+
 test('Fosfor: ask about the open note’s course, with its notes; the conversation stays per course; phone layout', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   const T = '2026-10-01T00:00:00Z'

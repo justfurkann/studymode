@@ -228,6 +228,8 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
       too_slow: 'Yapay zekâ bu notu zamanında bitiremedi. Bir kez daha dene; yine olursa notu ikiye bölüp ayrı ayrı yükle.',
       too_large: 'İçerik çok uzun. Daha az not seçerek ya da notu bölerek dene.',
       premium_only: 'Bu özellik Premium (VIP) üyelere özel.',
+      blocked:
+        'Google’ın yapay zekâsı bu içeriği kendi güvenlik filtresine taktı (StudyMode’un ayarlayabildiği bir şey değil). Tekrar denemek işe yaramaz. Ders materyaliyse takılan bölümü çıkarıp ya da metni “Metin yapıştır” ile ekleyip dene; Basit mod da kullanılabilir.',
       bad_output: FORMAT_ERROR,
     }
     const extra = body as { status?: number; detail?: string }
@@ -689,6 +691,22 @@ export async function transcribeImages(images: TranscribeImage[], settings: Sett
         return parts.join('\n\n')
       }
       throw error
+    }
+    // Google's content filter: the same request would be refused again. With several pages, read
+    // them one by one so only the page it objects to is lost.
+    if (error instanceof AiError && error.code === 'blocked') {
+      if (images.length === 1) throw error
+      const parts: string[] = []
+      for (const img of images) {
+        try {
+          const { text } = await runTask('transcribe', { images: [img] }, settings)
+          if (text.trim()) parts.push(text.trim())
+        } catch (inner) {
+          if (!(inner instanceof AiError && inner.code === 'blocked')) throw inner
+        }
+      }
+      if (!parts.length) throw error
+      return parts.join('\n\n')
     }
     const { text } = await runTask('transcribe', { images }, settings)
     return text.trim()
