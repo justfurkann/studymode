@@ -1778,3 +1778,40 @@
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+
+/* ============ Tekrar: pick a course (pages/Review.tsx) ============ */
+.review-courses {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.review-courses::-webkit-scrollbar {
+  display: none;
+}
+.review-course {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.review-course[aria-pressed='true'] {
+  border-color: var(--ink-line);
+  background: var(--hi-soft);
+  box-shadow: 0 2px 0 var(--ink-line);
+}
+.review-course .course-swatch {
+  border-radius: 50%;
+}

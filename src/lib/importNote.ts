@@ -219,6 +219,8 @@ export function preloadNoteReaders() {
 async function extractPdfText(file: File, options?: NoteImportOptions): Promise<string> {
   let loadingTask: import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentLoadingTask | undefined
   let firstFailure: unknown = null
+  /** Scanned pages Google's content filter refused to read. */
+  const blockedPages: number[] = []
 
   try {
     const rawBytes = await readFileBytes(file)
@@ -349,7 +351,11 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
             try {
               transcribed = await options.transcribe!(images)
             } catch (err) {
-              if (!hasSelectableText) {
+              // A page Google's content filter refuses is skipped and marked; the other pages still count.
+              if ((err as { code?: string } | null)?.code === 'blocked') {
+                blockedPages.push(...nums)
+                transcribed = nums.map((n) => `[Sayfa ${n}: yapay zekânın içerik filtresine takıldığı için okunamadı.]`).join('\n')
+              } else if (!hasSelectableText) {
                 throw new NoteImportError(err instanceof Error ? err.message : 'Taranmış PDF sayfaları okunamadı.')
               }
               // If the PDF already has selectable text on other pages, don't discard the whole document
@@ -371,7 +377,12 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
       }
     }
 
-    return pages.filter(Boolean).join('\n\n')
+    const text = pages.filter(Boolean).join('\n\n')
+    // Nothing but "could not be read" lines: say so instead of saving an empty note.
+    if (blockedPages.length && !text.replace(/\[Sayfa \d+: [^\]]*\]/g, '').trim()) {
+      throw new NoteImportError('Bu PDF’in sayfaları yapay zekânın içerik filtresine takıldı; okunamadı. Metnini kopyalayıp “Metin yapıştır” ile eklemeyi dene.')
+    }
+    return text
   } catch (error) {
     if (error instanceof NoteImportError || error instanceof StaleVersionError) throw error
     if (error instanceof Error && error.name === 'PasswordException') {

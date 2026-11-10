@@ -37,3 +37,20 @@ describe('thinking level per model', () => {
     expect((f as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(1)
   })
 })
+
+describe('content filters', () => {
+  it('asks Google to block only clearly harmful content, so course material on disasters or medicine gets through', async () => {
+    const f = vi.fn(async () => ok('{"a":1}')) as unknown as typeof fetch
+    await callGemini({ apiKey: 'k', model: 'gemini-3.5-flash-lite', system: 's', user: 'u', fetchImpl: f })
+    const sent = JSON.parse(String((f as unknown as { mock: { calls: Array<[unknown, RequestInit]> } }).mock.calls[0][1].body)).safetySettings as Array<{ category: string; threshold: string }>
+    expect(sent.map((s) => s.category)).toEqual(['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT'])
+    expect(sent.every((s) => s.threshold === 'BLOCK_ONLY_HIGH')).toBe(true)
+  })
+  it('knows a filter refusal from other errors', async () => {
+    const { isBlockedByFilter } = await import('./gemini')
+    expect(isBlockedByFilter({ message: 'blocked: PROHIBITED_CONTENT' })).toBe(true)
+    expect(isBlockedByFilter({ message: 'empty response (SAFETY)' })).toBe(true)
+    expect(isBlockedByFilter({ message: 'empty response (STOP)' })).toBe(false)
+    expect(isBlockedByFilter({ message: 'timeout: aborted' })).toBe(false)
+  })
+})
