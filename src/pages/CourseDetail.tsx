@@ -3,7 +3,7 @@ import { checkMerged, mergeContents, mergedTitle, mergeMessage } from '../lib/me
 import type { Note } from '../lib/types'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { FinishedExamRow, NextExamPrompt } from '../components/FinishedExams'
+import { FinishedExamRow } from '../components/FinishedExams'
 import { CourseForm } from '../components/CourseForm'
 import { ShareCourse } from '../components/ShareCourse'
 import { examFormatLabel, examPercent } from '../components/ExamReview'
@@ -356,10 +356,9 @@ function CourseExams({ courseId, hasNotes, onEdit }: { courseId: string; hasNote
             </div>
           )
         })}
-        {past.map((exam) => (
-          <FinishedExamRow key={exam.id} exam={exam} course={course} />
+        {past.map((exam, i) => (
+          <FinishedExamRow key={exam.id} exam={exam} course={course} nextKind={i === 0 ? next : null} />
         ))}
-        {next && <NextExamPrompt course={course} kind={next} />}
       </div>
     </section>
   )

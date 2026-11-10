@@ -5986,94 +5986,126 @@ a.prem-hit:hover {
   flex-direction: column;
 }
 
-.exam-done,
-.exam-next {
+.exam-done {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 18px;
+  padding: 10px 18px;
   border-bottom: 1px solid var(--border);
 }
 
-.exam-done:last-child,
-.exam-next:last-child {
+.exam-done:last-child {
   border-bottom: 0;
 }
 
-.exam-done-main,
-.exam-next-text {
+.exam-done-main {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
-.exam-done-main .grow,
-.exam-next-text .grow {
+.exam-done-text {
   flex: 1;
   min-width: 0;
 }
 
-.exam-next-text .btn {
+.exam-done-text .title,
+.exam-done-text .title a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exam-done-text .title a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.exam-done-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 2px;
+}
+
+.exam-done-meta .chip {
+  font-size: 0.75rem;
+  padding: 1px 8px;
+}
+
+.exam-done-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
 }
 
-.exam-next-fields[hidden] {
-  display: none;
+.exam-done-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.exam-done-form .semester-date {
+  flex: 1 1 120px;
+}
+
+.exam-grade-input {
+  width: 96px;
+}
+
+.exam-notice {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.exam-notice-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+@media (max-width: 600px) {
+  .exam-done {
+    padding: 10px 14px;
+  }
+
+  /* Two buttons do not fit beside the name on a phone: they go under it. */
+  .exam-done-main {
+    flex-wrap: wrap;
+  }
+
+  .exam-done-text {
+    flex-basis: 100%;
+  }
+
+  .exam-done-actions {
+    width: 100%;
+  }
+
+  .exam-done-actions .btn-icon:last-child {
+    margin-left: auto;
+  }
 }
 
 /* The course page's exam rows sat on the panel's edge; they share the same side padding now. */
 .exam-list .exam-list-item {
   padding-left: 18px;
   padding-right: 18px;
-}
-
-.exam-done-main .title a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: inherit;
-  text-decoration: none;
-}
-
-.exam-done-main .chip {
-  flex-shrink: 0;
-}
-
-.exam-done-form,
-.exam-next-fields {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding-left: 30px;
-}
-
-.exam-next-fields {
-  align-items: flex-end;
-}
-
-.exam-done-form .input {
-  width: 140px;
-}
-
-.exam-next-fields .semester-date {
-  flex: 1 1 130px;
-}
-
-@media (max-width: 600px) {
-  .exam-done-main,
-  .exam-next-text {
-    flex-wrap: wrap;
-  }
-
-  .exam-done-form,
-  .exam-next-fields {
-    padding-left: 0;
-  }
-
-  .exam-done-form .input {
-    flex: 1 1 120px;
-    width: auto;
-  }
 }

@@ -3,10 +3,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { examPercent } from '../components/ExamReview'
 import { ExamFocusCard } from '../components/ExamFocusCard'
-import { FinishedExamRow, FinishedExams } from '../components/FinishedExams'
+import { FinishedExamRow, FinishedExams, pendingExamAsks } from '../components/FinishedExams'
+import { useHiddenExamAsks } from '../lib/hiddenExams'
 import { SemesterEditor } from '../components/SemesterEditor'
 import { useToast } from '../components/ui'
-import { cleanExamTime, examCountdown, examName, examsAwaitingGrade, examsForCourse, finishedExams, upcomingExams } from '../lib/courseExams'
+import { cleanExamTime, examCountdown, examName, examsForCourse, finishedExams, upcomingExams } from '../lib/courseExams'
 import { buildIcs, examReadiness, pickExamFocus } from '../lib/examFocus'
 import { daysUntil } from '../lib/srs'
 import { useStore } from '../lib/store'
@@ -38,7 +39,8 @@ export function ExamHub() {
   const focus = pickExamFocus(data, now)
 
   // Exams still waiting for a grade are shown in the open; the rest go under "Geçmiş sınavlar".
-  const waiting = new Set(examsAwaitingGrade(data, now).map((e) => e.exam.id))
+  const hidden = useHiddenExamAsks()
+  const waiting = new Set(pendingExamAsks(data, hidden, now).exams.map((e) => e.exam.id))
   const past = finished.filter((e) => !waiting.has(e.exam.id))
   const withoutExam = data.courses.filter((c) => !examsForCourse(data, c.id).length)
 
