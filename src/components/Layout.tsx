@@ -22,6 +22,7 @@ import { Assistant } from './Assistant'
 import { PendingCodeReturn } from '../pages/RedeemLink'
 import { PremiumNudge } from './PremiumNudge'
 import { AiChoiceSync } from './AiChoiceSync'
+import { pageTitle } from '../lib/pageTitle'
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -38,7 +39,12 @@ export function Layout() {
   const { data, mode, session, saveError, clearSaveError } = useStore()
   const due = dueCards(data.cards).length
   const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
+  // Each tab says where it is ("Biyoloji · Hücre zarı"), so several open tabs can be told apart.
+  useEffect(() => {
+    const title = pageTitle(pathname, search, data.courses, data.notes)
+    if (title) document.title = title
+  }, [pathname, search, data.courses, data.notes])
   const [confirmed, setConfirmed] = useState(openedFromConfirmationEmail)
   const { unlocked } = useAchievements()
   const found = Object.keys(unlocked).length
