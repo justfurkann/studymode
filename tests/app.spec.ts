@@ -92,6 +92,8 @@ test('course with exam, pasted note in simple mode, spaced review and persistenc
   await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
 
   await expect(page.getByRole('heading', { level: 1, name: 'Hücre ve organeller' })).toBeVisible()
+  // The browser tab names the course first, so tabs of different courses can be told apart.
+  await expect(page).toHaveTitle('Biyoloji 101 · Hücre ve organeller · StudyMode')
   await expect(page.getByText('Basit mod', { exact: true })).toBeVisible()
 
   // Add a card by hand from the card manager.
