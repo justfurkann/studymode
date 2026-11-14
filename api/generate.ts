@@ -166,9 +166,9 @@ export async function handleGenerate(
   // Free+'s thinking model took long per page and used up the Free+ allowance on a scanned PDF.
   const fastOnly = task === 'transcribe'
   const wantsPlus = !fastOnly && (body.engine === 'plus' || premium || (plusRole && body.engine !== 'free'))
+  const oidc = request.headers.get('x-vercel-oidc-token') ?? env.VERCEL_OIDC_TOKEN
   if (wantsPlus && vertexConfigured(env)) {
     const plus = await plusCall('plus_quota', auth, fetchImpl)
-    const oidc = request.headers.get('x-vercel-oidc-token') ?? env.VERCEL_OIDC_TOKEN
     if (plus?.eligible && plus.allowed && oidc) {
       try {
         const target = vertexTarget(env, await vertexAccessToken(env, oidc, fetchImpl))
@@ -194,6 +194,25 @@ export async function handleGenerate(
   // Daily allowance per person (normal 40, VIP 150, admin unlimited), checked before calling Gemini.
   if (before && !before.allowed) return json(429, { error: 'daily_limit', quota: before })
 
+  // When Google's free tier is full (a big scanned PDF sends many pages at once) or busy, the same
+  // request goes to Vertex AI on our own Google Cloud account instead of failing. Light models first;
+  // it counts as a normal free request (the daily allowance still applies), not as Free+.
+  const vertexBackup = async (reason: number): Promise<Response | null> => {
+    if (!vertexConfigured(env) || !oidc || left() < 8_000) return null
+    try {
+      const target = vertexTarget(env, await vertexAccessToken(env, oidc, fetchImpl))
+      const deadlineMs = left() - 1_000
+      const { text, model } = await callGeminiWithFallback({ target, models: [...new Set([...models, ...vertexModels(env, task)])], system: jsonModeSystem(task), user, fetchImpl, sleep, timeoutMs: Math.min(22_000, deadlineMs), deadlineMs })
+      const result = parseTaskOutput(task, text)
+      if (!result) return null
+      console.info('free AI', reason, '- answered on Vertex', task, model)
+      return json(200, { result, quota: (await quotaCall('consume_ai', auth, fetchImpl)) ?? undefined })
+    } catch (error) {
+      console.error('Vertex backup failed', task, error instanceof Error ? error.message.slice(0, 200) : error)
+      return null
+    }
+  }
+
   try {
     // One retry if the model returns JSON in the wrong shape.
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -207,6 +226,11 @@ export async function handleGenerate(
     }
     return json(502, { error: 'bad_output' })
   } catch (error) {
+    if (error instanceof GeminiError && (error.status === 429 || error.status === 503)) {
+      const backup = await vertexBackup(error.status)
+      if (backup) return backup
+      console.error('free AI full, no backup', error.status, task)
+    }
     if (error instanceof GeminiError) {
       if (error.status === 429) return json(429, { error: 'quota' })
       if (error.status === 504 && left() < 6_000) return json(504, { error: 'too_slow' })

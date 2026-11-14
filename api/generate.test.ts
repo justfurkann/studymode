@@ -320,6 +320,47 @@ describe('Free+ on Vertex AI', () => {
     expect(calls(f).some((u) => u.includes('generativelanguage'))).toBe(true)
   })
 
+  it('when the free key is full, the request is answered on Vertex instead of failing (counted as a free request)', async () => {
+    resetVertexToken()
+    const vertexUrls: string[] = []
+    const f = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const href = String(url)
+      if (href.includes('/rpc/ai_quota')) return new Response(JSON.stringify({ role: 'normal', used: 0, limit: 40, allowed: true }))
+      if (href.includes('/rpc/consume_ai')) return new Response(JSON.stringify({ role: 'normal', used: 1, limit: 40, allowed: true }))
+      if (href.includes('generativelanguage.googleapis.com')) return gemini('', 429)
+      if (href.includes('aiplatform.googleapis.com')) {
+        vertexUrls.push(href)
+        return gemini(JSON.stringify({ text: 'Sayfa metni' }))
+      }
+      return (plusFetch({ plus: { eligible: false, allowed: false, used: 0, limit: 0, site_used: 0, site_limit: 0 } }) as unknown as (u: string | URL | Request, i?: RequestInit) => Promise<Response>)(url, init)
+    }) as unknown as typeof fetch
+    const req = new Request('https://studymode.fun/api/generate', {
+      method: 'POST',
+      headers: { authorization: 'Bearer user-token', 'content-type': 'application/json', 'x-vercel-oidc-token': 'vercel-oidc' },
+      body: JSON.stringify({ task: 'transcribe', input: { images: [{ mimeType: 'image/jpeg', data: 'aGVsbG8=' }] } }),
+    })
+    const res = await handleGenerate(req, plusEnv, f, async () => undefined)
+    expect(res.status).toBe(200)
+    expect(vertexUrls.length).toBe(1)
+    // The light free model is tried first on Vertex too.
+    expect(vertexUrls[0]).toContain('/models/gemini-3.5-flash-lite:generateContent')
+    expect(calls(f).some((u) => u.includes('consume_ai'))).toBe(true)
+    expect(calls(f).some((u) => u.includes('consume_plus'))).toBe(false)
+  })
+
+  it('still says the free AI is full when there is no Vertex to fall back on', async () => {
+    const f = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url)
+      if (href.includes('/rpc/ai_quota')) return new Response(JSON.stringify({ role: 'normal', used: 0, limit: 40, allowed: true }))
+      if (href.includes('/auth/v1/user')) return new Response('{}')
+      if (href.includes('generativelanguage.googleapis.com')) return gemini('', 429)
+      throw new Error(`unexpected fetch ${href}`)
+    }) as unknown as typeof fetch
+    const res = await handleGenerate(plusRequest(), { GEMINI_API_KEY: 'server-key' }, f, async () => undefined)
+    expect(res.status).toBe(429)
+    expect((await res.json()).error).toBe('quota')
+  })
+
   it('falls back to the free AI when Google Cloud refuses, so nobody is left without an answer', async () => {
     resetVertexToken()
     const f = plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 }, sts: 403 })
