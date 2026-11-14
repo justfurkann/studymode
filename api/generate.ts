@@ -167,6 +167,32 @@ export async function handleGenerate(
   const fastOnly = task === 'transcribe'
   const wantsPlus = !fastOnly && (body.engine === 'plus' || premium || (plusRole && body.engine !== 'free'))
   const oidc = request.headers.get('x-vercel-oidc-token') ?? env.VERCEL_OIDC_TOKEN
+  // When Google's free tier is full (a big scanned PDF sends many pages at once) or busy, the same
+  // request goes to Vertex AI on our own Google Cloud account instead of failing. Light models first;
+  // it counts as a normal free request (the daily allowance still applies), not as Free+.
+  const vertexBackup = async (reason: number | string, counted = true): Promise<Response | null> => {
+    if (!vertexConfigured(env) || !oidc || left() < 8_000) return null
+    try {
+      const target = vertexTarget(env, await vertexAccessToken(env, oidc, fetchImpl))
+      const deadlineMs = left() - 1_000
+      const { text, model } = await callGeminiWithFallback({ target, models: [...new Set([...models, ...vertexModels(env, task)])], system: jsonModeSystem(task), user, fetchImpl, sleep, timeoutMs: Math.min(22_000, deadlineMs), deadlineMs })
+      const result = parseTaskOutput(task, text)
+      if (!result) return null
+      console.info('free AI', reason, '- answered on Vertex', task, model)
+      if (!counted) return json(200, { result, engine: 'plus', model })
+      return json(200, { result, quota: (await quotaCall('consume_ai', auth, fetchImpl)) ?? undefined })
+    } catch (error) {
+      console.error('Vertex backup failed', task, error instanceof Error ? error.message.slice(0, 200) : error)
+      return null
+    }
+  }
+
+  // VIP, admin and Premium: page pictures are read on Vertex too (light model, a few seconds a page),
+  // never on the shared free key, and they use up neither Free+ nor the daily allowance.
+  if (fastOnly && plusRole) {
+    const answered = await vertexBackup('vip', false)
+    if (answered) return answered
+  }
   if (wantsPlus && vertexConfigured(env)) {
     const plus = await plusCall('plus_quota', auth, fetchImpl)
     if (plus?.eligible && plus.allowed && oidc) {
@@ -193,25 +219,6 @@ export async function handleGenerate(
 
   // Daily allowance per person (normal 40, VIP 150, admin unlimited), checked before calling Gemini.
   if (before && !before.allowed) return json(429, { error: 'daily_limit', quota: before })
-
-  // When Google's free tier is full (a big scanned PDF sends many pages at once) or busy, the same
-  // request goes to Vertex AI on our own Google Cloud account instead of failing. Light models first;
-  // it counts as a normal free request (the daily allowance still applies), not as Free+.
-  const vertexBackup = async (reason: number): Promise<Response | null> => {
-    if (!vertexConfigured(env) || !oidc || left() < 8_000) return null
-    try {
-      const target = vertexTarget(env, await vertexAccessToken(env, oidc, fetchImpl))
-      const deadlineMs = left() - 1_000
-      const { text, model } = await callGeminiWithFallback({ target, models: [...new Set([...models, ...vertexModels(env, task)])], system: jsonModeSystem(task), user, fetchImpl, sleep, timeoutMs: Math.min(22_000, deadlineMs), deadlineMs })
-      const result = parseTaskOutput(task, text)
-      if (!result) return null
-      console.info('free AI', reason, '- answered on Vertex', task, model)
-      return json(200, { result, quota: (await quotaCall('consume_ai', auth, fetchImpl)) ?? undefined })
-    } catch (error) {
-      console.error('Vertex backup failed', task, error instanceof Error ? error.message.slice(0, 200) : error)
-      return null
-    }
-  }
 
   try {
     // One retry if the model returns JSON in the wrong shape.
