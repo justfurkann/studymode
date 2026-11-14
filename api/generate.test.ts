@@ -307,17 +307,27 @@ describe('Free+ on Vertex AI', () => {
     expect(calls(f).some((u) => u.includes('consume_ai'))).toBe(true)
   })
 
-  it('reads page pictures (transcribe) on the fast free model, never on Free+', async () => {
+  it('reads VIP page pictures on the light Vertex model, using up neither Free+ nor the daily allowance', async () => {
     resetVertexToken()
-    const f = plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 } })
+    const vertexUrls: string[] = []
+    const f = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const href = String(url)
+      if (href.includes('aiplatform.googleapis.com')) {
+        vertexUrls.push(href)
+        return gemini(JSON.stringify({ text: 'Sayfa metni' }))
+      }
+      return (plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 } }) as unknown as (u: string | URL | Request, i?: RequestInit) => Promise<Response>)(url, init)
+    }) as unknown as typeof fetch
     const request = new Request('https://studymode.fun/api/generate', {
       method: 'POST',
       headers: { authorization: 'Bearer user-token', 'content-type': 'application/json', 'x-vercel-oidc-token': 'vercel-oidc' },
-      body: JSON.stringify({ task: 'transcribe', input: { images: [{ mimeType: 'image/jpeg', data: 'aGVsbG8=' }] }, engine: 'plus' }),
+      body: JSON.stringify({ task: 'transcribe', input: { images: [{ mimeType: 'image/jpeg', data: 'aGVsbG8=' }] } }),
     })
-    await handleGenerate(request, plusEnv, f)
-    expect(calls(f).some((u) => u.includes('aiplatform') || u.includes('consume_plus'))).toBe(false)
-    expect(calls(f).some((u) => u.includes('generativelanguage'))).toBe(true)
+    const res = await handleGenerate(request, plusEnv, f)
+    expect((await res.json()).result).toEqual({ text: 'Sayfa metni' })
+    expect(vertexUrls[0]).toContain('/models/gemini-3.5-flash-lite:generateContent')
+    expect(calls(f).some((u) => u.includes('generativelanguage'))).toBe(false)
+    expect(calls(f).some((u) => u.includes('consume_plus') || u.includes('consume_ai'))).toBe(false)
   })
 
   it('when the free key is full, the request is answered on Vertex instead of failing (counted as a free request)', async () => {
