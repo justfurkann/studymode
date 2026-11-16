@@ -218,7 +218,9 @@ export async function handleGenerate(
   }
 
   // Daily allowance per person (normal 40, VIP 150, admin unlimited), checked before calling Gemini.
-  if (before && !before.allowed) return json(429, { error: 'daily_limit', quota: before })
+  // Reading page pictures is not counted for anyone: a scanned PDF of 50 pages used to eat a normal
+  // account's whole day before a single summary was made.
+  if (!fastOnly && before && !before.allowed) return json(429, { error: 'daily_limit', quota: before })
 
   try {
     // One retry if the model returns JSON in the wrong shape.
@@ -229,12 +231,12 @@ export async function handleGenerate(
       const { text } = await callGeminiWithFallback({ apiKey, models, system: jsonModeSystem(task), user, fetchImpl, sleep, timeoutMs: Math.min(timing.timeoutMs ?? FREE_ATTEMPT_MS, deadlineMs), deadlineMs })
       const result = parseTaskOutput(task, text)
       // Only a successful answer is counted.
-      if (result) return json(200, { result, quota: (await quotaCall('consume_ai', auth, fetchImpl)) ?? undefined })
+      if (result) return json(200, fastOnly ? { result } : { result, quota: (await quotaCall('consume_ai', auth, fetchImpl)) ?? undefined })
     }
     return json(502, { error: 'bad_output' })
   } catch (error) {
     if (error instanceof GeminiError && (error.status === 429 || error.status === 503)) {
-      const backup = await vertexBackup(error.status)
+      const backup = await vertexBackup(error.status, !fastOnly)
       if (backup) return backup
       console.error('free AI full, no backup', error.status, task)
     }

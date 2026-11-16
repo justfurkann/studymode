@@ -97,6 +97,14 @@ describe('handleGenerate', () => {
     ])
   })
 
+  it('reads page pictures for a normal account without counting them, even when the day is used up', async () => {
+    const fetchImpl = fakeFetch({ quota: { role: 'normal', used: 40, limit: 40, allowed: false }, gemini: [gemini(JSON.stringify({ text: 'Sayfa' }))] })
+    const res = await handleGenerate(request({ task: 'transcribe', input: { images: [{ mimeType: 'image/jpeg', data: 'aGVsbG8=' }] } }), env, fetchImpl)
+    expect(res.status).toBe(200)
+    const urls = (fetchImpl as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((c) => String(c[0]))
+    expect(urls.some((u) => u.includes('consume_ai'))).toBe(false)
+  })
+
   it('retries once when the model returns the wrong shape', async () => {
     const res = await handleGenerate(
       request({ task: 'study', input: { title: 't', text: 'x' } }),
@@ -354,8 +362,8 @@ describe('Free+ on Vertex AI', () => {
     expect(vertexUrls.length).toBe(1)
     // The light free model is tried first on Vertex too.
     expect(vertexUrls[0]).toContain('/models/gemini-3.5-flash-lite:generateContent')
-    expect(calls(f).some((u) => u.includes('consume_ai'))).toBe(true)
-    expect(calls(f).some((u) => u.includes('consume_plus'))).toBe(false)
+    // Page reading is never counted, not even on the backup.
+    expect(calls(f).some((u) => u.includes('consume_ai') || u.includes('consume_plus'))).toBe(false)
   })
 
   it('still says the free AI is full when there is no Vertex to fall back on', async () => {
