@@ -1,22 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import {
-  BIN,
   bestLevel,
+  binForThrow,
+  binPoints,
+  binX,
   canMerge,
   dailyParagraph,
   drawerStuck,
+  flickLaunch,
   HIGHLIGHT_PARAGRAPHS,
-  aimDots,
-  launchFromPull,
-  MAX_PULL,
-  PULL_POWER,
   mergeItems,
   newDrawer,
   parseParagraph,
+  aimFromPull,
+  powerFromPull,
+  project,
+  randomWind,
   scoreHighlight,
-  simulateThrow,
+  simulateFlick,
   spawnItem,
-  tossPoints,
+  type Bin,
   type Drawer,
 } from './miniGames'
 
@@ -68,56 +71,63 @@ describe('Fosforla altını çiz', () => {
   })
 })
 
-describe('Kâğıt top', () => {
-  it('a good throw goes in when there is no wind, and the same throw misses in a strong wind', () => {
-    let good: { vx: number; vy: number } | null = null
-    for (let vy = -500; vy >= -1000 && !good; vy -= 10) {
-      for (let vx = 60; vx <= 400 && !good; vx += 5) if (simulateThrow(vx, vy, 0) === 'in') good = { vx, vy }
+describe('Kâğıt top (fiske)', () => {
+  const still = (x: number, z: number): Bin => ({ x, z, sway: 0, speed: 0, phase: 0 })
+  /** Searches power and aim for a throw that goes in. */
+  const findHit = (bin: Bin, wind = 0) => {
+    for (let p = 0; p <= 1; p += 0.01) for (let a = -1; a <= 1; a += 0.02) if (simulateFlick(p, a, bin, wind) === 'in') return { p, a }
+    return null
+  }
+
+  it('every bin the game can place can be hit with some power and aim, also with wind', () => {
+    for (let i = 0; i < 10; i += 1) {
+      const bin = binForThrow(i, () => 0.99)
+      expect(findHit(bin), `throw ${i}`).not.toBeNull()
+      expect(findHit(binForThrow(i, () => 0.01), 1.4), `throw ${i} far left, wind`).not.toBeNull()
     }
-    expect(good).not.toBeNull()
-    expect(simulateThrow(good!.vx, good!.vy, -160)).toBe('out')
   })
 
-  it('a throw that is far too short or too long misses', () => {
-    expect(simulateThrow(40, -500, 0)).toBe('out')
-    expect(simulateThrow(800, -900, 0)).toBe('out')
+  it('a straight throw at a bin straight ahead needs the right power: too weak or too strong misses', () => {
+    const bin = still(0, 3)
+    const hit = findHit(bin)!
+    expect(Math.abs(hit.a)).toBeLessThan(0.1)
+    expect(simulateFlick(0, 0, bin)).toBe('out')
+    expect(simulateFlick(1, 0, bin)).toBe('out')
   })
 
-  it('pulling back and down throws up and forward; a tiny or upward pull does not throw', () => {
-    const throwIt = launchFromPull(-60, 80)!
-    expect(throwIt.vx).toBeGreaterThan(0)
-    expect(throwIt.vy).toBeLessThan(0)
-    expect(launchFromPull(5, 5)).toBeNull()
-    expect(launchFromPull(-40, -80)).toBeNull()
-    const capped = launchFromPull(-300, 400)!
-    expect(Math.hypot(capped.vx, capped.vy)).toBeCloseTo(MAX_PULL * PULL_POWER, 0)
+  it('aiming left sends the paper left, and wind pushes it sideways', () => {
+    expect(flickLaunch(0.5, -1).vx).toBeLessThan(0)
+    expect(flickLaunch(0.5, 1).vx).toBeGreaterThan(0)
+    const bin = still(0, 3)
+    const hit = findHit(bin)!
+    expect(simulateFlick(hit.p, hit.a, bin, 1.4)).toBe('out')
   })
 
-  it('some pull within reach puts the ball in the bin when there is no wind', () => {
-    let found = false
-    for (let dx = -10; dx >= -MAX_PULL && !found; dx -= 2) {
-      for (let dy = 10; dy <= MAX_PULL && !found; dy += 2) {
-        const v = launchFromPull(dx, dy)
-        if (v && simulateThrow(v.vx, v.vy, 0) === 'in') found = true
-      }
-    }
-    expect(found).toBe(true)
+  it('things further away are drawn smaller and higher up the screen', () => {
+    const near = project({ x: 0, y: 0, z: 2 })
+    const far = project({ x: 0, y: 0, z: 5 })
+    expect(far.scale).toBeLessThan(near.scale)
+    expect(far.y).toBeLessThan(near.y)
   })
 
-  it('aim dots start at the ball and rise first', () => {
-    const dots = aimDots(150, -700)
-    expect(dots.length).toBeGreaterThan(3)
-    expect(dots[1].y).toBeLessThan(dots[0].y)
-    expect(dots[0].x).toBeGreaterThan(64)
+  it('bins start close and still, get further, and sway at the end; far and moving bins score more', () => {
+    const first = binForThrow(0, () => 0.5)
+    const last = binForThrow(9, () => 0.5)
+    expect(first.sway).toBe(0)
+    expect(first.z).toBeLessThanOrEqual(3)
+    expect(last.sway).toBeGreaterThan(0)
+    expect(binX(last, 0)).not.toBe(binX(last, 0.8))
+    expect(binPoints(first)).toBe(1)
+    expect(binPoints({ ...last, z: 4.5 })).toBe(3)
   })
 
-  it('the bin sits inside the scene', () => {
-    expect(BIN.left).toBeLessThan(BIN.right)
-    expect(BIN.rim).toBeLessThan(BIN.bottom)
-  })
-
-  it('three in a row and more count double', () => {
-    expect(tossPoints(['in', 'in', 'in', 'in', 'out', 'in'])).toBe(1 + 1 + 2 + 2 + 1)
+  it('pulling down sets the power, sideways the aim; the first throw has no wind', () => {
+    expect(powerFromPull(-40)).toBe(0)
+    expect(powerFromPull(85)).toBeCloseTo(0.5)
+    expect(powerFromPull(999)).toBe(1)
+    expect(aimFromPull(-70)).toBeCloseTo(-0.5)
+    expect(aimFromPull(500)).toBe(1)
+    expect(randomWind(0, () => 0.99)).toBe(0)
   })
 })
 

@@ -1,6 +1,24 @@
 /* Mini games on the break page (VIP). "Fosforlu" look: navy ink outlines with a solid drop,
    grid paper, one highlighter yellow. Colours come from the tokens in global.css only. */
 
+/* The cartoon hand and the paper ball: pale on light, bright on dark so they stand out. */
+:root {
+  --mini-skin: var(--hi-soft);
+  --mini-paper: var(--surface);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --mini-skin: var(--hi);
+    --mini-paper: var(--text);
+  }
+}
+
+:root[data-theme='dark'] {
+  --mini-skin: var(--hi);
+  --mini-paper: var(--text);
+}
+
 .mini-page {
   padding-bottom: 32px;
 }
@@ -355,7 +373,7 @@
 }
 
 .art-ball {
-  fill: var(--surface);
+  fill: var(--mini-paper);
   stroke: var(--ink-line);
   stroke-width: 2;
 }
@@ -367,11 +385,6 @@
   stroke-linejoin: round;
 }
 
-.art-rim {
-  stroke: var(--ink-line);
-  stroke-width: 6;
-  stroke-linecap: round;
-}
 
 .art-wood {
   fill: var(--surface-2);
@@ -624,14 +637,9 @@
   stroke-linecap: round;
 }
 
-.toss-rim {
-  stroke: var(--ink-line);
-  stroke-width: 7;
-  stroke-linecap: round;
-}
 
 .toss-ball polygon {
-  fill: var(--surface);
+  fill: var(--mini-paper);
   stroke: var(--ink-line);
   stroke-width: 2;
   stroke-linejoin: round;
@@ -644,37 +652,12 @@
 }
 
 .toss-aim {
-  fill: var(--ink-line);
+  fill: var(--text);
   opacity: 0.55;
 }
 
-.toss-band {
-  stroke: var(--text-3);
-  stroke-width: 3;
-  stroke-dasharray: 4 5;
-  stroke-linecap: round;
-}
 
-.toss-hint-ring {
-  fill: none;
-  stroke: var(--hi);
-  stroke-width: 4;
-  animation: toss-pulse 1.4s ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
-}
 
-.toss-hint text {
-  fill: var(--text);
-  font: 700 15px var(--font-body);
-}
-
-@keyframes toss-pulse {
-  50% {
-    transform: scale(1.25);
-    opacity: 0.4;
-  }
-}
 
 .toss-flash {
   font: 800 44px var(--font-display);
@@ -698,6 +681,113 @@
   from {
     transform: scale(0.6);
   }
+}
+
+.art-wall {
+  fill: var(--surface-2);
+}
+
+.art-window {
+  stroke: var(--card-line);
+  stroke-width: 2;
+}
+
+.art-grid {
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.art-rim-3d {
+  fill: var(--ink-line);
+  stroke: var(--ink-line);
+  stroke-width: 2;
+}
+
+.art-finger-edge {
+  fill: none;
+  stroke: var(--ink-line);
+  stroke-width: 15;
+  stroke-linecap: round;
+}
+
+.art-finger {
+  fill: none;
+  stroke: var(--mini-skin);
+  stroke-width: 11;
+  stroke-linecap: round;
+}
+
+/* Fiske scene: room, floor lines, bin in perspective, the hand. */
+.toss-tags {
+  display: flex;
+  gap: 6px;
+  min-height: 28px;
+  margin: 0 0 8px;
+}
+
+.toss-grid {
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.toss-mark {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 2;
+  stroke-dasharray: 3 3;
+}
+
+.toss-hole {
+  fill: var(--ink-line);
+}
+
+.toss-rim {
+  fill: none;
+  stroke: var(--ink-line);
+  stroke-width: 3.5;
+}
+
+.toss-power-bg {
+  fill: var(--surface);
+  stroke: var(--ink-line);
+  stroke-width: 2;
+}
+
+.toss-power-fill {
+  fill: var(--hi);
+}
+
+.toss-power text,
+.toss-hint {
+  fill: var(--text);
+  font: 700 14px var(--font-body);
+}
+
+.toss-hand .finger-edge {
+  fill: none;
+  stroke: var(--ink-line);
+  stroke-width: 40;
+  stroke-linecap: round;
+}
+
+.toss-hand .finger {
+  fill: none;
+  stroke: var(--mini-skin);
+  stroke-width: 33;
+  stroke-linecap: round;
+}
+
+.toss-hand .palm {
+  fill: var(--mini-skin);
+  stroke: var(--ink-line);
+  stroke-width: 3.5;
+}
+
+.toss-hand .snap {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 3;
+  stroke-linecap: round;
 }
 
 /* ---------- Çekmece ---------- */
@@ -833,7 +923,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .toss-hint-ring,
   .toss-flash,
   .drawer-slot.is-pop .drawer-token {
     animation: none;
