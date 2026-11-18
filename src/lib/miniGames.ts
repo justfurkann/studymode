@@ -253,6 +253,25 @@ export function flickLaunch(power: number, aim: number): Paper {
 }
 
 /**
+ * 3D points along the early part of the flight arc so the player sees both the upward launch
+ * curve and sideways aim in perspective while pulling back.
+ */
+export function trajectoryPreview(power: number, aim: number, wind = 0, count = 10): Vec3[] {
+  const start = flickLaunch(power, aim)
+  const pts: Vec3[] = []
+  const step = 0.045
+  for (let i = 1; i <= count; i += 1) {
+    const t = i * step
+    const x = start.x + start.vx * t + 0.5 * wind * 0.35 * t * t
+    const y = start.y + start.vy * t - 0.5 * GRAVITY * t * t
+    const z = start.z + start.vz * t
+    if (y < PAPER_R) break
+    pts.push({ x, y, z })
+  }
+  return pts
+}
+
+/**
  * One step of flight. `t` is the time since the throw (for a swaying bin). Ends 'in' when the
  * paper drops through the rim, 'out' when it lands on the floor or leaves the room. Clipping the
  * rim bounces it off.

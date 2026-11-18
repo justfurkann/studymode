@@ -1,67 +1,109 @@
-/* Mini games on the break page (VIP). "Fosforlu" look: navy ink outlines with a solid drop,
-   grid paper, one highlighter yellow. Colours come from the tokens in global.css only. */
+/* Mini games on the break page (VIP).
+   3D Tactile "Fosforlu Masaüstü" look: deep extruded 3D surfaces, bevelled keycaps,
+   perspective room depth, and crisp navy ink outlines. */
 
-/* The cartoon hand and the paper ball: pale on light, bright on dark so they stand out. */
 :root {
-  --mini-skin: var(--hi-soft);
-  --mini-paper: var(--surface);
+  --mini-skin: #ffe6a3;
+  --mini-skin-back: #ecd086;
+  --mini-paper: #ffffff;
+  --mini-paper-mid: #ecece2;
+  --mini-paper-shade: #d5d6c8;
+  --mini-paper-deep: #b8bac8;
+  --mini-wood-outer: #e4decb;
+  --mini-wood-tray: #d4cbb4;
+  --mini-wood-slot: #ebe6d8;
+  --mini-desk-top: #e8e4d5;
+  --mini-desk-edge: #c7bfa8;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --mini-skin: var(--hi);
-    --mini-paper: var(--text);
+    --mini-skin: #ffe14d;
+    --mini-skin-back: #d4b52a;
+    --mini-paper: #f4f3ea;
+    --mini-paper-mid: #d8d7cb;
+    --mini-paper-shade: #b2b4c7;
+    --mini-paper-deep: #8589a8;
+    --mini-wood-outer: #262b4d;
+    --mini-wood-tray: #181c36;
+    --mini-wood-slot: #202544;
+    --mini-desk-top: #262b4e;
+    --mini-desk-edge: #151830;
   }
 }
 
 :root[data-theme='dark'] {
-  --mini-skin: var(--hi);
-  --mini-paper: var(--text);
+  --mini-skin: #ffe14d;
+  --mini-skin-back: #d4b52a;
+  --mini-paper: #f4f3ea;
+  --mini-paper-mid: #d8d7cb;
+  --mini-paper-shade: #b2b4c7;
+  --mini-paper-deep: #8589a8;
+  --mini-wood-outer: #262b4d;
+  --mini-wood-tray: #181c36;
+  --mini-wood-slot: #202544;
+  --mini-desk-top: #262b4e;
+  --mini-desk-edge: #151830;
 }
 
 .mini-page {
-  padding-bottom: 32px;
+  padding-bottom: 40px;
 }
 
-/* ---------- Shared pieces ---------- */
+/* ---------- Shared 3D Controls & Badges ---------- */
 
 .mini-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  padding: 5px 11px;
+  border-radius: 10px;
   border: 1.5px solid var(--border-strong);
   background: var(--surface);
   color: var(--text-2);
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 700;
   white-space: nowrap;
+  box-shadow: 0 2px 0 var(--border-strong);
 }
 
 .mini-chip.is-strong {
   border-color: var(--ink-line);
   background: var(--hi);
   color: var(--on-hi);
+  box-shadow: 0 2px 0 var(--ink-line);
+}
+
+.mini-chip.is-bonus {
+  border-color: var(--ink-line);
+  background: var(--vip-soft);
+  color: var(--text);
+  box-shadow: 0 2px 0 var(--ink-line);
+}
+
+.mini-chip.is-warn {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .mini-chips,
 .mini-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .mini-tags {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .mini-help {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  margin: 12px 0;
-  font-size: 0.85rem;
+  gap: 7px;
+  margin: 14px 0;
+  font-size: 0.86rem;
 }
 
 .mini-help svg {
@@ -72,70 +114,134 @@
 .mini-wide {
   width: 100%;
   justify-content: center;
-  padding-top: 12px;
-  padding-bottom: 12px;
-  font-size: 1.02rem;
+  padding-top: 13px;
+  padding-bottom: 13px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.mini-btn-3d {
+  border: 2px solid var(--ink-line) !important;
+  box-shadow: 0 5px 0 var(--ink-line), inset 0 2px 0 rgb(255 255 255 / 0.35) !important;
+  transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mini-btn-3d:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 0 var(--ink-line), inset 0 2px 0 rgb(255 255 255 / 0.45) !important;
+}
+
+.mini-btn-3d:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--ink-line) !important;
+}
+
+.mini-btn-3d-sec {
+  border: 2px solid var(--card-line) !important;
+  background: var(--surface) !important;
+  box-shadow: 0 4px 0 var(--card-drop), inset 0 2px 0 rgb(255 255 255 / 0.5) !important;
+  font-weight: 700;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.mini-btn-3d-sec:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 var(--card-drop) !important;
+}
+
+.mini-btn-3d-sec:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--card-drop) !important;
 }
 
 .mini-stars {
   display: inline-flex;
-  gap: 4px;
+  gap: 6px;
 }
 
 .mini-stars svg {
   color: var(--border-strong);
   fill: var(--surface-2);
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.12));
 }
 
 .mini-stars svg.is-on {
   color: var(--ink-line);
   fill: var(--hi);
+  filter: drop-shadow(0 3px 0 var(--ink-line));
 }
 
-/* Game top bar: round back button, name, score pill. */
+/* ---------- 3D Game Top Bar ---------- */
+
 .mini-bar {
   display: grid;
-  grid-template-columns: 44px 1fr auto;
+  grid-template-columns: 46px 1fr auto;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .mini-back {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 14px;
-  border: 1.5px solid var(--ink-line);
+  border: 2px solid var(--card-line);
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 3px 0 var(--ink-line);
+  box-shadow: 0 4px 0 var(--card-drop), inset 0 2px 0 rgb(255 255 255 / 0.5);
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.mini-back:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 var(--card-drop), inset 0 2px 0 rgb(255 255 255 / 0.6);
 }
 
 .mini-back:active {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 var(--ink-line);
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--card-drop);
+}
+
+.mini-bar-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .mini-bar-title {
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: 1.25rem;
+  font-weight: 800;
   line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.mini-bar-sub {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mini-score {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 7px 12px;
-  border-radius: 12px;
-  border: 1.5px solid var(--ink-line);
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--ink-line);
   background: var(--hi);
   color: var(--on-hi);
   font-weight: 800;
+  font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 3px 0 var(--ink-line);
+  box-shadow: 0 4px 0 var(--ink-line), inset 0 2px 0 rgb(255 255 255 / 0.55);
 }
 
 .mini-score:empty {
@@ -143,53 +249,79 @@
 }
 
 .mini-progress {
-  height: 10px;
-  margin-bottom: 14px;
+  height: 14px;
+  margin-bottom: 16px;
   border-radius: 999px;
-  border: 1.5px solid var(--ink-line);
-  background: var(--surface);
+  border: 2px solid var(--card-line);
+  background: var(--surface-2);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.15), 0 2px 0 var(--card-drop);
   overflow: hidden;
+  padding: 2px;
 }
 
 .mini-progress span {
   display: block;
   height: 100%;
-  background: var(--hi);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff275 0%, var(--hi) 60%, #e5be00 100%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
   transition: width 0.2s linear;
 }
 
-/* End of a round. */
+/* ---------- 3D Game Over Trophy Plaque ---------- */
+
 .mini-over {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 24px 18px;
-  margin-bottom: 16px;
+  gap: 10px;
+  padding: 28px 22px 24px;
+  margin-bottom: 18px;
   text-align: center;
-  border: 2px solid var(--card-line);
-  border-radius: 22px;
+  border: 2.5px solid var(--card-line);
+  border-radius: 24px;
   background: var(--surface);
-  box-shadow: 0 5px 0 var(--card-drop);
+  box-shadow:
+    0 8px 0 var(--card-drop),
+    0 16px 32px rgb(27 34 80 / 0.14),
+    inset 0 2px 0 rgb(255 255 255 / 0.6);
+}
+
+.mini-over-medal {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  border: 2px solid var(--ink-line);
+  background: var(--hi);
+  color: var(--on-hi);
+  box-shadow: 0 4px 0 var(--ink-line), inset 0 2px 0 rgb(255 255 255 / 0.65);
+  margin-bottom: 2px;
 }
 
 .mini-over-label {
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-2);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   font-size: 0.78rem;
 }
 
 .mini-over-points {
   font-family: var(--font-display);
-  font-size: 3.4rem;
+  font-size: 3.6rem;
+  font-weight: 900;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 3px 0 var(--border);
 }
 
 .mini-over-points small {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   color: var(--text-2);
+  text-shadow: none;
 }
 
 .mini-over-badge {
@@ -200,90 +332,153 @@
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  margin: 8px 0 0;
+  margin: 10px 0 4px;
 }
 
 .mini-over-stats div {
-  padding: 10px 6px;
-  border-radius: 14px;
+  padding: 12px 8px;
+  border-radius: 16px;
+  border: 1.5px solid var(--border-strong);
   background: var(--surface-2);
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.4), 0 3px 0 var(--border-strong);
 }
 
 .mini-over-stats dt {
   font-size: 0.75rem;
+  font-weight: 600;
   color: var(--text-2);
 }
 
 .mini-over-stats dd {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .mini-over-note {
-  margin: 0;
+  margin: 2px 0 0;
 }
 
 .mini-over-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
-  margin-top: 8px;
+  gap: 12px;
+  margin-top: 10px;
 }
 
-/* ---------- Hub ---------- */
+/* ---------- Hub (3D Diorama Cards) ---------- */
+
+.mini-hub-banner {
+  margin-bottom: 20px;
+}
 
 .mini-hub-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  align-items: start;
+  gap: 14px;
 }
 
-.mini-hub-head h1 {
+.mini-hub-title-wrap h1 {
   margin: 0;
+  font-size: 1.85rem;
+}
+
+.mini-hub-sub {
+  margin: 6px 0 0;
+  font-size: 0.94rem;
 }
 
 .mini-vip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--ink-line);
   background: var(--vip);
   color: var(--on-role);
   font-size: 0.78rem;
   font-weight: 800;
-}
-
-.mini-hub-sub {
-  margin: 6px 0 18px;
+  box-shadow: 0 3px 0 var(--ink-line);
 }
 
 .mini-cards {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 @media (min-width: 720px) {
   .mini-cards {
     grid-template-columns: repeat(2, 1fr);
   }
+  .mini-cards > .mini-card:first-child {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+  }
+  .mini-cards > .mini-card:first-child .mini-card-art {
+    border-bottom: none;
+    border-right: 2.5px solid var(--card-line);
+    height: 100%;
+  }
+  .mini-cards > .mini-card:first-child .mini-card-art .art {
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .mini-card {
+  position: relative;
   overflow: hidden;
-  border: 2px solid var(--card-line);
-  border-radius: 22px;
+  border: 2.5px solid var(--card-line);
+  border-radius: 24px;
   background: var(--surface);
-  box-shadow: 0 5px 0 var(--card-drop);
+  box-shadow:
+    0 7px 0 var(--card-drop),
+    0 12px 24px rgb(27 34 80 / 0.1);
+  cursor: pointer;
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mini-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 11px 0 var(--card-drop),
+    0 18px 32px rgb(27 34 80 / 0.15);
+}
+
+.mini-card:active {
+  transform: translateY(2px);
+  box-shadow: 0 4px 0 var(--card-drop);
 }
 
 .mini-card-art {
-  border-bottom: 2px solid var(--card-line);
+  position: relative;
+  border-bottom: 2.5px solid var(--card-line);
   line-height: 0;
+  background: var(--surface-2);
+}
+
+.mini-card-tag {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 2;
+  padding: 4px 9px;
+  border-radius: 8px;
+  border: 1.5px solid var(--ink-line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  box-shadow: 0 2px 0 var(--ink-line);
 }
 
 .mini-card-art .art {
@@ -295,27 +490,67 @@
 .mini-card-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px 16px;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 18px 18px;
 }
 
 .mini-card-body h2 {
   margin: 0;
-  font-size: 1.3rem;
+  font-size: 1.35rem;
 }
 
 .mini-card-body p {
   margin: 0;
+  line-height: 1.45;
 }
 
-.mini-play {
-  align-self: flex-start;
+.mini-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 4px;
 }
 
-/* Card art (inline SVG, colours from tokens). */
+.mini-play {
+  border: 2px solid var(--ink-line) !important;
+  box-shadow: 0 4px 0 var(--ink-line), inset 0 1px 0 rgb(255 255 255 / 0.4) !important;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---------- Hub 3D SVG Diorama Tokens ---------- */
+
+.art-page-shadow {
+  fill: var(--card-drop);
+  opacity: 0.35;
+}
+
+.art-page-stack {
+  fill: var(--surface-2);
+  stroke: var(--card-line);
+  stroke-width: 2;
+}
+
 .art-paper {
   fill: var(--surface);
+  stroke: var(--card-line);
+  stroke-width: 2.2;
+}
+
+.art-hole {
+  fill: var(--surface-2);
+  stroke: var(--border-strong);
+  stroke-width: 1.2;
+}
+
+.art-ring {
+  fill: var(--surface);
+  stroke: var(--ink-line);
+  stroke-width: 1.8;
 }
 
 .art-rule {
@@ -326,25 +561,54 @@
 .art-margin {
   stroke: var(--danger);
   stroke-width: 1.5;
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
 .art-ink {
   fill: var(--border-strong);
 }
 
-.art-mark {
-  fill: var(--hi);
+.art-ink-dark {
+  fill: var(--ink-line);
+  opacity: 0.78;
 }
 
-.art-pen {
+.art-mark-3d {
   fill: var(--hi);
   stroke: var(--ink-line);
-  stroke-width: 2.5;
+  stroke-width: 1.5;
+}
+
+.art-pen-nib {
+  fill: var(--hi);
+  stroke: var(--ink-line);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.art-pen-barrel {
+  stroke: var(--ink-line);
+  stroke-width: 2.4;
 }
 
 .art-pen-tip {
   fill: var(--ink-line);
+}
+
+.art-shadow-soft {
+  fill: var(--ink-line);
+  opacity: 0.16;
+}
+
+.art-score-pill {
+  fill: var(--success);
+  stroke: var(--ink-line);
+  stroke-width: 2;
+}
+
+.art-score-text {
+  fill: #ffffff;
+  font: 800 13px var(--font-display);
 }
 
 .sky-top {
@@ -360,42 +624,76 @@
   fill: var(--cloud);
 }
 
-.art-floor {
+.art-wall {
   fill: var(--surface-2);
+}
+
+.art-wall-side {
+  fill: var(--border);
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+
+.art-window {
+  stroke: var(--card-line);
+  stroke-width: 2.2;
+}
+
+.art-floor {
+  fill: var(--surface);
+}
+
+.art-grid {
+  stroke: var(--border-strong);
+  stroke-width: 1.3;
 }
 
 .art-arc {
   fill: none;
   stroke: var(--hi);
-  stroke-width: 3;
-  stroke-dasharray: 2 8;
+  stroke-width: 3.5;
+  stroke-dasharray: 4 7;
   stroke-linecap: round;
 }
 
 .art-ball {
   fill: var(--mini-paper);
   stroke: var(--ink-line);
-  stroke-width: 2;
-}
-
-.art-bin {
-  fill: var(--surface);
-  stroke: var(--ink-line);
-  stroke-width: 3;
+  stroke-width: 2.2;
   stroke-linejoin: round;
 }
 
+.art-bin {
+  fill: var(--surface-2);
+  stroke: var(--ink-line);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.art-rim-3d {
+  fill: var(--ink-line);
+  stroke: var(--ink-line);
+  stroke-width: 2.5;
+}
 
 .art-wood {
-  fill: var(--surface-2);
+  fill: var(--mini-wood-outer);
+}
+
+.art-drawer-tray {
+  fill: var(--mini-wood-tray);
+  stroke: var(--card-line);
+  stroke-width: 2.5;
 }
 
 .art-handle {
-  fill: var(--ink-line);
+  fill: var(--hi);
+  stroke: var(--ink-line);
+  stroke-width: 2;
 }
 
 .art-slot {
-  fill: var(--surface);
+  fill: var(--mini-wood-slot);
   stroke: var(--border-strong);
   stroke-width: 1.5;
 }
@@ -409,72 +707,127 @@
   color: var(--text);
 }
 
-/* Level colours, shared by the card art and the drawer tokens. */
+.art-lv-num {
+  fill: var(--text);
+  font: 800 10px var(--font-display);
+}
+
+/* Level colours, shared by card art and 3D drawer keycaps. */
 .lv-1 {
-  fill: var(--surface-2);
-  background: var(--surface-2);
+  fill: var(--surface);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
 }
 
 .lv-2 {
   fill: var(--success-soft);
-  background: var(--success-soft);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--success-soft) 100%);
 }
 
 .lv-3 {
   fill: var(--hi-soft);
-  background: var(--hi-soft);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--hi-soft) 100%);
 }
 
 .lv-4 {
   fill: var(--warning-soft);
-  background: var(--warning-soft);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--warning-soft) 100%);
 }
 
 .lv-5 {
   fill: var(--danger-soft);
-  background: var(--danger-soft);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--danger-soft) 100%);
 }
 
 .lv-6 {
   fill: var(--prem-soft);
-  background: var(--prem-soft);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--prem-soft) 100%);
 }
 
 .lv-7 {
   fill: var(--vip-soft);
-  background: var(--vip-soft);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--vip-soft) 100%);
 }
 
 .lv-8 {
   fill: var(--hi);
-  background: var(--hi);
+  background: linear-gradient(180deg, #fff385 0%, var(--hi) 100%);
   color: var(--on-hi);
 }
 
-/* ---------- Fosforla altını çiz ---------- */
+/* ---------- Oyun 1: Fosforla altını çiz (3D Spiral Notebook) ---------- */
 
-/* Lined notebook paper with a red margin: one rule under every line of text. */
+.mini-notebook-stack {
+  position: relative;
+  margin-bottom: 16px;
+}
+
 .mini-paper {
   position: relative;
-  padding: 14px 16px 16px 36px;
-  border: 2px solid var(--card-line);
-  border-radius: 20px;
+  padding: 28px 20px 22px 42px;
+  border: 2.5px solid var(--card-line);
+  border-radius: 22px;
   background-color: var(--surface);
   background-image:
-    linear-gradient(transparent calc(2.1em - 1.5px), var(--border) calc(2.1em - 1.5px)),
-    linear-gradient(90deg, transparent 22px, var(--danger-soft) 22px, var(--danger-soft) 24px, transparent 24px);
+    linear-gradient(transparent calc(2.15em - 1.5px), var(--border) calc(2.15em - 1.5px)),
+    linear-gradient(90deg, transparent 28px, var(--danger-soft) 28px, var(--danger-soft) 30.5px, transparent 30.5px);
   background-size:
-    100% 2.1em,
+    100% 2.15em,
     100% 100%;
   background-origin: content-box, border-box;
   background-clip: border-box;
-  box-shadow: 0 5px 0 var(--card-drop);
-  font-size: 1.12rem;
-  line-height: 2.1;
+  /* 3D Stacked Notebook Pages underneath */
+  box-shadow:
+    0 4px 0 var(--surface-2),
+    0 6px 0 var(--card-line),
+    0 10px 0 var(--surface-2),
+    0 12px 0 var(--card-drop),
+    0 18px 30px rgb(27 34 80 / 0.14);
+  font-size: 1.14rem;
+  line-height: 2.15;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   cursor: crosshair;
+}
+
+.mini-spiral {
+  position: absolute;
+  top: -11px;
+  left: 34px;
+  right: 26px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.mini-spiral-ring {
+  position: relative;
+  width: 10px;
+  height: 22px;
+  border-radius: 99px;
+  border: 2px solid var(--ink-line);
+  background: linear-gradient(90deg, var(--surface-2), #ffffff, var(--border-strong));
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.22);
+}
+
+.mini-paper-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.mini-paper-corner {
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
 }
 
 .mini-paper p {
@@ -484,33 +837,38 @@
 .mini-paper.is-done {
   cursor: default;
   touch-action: auto;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .mini-paper-title {
   margin: 0;
-  font-size: 1em;
-  line-height: 2.1;
+  font-size: 1.05em;
+  font-weight: 800;
+  line-height: 2.15;
 }
 
-/* A real highlighter stroke: a band through the middle of the letters, ends slightly round. */
+/* Chisel-tip 3D highlighter stroke */
 .mini-word {
-  padding: 1px 2px;
+  display: inline;
+  padding: 2px 4px;
   margin: 0 -2px;
   border-radius: 6px 3px 6px 3px;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
-  transition: background-color 0.08s;
+  transition: background-color 0.08s, box-shadow 0.08s;
 }
 
 .mini-word.is-on {
   background: var(--hi);
   color: var(--on-hi);
+  font-weight: 650;
+  box-shadow: 0 2px 0 #d9b500, inset 0 1px 0 rgb(255 255 255 / 0.6);
 }
 
 .mini-word.is-hit {
   background: var(--success-soft);
   box-shadow: inset 0 -3px 0 var(--success);
+  font-weight: 700;
 }
 
 .mini-word.is-missed {
@@ -525,47 +883,67 @@
 }
 
 .mini-legend {
-  margin-top: 10px !important;
+  margin-top: 12px !important;
   font-size: 0.85rem;
   line-height: 1.6;
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-/* ---------- Kâğıt top ---------- */
+/* ---------- Oyun 2: Kâğıt top (3D Perspective Paper Toss) ---------- */
 
 .toss-hud {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.toss-hud-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.toss-wind-chip.has-wind {
+  border-color: var(--ink-line);
+  background: var(--hi-soft);
+  color: var(--text);
 }
 
 .toss-dots {
   display: flex;
-  gap: 5px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .toss-dots li {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  border: 1.5px solid var(--border-strong);
+  border: 2px solid var(--border-strong);
   background: var(--surface);
+  box-shadow: inset 0 2px 2px rgb(0 0 0 / 0.1), 0 2px 0 var(--border-strong);
+  transition: transform 0.15s ease;
 }
 
 .toss-dots li.is-now {
   border-color: var(--ink-line);
-  border-width: 2.5px;
+  background: var(--hi);
+  transform: scale(1.18);
+  box-shadow: 0 2px 0 var(--ink-line);
 }
 
 .toss-dots li.is-in {
-  border-color: var(--success);
+  border-color: var(--ink-line);
   background: var(--success);
+  box-shadow: 0 2px 0 var(--ink-line);
 }
 
 .toss-dots li.is-out {
@@ -573,30 +951,75 @@
   background: var(--danger-soft);
 }
 
+.toss-stage-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
 .toss-scene {
   display: block;
   width: 100%;
-  max-height: 64vh;
-  border: 2px solid var(--card-line);
-  border-radius: 22px;
-  box-shadow: 0 5px 0 var(--card-drop);
+  max-width: 410px;
+  aspect-ratio: 360 / 560;
+  border: 2.5px solid var(--card-line);
+  border-radius: 24px;
+  background: var(--surface-2);
+  box-shadow:
+    0 8px 0 var(--card-drop),
+    0 16px 32px rgb(27 34 80 / 0.16);
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  cursor: grab;
 }
 
-.toss-wall {
-  fill: var(--surface-2);
+.toss-scene:active {
+  cursor: grabbing;
+}
+
+.toss-side-wall {
+  fill: var(--border);
+  opacity: 0.72;
+}
+
+.toss-baseboard {
+  fill: var(--surface);
+  stroke: var(--card-line);
+  stroke-width: 2;
+}
+
+.toss-corner-line {
+  stroke: var(--border-strong);
+  stroke-width: 2;
+}
+
+.toss-window-recess {
+  fill: var(--border-strong);
+  stroke: var(--card-line);
+  stroke-width: 2.5;
 }
 
 .toss-window {
   stroke: var(--card-line);
-  stroke-width: 3;
+  stroke-width: 2.5;
 }
 
 .toss-frame {
   stroke: var(--card-line);
-  stroke-width: 3;
+  stroke-width: 2.5;
+}
+
+.toss-sill {
+  fill: var(--surface);
+  stroke: var(--card-line);
+  stroke-width: 2.2;
+}
+
+.toss-poster {
+  fill: var(--surface);
+  stroke: var(--card-line);
+  stroke-width: 2;
 }
 
 .toss-pole {
@@ -611,60 +1034,279 @@
   stroke-linejoin: round;
 }
 
-.toss-floor {
+.toss-dist-pill {
   fill: var(--surface);
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
 }
 
-.toss-floor-line {
-  stroke: var(--card-line);
+.toss-dist-text {
+  fill: var(--text-2);
+  font: 800 10px var(--font-display);
+}
+
+.toss-wind-line {
+  stroke: var(--hi);
   stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 8 6;
+}
+
+.toss-grid {
+  stroke: var(--border-strong);
+  stroke-width: 1.2;
+  opacity: 0.65;
 }
 
 .toss-shadow {
-  fill: var(--border);
+  fill: var(--ink-line);
+  opacity: 0.16;
 }
 
-.toss-bin {
-  fill: var(--surface);
+.toss-shadow-deep {
+  fill: var(--ink-line);
+  opacity: 0.28;
+}
+
+/* 3D Cylindrical Bin Layers */
+.toss-bin-inside {
+  fill: var(--border-strong);
   stroke: var(--ink-line);
-  stroke-width: 3;
+  stroke-width: 2.5;
   stroke-linejoin: round;
+}
+
+.toss-hole {
+  fill: #1b2250;
+  opacity: 0.82;
+}
+
+.toss-rib-back {
+  stroke: var(--ink-line);
+  stroke-width: 1.4;
+  opacity: 0.35;
+}
+
+.toss-bin-wall {
+  stroke: var(--ink-line);
+  stroke-width: 2.8;
+  stroke-linejoin: round;
+}
+
+.toss-bin-base-ring {
+  stroke: var(--ink-line);
+  stroke-width: 2.8;
 }
 
 .toss-rib {
   stroke: var(--border-strong);
-  stroke-width: 2;
+  stroke-width: 1.8;
   stroke-linecap: round;
 }
 
+.toss-rim-front {
+  fill: none;
+  stroke: var(--ink-line);
+  stroke-width: 5.5;
+  stroke-linecap: round;
+}
 
-.toss-ball polygon {
-  fill: var(--mini-paper);
+.toss-rim-shine {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  opacity: 0.65;
+}
+
+.toss-bin-badge {
+  fill: var(--hi);
   stroke: var(--ink-line);
   stroke-width: 2;
+}
+
+.toss-bin-badge-text {
+  fill: var(--on-hi);
+  font: 800 11px var(--font-display);
+}
+
+.toss-bin-back.is-hit,
+.toss-bin-front.is-hit {
+  animation: bin-bounce 0.32s ease-out;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+@keyframes bin-bounce {
+  40% {
+    transform: scale(1.08, 0.92);
+  }
+  75% {
+    transform: scale(0.97, 1.04);
+  }
+}
+
+/* 3D Polyhedral Origami Paper Ball */
+.paper-base {
+  fill: var(--mini-paper);
+  stroke: var(--ink-line);
+  stroke-width: 2.4;
   stroke-linejoin: round;
 }
 
-.toss-ball path {
-  fill: none;
-  stroke: var(--text-3);
-  stroke-width: 1.5;
+.paper-lit {
+  fill: #ffffff;
 }
 
-.toss-aim {
-  fill: var(--text);
+.paper-lit-2 {
+  fill: var(--mini-paper);
+}
+
+.paper-mid {
+  fill: var(--mini-paper-mid);
+}
+
+.paper-shade {
+  fill: var(--mini-paper-shade);
+}
+
+.paper-deep {
+  fill: var(--mini-paper-deep);
+}
+
+.paper-crease {
+  fill: none;
+  stroke: var(--ink-line);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.75;
+}
+
+.toss-ball-faded {
+  opacity: 0.58;
+}
+
+/* Flight Trail & 3D Aim Arc */
+.toss-trail-line {
+  fill: none;
+  stroke: var(--hi);
+  stroke-width: 3;
+  stroke-linecap: round;
   opacity: 0.55;
 }
 
+.toss-trail-dot {
+  fill: var(--hi);
+}
 
+.toss-aim-shadow {
+  fill: var(--ink-line);
+  opacity: 0.25;
+}
 
+.toss-aim-curve {
+  fill: none;
+  stroke: var(--hi);
+  stroke-width: 3;
+  stroke-dasharray: 5 6;
+  stroke-linecap: round;
+}
+
+.toss-aim-node {
+  fill: var(--hi);
+  stroke: var(--ink-line);
+  stroke-width: 1.8;
+}
+
+/* Foreground 3D Study Desk & Launch Pad */
+.toss-desk-top {
+  fill: var(--mini-desk-top);
+}
+
+.toss-desk-edge {
+  fill: var(--mini-desk-edge);
+}
+
+.toss-desk-line {
+  stroke: var(--card-line);
+  stroke-width: 2.5;
+}
+
+.toss-pad-outer {
+  fill: var(--surface-2);
+  stroke: var(--card-line);
+  stroke-width: 2;
+}
+
+.toss-pad-inner {
+  fill: var(--hi-soft);
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.toss-peg {
+  fill: var(--accent);
+  stroke: var(--ink-line);
+  stroke-width: 2;
+}
+
+.toss-cradle {
+  fill: var(--accent);
+  stroke: var(--ink-line);
+  stroke-width: 2;
+}
+
+.toss-elastic {
+  stroke: var(--hi);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+/* 3D Power Gauge & Hint */
+.toss-power-bg {
+  fill: var(--surface);
+  stroke: var(--ink-line);
+  stroke-width: 2.5;
+}
+
+.toss-power-fill {
+  fill: var(--hi);
+}
+
+.toss-power-tick {
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+
+.toss-power-pill {
+  fill: var(--ink-line);
+}
+
+.toss-power-pct {
+  fill: var(--hi);
+  font: 800 11px var(--font-display);
+}
+
+.toss-hint-bg {
+  fill: var(--surface);
+  stroke: var(--ink-line);
+  stroke-width: 2;
+  opacity: 0.94;
+}
+
+.toss-hint {
+  fill: var(--text);
+  font: 800 13px var(--font-body);
+}
 
 .toss-flash {
-  font: 800 44px var(--font-display);
+  font: 900 42px var(--font-display);
   stroke: var(--surface);
-  stroke-width: 6px;
+  stroke-width: 7px;
   paint-order: stroke;
-  animation: toss-pop 0.3s ease-out;
+  animation: toss-pop 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   transform-box: fill-box;
   transform-origin: center;
 }
@@ -677,253 +1319,387 @@
   fill: var(--danger);
 }
 
+.toss-flash-sub {
+  font: 800 14px var(--font-body);
+  fill: var(--text);
+  stroke: var(--surface);
+  stroke-width: 4px;
+  paint-order: stroke;
+}
+
 @keyframes toss-pop {
   from {
-    transform: scale(0.6);
+    transform: scale(0.55);
+    opacity: 0;
   }
 }
 
-.art-wall {
-  fill: var(--surface-2);
-}
-
-.art-window {
-  stroke: var(--card-line);
-  stroke-width: 2;
-}
-
-.art-grid {
-  stroke: var(--border);
-  stroke-width: 1.5;
-}
-
-.art-rim-3d {
-  fill: var(--ink-line);
-  stroke: var(--ink-line);
-  stroke-width: 2;
-}
-
-.art-finger-edge {
-  fill: none;
-  stroke: var(--ink-line);
-  stroke-width: 15;
-  stroke-linecap: round;
-}
-
-.art-finger {
-  fill: none;
-  stroke: var(--mini-skin);
-  stroke-width: 11;
-  stroke-linecap: round;
-}
-
-/* Fiske scene: room, floor lines, bin in perspective, the hand. */
-.toss-tags {
-  display: flex;
-  gap: 6px;
-  min-height: 28px;
-  margin: 0 0 8px;
-}
-
-.toss-grid {
-  stroke: var(--border);
-  stroke-width: 1.5;
-}
-
-.toss-mark {
-  fill: none;
-  stroke: var(--danger);
-  stroke-width: 2;
-  stroke-dasharray: 3 3;
-}
-
-.toss-hole {
-  fill: var(--ink-line);
-}
-
-.toss-rim {
-  fill: none;
-  stroke: var(--ink-line);
-  stroke-width: 3.5;
-}
-
-.toss-power-bg {
-  fill: var(--surface);
-  stroke: var(--ink-line);
-  stroke-width: 2;
-}
-
-.toss-power-fill {
-  fill: var(--hi);
-}
-
-.toss-power text,
-.toss-hint {
-  fill: var(--text);
-  font: 700 14px var(--font-body);
-}
-
+/* Sculpted 3D Hand */
 .toss-hand .finger-edge {
   fill: none;
   stroke: var(--ink-line);
-  stroke-width: 40;
+  stroke-width: 36;
   stroke-linecap: round;
 }
 
 .toss-hand .finger {
   fill: none;
   stroke: var(--mini-skin);
-  stroke-width: 33;
+  stroke-width: 29;
   stroke-linecap: round;
+}
+
+.toss-hand .finger-back {
+  fill: none;
+  stroke: var(--mini-skin-back);
+  stroke-width: 28;
+  stroke-linecap: round;
+}
+
+.toss-hand .fingernail {
+  fill: #ffffff;
+  stroke: var(--ink-line);
+  stroke-width: 1.8;
+  opacity: 0.85;
 }
 
 .toss-hand .palm {
   fill: var(--mini-skin);
   stroke: var(--ink-line);
   stroke-width: 3.5;
+  stroke-linejoin: round;
+}
+
+.toss-hand .hand-cuff {
+  fill: var(--accent);
+  stroke: var(--ink-line);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.toss-hand .hand-cuff-stripe {
+  fill: none;
+  stroke: var(--hi);
+  stroke-width: 4;
+  stroke-linecap: round;
 }
 
 .toss-hand .snap {
   fill: none;
-  stroke: var(--text);
-  stroke-width: 3;
+  stroke: var(--hi);
+  stroke-width: 3.5;
   stroke-linecap: round;
 }
 
-/* ---------- Çekmece ---------- */
-
-.drawer-status {
-  min-height: 1.5em;
-  margin: 0 0 10px;
-  text-align: center;
-  color: var(--text-2);
+.toss-hand .snap-ring {
+  fill: none;
+  stroke: var(--hi);
+  stroke-width: 2.5;
+  opacity: 0.7;
 }
 
-.drawer-box {
-  position: relative;
-  padding: 22px 12px 12px;
+/* ---------- Oyun 3: Çekmece (3D Tactile Desk Organizer & Keycaps) ---------- */
+
+.drawer-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 14px;
   margin-bottom: 14px;
-  border: 2px solid var(--card-line);
-  border-radius: 22px;
-  background: var(--surface-2);
-  box-shadow: 0 5px 0 var(--card-drop);
+  border-radius: 14px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  text-align: center;
+  font-size: 0.88rem;
+  box-shadow: 0 3px 0 var(--border-strong);
 }
 
-.drawer-handle {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  width: 56px;
-  height: 7px;
-  margin-left: -28px;
+.drawer-status-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+
+.drawer-status-idle {
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+/* 3D Wooden/Navy Drawer Cabinet */
+.drawer-cabinet {
+  position: relative;
+  max-width: 440px;
+  padding: 16px 12px 14px;
+  margin: 0 auto 14px;
+  border: 2.5px solid var(--card-line);
+  border-radius: 26px;
+  background: var(--mini-wood-outer);
+  box-shadow:
+    0 10px 0 var(--card-drop),
+    0 18px 34px rgb(27 34 80 / 0.18),
+    inset 0 2px 0 rgb(255 255 255 / 0.45);
+}
+
+.drawer-handle-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: -6px;
+  margin-bottom: 10px;
+}
+
+.drawer-handle-plate {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px;
   border-radius: 99px;
-  background: var(--ink-line);
+  border: 2px solid var(--ink-line);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--ink-line);
+}
+
+.drawer-screw {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  border: 1.5px solid var(--ink-line);
+}
+
+.drawer-handle-grip {
+  width: 54px;
+  height: 8px;
+  border-radius: 99px;
+  border: 1.5px solid var(--ink-line);
+  background: var(--hi);
+}
+
+/* Recessed 3D Inner Tray */
+.drawer-box {
+  padding: 12px;
+  border: 2.5px solid var(--card-line);
+  border-radius: 20px;
+  background: var(--mini-wood-tray);
+  box-shadow:
+    inset 0 6px 10px rgb(0 0 0 / 0.18),
+    inset 0 2px 0 var(--ink-line);
 }
 
 .drawer-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 9px;
 }
 
+/* Recessed Compartment Socket */
 .drawer-slot {
   aspect-ratio: 1;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1.5px solid var(--border-strong);
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: inset 0 3px 0 var(--surface-2);
-  transition: transform 0.12s;
-}
-
-.drawer-token {
   position: relative;
   display: grid;
   place-items: center;
-  width: 78%;
-  height: 78%;
+  padding: 4px;
+  border: 2px solid var(--border-strong);
+  border-radius: 18px;
+  background: var(--mini-wood-slot);
+  box-shadow: inset 0 4px 6px rgb(0 0 0 / 0.14);
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+
+.drawer-slot-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+  background: var(--border-strong);
+  opacity: 0.45;
+}
+
+/* 3D Extruded Keycap Block */
+.drawer-token {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+  padding: 6px 4px 4px;
+  border-radius: 14px;
   border: 2px solid var(--ink-line);
   color: var(--text);
-  box-shadow: 0 3px 0 var(--ink-line);
+  /* True 3D keycap extrusion lip + top specular edge */
+  box-shadow:
+    0 6px 0 var(--ink-line),
+    0 8px 12px rgb(0 0 0 / 0.18),
+    inset 0 2px 0 rgb(255 255 255 / 0.65);
+  transform: translateY(-2px);
+  transition: transform 0.14s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drawer-token-shine {
+  position: absolute;
+  top: 3px;
+  left: 8px;
+  right: 8px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgb(255 255 255 / 0.55);
+  pointer-events: none;
+}
+
+.drawer-token-icon {
+  flex-shrink: 0;
+}
+
+.drawer-token-name {
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .drawer-lv {
   position: absolute;
-  right: -6px;
-  bottom: -6px;
+  top: -5px;
+  right: -5px;
   display: grid;
   place-items: center;
   min-width: 20px;
   height: 20px;
-  padding: 0 4px;
+  padding: 0 5px;
   border-radius: 99px;
-  border: 1.5px solid var(--ink-line);
+  border: 1.8px solid var(--ink-line);
   background: var(--surface);
   color: var(--text);
-  font-size: 0.7rem;
-  font-weight: 800;
+  font-size: 0.68rem;
+  font-weight: 900;
+  box-shadow: 0 2px 0 var(--ink-line);
+}
+
+.drawer-slot:hover .drawer-token {
+  transform: translateY(-4px);
+  box-shadow:
+    0 8px 0 var(--ink-line),
+    0 12px 16px rgb(0 0 0 / 0.2),
+    inset 0 2px 0 rgb(255 255 255 / 0.7);
 }
 
 .drawer-slot.is-selected .drawer-token {
-  transform: translateY(-4px);
-  box-shadow: 0 7px 0 var(--ink-line);
+  transform: translateY(-8px) scale(1.04);
+  box-shadow:
+    0 11px 0 var(--ink-line),
+    0 16px 24px rgb(0 0 0 / 0.26),
+    inset 0 2px 0 rgb(255 255 255 / 0.8);
   outline: 3px solid var(--hi);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
 .drawer-slot.is-match {
   border-color: var(--ink-line);
-  border-style: dashed;
-  border-width: 2px;
+  background: var(--hi-soft);
 }
 
-.drawer-slot.is-pop .drawer-token {
-  animation: drawer-pop 0.35s ease-out;
+.drawer-slot.is-match .drawer-token {
+  animation: drawer-match-pulse 0.9s ease-in-out infinite;
+  outline: 2.5px dashed var(--ink-line);
+  outline-offset: 2px;
 }
 
-@keyframes drawer-pop {
-  40% {
-    transform: scale(1.22);
+@keyframes drawer-match-pulse {
+  50% {
+    transform: translateY(-6px) scale(1.04);
   }
 }
 
-.drawer-path {
+.drawer-slot.is-pop .drawer-token {
+  animation: drawer-pop 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes drawer-pop {
+  35% {
+    transform: translateY(-10px) scale(1.24);
+  }
+}
+
+/* 3D Evolution Rack */
+.drawer-rack {
+  max-width: 440px;
+  margin: 14px auto 0;
+  padding: 12px 14px;
+  border: 2px solid var(--card-line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 4px 0 var(--card-drop);
+}
+
+.drawer-rack-head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin: 16px 0 6px;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.drawer-rack-head .subtle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.drawer-path {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .drawer-path li {
-  width: 11.5%;
-  aspect-ratio: 1;
   opacity: 0.35;
+  transition: opacity 0.2s, transform 0.2s;
 }
 
 .drawer-path li.is-reached {
   opacity: 1;
 }
 
-.drawer-path .drawer-token {
-  width: 100%;
-  height: 100%;
-  box-shadow: none;
-  border-width: 1.5px;
+.drawer-path li.is-current {
+  transform: translateY(-2px);
 }
 
-.drawer-path-label {
+.drawer-mini-tile {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  margin: 0;
+  justify-content: center;
+  gap: 2px;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1.5px solid var(--ink-line);
+  box-shadow: 0 3px 0 var(--ink-line), inset 0 1px 0 rgb(255 255 255 / 0.5);
+  font-weight: 800;
+}
+
+.drawer-mini-tile small {
+  font-size: 0.62rem;
+  line-height: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .toss-flash,
+  .toss-bin-back.is-hit,
+  .toss-bin-front.is-hit,
+  .drawer-slot.is-match .drawer-token,
   .drawer-slot.is-pop .drawer-token {
     animation: none;
   }

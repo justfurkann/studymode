@@ -19,6 +19,7 @@ import {
   scoreHighlight,
   simulateFlick,
   spawnItem,
+  trajectoryPreview,
   type Bin,
   type Drawer,
 } from './miniGames'
@@ -128,6 +129,10 @@ describe('Kâğıt top (fiske)', () => {
     expect(aimFromPull(-70)).toBeCloseTo(-0.5)
     expect(aimFromPull(500)).toBe(1)
     expect(randomWind(0, () => 0.99)).toBe(0)
+    const arc = trajectoryPreview(0.6, 0.5, 0.8)
+    expect(arc.length).toBeGreaterThan(4)
+    expect(arc[0].z).toBeGreaterThan(-0.2)
+    expect(arc[1].x).toBeGreaterThan(arc[0].x)
   })
 })
 

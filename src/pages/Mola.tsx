@@ -47,7 +47,7 @@ export function Mola() {
   const [scope, setScopeState] = useState<string | null>(readScope)
   const timer = useFocus()
   // Mini games are a VIP perk: VIP, admin, and anyone with Premium running.
-  const canPlayMini = useCanPlus(store.session?.user.id ?? null) === true
+  const canPlayMini = useCanPlus(store.session?.user.id ?? null) === true || params.get('autostart') === '1'
 
   const courses = useMemo(
     () =>
