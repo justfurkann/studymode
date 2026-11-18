@@ -16,6 +16,7 @@ import './styles/extras.css'
 import './styles/achievements.css'
 import './styles/guide.css'
 import './styles/assistant.css'
+import './styles/minigames.css'
 
 installPolyfills()
 applyTheme()
