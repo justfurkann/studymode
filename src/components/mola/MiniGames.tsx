@@ -1,39 +1,46 @@
 import { ArrowLeft, Award, BookOpen, Crown, GraduationCap, Highlighter, NotebookPen, Pencil, PenLine, Play, Plus, RotateCcw, ScrollText, Star, Timer, Trash2, Trophy, Wind } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import {
-  aimDots,
-  BALL_R,
-  BALL_START,
-  BIN,
+  aimFromPull,
   bestLevel,
+  BIN_R,
+  BIN_TALL,
+  binForThrow,
+  binPoints,
+  binX,
   canMerge,
   dailyParagraph,
   DRAWER_ITEMS,
   DRAWER_MAX,
   DRAWER_SECONDS,
   drawerStuck,
+  flickLaunch,
   HIGHLIGHT_PARAGRAPHS,
   HIGHLIGHT_SECONDS,
   istanbulDay,
-  launchFromPull,
-  MAX_PULL,
+  MAX_YAW,
   mergeItems,
   newDrawer,
+  PAPER_R,
+  PAPER_START,
   parseParagraph,
+  powerFromPull,
+  project,
   randomWind,
   readMiniRecords,
   saveMiniRecords,
   scoreHighlight,
+  SCENE_H,
+  SCENE_W,
   spawnItem,
-  stepBall,
-  TOSS_H,
+  stepPaper,
   TOSS_THROWS,
-  TOSS_W,
-  tossPoints,
-  type Ball,
+  type Bin,
   type Drawer,
   type HighlightParagraph,
+  type Paper,
   type TossEnd,
+  type Vec3,
 } from '../../lib/miniGames'
 import { playSound } from '../../lib/sound'
 import { Celebrate } from '../ui'
@@ -153,7 +160,7 @@ export function MiniHub({ onOpen, onExit }: { onOpen: (game: MiniGame) => void; 
         <GameCard
           art={<TossArt />}
           title="Kâğıt top"
-          text="Kâğıdı geri çek, bırak, çöpe at. Rüzgâr her atışta değişir."
+          text="Fiskeyle buruşuk kâğıdı ilerdeki çöpe at. Kova uzaklaşır, yer değiştirir, sonunda kayar."
           chips={[records.toss !== undefined ? `Rekor: ${records.toss} puan` : 'Rekor yok', `${TOSS_THROWS} atış`]}
           onOpen={() => onOpen('kagit-top')}
         />
@@ -227,14 +234,23 @@ function TossArt() {
           <stop offset="1" className="sky-bottom" />
         </linearGradient>
       </defs>
-      <rect x="0" y="0" width="320" height="120" fill="url(#art-sky)" />
-      <ellipse cx="70" cy="30" rx="26" ry="10" className="art-cloud" />
-      <ellipse cx="90" cy="26" rx="18" ry="10" className="art-cloud" />
-      <rect x="0" y="100" width="320" height="20" className="art-floor" />
-      <path d="M48 92 Q140 -6 236 58" className="art-arc" />
-      <polygon points="48,82 55,80 59,86 58,93 52,97 45,95 41,89 43,84" className="art-ball" />
-      <path d="M222 58 L262 58 L256 102 L228 102 Z" className="art-bin" />
-      <line x1="218" x2="266" y1="58" y2="58" className="art-rim" />
+      <rect x="0" y="0" width="320" height="46" className="art-wall" />
+      <rect x="120" y="8" width="80" height="30" rx="5" fill="url(#art-sky)" className="art-window" />
+      <path d="M0 46 L320 46 L320 120 L0 120 Z" className="art-floor" />
+      {[-140, -70, 0, 70, 140].map((x) => (
+        <line key={x} x1={160 + x * 0.2} y1="46" x2={160 + x * 1.6} y2="120" className="art-grid" />
+      ))}
+      {[58, 76, 104].map((y) => (
+        <line key={y} x1="0" x2="320" y1={y} y2={y} className="art-grid" />
+      ))}
+      <path d="M150 100 Q190 6 226 52" className="art-arc" />
+      <path d="M214 52 L238 52 L234 74 L218 74 Z" className="art-bin" />
+      <ellipse cx="226" cy="52" rx="12" ry="4" className="art-rim-3d" />
+      <polygon points="146,92 152,90 156,95 155,101 149,104 143,102 140,97 141,93" className="art-ball" />
+      <path d="M110 120 C 120 104, 134 98, 144 96" className="art-finger-edge" />
+      <path d="M110 120 C 120 104, 134 98, 144 96" className="art-finger" />
+      <path d="M176 120 C 172 110, 162 104, 152 104" className="art-finger-edge" />
+      <path d="M176 120 C 172 110, 162 104, 152 104" className="art-finger" />
     </svg>
   )
 }
@@ -424,110 +440,121 @@ function HighlightRound({ paragraph, daily, onExit, onAgain }: { paragraph: High
   )
 }
 
-// ---------- Kâğıt top ----------
+// ---------- Kâğıt top (fiske) ----------
 
 export function TossGame({ onExit }: { onExit: () => void }) {
   const [round, setRound] = useState(0)
   return <TossRound key={round} onExit={onExit} onAgain={() => setRound((n) => n + 1)} />
 }
 
+type Flight = { paper: Paper; landed: TossEnd | null }
+
 function TossRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => void }) {
   const svgRef = useRef<SVGSVGElement>(null)
-  const [ball, setBall] = useState<Ball>({ ...BALL_START, vx: 0, vy: 0 })
-  const [flying, setFlying] = useState(false)
-  const [pull, setPull] = useState<{ dx: number; dy: number } | null>(null)
-  const [wind, setWind] = useState(() => randomWind())
+  const [throwNo, setThrowNo] = useState(0)
+  const [bin, setBin] = useState<Bin>(() => binForThrow(0))
+  const [wind, setWind] = useState(() => randomWind(0))
+  const binStart = useRef(performance.now())
+  const [flight, setFlight] = useState<Flight | null>(null)
+  const [pull, setPull] = useState<{ x0: number; y0: number; dx: number; dy: number } | null>(null)
   const [results, setResults] = useState<TossEnd[]>([])
-  const resultsRef = useRef<TossEnd[]>([])
+  const [points, setPoints] = useState(0)
+  const [marks, setMarks] = useState<Vec3[]>([])
   const [flash, setFlash] = useState<{ text: string; good: boolean } | null>(null)
   const [record, setRecord] = useState<{ points: number; best: boolean } | null>(null)
-  const windRef = useRef(wind)
-  windRef.current = wind
+  const state = useRef({ results: [] as TossEnd[], points: 0 })
   const raf = useRef(0)
-  const flashTimer = useRef(0)
+  const timer = useRef(0)
   useEffect(
     () => () => {
       cancelAnimationFrame(raf.current)
-      window.clearTimeout(flashTimer.current)
+      window.clearTimeout(timer.current)
     },
     [],
   )
-
-  const points = tossPoints(results)
-  const hits = results.filter((r) => r === 'in').length
+  // A swaying bin keeps moving while you aim.
+  const now = useTick(!!bin.sway && !flight && !record, 33)
+  const binTime = ((flight ? performance.now() : now) - binStart.current) / 1000
+  const bx = binX(bin, Math.max(0, binTime))
 
   const toScene = (e: { clientX: number; clientY: number }) => {
     const rect = svgRef.current!.getBoundingClientRect()
-    return { x: ((e.clientX - rect.left) / rect.width) * TOSS_W, y: ((e.clientY - rect.top) / rect.height) * TOSS_H }
+    return { x: ((e.clientX - rect.left) / rect.width) * SCENE_W, y: ((e.clientY - rect.top) / rect.height) * SCENE_H }
   }
 
-  const throwBall = (vx: number, vy: number) => {
-    setFlying(true)
-    let current: Ball = { ...BALL_START, vx, vy }
+  const fly = (power: number, aim: number) => {
+    let paper = flickLaunch(power, aim)
+    setFlight({ paper, landed: null })
+    playSound('flip')
     let last = performance.now()
     const tick = (t: number) => {
       let dt = Math.min(0.05, (t - last) / 1000)
       last = t
       let end: TossEnd | null = null
-      let rim = false
-      // Small fixed steps, so a fast ball cannot pass through the rim between two frames.
       while (dt > 0 && !end) {
         const step = Math.min(dt, 1 / 240)
-        const r = stepBall(current, windRef.current, step)
-        current = r.ball
+        const r = stepPaper(paper, bin, wind, (t - binStart.current) / 1000, step)
+        paper = r.paper
         end = r.end
-        rim = rim || r.rim
+        if (r.rim) playSound('flip')
         dt -= step
       }
-      setBall(current)
-      if (rim) playSound('flip')
+      setFlight({ paper, landed: end })
       if (!end) {
         raf.current = requestAnimationFrame(tick)
         return
       }
-      landed(end)
+      done(end, paper)
     }
     raf.current = requestAnimationFrame(tick)
   }
 
-  const landed = (end: TossEnd) => {
+  const done = (end: TossEnd, paper: Paper) => {
+    const gained = end === 'in' ? binPoints(bin) : 0
     playSound(end === 'in' ? 'right' : 'wrong')
-    setFlash(end === 'in' ? { text: 'Girdi!', good: true } : { text: 'Iska', good: false })
-    flashTimer.current = window.setTimeout(() => {
-      const next = [...resultsRef.current, end]
-      resultsRef.current = next
-      setResults(next)
-      if (next.length >= TOSS_THROWS) {
-        const total = tossPoints(next)
+    setFlash(end === 'in' ? { text: `+${gained}`, good: true } : { text: 'Iska', good: false })
+    if (end === 'out') setMarks((m) => [...m.slice(-2), { x: paper.x, y: 0, z: paper.z }])
+    timer.current = window.setTimeout(() => {
+      const results = [...state.current.results, end]
+      const total = state.current.points + gained
+      state.current = { results, points: total }
+      setResults(results)
+      setPoints(total)
+      setFlash(null)
+      setFlight(null)
+      if (results.length >= TOSS_THROWS) {
         const before = readMiniRecords().toss
         saveMiniRecords({ toss: Math.max(before ?? 0, total) })
         setRecord({ points: total, best: before !== undefined && total > before })
         playSound('done')
+        return
       }
-      setFlash(null)
-      setFlying(false)
-      setBall({ ...BALL_START, vx: 0, vy: 0 })
-      setWind(randomWind())
-    }, 800)
+      const next = results.length
+      setThrowNo(next)
+      setBin(binForThrow(next))
+      setWind(randomWind(next))
+      setMarks([])
+      binStart.current = performance.now()
+    }, 900)
   }
 
   const down = (e: ReactPointerEvent<SVGSVGElement>) => {
-    if (flying || record) return
+    if (flight || record) return
     const p = toScene(e)
-    if (Math.hypot(p.x - BALL_START.x, p.y - BALL_START.y) > 80) return
-    setPull({ dx: 0, dy: 0 })
+    setPull({ x0: p.x, y0: p.y, dx: 0, dy: 0 })
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
   const move = (e: ReactPointerEvent<SVGSVGElement>) => {
     if (!pull) return
     const p = toScene(e)
-    setPull({ dx: p.x - BALL_START.x, dy: p.y - BALL_START.y })
+    setPull({ ...pull, dx: p.x - pull.x0, dy: p.y - pull.y0 })
   }
   const up = () => {
     if (!pull) return
-    const launch = launchFromPull(pull.dx, pull.dy)
+    const power = powerFromPull(pull.dy)
+    const aim = aimFromPull(pull.dx)
     setPull(null)
-    if (launch) throwBall(launch.vx, launch.vy)
+    if (power >= 0.04) fly(power, aim)
   }
 
   if (record)
@@ -536,106 +563,202 @@ function TossRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => voi
         <GameOver
           title="Tur bitti"
           points={record.points}
-          badge={record.best ? 'Yeni rekor!' : hits === TOSS_THROWS ? 'Hepsi içeride!' : undefined}
+          badge={record.best ? 'Yeni rekor!' : results.every((r) => r === 'in') ? 'Hepsi içeride!' : undefined}
           stats={[
-            ['İsabet', `${hits}/${TOSS_THROWS}`],
+            ['İsabet', `${results.filter((r) => r === 'in').length}/${TOSS_THROWS}`],
             ['Rekor', Math.max(readMiniRecords().toss ?? 0, record.points)],
           ]}
-          note="Üst üste üç ve fazlası iki puan sayılır."
+          note="Uzak kova +1, kayan kova +1 puan."
           onAgain={onAgain}
           onExit={onExit}
         />
       </GameFrame>
     )
 
-  // While pulling: the ball follows the finger (up to the limit) and dots show the start of the flight.
-  const pullLen = pull ? Math.hypot(pull.dx, pull.dy) : 0
-  const shown = pull && pullLen > 0 ? { x: BALL_START.x + (pull.dx / pullLen) * Math.min(pullLen, MAX_PULL) * 0.35, y: BALL_START.y + (pull.dy / pullLen) * Math.min(pullLen, MAX_PULL) * 0.35 } : ball
-  const aim = pull ? launchFromPull(pull.dx, pull.dy) : null
-  const windSteps = Math.ceil(Math.abs(wind) / 40)
-  const flagSkew = Math.max(-1, Math.min(1, wind / 160))
+  const power = pull ? powerFromPull(pull.dy) : 0
+  const aim = pull ? aimFromPull(pull.dx) : 0
+  const paper = flight?.paper ?? null
+  const behindBin = !!paper && paper.z > bin.z
+  const showPaper = !flight || flight.landed !== 'in'
 
   return (
-    <GameFrame
-      title="Kâğıt top"
-      onExit={onExit}
-      score={`${points} puan`}
-    >
+    <GameFrame title="Kâğıt top" onExit={onExit} score={`${points} puan`}>
       <div className="toss-hud">
-        <ol className="toss-dots" aria-label={`Atış ${Math.min(results.length + 1, TOSS_THROWS)}/${TOSS_THROWS}`}>
+        <ol className="toss-dots" aria-label={`Atış ${Math.min(throwNo + 1, TOSS_THROWS)}/${TOSS_THROWS}`}>
           {Array.from({ length: TOSS_THROWS }, (_, i) => (
             <li key={i} className={results[i] === 'in' ? 'is-in' : results[i] === 'out' ? 'is-out' : i === results.length ? 'is-now' : ''} />
           ))}
         </ol>
         <span className="mini-chip toss-wind-chip">
-          <Wind size={14} aria-hidden="true" /> {wind === 0 ? 'Rüzgâr yok' : `${wind > 0 ? '→' : '←'} ${windSteps}`}
+          <Wind size={14} aria-hidden="true" /> {wind === 0 ? 'Rüzgâr yok' : `${wind > 0 ? '→' : '←'} ${Math.ceil(Math.abs(wind) / 0.35)}`}
         </span>
       </div>
-      <p className="sr-only" aria-live="polite">
-        Atış {Math.min(results.length + 1, TOSS_THROWS)}/{TOSS_THROWS} · {points} puan
+      <p className="toss-tags">
+        {bin.z > 3.6 && <span className="mini-chip">Uzak +1</span>}
+        {!!bin.sway && <span className="mini-chip">Kayıyor +1</span>}
       </p>
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${TOSS_W} ${TOSS_H}`}
+        viewBox={`0 0 ${SCENE_W} ${SCENE_H}`}
         className="toss-scene"
         role="img"
-        aria-label="Kâğıdı geri çekip bırak"
+        aria-label="Parmağını aşağı çekip bırak: fiske"
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={() => setPull(null)}
       >
-        <defs>
-          <linearGradient id="toss-sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" className="sky-top" />
-            <stop offset="1" className="sky-bottom" />
-          </linearGradient>
-        </defs>
-        <rect x="0" y="0" width={TOSS_W} height={TOSS_H} className="toss-wall" />
-        {/* Window with the sky, and a flag that shows the wind. */}
-        <rect x="40" y="40" width="280" height="170" rx="10" fill="url(#toss-sky)" className="toss-window" />
-        <ellipse cx="110" cy="92" rx="34" ry="12" className="toss-cloud" />
-        <ellipse cx="134" cy="86" rx="22" ry="12" className="toss-cloud" />
-        <ellipse cx="250" cy="140" rx="28" ry="10" className="toss-cloud" />
-        <line x1="180" y1="40" x2="180" y2="210" className="toss-frame" />
-        <line x1="40" y1="125" x2="320" y2="125" className="toss-frame" />
-        <g transform="translate(286 70)">
-          <line x1="0" y1="0" x2="0" y2="52" className="toss-pole" />
-          {wind !== 0 && <path d={`M0 2 L${flagSkew * 34} ${8 + (1 - Math.abs(flagSkew)) * 10} L0 18 Z`} className="toss-flag" />}
-        </g>
-        <rect x="0" y={BIN.bottom} width={TOSS_W} height={TOSS_H - BIN.bottom} className="toss-floor" />
-        <line x1="0" y1={BIN.bottom} x2={TOSS_W} y2={BIN.bottom} className="toss-floor-line" />
-        <ellipse cx={(BIN.left + BIN.right) / 2} cy={BIN.bottom + 4} rx="40" ry="6" className="toss-shadow" />
-        <path d={`M${BIN.left - 4} ${BIN.rim} L${BIN.right + 4} ${BIN.rim} L${BIN.right - 3} ${BIN.bottom} L${BIN.left + 3} ${BIN.bottom} Z`} className="toss-bin" />
-        {[0.3, 0.5, 0.7].map((f) => (
-          <line key={f} x1={BIN.left + (BIN.right - BIN.left) * f} y1={BIN.rim + 10} x2={BIN.left + (BIN.right - BIN.left) * f} y2={BIN.bottom - 8} className="toss-rib" />
-        ))}
-        <line x1={BIN.left - 7} y1={BIN.rim} x2={BIN.right + 7} y2={BIN.rim} className="toss-rim" />
-        {aim && aimDots(aim.vx, aim.vy).map((d, i) => <circle key={i} cx={d.x} cy={d.y} r={4 - i * 0.3} className="toss-aim" />)}
-        {pull && pullLen > 0 && <line x1={BALL_START.x} y1={BALL_START.y} x2={shown.x} y2={shown.y} className="toss-band" />}
-        {!flying && <ellipse cx={BALL_START.x} cy={BIN.bottom + 3} rx="14" ry="4" className="toss-shadow" />}
-        <g transform={`translate(${shown.x} ${shown.y})`} className="toss-ball">
-          <polygon points="0,-13 7,-11 12,-5 13,2 9,9 2,13 -6,11 -12,6 -13,-2 -9,-9" />
-          <path d="M-9 -6 L-2 -1 L-4 7 M-2 -1 L6 -8 M-2 -1 L9 4" />
-        </g>
-        {!flying && !pull && results.length === 0 && (
-          <g className="toss-hint">
-            <circle cx={BALL_START.x} cy={BALL_START.y} r="26" className="toss-hint-ring" />
-            <text x={BALL_START.x + 34} y={BALL_START.y - 44}>
-              Geri çek, bırak
+        <TossRoom wind={wind} />
+        {marks.map((m, i) => {
+          const p = project(m)
+          return <ellipse key={i} cx={p.x} cy={p.y} rx={PAPER_R * p.scale * 1.4} ry={PAPER_R * p.scale * 0.5} className="toss-mark" />
+        })}
+        {pull && power > 0 && <AimLine aim={aim} />}
+        {paper && behindBin && showPaper && <PaperBall paper={paper} />}
+        <BinShape x={bx} z={bin.z} />
+        {paper && !behindBin && showPaper && <PaperBall paper={paper} />}
+        {!flight && <PaperBall paper={PAPER_START} />}
+        <Hand tension={power} flicked={!!flight} />
+        {pull && (
+          <g className="toss-power" aria-hidden="true">
+            <rect x="18" y="300" width="16" height="200" rx="8" className="toss-power-bg" />
+            <rect x="18" y={300 + 200 * (1 - power)} width="16" height={200 * power} rx="8" className="toss-power-fill" />
+            <text x="26" y="290" textAnchor="middle">
+              Güç
             </text>
           </g>
         )}
+        {!flight && !pull && results.length === 0 && (
+          <text x={SCENE_W / 2} y="320" textAnchor="middle" className="toss-hint">
+            Dokun, aşağı çek, bırak
+          </text>
+        )}
         {flash && (
-          <text x={TOSS_W / 2} y="290" textAnchor="middle" className={`toss-flash ${flash.good ? 'is-good' : 'is-bad'}`}>
+          <text x={SCENE_W / 2} y="96" textAnchor="middle" className={`toss-flash ${flash.good ? 'is-good' : 'is-bad'}`}>
             {flash.text}
           </text>
         )}
       </svg>
       <p className="subtle mini-help">
-        <Trash2 size={14} aria-hidden="true" /> Kâğıda dokun, sapan gibi geri ve aşağı çek, bırak. Noktalar yönü gösterir; rüzgârı sen hesapla.
+        <Trash2 size={14} aria-hidden="true" /> Ekrana dokun, parmağını aşağı çek (güç) ve sağa sola kaydır (yön), bırak. Iskaladığın yer yerde iz bırakır.
       </p>
     </GameFrame>
+  )
+}
+
+/** The room: wall with a window and a wind flag, a floor with lines that meet in the distance. */
+function TossRoom({ wind }: { wind: number }) {
+  const floorTop = project({ x: 0, y: 0, z: 9 }).y
+  const across = [1.2, 1.8, 2.6, 3.6, 5, 7]
+  const lengthwise = [-2.4, -1.6, -0.8, 0, 0.8, 1.6, 2.4]
+  const flag = Math.max(-1, Math.min(1, wind / 1.4))
+  return (
+    <g>
+      <defs>
+        <linearGradient id="toss-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" className="sky-top" />
+          <stop offset="1" className="sky-bottom" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width={SCENE_W} height={floorTop} className="toss-wall" />
+      <rect x="0" y={floorTop} width={SCENE_W} height={SCENE_H - floorTop} className="toss-floor" />
+      <rect x="110" y="40" width="140" height="92" rx="8" fill="url(#toss-sky)" className="toss-window" />
+      <ellipse cx="150" cy="78" rx="22" ry="8" className="toss-cloud" />
+      <ellipse cx="166" cy="73" rx="14" ry="8" className="toss-cloud" />
+      <line x1="180" y1="40" x2="180" y2="132" className="toss-frame" />
+      <g transform="translate(232 54)">
+        <line x1="0" y1="0" x2="0" y2="40" className="toss-pole" />
+        {wind !== 0 && <path d={`M0 2 L${flag * 28} ${6 + (1 - Math.abs(flag)) * 8} L0 14 Z`} className="toss-flag" />}
+      </g>
+      <line x1="0" y1={floorTop} x2={SCENE_W} y2={floorTop} className="toss-floor-line" />
+      {across.map((z) => {
+        const l = project({ x: -6, y: 0, z })
+        const r = project({ x: 6, y: 0, z })
+        return <line key={z} x1={l.x} y1={l.y} x2={r.x} y2={r.y} className="toss-grid" />
+      })}
+      {lengthwise.map((x) => {
+        const near = project({ x, y: 0, z: 0.4 })
+        const far = project({ x, y: 0, z: 9 })
+        return <line key={x} x1={near.x} y1={near.y} x2={far.x} y2={far.y} className="toss-grid" />
+      })}
+    </g>
+  )
+}
+
+function BinShape({ x, z }: { x: number; z: number }) {
+  const rim = project({ x, y: BIN_TALL, z })
+  const base = project({ x, y: 0, z })
+  const rx = BIN_R * rim.scale
+  const ry = rx * 0.32
+  const bx = BIN_R * 0.78 * base.scale
+  const by = bx * 0.3
+  return (
+    <g className="toss-bin3d">
+      <ellipse cx={base.x} cy={base.y + by * 0.4} rx={bx * 1.35} ry={by * 1.3} className="toss-shadow" />
+      <path d={`M${rim.x - rx} ${rim.y} L${base.x - bx} ${base.y} A${bx} ${by} 0 0 0 ${base.x + bx} ${base.y} L${rim.x + rx} ${rim.y} Z`} className="toss-bin" />
+      {[-0.45, 0, 0.45].map((f) => (
+        <line key={f} x1={rim.x + rx * f} y1={rim.y + ry * 0.9} x2={base.x + bx * f} y2={base.y + by * 0.8} className="toss-rib" />
+      ))}
+      <ellipse cx={rim.x} cy={rim.y} rx={rx} ry={ry} className="toss-hole" />
+      <ellipse cx={rim.x} cy={rim.y} rx={rx} ry={ry} className="toss-rim" />
+    </g>
+  )
+}
+
+function PaperBall({ paper }: { paper: Vec3 }) {
+  const p = project(paper)
+  const r = PAPER_R * p.scale
+  const shadow = project({ x: paper.x, y: 0, z: paper.z })
+  const k = r / 13
+  return (
+    <g>
+      <ellipse cx={shadow.x} cy={shadow.y} rx={r * 0.9} ry={r * 0.3} className="toss-shadow" />
+      <g transform={`translate(${p.x} ${p.y}) scale(${k})`} className="toss-ball">
+        <polygon points="0,-13 7,-11 12,-5 13,2 9,9 2,13 -6,11 -12,6 -13,-2 -9,-9" />
+        <path d="M-9 -6 L-2 -1 L-4 7 M-2 -1 L6 -8 M-2 -1 L9 4" />
+      </g>
+    </g>
+  )
+}
+
+/** Dots on the floor in the direction of the aim (they show direction, not distance). */
+function AimLine({ aim }: { aim: number }) {
+  const yaw = aim * MAX_YAW
+  const dots = [0.5, 0.95, 1.4, 1.85, 2.3, 2.75, 3.2, 3.65, 4.1]
+  return (
+    <g aria-hidden="true">
+      {dots.map((d) => {
+        const p = project({ x: Math.sin(yaw) * d, y: 0, z: Math.cos(yaw) * d })
+        return <circle key={d} cx={p.x} cy={p.y} r={Math.max(2, 0.03 * p.scale)} className="toss-aim" />
+      })}
+    </g>
+  )
+}
+
+/**
+ * The flicking hand, as thick cartoon fingers: the thumb holds the curled middle finger under the
+ * paper; pulling bends it further, letting go snaps it straight.
+ */
+function Hand({ tension, flicked }: { tension: number; flicked: boolean }) {
+  const t = tension * 16
+  const middle = flicked ? 'M262 600 C 250 520, 214 430, 188 368' : `M262 600 C 258 540, 236 ${468 + t}, 206 ${452 + t} C 192 ${446 + t}, 180 ${438 + t}, 176 ${428 + t * 0.6}`
+  const fingers = ['M300 600 C 300 540, 306 490, 318 452', 'M330 600 C 334 556, 344 520, 356 492']
+  const thumb = flicked ? 'M96 600 C 120 540, 150 492, 172 468' : `M96 600 C 120 540, 150 ${486 + t * 0.4}, 176 ${450 + t * 0.6}`
+  return (
+    <g className={`toss-hand${flicked ? ' is-flicked' : ''}`} transform="translate(0 30)" aria-hidden="true">
+      {fingers.map((d) => (
+        <g key={d}>
+          <path d={d} className="finger-edge" />
+          <path d={d} className="finger" />
+        </g>
+      ))}
+      <path d="M220 600 C 230 560, 300 548, 360 556 L360 600 Z" className="palm" />
+      <path d={middle} className="finger-edge" />
+      <path d={middle} className="finger" />
+      <path d={thumb} className="finger-edge" />
+      <path d={thumb} className="finger" />
+      {flicked && <path d="M170 350 l-14 -10 M190 344 l0 -16 M210 350 l14 -10" className="snap" />}
+    </g>
   )
 }
 

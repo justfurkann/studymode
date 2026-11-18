@@ -153,115 +153,147 @@ export function dailyParagraph(now = Date.now(), list = HIGHLIGHT_PARAGRAPHS): H
   return list[istanbulDay(now) % list.length]
 }
 
-// ---------- Kâğıt top ----------
+// ---------- Kâğıt top (fiske) ----------
+//
+// First person: a hand at the bottom flicks a paper ball at a bin on the floor ahead. The world is
+// in metres: x to the right, y up, z away from the player; it is drawn with a simple perspective.
 
-/** The scene is drawn in these units; the SVG scales it to the screen. */
-export const TOSS_W = 360
-export const TOSS_H = 520
 export const TOSS_THROWS = 10
-export const TOSS_GRAVITY = 900
-export const BALL_R = 13
-export const BALL_START = { x: 64, y: 440 }
-export const BIN = { left: 252, right: 312, rim: 362, bottom: 452 }
+export const SCENE_W = 360
+export const SCENE_H = 560
+const GRAVITY = 9.8
+/** Camera: where the eye is, and how strongly things shrink with distance. */
+const CAM = { y: 1.6, z: -0.8, focal: 300, horizon: 110 }
+export const PAPER_R = 0.06
+export const PAPER_START = { x: 0, y: 1.0, z: -0.2 }
+export const BIN_R = 0.2
+export const BIN_TALL = 0.38
+const ELEVATION = (40 * Math.PI) / 180
+export const MAX_YAW = (22 * Math.PI) / 180
 
-export interface Ball {
+export interface Vec3 {
   x: number
   y: number
+  z: number
+}
+
+export interface Paper extends Vec3 {
   vx: number
   vy: number
+  vz: number
+}
+
+export interface Bin {
+  x: number
+  z: number
+  /** Sways from side to side: how far (m) and how fast (rad/s). 0 = still. */
+  sway: number
+  speed: number
+  phase: number
 }
 
 export type TossEnd = 'in' | 'out'
 
-/** Wind for one throw, in px/s² sideways: random, sometimes calm. */
-export function randomWind(rand = Math.random): number {
-  const w = Math.round((rand() * 2 - 1) * 160)
-  return Math.abs(w) < 25 ? 0 : w
+/** Screen position and scale (pixels per metre) of a point in the room. */
+export function project(p: Vec3): { x: number; y: number; scale: number } {
+  const depth = Math.max(0.05, p.z - CAM.z)
+  const scale = CAM.focal / depth
+  return { x: SCENE_W / 2 + p.x * scale, y: CAM.horizon + (CAM.y - p.y) * scale, scale }
 }
 
-/** How far (scene units) the ball can be pulled back, and how hard a pull throws. */
-export const MAX_PULL = 150
-export const PULL_POWER = 7
+/** Where the bin is at time `t` (seconds since the throw began). */
+export function binX(bin: Bin, t: number): number {
+  return bin.sway ? bin.x + bin.sway * Math.sin(bin.phase + bin.speed * t) : bin.x
+}
 
 /**
- * Pull back and let go, like a slingshot: `dx`/`dy` is where the finger is relative to the ball.
- * The ball flies the opposite way; a longer pull throws harder. Too short, or not upwards: no throw.
+ * The bin for each throw: close and still at first, then further and placed anywhere, and in the
+ * last throws it sways from side to side.
  */
-export function launchFromPull(dx: number, dy: number): { vx: number; vy: number } | null {
-  const len = Math.hypot(dx, dy)
-  if (len < 18) return null
-  const k = (Math.min(len, MAX_PULL) / len) * PULL_POWER
-  const vx = -dx * k
-  const vy = -dy * k
-  if (vy > -120) return null
-  return { vx, vy }
+export function binForThrow(index: number, rand = Math.random): Bin {
+  const stage = index < 3 ? 0 : index < 7 ? 1 : 2
+  const z = stage === 0 ? 2.2 + rand() * 0.8 : 2.6 + rand() * 2.4
+  const spread = stage === 0 ? 0.35 : 0.25 * z
+  const x = (rand() * 2 - 1) * spread
+  return stage === 2 ? { x: x * 0.4, z, sway: 0.45 + rand() * 0.3, speed: 1.3 + rand() * 0.9, phase: rand() * Math.PI * 2 } : { x, z, sway: 0, speed: 0, phase: 0 }
 }
 
-/** The first part of the flight without wind: dots that show where a pull would send the ball. */
-export function aimDots(vx: number, vy: number, count = 9, every = 0.07): Array<{ x: number; y: number }> {
-  const dots: Array<{ x: number; y: number }> = []
-  for (let i = 1; i <= count; i += 1) {
-    const t = i * every
-    const y = BALL_START.y + vy * t + 0.5 * TOSS_GRAVITY * t * t
-    if (y > BIN.bottom) break
-    dots.push({ x: BALL_START.x + vx * t, y })
-  }
-  return dots
+/** Points for a hit: 1, +1 when the bin is far, +1 when it moves. */
+export function binPoints(bin: Bin): number {
+  return 1 + (bin.z > 3.6 ? 1 : 0) + (bin.sway ? 1 : 0)
 }
 
-/** One physics step. Returns the new ball and, when the throw is over, how it ended. */
-export function stepBall(ball: Ball, wind: number, dt: number): { ball: Ball; end: TossEnd | null; rim: boolean } {
-  let vx = ball.vx + wind * dt
-  const vy = ball.vy + TOSS_GRAVITY * dt
-  let x = ball.x + vx * dt
-  const y = ball.y + vy * dt
+/** Wind for one throw, sideways in m/s². The first throw is calm. */
+export function randomWind(index: number, rand = Math.random): number {
+  if (index === 0) return 0
+  const w = Math.round((rand() * 2 - 1) * 14) / 10
+  return Math.abs(w) < 0.3 ? 0 : w
+}
+
+/** How far (scene px) the finger is pulled down for full power, and sideways for full aim. */
+export const PULL_FULL = 170
+export const AIM_FULL = 140
+
+/** Pulling the finger down tightens the flick: 0 (none) to 1 (full). Pulling up does nothing. */
+export function powerFromPull(dy: number): number {
+  return Math.max(0, Math.min(1, dy / PULL_FULL))
+}
+
+/** Sideways drag turns the aim: −1 (left) to 1 (right). */
+export function aimFromPull(dx: number): number {
+  return Math.max(-1, Math.min(1, dx / AIM_FULL))
+}
+
+/** Turns aim (−1 left … 1 right) and power (0-1) into the paper's start speed. */
+export function flickLaunch(power: number, aim: number): Paper {
+  const v = 3 + Math.max(0, Math.min(1, power)) * 4.6
+  const yaw = Math.max(-1, Math.min(1, aim)) * MAX_YAW
+  const flat = v * Math.cos(ELEVATION)
+  return { ...PAPER_START, vx: flat * Math.sin(yaw), vy: v * Math.sin(ELEVATION), vz: flat * Math.cos(yaw) }
+}
+
+/**
+ * One step of flight. `t` is the time since the throw (for a swaying bin). Ends 'in' when the
+ * paper drops through the rim, 'out' when it lands on the floor or leaves the room. Clipping the
+ * rim bounces it off.
+ */
+export function stepPaper(paper: Paper, bin: Bin, wind: number, t: number, dt: number): { paper: Paper; end: TossEnd | null; rim: boolean } {
+  let vx = paper.vx + wind * dt
+  let vz = paper.vz
+  const vy = paper.vy - GRAVITY * dt
+  const next: Paper = { x: paper.x + vx * dt, y: paper.y + vy * dt, z: paper.z + vz * dt, vx, vy, vz }
   let rim = false
-
-  // Crossing the rim line on the way down.
-  if (ball.y <= BIN.rim && y > BIN.rim && vy > 0) {
-    const t = (BIN.rim - ball.y) / (y - ball.y)
-    const cx = ball.x + (x - ball.x) * t
-    if (cx > BIN.left + BALL_R * 0.6 && cx < BIN.right - BALL_R * 0.6) return { ball: { x: cx, y: BIN.rim + 1, vx: 0, vy }, end: 'in', rim: false }
-    // Clipped the edge of the rim: bounces off sideways.
-    if (Math.abs(cx - BIN.left) <= BALL_R || Math.abs(cx - BIN.right) <= BALL_R) {
+  if (paper.y >= BIN_TALL && next.y < BIN_TALL && vy < 0) {
+    const k = (paper.y - BIN_TALL) / (paper.y - next.y)
+    const cx = paper.x + (next.x - paper.x) * k
+    const cz = paper.z + (next.z - paper.z) * k
+    const bx = binX(bin, t)
+    const d = Math.hypot(cx - bx, cz - bin.z)
+    if (d < BIN_R - PAPER_R * 0.5) return { paper: { ...next, x: cx, z: cz, y: BIN_TALL - 0.01 }, end: 'in', rim: false }
+    if (d < BIN_R + PAPER_R) {
+      // Off the rim: thrown back and outwards.
       rim = true
-      vx = -vx * 0.45 + (cx < (BIN.left + BIN.right) / 2 ? -60 : 60)
-      x = cx + Math.sign(vx) * BALL_R
+      const nx = (cx - bx) / (d || 1)
+      const nz = (cz - bin.z) / (d || 1)
+      vx = nx * 1.4 + vx * 0.2
+      vz = nz * 1.4 + vz * 0.2
+      return { paper: { x: cx + nx * 0.03, y: BIN_TALL + 0.01, z: cz + nz * 0.03, vx, vy: Math.abs(vy) * 0.35, vz }, end: null, rim }
     }
   }
-  // Hitting the side of the bin below the rim.
-  if (y > BIN.rim && y < BIN.bottom && x + BALL_R > BIN.left && x - BALL_R < BIN.right && !(ball.x + BALL_R > BIN.left && ball.x - BALL_R < BIN.right)) {
-    rim = true
-    vx = -vx * 0.35
-    x = ball.x
-  }
-  const next = { x, y, vx, vy }
-  if (y > TOSS_H + BALL_R || x < -60 || x > TOSS_W + 60) return { ball: next, end: 'out', rim }
-  if (y >= BIN.bottom && vy > 0 && (x < BIN.left - BALL_R || x > BIN.right + BALL_R)) return { ball: { ...next, y: BIN.bottom }, end: 'out', rim }
-  return { ball: next, end: null, rim }
+  if (next.y <= PAPER_R) return { paper: { ...next, y: PAPER_R }, end: 'out', rim }
+  if (next.z > 9 || Math.abs(next.x) > 5) return { paper: next, end: 'out', rim }
+  return { paper: next, end: null, rim }
 }
 
-/** Plays a whole throw without drawing it (for tests and for checking that a throw can go in). */
-export function simulateThrow(vx: number, vy: number, wind: number, dt = 1 / 120): TossEnd {
-  let ball: Ball = { ...BALL_START, vx, vy }
-  for (let i = 0; i < 2000; i += 1) {
-    const step = stepBall(ball, wind, dt)
+/** A whole throw without drawing it (tests, and to check every bin can be hit). */
+export function simulateFlick(power: number, aim: number, bin: Bin, wind = 0, dt = 1 / 240): TossEnd {
+  let paper = flickLaunch(power, aim)
+  for (let i = 0, t = 0; i < 2400; i += 1, t += dt) {
+    const step = stepPaper(paper, bin, wind, t, dt)
     if (step.end) return step.end
-    ball = step.ball
+    paper = step.paper
   }
   return 'out'
-}
-
-export function tossPoints(results: TossEnd[]): number {
-  let points = 0
-  let streak = 0
-  for (const r of results) {
-    if (r === 'in') {
-      streak += 1
-      points += streak >= 3 ? 2 : 1
-    } else streak = 0
-  }
-  return points
 }
 
 // ---------- Çekmece (birleştirme) ----------
