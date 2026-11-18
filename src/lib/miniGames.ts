@@ -2,155 +2,14 @@
  * Mini games for the break page (admins only while they are tried out): the logic, kept apart
  * from the screens so it can be tested.
  *
- * - Fosforla altını çiz: one short paragraph a day; highlight the words that matter.
+ * - Günün Kavramı (its own file, wordGame.ts): a daily study-term puzzle.
  * - Kâğıt top: flick crumpled paper into the bin, with wind.
  * - Çekmece: put two identical items together and they become the next one, up to a diploma.
  */
 
-// ---------- Fosforla altını çiz ----------
-
-export interface HighlightParagraph {
-  id: string
-  title: string
-  /** Key phrases are in [brackets]; a phrase is highlighted as one piece. */
-  text: string
-}
-
-export interface HighlightToken {
-  index: number
-  text: string
-  /** Punctuation right after the word: shown, but not part of the highlight. */
-  after: string
-  key: boolean
-}
-
-export const HIGHLIGHT_SECONDS = 40
-export const HIGHLIGHT_HIT = 10
-export const HIGHLIGHT_WRONG = 5
-
-export const HIGHLIGHT_PARAGRAPHS: HighlightParagraph[] = [
-  {
-    id: 'ahtapot',
-    title: 'Ahtapotun kalpleri',
-    text: 'Ahtapotların tam [üç kalbi] vardır. İkisi solungaçlara, biri vücudun geri kalanına kan pompalar. Kanları kırmızı değil [mavidir], çünkü oksijeni demir yerine [bakır] içeren bir molekülle taşırlar. Yüzerken ana kalp durur; bu yüzden ahtapotlar yüzmekten çabuk yorulur.',
-  },
-  {
-    id: 'unutma',
-    title: 'Unutmanın hızı',
-    text: "Ebbinghaus'un deneylerine göre yeni öğrenilen bilginin büyük kısmı [ilk birkaç gün] içinde unutulur. Bilgiyi [aralıklarla tekrar] etmek bu kaybı yavaşlatır. Her tekrardan sonra bir sonraki tekrara kadar [daha uzun] süre beklenebilir.",
-  },
-  {
-    id: 'bal',
-    title: 'Bozulmayan yiyecek',
-    text: 'Bal doğru saklanırsa neredeyse [bozulmaz]. Arkeologlar Mısır mezarlarında [binlerce yıllık] bal kavanozları buldu. Balın içinde çok az [su] bulunur ve bal hafif [asidiktir]; bu ortamda bakteriler çoğalamaz.',
-  },
-  {
-    id: 'uyku',
-    title: 'Uyurken çalışan beyin',
-    text: 'Uyurken beyin boş durmaz. Gün içinde öğrendiklerini [tekrar oynatır] ve önemli olanları [uzun süreli belleğe] taşır. Bu yüzden sınavdan önceki gece [uykusuz kalmak], fazladan bir saat çalışmaktan çoğu zaman daha zararlıdır.',
-  },
-  {
-    id: 'kedi',
-    title: 'Kediler ve kutular',
-    text: 'Kediler kutulara girmeyi sever, çünkü dar alanlar onlara [güven] verir. Bir araştırmada kutusu olan barınak kedilerinin [daha az stresli] olduğu ve yeni ortama [daha hızlı] alıştığı görüldü.',
-  },
-  {
-    id: 'pomodoro',
-    title: 'Domatesli saat',
-    text: 'Pomodoro tekniği adını, mucidinin kullandığı [domates şeklindeki] mutfak saatinden alır. Yöntem basittir: [25 dakika] odaklan, ardından [kısa bir mola] ver. Dört turdan sonra daha uzun bir mola gelir.',
-  },
-  {
-    id: 'gunes',
-    title: 'Geç gelen ışık',
-    text: "Güneş'ten çıkan ışık Dünya'ya yaklaşık [8 dakikada] ulaşır. Yani gökyüzüne baktığında Güneş'i [8 dakika önceki] hâliyle görürsün. Gece gördüğün bazı yıldızların ışığı ise [binlerce yıl] önce yola çıkmıştır.",
-  },
-  {
-    id: 'zurafa',
-    title: 'Zürafanın boynu',
-    text: 'Zürafaların boynu çok uzun olsa da boyunlarında insanlarla [aynı sayıda], yani [yedi] omur vardır. Aradaki fark, zürafanın her bir omurunun [çok daha uzun] olmasıdır.',
-  },
-  {
-    id: 'tardigrad',
-    title: 'Ölümsüze yakın canlı',
-    text: 'Tardigradlar [yarım milimetre] boyunda minik canlılardır. Neredeyse tamamen [kuruyup] yıllarca bekleyebilir, su bulunca yeniden canlanırlar. Bazıları [uzay boşluğunda] bile hayatta kalmayı başarmıştır.',
-  },
-  {
-    id: 'kursun',
-    title: 'Kurşunsuz kalem',
-    text: 'Kurşun kalemin içinde aslında [kurşun yoktur]. Ucu, kil ile karıştırılmış [grafitten] yapılır. Eskiden grafitin bir tür kurşun sanılması bu [yanlış ismin] kaynağıdır.',
-  },
-  {
-    id: 'cizgi',
-    title: 'Her şeyin altını çizmek',
-    text: 'Bir metnin her satırının altını çizmek, [hiçbirini çizmemekle] neredeyse aynı işe yarar. İşe yarayan, okurken [ana fikri] seçmek ve kenara [kendi cümlelerinle] not almaktır.',
-  },
-  {
-    id: 'turkce',
-    title: 'Ek ek büyüyen kelimeler',
-    text: 'Türkçe [eklemeli] bir dildir: kelimelerin sonuna ekler eklenerek yeni anlamlar kurulur. Bu yüzden Türkçedeki [tek bir kelime], başka dillerde [koca bir cümleye] karşılık gelebilir.',
-  },
-  {
-    id: 'cilek',
-    title: 'Çileğin sırrı',
-    text: 'Bilimsel tanıma göre muz bir [üzümsü meyvedir], çilek ise değildir. Çileğin üzerindeki küçük noktaların her biri aslında [ayrı bir meyvedir] ve içinde birer [tohum] taşır.',
-  },
-  {
-    id: 'sinekkusu',
-    title: 'Geri geri uçan kuş',
-    text: 'Sinek kuşları kanatlarını saniyede [onlarca kez] çırpar. Bu sayede havada [asılı kalabilir] ve [geri geri] uçabilirler. Bunu yapabilen başka kuş yok denecek kadar azdır.',
-  },
-]
-
-/** Words and [key phrases] of a paragraph, with the punctuation that follows each. */
-export function parseParagraph(text: string): HighlightToken[] {
-  const tokens: HighlightToken[] = []
-  const pattern = /\[([^\]]+)\]([^\s[]*)|([^\s[]+)/g
-  for (const m of text.matchAll(pattern)) {
-    if (m[1] !== undefined) {
-      tokens.push({ index: tokens.length, text: m[1], after: m[2] ?? '', key: true })
-    } else {
-      const raw = m[3]
-      const word = raw.match(/^(.*?)([.,;:!?)"']*)$/)!
-      // A token that is only punctuation (rare) stays as plain text.
-      tokens.push({ index: tokens.length, text: word[1] || raw, after: word[1] ? word[2] : '', key: false })
-    }
-  }
-  return tokens
-}
-
-export interface HighlightScore {
-  hits: number
-  wrong: number
-  missed: number
-  keys: number
-  points: number
-  /** 0-3 stars: all keys and nothing extra is three. */
-  stars: number
-}
-
-export function scoreHighlight(tokens: HighlightToken[], chosen: ReadonlySet<number>): HighlightScore {
-  let hits = 0
-  let wrong = 0
-  let keys = 0
-  for (const t of tokens) {
-    if (t.key) keys += 1
-    if (!chosen.has(t.index)) continue
-    if (t.key) hits += 1
-    else wrong += 1
-  }
-  const points = Math.max(0, hits * HIGHLIGHT_HIT - wrong * HIGHLIGHT_WRONG)
-  const share = keys ? points / (keys * HIGHLIGHT_HIT) : 0
-  const stars = share >= 1 ? 3 : share >= 0.66 ? 2 : share >= 0.33 ? 1 : 0
-  return { hits, wrong, missed: keys - hits, keys, points, stars }
-}
-
-/** Day number in Istanbul time, so everyone in Turkey gets the same paragraph on the same day. */
+/** Day number in Istanbul time, so everyone in Turkey gets the same daily puzzle on the same day. */
 export function istanbulDay(now = Date.now()): number {
   return Math.floor((now + 3 * 3600_000) / 86_400_000)
-}
-
-export function dailyParagraph(now = Date.now(), list = HIGHLIGHT_PARAGRAPHS): HighlightParagraph {
-  return list[istanbulDay(now) % list.length]
 }
 
 // ---------- Kâğıt top (fiske) ----------
@@ -237,6 +96,11 @@ export const AIM_FULL = 140
 /** Pulling the finger down tightens the flick: 0 (none) to 1 (full). Pulling up does nothing. */
 export function powerFromPull(dy: number): number {
   return Math.max(0, Math.min(1, dy / PULL_FULL))
+}
+
+/** Swiping up from the paper towards the bin: the longer the swipe, the harder the flick. */
+export function powerFromSwipe(dy: number): number {
+  return powerFromPull(-dy)
 }
 
 /** Sideways drag turns the aim: −1 (left) to 1 (right). */
@@ -371,6 +235,28 @@ export function drawerStuck(grid: Drawer): boolean {
   return true
 }
 
+/** One pair that can be put together right now (for a hint), or null. */
+export function findPair(grid: Drawer): [number, number] | null {
+  const first = new Map<number, number>()
+  for (let i = 0; i < grid.length; i += 1) {
+    const v = grid[i]
+    if (v === null || v >= DRAWER_MAX) continue
+    const j = first.get(v)
+    if (j !== undefined) return [j, i]
+    first.set(v, i)
+  }
+  return null
+}
+
+/** How many pairs could be made now (each item counted once). */
+export function pairCount(grid: Drawer): number {
+  const counts = new Map<number, number>()
+  for (const v of grid) if (v !== null && v < DRAWER_MAX) counts.set(v, (counts.get(v) ?? 0) + 1)
+  let n = 0
+  for (const c of counts.values()) n += Math.floor(c / 2)
+  return n
+}
+
 export function bestLevel(grid: Drawer): number {
   return grid.reduce<number>((m, v) => (v !== null && v > m ? v : m), 0)
 }
@@ -380,8 +266,6 @@ export function bestLevel(grid: Drawer): number {
 const RECORDS_KEY = 'studymode.miniGames'
 
 export interface MiniRecords {
-  highlight?: { day: number; points: number; stars: number }
-  highlightBest?: number
   toss?: number
   drawer?: number
   drawerLevel?: number

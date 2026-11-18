@@ -5,18 +5,17 @@ import {
   binPoints,
   binX,
   canMerge,
-  dailyParagraph,
   drawerStuck,
+  findPair,
+  pairCount,
   flickLaunch,
-  HIGHLIGHT_PARAGRAPHS,
   mergeItems,
   newDrawer,
-  parseParagraph,
   aimFromPull,
   powerFromPull,
+  powerFromSwipe,
   project,
   randomWind,
-  scoreHighlight,
   simulateFlick,
   spawnItem,
   trajectoryPreview,
@@ -29,48 +28,6 @@ const seq = (...values: number[]) => {
   let i = 0
   return () => values[i++ % values.length]
 }
-
-describe('Fosforla altını çiz', () => {
-  it('splits a paragraph into words and key phrases, punctuation kept apart', () => {
-    const tokens = parseParagraph('Ahtapotların tam [üç kalbi] vardır. Kanları [mavidir], çünkü.')
-    expect(tokens.map((t) => [t.text, t.after, t.key])).toEqual([
-      ['Ahtapotların', '', false],
-      ['tam', '', false],
-      ['üç kalbi', '', true],
-      ['vardır', '.', false],
-      ['Kanları', '', false],
-      ['mavidir', ',', true],
-      ['çünkü', '.', false],
-    ])
-  })
-
-  it('every paragraph has a few key phrases and reads back as written', () => {
-    for (const p of HIGHLIGHT_PARAGRAPHS) {
-      const tokens = parseParagraph(p.text)
-      const keys = tokens.filter((t) => t.key).length
-      expect(keys, p.id).toBeGreaterThanOrEqual(3)
-      expect(tokens.map((t) => t.text + t.after).join(' '), p.id).toBe(p.text.replace(/[[\]]/g, ''))
-    }
-    expect(new Set(HIGHLIGHT_PARAGRAPHS.map((p) => p.id)).size).toBe(HIGHLIGHT_PARAGRAPHS.length)
-  })
-
-  it('scores hits, takes points for extra words, never below zero', () => {
-    const tokens = parseParagraph('a [b] c [d] e [f]')
-    const keys = tokens.filter((t) => t.key).map((t) => t.index)
-    expect(scoreHighlight(tokens, new Set(keys))).toMatchObject({ hits: 3, wrong: 0, missed: 0, points: 30, stars: 3 })
-    expect(scoreHighlight(tokens, new Set([keys[0], 0]))).toMatchObject({ hits: 1, wrong: 1, missed: 2, points: 5, stars: 0 })
-    expect(scoreHighlight(tokens, new Set(tokens.map((t) => t.index)))).toMatchObject({ points: 15, stars: 1 })
-    expect(scoreHighlight(tokens, new Set([0, 2, 4]))).toMatchObject({ points: 0 })
-  })
-
-  it('gives everyone the same paragraph for the whole Istanbul day, and a new one the next day', () => {
-    const morning = Date.UTC(2026, 10, 18, 5, 0) // 08:00 in Istanbul
-    const lateNight = Date.UTC(2026, 10, 18, 20, 30) // 23:30
-    const nextDay = Date.UTC(2026, 10, 18, 21, 30) // 00:30 the next day
-    expect(dailyParagraph(morning).id).toBe(dailyParagraph(lateNight).id)
-    expect(dailyParagraph(nextDay).id).not.toBe(dailyParagraph(lateNight).id)
-  })
-})
 
 describe('Kâğıt top (fiske)', () => {
   const still = (x: number, z: number): Bin => ({ x, z, sway: 0, speed: 0, phase: 0 })
@@ -126,6 +83,8 @@ describe('Kâğıt top (fiske)', () => {
     expect(powerFromPull(-40)).toBe(0)
     expect(powerFromPull(85)).toBeCloseTo(0.5)
     expect(powerFromPull(999)).toBe(1)
+    expect(powerFromSwipe(-85)).toBeCloseTo(0.5)
+    expect(powerFromSwipe(40)).toBe(0)
     expect(aimFromPull(-70)).toBeCloseTo(-0.5)
     expect(aimFromPull(500)).toBe(1)
     expect(randomWind(0, () => 0.99)).toBe(0)
@@ -165,6 +124,14 @@ describe('Çekmece', () => {
     const noPairs: Drawer = [1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8]
     expect(drawerStuck(noPairs)).toBe(true)
     expect(drawerStuck([null, ...noPairs.slice(1)])).toBe(false)
+  })
+
+  it('finds a pair to hint at and counts the pairs on the board', () => {
+    const grid: Drawer = [1, 2, null, 1, 2, 2, 8, 8, ...Array(8).fill(null)]
+    expect(findPair(grid)).toEqual([0, 3])
+    // Two 1s make one pair, three 2s make one pair, diplomas do not merge.
+    expect(pairCount(grid)).toBe(2)
+    expect(findPair([1, 2, 3, 8, 8, ...Array(11).fill(null)])).toBeNull()
   })
 
   it('a new item lands in an empty cell', () => {
