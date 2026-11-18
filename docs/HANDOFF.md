@@ -1005,12 +1005,13 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Ücretsiz anahtar dolunca Vertex (#108):** `api/generate.ts` `vertexBackup`: ücretsiz Gemini 429/503 verirse aynı istek ana hesaptaki Vertex'e (önce hafif modeller) gider. Sebep: diğer Google hesabında faturalandırma kapatılınca anahtar düşük sınırlı ücretsiz kademeye döndü; 4 taranmış PDF (~200 sayfa) "kota dolu" verdi.
 - **VIP/Premium/admin sayfa okuması Vertex'te (#109):** `transcribe` artık bunlar için ücretsiz anahtara hiç gitmez (`gemini-3.5-flash-lite`, canlıda doğrulandı ~3 sn/sayfa).
 - **Sayfa okuma kimsenin hakkından düşmez (#110):** `transcribe` `consume_ai` çağırmaz, günlük hak dolsa da çalışır.
-- **Mini oyunlar (yalnızca admin, deneme):** Mola → "Mini oyunlar" (`?bolum=mola&oyun=mini`). `src/lib/miniGames.ts` (mantık + `miniGames.test.ts`), `src/components/mola/MiniGames.tsx`, `src/styles/minigames.css`.
+- **Mini oyunlar (VIP ayrıcalığı: VIP, admin ve süren Premium; `useCanPlus`):** Mola → "Mini oyunlar" (`?bolum=mola&oyun=mini`). `src/lib/miniGames.ts` (mantık + `miniGames.test.ts`), `src/components/mola/MiniGames.tsx`, `src/styles/minigames.css`.
   - **Fosforla altını çiz:** günde bir paragraf (İstanbul gününe göre herkese aynı), önemli kelimelerin üstünden parmakla geçilir; +10 doğru, −5 fazla, 40 sn. Paragraflar `HIGHLIGHT_PARAGRAPHS` (14 tane, anahtar ifadeler `[köşeli]`). Gün içinde ikinci oyun "antrenman", sayılmaz.
-  - **Kâğıt top:** topu yukarı fırlat, rüzgâr her atışta değişir, 10 atış, üst üste 3+ isabet 2 puan. Fizik `stepBall`.
+  - **Kâğıt top:** sapan gibi geri çek-bırak (`launchFromPull`, nişan noktaları `aimDots`), rüzgâr her atışta değişir, 10 atış, üst üste 3+ isabet 2 puan. Fizik `stepBall`.
   - **Çekmece:** 4×4, iki aynı eşya birleşir (kurşun kalem → … → diploma), her hamlede yeni eşya düşer, 2 dk.
-  - Rekorlar bu cihazda (`studymode.miniGames`). Herkese açmak için `Mola.tsx`'teki `isAdmin` koşulları kaldırılır.
-- **Testler:** e2e "mini games on the break page: admins only…"; normal hesap tile'ı görmez, adresle de açamaz.
+  - Rekorlar bu cihazda (`studymode.miniGames`). Herkese açmak için `Mola.tsx`'teki `canPlayMini` koşulları kaldırılır.
+  - Tasarım (18 Kasım, kurucu "çok kötü" dedi): sticker kartlar (2px lacivert kenar + düz gölge), her oyuna SVG illüstrasyon, oyun içi üst çubuk (geri, ad, puan) + süre çubuğu, sonuç kartı, defter çizgili paragraf, pencereli oda + rüzgâr bayrağı, çekmece kutusu + seviye renkli jetonlar.
+- **Testler:** e2e "mini games on the break page: VIP perk…"; normal hesap tile'ı görmez, adresle de açamaz.
 
 ## Tasarım dili ("Fosforlu")
 

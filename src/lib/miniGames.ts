@@ -163,7 +163,6 @@ export const TOSS_GRAVITY = 900
 export const BALL_R = 13
 export const BALL_START = { x: 64, y: 440 }
 export const BIN = { left: 252, right: 312, rim: 362, bottom: 452 }
-export const MAX_SPEED = 1150
 
 export interface Ball {
   x: number
@@ -180,18 +179,34 @@ export function randomWind(rand = Math.random): number {
   return Math.abs(w) < 25 ? 0 : w
 }
 
-/** Turns a flick (screen movement in scene units over `ms`) into a launch speed. */
-export function launchFromFlick(dx: number, dy: number, ms: number): { vx: number; vy: number } | null {
-  if (ms <= 0 || dy > -8) return null
-  let vx = (dx / ms) * 1000 * 0.55
-  let vy = (dy / ms) * 1000 * 0.55
-  const speed = Math.hypot(vx, vy)
-  if (speed < 250) return null
-  if (speed > MAX_SPEED) {
-    vx = (vx / speed) * MAX_SPEED
-    vy = (vy / speed) * MAX_SPEED
-  }
+/** How far (scene units) the ball can be pulled back, and how hard a pull throws. */
+export const MAX_PULL = 150
+export const PULL_POWER = 7
+
+/**
+ * Pull back and let go, like a slingshot: `dx`/`dy` is where the finger is relative to the ball.
+ * The ball flies the opposite way; a longer pull throws harder. Too short, or not upwards: no throw.
+ */
+export function launchFromPull(dx: number, dy: number): { vx: number; vy: number } | null {
+  const len = Math.hypot(dx, dy)
+  if (len < 18) return null
+  const k = (Math.min(len, MAX_PULL) / len) * PULL_POWER
+  const vx = -dx * k
+  const vy = -dy * k
+  if (vy > -120) return null
   return { vx, vy }
+}
+
+/** The first part of the flight without wind: dots that show where a pull would send the ball. */
+export function aimDots(vx: number, vy: number, count = 9, every = 0.07): Array<{ x: number; y: number }> {
+  const dots: Array<{ x: number; y: number }> = []
+  for (let i = 1; i <= count; i += 1) {
+    const t = i * every
+    const y = BALL_START.y + vy * t + 0.5 * TOSS_GRAVITY * t * t
+    if (y > BIN.bottom) break
+    dots.push({ x: BALL_START.x + vx * t, y })
+  }
+  return dots
 }
 
 /** One physics step. Returns the new ball and, when the throw is over, how it ended. */

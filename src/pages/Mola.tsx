@@ -5,7 +5,7 @@ import { FocusTimer } from '../components/mola/FocusTimer'
 import { MatchGame } from '../components/mola/MatchGame'
 import { DrawerGame, HighlightGame, MINI_GAMES, MiniHub, TossGame, type MiniGame } from '../components/mola/MiniGames'
 import { QuickGame } from '../components/mola/QuickGame'
-import { useQuota } from '../lib/account'
+import { useCanPlus } from '../lib/account'
 import { useFocus } from '../lib/focusStore'
 import { cardsInScope, focusLastWeek, formatClock, formatSeconds, isWaiting, MATCH_MIN_PAIRS, QUICK_LIVES, QUICK_MIN_CARDS, QUICK_SECONDS, readRecords, remainingMs, scopeKey } from '../lib/mola'
 import { useStore } from '../lib/store'
@@ -46,8 +46,8 @@ export function Mola() {
   const game = GAMES.find((g) => g === params.get('oyun')) ?? null
   const [scope, setScopeState] = useState<string | null>(readScope)
   const timer = useFocus()
-  // Mini games are being tried out: only admins see them for now.
-  const isAdmin = useQuota(store.session?.user.id ?? null)?.role === 'admin'
+  // Mini games are a VIP perk: VIP, admin, and anyone with Premium running.
+  const canPlayMini = useCanPlus(store.session?.user.id ?? null) === true
 
   const courses = useMemo(
     () =>
@@ -79,11 +79,11 @@ export function Mola() {
   }
   const exit = () => open(null)
 
-  if (isAdmin && game === 'mini') return <MiniHub onOpen={(g) => open(g)} onExit={exit} />
+  if (canPlayMini && game === 'mini') return <MiniHub onOpen={(g) => open(g)} onExit={exit} />
   const backToMini = () => open('mini')
-  if (isAdmin && game === 'altini-ciz') return <HighlightGame onExit={backToMini} />
-  if (isAdmin && game === 'kagit-top') return <TossGame onExit={backToMini} />
-  if (isAdmin && game === 'cekmece') return <DrawerGame onExit={backToMini} />
+  if (canPlayMini && game === 'altini-ciz') return <HighlightGame onExit={backToMini} />
+  if (canPlayMini && game === 'kagit-top') return <TossGame onExit={backToMini} />
+  if (canPlayMini && game === 'cekmece') return <DrawerGame onExit={backToMini} />
   if (game === 'eslestir' && cards.length >= MATCH_MIN_PAIRS) return <MatchGame cards={cards} courseId={courseId} onExit={exit} />
   if (game === 'hizli' && cards.length >= QUICK_MIN_CARDS) return <QuickGame cards={cards} courseId={courseId} onExit={exit} />
   if (game === 'odak')
@@ -128,12 +128,12 @@ export function Mola() {
       )}
 
       <div className="mola-grid">
-        {isAdmin && (
+        {canPlayMini && (
           <MolaTile
             icon={<Gamepad2 size={22} />}
             title="Mini oyunlar"
             text="Fosforla altını çiz, kâğıt top ve çekmece. Kart gerekmez."
-            meta="Deneme: yalnızca yöneticiler görüyor"
+            meta="VIP'e özel"
             locked={null}
             onOpen={() => open('mini')}
           />
