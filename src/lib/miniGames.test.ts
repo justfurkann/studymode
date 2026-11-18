@@ -6,7 +6,10 @@ import {
   dailyParagraph,
   drawerStuck,
   HIGHLIGHT_PARAGRAPHS,
-  launchFromFlick,
+  aimDots,
+  launchFromPull,
+  MAX_PULL,
+  PULL_POWER,
   mergeItems,
   newDrawer,
   parseParagraph,
@@ -80,12 +83,32 @@ describe('Kâğıt top', () => {
     expect(simulateThrow(800, -900, 0)).toBe('out')
   })
 
-  it('a quick upward flick launches; a slow drag or a downward one does not', () => {
-    expect(launchFromFlick(60, -160, 100)).not.toBeNull()
-    expect(launchFromFlick(10, -20, 400)).toBeNull()
-    expect(launchFromFlick(60, 50, 80)).toBeNull()
-    const capped = launchFromFlick(500, -2000, 50)!
-    expect(Math.hypot(capped.vx, capped.vy)).toBeCloseTo(1150, 0)
+  it('pulling back and down throws up and forward; a tiny or upward pull does not throw', () => {
+    const throwIt = launchFromPull(-60, 80)!
+    expect(throwIt.vx).toBeGreaterThan(0)
+    expect(throwIt.vy).toBeLessThan(0)
+    expect(launchFromPull(5, 5)).toBeNull()
+    expect(launchFromPull(-40, -80)).toBeNull()
+    const capped = launchFromPull(-300, 400)!
+    expect(Math.hypot(capped.vx, capped.vy)).toBeCloseTo(MAX_PULL * PULL_POWER, 0)
+  })
+
+  it('some pull within reach puts the ball in the bin when there is no wind', () => {
+    let found = false
+    for (let dx = -10; dx >= -MAX_PULL && !found; dx -= 2) {
+      for (let dy = 10; dy <= MAX_PULL && !found; dy += 2) {
+        const v = launchFromPull(dx, dy)
+        if (v && simulateThrow(v.vx, v.vy, 0) === 'in') found = true
+      }
+    }
+    expect(found).toBe(true)
+  })
+
+  it('aim dots start at the ball and rise first', () => {
+    const dots = aimDots(150, -700)
+    expect(dots.length).toBeGreaterThan(3)
+    expect(dots[1].y).toBeLessThan(dots[0].y)
+    expect(dots[0].x).toBeGreaterThan(64)
   })
 
   it('the bin sits inside the scene', () => {
