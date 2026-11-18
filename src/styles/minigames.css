@@ -754,513 +754,6 @@
   color: var(--on-hi);
 }
 
-/* ---------- Oyun 2: Kâğıt top (3D Perspective Paper Toss) ---------- */
-
-.toss-hud {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.toss-hud-badges {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.toss-wind-chip.has-wind {
-  border-color: var(--ink-line);
-  background: var(--hi-soft);
-  color: var(--text);
-}
-
-.toss-dots {
-  display: flex;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.toss-dots li {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid var(--border-strong);
-  background: var(--surface);
-  box-shadow: inset 0 2px 2px rgb(0 0 0 / 0.1), 0 2px 0 var(--border-strong);
-  transition: transform 0.15s ease;
-}
-
-.toss-dots li.is-now {
-  border-color: var(--ink-line);
-  background: var(--hi);
-  transform: scale(1.18);
-  box-shadow: 0 2px 0 var(--ink-line);
-}
-
-.toss-dots li.is-in {
-  border-color: var(--ink-line);
-  background: var(--success);
-  box-shadow: 0 2px 0 var(--ink-line);
-}
-
-.toss-dots li.is-out {
-  border-color: var(--danger);
-  background: var(--danger-soft);
-}
-
-.toss-stage-wrap {
-  position: relative;
-  display: flex;
-  justify-content: center;
-}
-
-.toss-scene {
-  display: block;
-  width: 100%;
-  max-width: 410px;
-  aspect-ratio: 360 / 560;
-  border: 2.5px solid var(--card-line);
-  border-radius: 24px;
-  background: var(--surface-2);
-  box-shadow:
-    0 8px 0 var(--card-drop),
-    0 16px 32px rgb(27 34 80 / 0.16);
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  cursor: grab;
-}
-
-.toss-scene:active {
-  cursor: grabbing;
-}
-
-.toss-side-wall {
-  fill: var(--border);
-  opacity: 0.72;
-}
-
-.toss-baseboard {
-  fill: var(--surface);
-  stroke: var(--card-line);
-  stroke-width: 2;
-}
-
-.toss-corner-line {
-  stroke: var(--border-strong);
-  stroke-width: 2;
-}
-
-.toss-window-recess {
-  fill: var(--border-strong);
-  stroke: var(--card-line);
-  stroke-width: 2.5;
-}
-
-.toss-window {
-  stroke: var(--card-line);
-  stroke-width: 2.5;
-}
-
-.toss-frame {
-  stroke: var(--card-line);
-  stroke-width: 2.5;
-}
-
-.toss-sill {
-  fill: var(--surface);
-  stroke: var(--card-line);
-  stroke-width: 2.2;
-}
-
-.toss-poster {
-  fill: var(--surface);
-  stroke: var(--card-line);
-  stroke-width: 2;
-}
-
-.toss-pole {
-  stroke: var(--ink-line);
-  stroke-width: 2.5;
-}
-
-.toss-flag {
-  fill: var(--hi);
-  stroke: var(--ink-line);
-  stroke-width: 2;
-  stroke-linejoin: round;
-}
-
-.toss-dist-pill {
-  fill: var(--surface);
-  stroke: var(--border-strong);
-  stroke-width: 1.5;
-}
-
-.toss-dist-text {
-  fill: var(--text-2);
-  font: 800 10px var(--font-display);
-}
-
-.toss-wind-line {
-  stroke: var(--hi);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-dasharray: 8 6;
-}
-
-.toss-grid {
-  stroke: var(--border-strong);
-  stroke-width: 1.2;
-  opacity: 0.65;
-}
-
-.toss-shadow {
-  fill: var(--ink-line);
-  opacity: 0.16;
-}
-
-.toss-shadow-deep {
-  fill: var(--ink-line);
-  opacity: 0.28;
-}
-
-/* 3D Cylindrical Bin Layers */
-.toss-bin-inside {
-  fill: var(--border-strong);
-  stroke: var(--ink-line);
-  stroke-width: 2.5;
-  stroke-linejoin: round;
-}
-
-.toss-hole {
-  fill: #1b2250;
-  opacity: 0.82;
-}
-
-.toss-rib-back {
-  stroke: var(--ink-line);
-  stroke-width: 1.4;
-  opacity: 0.35;
-}
-
-.toss-bin-wall {
-  stroke: var(--ink-line);
-  stroke-width: 2.8;
-  stroke-linejoin: round;
-}
-
-.toss-bin-base-ring {
-  stroke: var(--ink-line);
-  stroke-width: 2.8;
-}
-
-.toss-rib {
-  stroke: var(--border-strong);
-  stroke-width: 1.8;
-  stroke-linecap: round;
-}
-
-.toss-rim-front {
-  fill: none;
-  stroke: var(--ink-line);
-  stroke-width: 5.5;
-  stroke-linecap: round;
-}
-
-.toss-rim-shine {
-  fill: none;
-  stroke: #ffffff;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  opacity: 0.65;
-}
-
-.toss-bin-badge {
-  fill: var(--hi);
-  stroke: var(--ink-line);
-  stroke-width: 2;
-}
-
-.toss-bin-badge-text {
-  fill: var(--on-hi);
-  font: 800 11px var(--font-display);
-}
-
-.toss-bin-back.is-hit,
-.toss-bin-front.is-hit {
-  animation: bin-bounce 0.32s ease-out;
-  transform-box: fill-box;
-  transform-origin: center bottom;
-}
-
-@keyframes bin-bounce {
-  40% {
-    transform: scale(1.08, 0.92);
-  }
-  75% {
-    transform: scale(0.97, 1.04);
-  }
-}
-
-/* 3D Polyhedral Origami Paper Ball */
-.paper-base {
-  fill: var(--mini-paper);
-  stroke: var(--ink-line);
-  stroke-width: 2.4;
-  stroke-linejoin: round;
-}
-
-.paper-lit {
-  fill: #ffffff;
-}
-
-.paper-lit-2 {
-  fill: var(--mini-paper);
-}
-
-.paper-mid {
-  fill: var(--mini-paper-mid);
-}
-
-.paper-shade {
-  fill: var(--mini-paper-shade);
-}
-
-.paper-deep {
-  fill: var(--mini-paper-deep);
-}
-
-.paper-crease {
-  fill: none;
-  stroke: var(--ink-line);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0.75;
-}
-
-.toss-ball-faded {
-  opacity: 0.58;
-}
-
-/* Flight Trail & 3D Aim Arc */
-.toss-trail-line {
-  fill: none;
-  stroke: var(--hi);
-  stroke-width: 3;
-  stroke-linecap: round;
-  opacity: 0.55;
-}
-
-.toss-trail-dot {
-  fill: var(--hi);
-}
-
-.toss-aim-shadow {
-  fill: var(--ink-line);
-  opacity: 0.25;
-}
-
-.toss-aim-curve {
-  fill: none;
-  stroke: var(--hi);
-  stroke-width: 3;
-  stroke-dasharray: 5 6;
-  stroke-linecap: round;
-}
-
-.toss-aim-node {
-  fill: var(--hi);
-  stroke: var(--ink-line);
-  stroke-width: 1.8;
-}
-
-/* Foreground 3D Study Desk & Launch Pad */
-.toss-desk-top {
-  fill: var(--mini-desk-top);
-}
-
-.toss-desk-edge {
-  fill: var(--mini-desk-edge);
-}
-
-.toss-desk-line {
-  stroke: var(--card-line);
-  stroke-width: 2.5;
-}
-
-.toss-pad-outer {
-  fill: var(--surface-2);
-  stroke: var(--card-line);
-  stroke-width: 2;
-}
-
-.toss-pad-inner {
-  fill: var(--hi-soft);
-  stroke: var(--border-strong);
-  stroke-width: 1.5;
-  stroke-dasharray: 4 4;
-}
-
-.toss-peg {
-  fill: var(--accent);
-  stroke: var(--ink-line);
-  stroke-width: 2;
-}
-
-.toss-cradle {
-  fill: var(--accent);
-  stroke: var(--ink-line);
-  stroke-width: 2;
-}
-
-.toss-elastic {
-  stroke: var(--hi);
-  stroke-width: 3.5;
-  stroke-linecap: round;
-}
-
-/* 3D Power Gauge & Hint */
-.toss-power-bg {
-  fill: var(--surface);
-  stroke: var(--ink-line);
-  stroke-width: 2.5;
-}
-
-.toss-power-fill {
-  fill: var(--hi);
-}
-
-.toss-power-tick {
-  stroke: var(--border-strong);
-  stroke-width: 1.5;
-}
-
-.toss-power-pill {
-  fill: var(--ink-line);
-}
-
-.toss-power-pct {
-  fill: var(--hi);
-  font: 800 11px var(--font-display);
-}
-
-.toss-hint-bg {
-  fill: var(--surface);
-  stroke: var(--ink-line);
-  stroke-width: 2;
-  opacity: 0.94;
-}
-
-.toss-hint {
-  fill: var(--text);
-  font: 800 13px var(--font-body);
-}
-
-.toss-flash {
-  font: 900 42px var(--font-display);
-  stroke: var(--surface);
-  stroke-width: 7px;
-  paint-order: stroke;
-  animation: toss-pop 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-.toss-flash.is-good {
-  fill: var(--success);
-}
-
-.toss-flash.is-bad {
-  fill: var(--danger);
-}
-
-.toss-flash-sub {
-  font: 800 14px var(--font-body);
-  fill: var(--text);
-  stroke: var(--surface);
-  stroke-width: 4px;
-  paint-order: stroke;
-}
-
-@keyframes toss-pop {
-  from {
-    transform: scale(0.55);
-    opacity: 0;
-  }
-}
-
-/* Sculpted 3D Hand */
-.toss-hand .finger-edge {
-  fill: none;
-  stroke: var(--ink-line);
-  stroke-width: 36;
-  stroke-linecap: round;
-}
-
-.toss-hand .finger {
-  fill: none;
-  stroke: var(--mini-skin);
-  stroke-width: 29;
-  stroke-linecap: round;
-}
-
-.toss-hand .finger-back {
-  fill: none;
-  stroke: var(--mini-skin-back);
-  stroke-width: 28;
-  stroke-linecap: round;
-}
-
-.toss-hand .fingernail {
-  fill: #ffffff;
-  stroke: var(--ink-line);
-  stroke-width: 1.8;
-  opacity: 0.85;
-}
-
-.toss-hand .palm {
-  fill: var(--mini-skin);
-  stroke: var(--ink-line);
-  stroke-width: 3.5;
-  stroke-linejoin: round;
-}
-
-.toss-hand .hand-cuff {
-  fill: var(--accent);
-  stroke: var(--ink-line);
-  stroke-width: 3;
-  stroke-linejoin: round;
-}
-
-.toss-hand .hand-cuff-stripe {
-  fill: none;
-  stroke: var(--hi);
-  stroke-width: 4;
-  stroke-linecap: round;
-}
-
-.toss-hand .snap {
-  fill: none;
-  stroke: var(--hi);
-  stroke-width: 3.5;
-  stroke-linecap: round;
-}
-
-.toss-hand .snap-ring {
-  fill: none;
-  stroke: var(--hi);
-  stroke-width: 2.5;
-  opacity: 0.7;
-}
-
 /* ---------- Oyun 3: Çekmece (3D Tactile Desk Organizer & Keycaps) ---------- */
 
 .drawer-status-bar {
@@ -1872,128 +1365,6 @@
   }
 }
 
-/* ---------- Kâğıt top: swipe arrow, fiske hand, how-to card ---------- */
-
-.toss-swipe line {
-  stroke: var(--hi);
-  stroke-width: 9;
-  stroke-linecap: round;
-}
-
-.toss-swipe circle {
-  fill: var(--hi);
-  stroke: var(--ink-line);
-  stroke-width: 3;
-}
-
-.toss-fiske .fiske-edge {
-  fill: none;
-  stroke: var(--ink-line);
-  stroke-width: 40;
-  stroke-linecap: round;
-}
-
-.toss-fiske .fiske-skin {
-  fill: none;
-  stroke: var(--mini-skin);
-  stroke-width: 33;
-  stroke-linecap: round;
-}
-
-.toss-fiske .fiske-palm {
-  fill: var(--mini-skin);
-  stroke: var(--ink-line);
-  stroke-width: 3.5;
-}
-
-.toss-fiske .fiske-snap {
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 3.5;
-  stroke-linecap: round;
-}
-
-.toss-stage-wrap {
-  position: relative;
-}
-
-.toss-how {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 34%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px 16px;
-  border: 2px solid var(--card-line);
-  border-radius: 18px;
-  background: var(--surface);
-  box-shadow: 0 5px 0 var(--card-drop);
-  text-align: left;
-}
-
-.toss-how ol {
-  margin: 0;
-  padding-left: 20px;
-  display: grid;
-  gap: 4px;
-  font-weight: 600;
-  line-height: 1.35;
-}
-
-.toss-how-demo {
-  position: relative;
-  width: 60px;
-  height: 84px;
-}
-
-.toss-how-track {
-  position: absolute;
-  left: 29px;
-  top: 6px;
-  bottom: 6px;
-  border-left: 3px dashed var(--border-strong);
-}
-
-.toss-how-finger {
-  position: absolute;
-  left: 12px;
-  bottom: 0;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid var(--ink-line);
-  background: var(--hi);
-  color: var(--on-hi);
-  animation: toss-how-swipe 1.6s ease-in-out infinite;
-}
-
-@keyframes toss-how-swipe {
-  0%,
-  15% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-  70% {
-    transform: translateY(-48px);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-48px);
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .toss-how-finger {
-    animation: none;
-  }
-}
-
 /* ---------- Çekmece: one strong, different colour per level, so equal items stand out ---------- */
 
 :root {
@@ -2144,5 +1515,143 @@ body:has(.mini-page) .assistant-launcher {
 
   .drawer-slot .drawer-token .drawer-token-name {
     font-size: 0.58rem;
+  }
+}
+
+/* The row being typed is outlined, and the next box has a blinking line. */
+.kv-tile.is-current {
+  border-color: var(--text-3);
+}
+
+.kv-tile.is-next {
+  position: relative;
+  border-color: var(--ink-line);
+}
+
+.kv-tile.is-next::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--text);
+  animation: kv-caret 1s steps(1) infinite;
+}
+
+@keyframes kv-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kv-tile.is-next::after {
+    animation: none;
+  }
+}
+
+/* The board takes its full width even before a letter is typed (empty boxes shrank to dots),
+   small enough that board and keyboard fit on one phone screen. */
+.kv-board {
+  width: 100%;
+  max-width: calc(var(--kv-len) * 40px + (var(--kv-len) - 1) * 6px);
+  gap: 6px;
+}
+
+/* Locked clue: one short line, so board and keyboard fit on a small phone. */
+.kv-clue:not(.is-open) {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 0.88rem;
+}
+
+.kv-clue:not(.is-open) .kv-subject {
+  align-self: center;
+}
+
+.kv-notice {
+  margin: 6px 0 4px;
+}
+
+.kv-keys {
+  gap: 6px;
+}
+
+.kv-key {
+  height: 46px;
+}
+
+.kv-row {
+  gap: 6px;
+}
+
+.kv-tile {
+  font-size: 1.25rem;
+}
+
+/* Word game: tighter spacing, so the keyboard stays above the bottom bar. */
+.mini-page:has(.kv-board) {
+  gap: 8px;
+}
+
+.kv-clue:not(.is-open) {
+  flex-wrap: nowrap;
+}
+
+.kv-clue:not(.is-open) p {
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-height: 780px) {
+  .kv-board {
+    max-width: calc(var(--kv-len) * 34px + (var(--kv-len) - 1) * 5px);
+    gap: 5px;
+  }
+
+  .kv-row {
+    gap: 5px;
+  }
+
+  .kv-tile {
+    font-size: 1.05rem;
+    border-radius: 8px;
+  }
+
+  .kv-key {
+    height: 42px;
+  }
+
+  .kv-notice {
+    margin: 2px 0;
+    min-height: 1.2em;
+  }
+}
+
+@media (max-height: 690px) {
+  .kv-board {
+    max-width: calc(var(--kv-len) * 30px + (var(--kv-len) - 1) * 4px);
+    gap: 4px;
+  }
+
+  .kv-row {
+    gap: 4px;
+  }
+
+  .kv-tile {
+    font-size: 0.95rem;
+  }
+
+  .kv-key {
+    height: 38px;
   }
 }

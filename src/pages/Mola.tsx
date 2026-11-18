@@ -3,7 +3,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { FocusTimer } from '../components/mola/FocusTimer'
 import { MatchGame } from '../components/mola/MatchGame'
-import { DrawerGame, MINI_GAMES, MiniHub, TossGame, type MiniGame } from '../components/mola/MiniGames'
+import { DrawerGame, MINI_GAMES, MiniHub, type MiniGame } from '../components/mola/MiniGames'
 import { WordGame } from '../components/mola/WordGame'
 import { QuickGame } from '../components/mola/QuickGame'
 import { useCanPlus } from '../lib/account'
@@ -83,7 +83,6 @@ export function Mola() {
   if (canPlayMini && game === 'mini') return <MiniHub onOpen={(g) => open(g)} onExit={exit} />
   const backToMini = () => open('mini')
   if (canPlayMini && game === 'kavram') return <WordGame onExit={backToMini} />
-  if (canPlayMini && game === 'kagit-top') return <TossGame onExit={backToMini} />
   if (canPlayMini && game === 'cekmece') return <DrawerGame onExit={backToMini} />
   if (game === 'eslestir' && cards.length >= MATCH_MIN_PAIRS) return <MatchGame cards={cards} courseId={courseId} onExit={exit} />
   if (game === 'hizli' && cards.length >= QUICK_MIN_CARDS) return <QuickGame cards={cards} courseId={courseId} onExit={exit} />
@@ -133,7 +132,7 @@ export function Mola() {
           <MolaTile
             icon={<Gamepad2 size={22} />}
             title="Mini oyunlar"
-            text="Günün Kavramı, kâğıt top ve çekmece. Kart gerekmez."
+            text="Günün Kavramı ve çekmece. Kart gerekmez."
             meta="VIP'e özel"
             locked={null}
             onOpen={() => open('mini')}

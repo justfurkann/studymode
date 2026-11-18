@@ -2125,7 +2125,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     ],
   }
 
-  test('mini games on the break page: VIP perk; daily word, paper toss and drawer can be played', async ({ page }) => {
+  test('mini games on the break page: VIP perk; daily word and drawer can be played', async ({ page }) => {
     const errors = watchErrors(page)
     let role = 'normal'
     await signedIn(page, { ai_quota: () => ({ role, used: 0, limit: role === 'vip' ? 150 : 40, allowed: true }) })
@@ -2162,22 +2162,6 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     }
     await expect(page.locator('.kv-tile[aria-label$="kelimede yok"]').first()).toBeVisible()
     await expect(page.locator('.kv-clue.is-open')).toBeVisible()
-    await page.getByRole('button', { name: 'Oyunlara dön' }).click()
-
-    // Paper toss: the how-to card, then swipe up from the paper towards the bin.
-    await page.getByRole('button', { name: 'Kâğıt top' }).click()
-    await expect(page.getByRole('dialog', { name: 'Nasıl oynanır' })).toBeVisible()
-    await page.getByRole('button', { name: 'Anladım' }).click()
-    await expect(page.getByRole('list', { name: 'Atış 1/10' })).toBeVisible()
-    const scene = (await page.locator('.toss-scene').boundingBox())!
-    const px = scene.x + scene.width / 2
-    const py = scene.y + scene.height * (410 / 560)
-    await page.mouse.move(px, py)
-    await page.mouse.down()
-    await page.mouse.move(px + 10, py - 90, { steps: 5 })
-    await expect(page.locator('.toss-swipe')).toBeVisible()
-    await page.mouse.up()
-    await expect(page.getByRole('list', { name: 'Atış 2/10' })).toBeVisible({ timeout: 8000 })
     await page.getByRole('button', { name: 'Oyunlara dön' }).click()
 
     // Drawer: picking an item makes its twins pulse; two equal items merge into the next one.
