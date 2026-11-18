@@ -1,4 +1,4 @@
-import { ArrowLeft, Lock, Award, BookOpen, Crown, GraduationCap, Highlighter, NotebookPen, Pencil, PenLine, Play, Plus, RotateCcw, ScrollText, Sparkles, Star, Timer, Trash2, Trophy, Wind } from 'lucide-react'
+import { ArrowLeft, Lock, Medal, Award, BookOpen, Crown, GraduationCap, Highlighter, NotebookPen, Pencil, PenLine, Play, Plus, RotateCcw, ScrollText, Sparkles, Star, Timer, Trash2, Trophy, Wind } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import {
   bestLevel,
@@ -156,7 +156,7 @@ export function MiniHub({ onOpen, onExit }: { onOpen: (game: MiniGame) => void; 
           tag="BİRLEŞTİRME"
           art={<DrawerArt />}
           title="Çekmece"
-          text="Aynı eşyaları birleştir, bölüm bölüm ilerle. Kurşun kalemden başla, diplomaya ulaş."
+          text="Aynı eşyaları birleştir, bölüm bölüm ilerle. Kurşun kalemden başla, profesörlüğe yüksel."
           chips={[drawerChip, `${drawerStars}/${CHAPTERS.length * 3} yıldız`]}
           onOpen={() => onOpen('cekmece')}
         />
@@ -270,8 +270,8 @@ function DrawerArt() {
 
 // ---------- Çekmece (3D Tactile Desk Organizer Merge) ----------
 
-const ITEM_ICONS = [Pencil, PenLine, Highlighter, NotebookPen, BookOpen, ScrollText, GraduationCap, Award]
-const SHORT_NAMES = ['Kurşun', 'Tükenmez', 'Fosforlu', 'Defter', 'Kitap', 'Ders Notu', 'Kep', 'Diploma']
+const ITEM_ICONS = [Pencil, PenLine, Highlighter, NotebookPen, BookOpen, ScrollText, GraduationCap, Award, Medal, Trophy, Crown]
+const SHORT_NAMES = ['Kurşun', 'Tükenmez', 'Fosforlu', 'Defter', 'Kitap', 'Ders Notu', 'Kep', 'Diploma', 'Y. lisans', 'Doktora', 'Profesör']
 
 export function DrawerGame({ onExit }: { onExit: () => void }) {
   // null = the chapter map; a number = that chapter; 'free' = endless play.
@@ -344,7 +344,8 @@ function DrawerRound({ chapter, onExit, onAgain, onNext }: { chapter: number | n
   const goal = chapter !== null ? CHAPTERS[chapter] : null
   const seconds = goal ? goal.seconds : DRAWER_SECONDS
   const target = goal ? goal.target : DRAWER_MAX
-  const [grid, setGrid] = useState<Drawer>(() => newDrawer())
+  const base = goal ? goal.base : 1
+  const [grid, setGrid] = useState<Drawer>(() => newDrawer(Math.random, base))
   const [selected, setSelected] = useState<number | null>(null)
   const [points, setPoints] = useState(0)
   const [pop, setPop] = useState<number | null>(null)
@@ -378,7 +379,7 @@ function DrawerRound({ chapter, onExit, onAgain, onNext }: { chapter: number | n
   }, [leftMs])
 
   const after = (next: Drawer, gained: number) => {
-    const spawned = spawnItem(next)
+    const spawned = spawnItem(next, Math.random, base)
     const total = points + gained
     setGrid(spawned)
     setPoints(total)
@@ -443,9 +444,9 @@ function DrawerRound({ chapter, onExit, onAgain, onNext }: { chapter: number | n
     return (
       <GameFrame title="Çekmece" subtitle="Serbest oyun" onExit={onExit}>
         <GameOver
-          title={end.reason === 'time' ? 'Süre doldu' : end.reason === 'full' ? 'Çekmece doldu' : 'Diploma senin!'}
+          title={end.reason === 'time' ? 'Süre doldu' : end.reason === 'full' ? 'Çekmece doldu' : 'Profesör oldun!'}
           points={points}
-          badge={end.reason === 'diploma' ? 'Kurşun kalemden diplomaya!' : end.best ? 'Yeni rekor!' : undefined}
+          badge={end.reason === 'diploma' ? 'Kurşun kalemden profesörlüğe!' : end.best ? 'Yeni rekor!' : undefined}
           stats={[
             ['En iyi eşya', top ? DRAWER_ITEMS[top - 1] : '—'],
             ['Rekor', Math.max(readMiniRecords().drawer ?? 0, points)],
@@ -564,7 +565,7 @@ function DrawerRound({ chapter, onExit, onAgain, onNext }: { chapter: number | n
       <div className="drawer-rack">
         <div className="drawer-rack-head">
           <span className="subtle">
-            <Trophy size={14} aria-hidden="true" /> Evrim Sırası (1 → 8)
+            <Trophy size={14} aria-hidden="true" /> Kariyer sırası (1 → 11)
           </span>
           <span className="subtle">
             En iyi: <strong>{top ? DRAWER_ITEMS[top - 1] : '—'}</strong>

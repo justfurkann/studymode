@@ -1028,6 +1028,7 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 
 ### Aşama 64 — Çekmece bölümleri, masaüstü düzeni, "Masaüstü" yazısı (18 Kasım 2026, `dreamy-sagan`)
 
+- Güncelleme (aynı gün, kurucu: "her eşyaya bir bölüm, 10 hedef"): eşya sırası **11'e** uzadı (… Diploma → Yüksek lisans → Doktora → Profesörlük); 10 bölüm = 10 farklı hedef (Tükenmez 20 sn … Profesörlük 160 sn). 7. bölümden sonra çekmeceye daha iyi eşyalar düşer (`Chapter.base`, `spawnItem(grid, rand, base)`), son 5 bölüm ~81 hamle; zorluk süre kısalarak artar. Yıldız: %40 kalan süre 3, %20 2.
 - Kurucu: "Çekmeceyi bir kere bitirince devamı yok, niye tekrar gireyim?" → **10 bölüm** (`CHAPTERS` in `miniGames.ts`): hedef eşya + süre (Fosforlu 60 sn → Diploma 360 sn). Kalan süreye göre 1-3 yıldız (`chapterStars`), bitince sonraki açılır, en iyi yıldızlar kalır (`studymode.cekmece.v1`). Bölüm haritası (`ChapterMap`), oyunda "Hedef" şeridi, sonuçta "Sonraki bölüm". Serbest oyun (eski 2 dk, rekor) haritanın altında. Süreler botla ölçüldü (testte de var: her bölüm 60 tohumda bitiyor, ortanca hamle × 1,5 sn < süre). Kart: "Sıradaki: N. bölüm", "x/30 yıldız".
 - Başlık "Masaüstü mini oyunlar" → "Mini oyunlar" (AI Studio'dan kalmıştı); "3B" etiketleri kaldırıldı.
 - Masaüstü: iki kart eşit yan yana; oyun ekranları ortada 480 px sütun; yüksek ekranda kelime kutuları büyük.

@@ -1381,6 +1381,11 @@
   --lv7-ink: var(--on-role);
   --lv8: var(--accent);
   --lv8-ink: var(--on-accent);
+  --lv9: var(--warning);
+  --lv9-ink: var(--on-role);
+  --lv10: var(--admin);
+  --lv10-ink: var(--on-role);
+  --lv11-ink: var(--hi);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1388,6 +1393,7 @@
     --lv1: var(--cloud);
     --lv2-ink: var(--on-hi);
     --lv5-ink: var(--on-hi);
+    --lv9-ink: var(--on-hi);
   }
 }
 
@@ -1395,6 +1401,7 @@
   --lv1: var(--cloud);
   --lv2-ink: var(--on-hi);
   --lv5-ink: var(--on-hi);
+  --lv9-ink: var(--on-hi);
 }
 
 .drawer-slot .drawer-token.lv-1,
@@ -1443,6 +1450,25 @@
 .drawer-mini-tile.lv-8 {
   background: var(--lv8);
   color: var(--lv8-ink);
+}
+
+.drawer-slot .drawer-token.lv-9,
+.drawer-mini-tile.lv-9 {
+  background: var(--lv9);
+  color: var(--lv9-ink);
+}
+
+.drawer-slot .drawer-token.lv-10,
+.drawer-mini-tile.lv-10 {
+  background: var(--lv10);
+  color: var(--lv10-ink);
+}
+
+/* The last item, Profesörlük: the Premium gradient with a yellow crown. */
+.drawer-slot .drawer-token.lv-11,
+.drawer-mini-tile.lv-11 {
+  background: linear-gradient(135deg, var(--prem-1), var(--prem-2));
+  color: var(--lv11-ink);
 }
 
 .drawer-slot .drawer-token .drawer-token-name {
