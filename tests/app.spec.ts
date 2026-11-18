@@ -2125,70 +2125,75 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     ],
   }
 
-  test('mini games on the break page: VIP perk; highlight, paper toss and drawer can be played', async ({ page }) => {
+  test('mini games on the break page: VIP perk; daily word, paper toss and drawer can be played', async ({ page }) => {
     const errors = watchErrors(page)
     let role = 'normal'
     await signedIn(page, { ai_quota: () => ({ role, used: 0, limit: role === 'vip' ? 150 : 40, allowed: true }) })
     await page.addInitScript((id) => localStorage.setItem('studymode.vipWelcomed.' + id, '1'), me.id)
 
-    // A normal account does not see them, and the address alone does not open them.
+    // A normal account does not see them; neither the address nor a made-up flag opens them.
     await page.goto('/tekrar?bolum=mola')
     await expect(page.getByRole('heading', { level: 1, name: /mola/ })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Mini oyunlar' })).toHaveCount(0)
-    await page.goto('/tekrar?bolum=mola&oyun=cekmece')
-    await expect(page.getByRole('heading', { level: 1, name: /mola/ })).toBeVisible()
-    await expect(page.getByRole('grid', { name: 'Çekmece' })).toHaveCount(0)
+    for (const url of ['/tekrar?bolum=mola&oyun=cekmece', '/tekrar?bolum=mola&oyun=kavram&autostart=1']) {
+      await page.goto(url)
+      await expect(page.getByRole('heading', { level: 1, name: /mola/ })).toBeVisible()
+      await expect(page.locator('.mini-page')).toHaveCount(0)
+    }
 
     role = 'vip'
     await page.goto('/tekrar?bolum=mola')
     await page.getByRole('button', { name: 'Mini oyunlar' }).click()
-    await expect(page.getByRole('heading', { level: 1, name: /Mini/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /mini oyunlar/ })).toBeVisible()
+    // Fosfor's button stays out of the way of the games.
+    await expect(page.locator('.assistant-launcher')).toBeHidden()
 
-    // Highlight: drag across the words, finish, see the score; the day's paragraph is then done.
-    await page.getByRole('button', { name: 'Fosforla altını çiz' }).click()
-    const words = page.locator('.mini-word')
-    await expect(words.first()).toBeVisible()
-    const a = (await words.nth(0).boundingBox())!
-    const b = (await words.nth(2).boundingBox())!
-    await page.mouse.move(a.x + 3, a.y + a.height / 2)
-    await page.mouse.down()
-    await page.mouse.move(b.x + b.width - 3, b.y + b.height / 2, { steps: 8 })
-    await page.mouse.up()
-    await expect(page.locator('.mini-word.is-on')).toHaveCount(3)
-    await expect(page.getByText('3 çizildi')).toBeVisible()
-    await page.getByRole('button', { name: 'Bitir' }).click()
-    await expect(page.getByText('Günün paragrafı', { exact: true })).toBeVisible()
-    await expect(page.getByText('Yarın yeni bir paragraf gelecek.')).toBeVisible()
-    await page.getByRole('button', { name: 'Oyunlara dön' }).first().click()
-    await expect(page.getByText(/Bugün: \d+ puan/)).toBeVisible()
+    // Günün Kavramı: three wrong guesses on the on-screen keyboard open the clue.
+    await page.getByRole('button', { name: 'Günün Kavramı' }).click()
+    await expect(page.locator('.kv-row').first().locator('.kv-tile').first()).toBeVisible()
+    const length = await page.locator('.kv-row').first().locator('.kv-tile').count()
+    expect(length).toBeGreaterThanOrEqual(5)
+    await expect(page.getByText(/Tanım ipucu 3 yanlış/)).toBeVisible()
+    await page.getByRole('button', { name: 'Tahmin et' }).click()
+    await expect(page.getByText(`Kavram ${length} harfli`)).toBeVisible()
+    for (const letter of ['Ğ', 'J', 'Ö']) {
+      for (let i = 0; i < length; i += 1) await page.locator('.kv-keys').getByRole('button', { name: letter, exact: true }).click()
+      await page.getByRole('button', { name: 'Tahmin et' }).click()
+    }
+    await expect(page.locator('.kv-tile[aria-label$="kelimede yok"]').first()).toBeVisible()
+    await expect(page.locator('.kv-clue.is-open')).toBeVisible()
+    await page.getByRole('button', { name: 'Oyunlara dön' }).click()
 
-    // Paper toss: pull the paper back and let go; that is one throw.
+    // Paper toss: the how-to card, then swipe up from the paper towards the bin.
     await page.getByRole('button', { name: 'Kâğıt top' }).click()
+    await expect(page.getByRole('dialog', { name: 'Nasıl oynanır' })).toBeVisible()
+    await page.getByRole('button', { name: 'Anladım' }).click()
     await expect(page.getByRole('list', { name: 'Atış 1/10' })).toBeVisible()
     const scene = (await page.locator('.toss-scene').boundingBox())!
-    const sx = scene.width / 360
-    const sy = scene.height / 520
-    await page.mouse.move(scene.x + 64 * sx, scene.y + 440 * sy)
+    const px = scene.x + scene.width / 2
+    const py = scene.y + scene.height * (410 / 560)
+    await page.mouse.move(px, py)
     await page.mouse.down()
-    await page.mouse.move(scene.x + 10 * sx, scene.y + 520 * sy, { steps: 5 })
-    await expect(page.locator('.toss-aim').first()).toBeVisible()
+    await page.mouse.move(px + 10, py - 90, { steps: 5 })
+    await expect(page.locator('.toss-swipe')).toBeVisible()
     await page.mouse.up()
     await expect(page.getByRole('list', { name: 'Atış 2/10' })).toBeVisible({ timeout: 8000 })
     await page.getByRole('button', { name: 'Oyunlara dön' }).click()
 
-    // Drawer: two equal items merge into the next one.
+    // Drawer: picking an item makes its twins pulse; two equal items merge into the next one.
     await page.addInitScript(() => {
       // Fixed "random" so the board starts with pencils.
       Math.random = () => 0.5
     })
     await page.reload()
     await page.getByRole('button', { name: 'Çekmece' }).click()
+    await expect(page.getByText(/çift birleşebilir/)).toBeVisible()
     const pencils = page.getByRole('button', { name: 'Kurşun kalem', exact: true })
     await expect(pencils.first()).toBeVisible()
     expect(await pencils.count()).toBeGreaterThanOrEqual(2)
     await pencils.nth(0).click()
     await expect(page.getByRole('button', { name: 'Kurşun kalem, seçili' })).toBeVisible()
-    await expect(page.getByText('seçili: aynısına dokun')).toBeVisible()
+    await expect(page.locator('.drawer-slot.is-match').first()).toBeVisible()
     await pencils.nth(0).click()
     await expect(page.getByRole('button', { name: 'Tükenmez kalem', exact: true })).toHaveCount(1)
     await expect(page.locator('.mini-score')).toContainText('· 4')

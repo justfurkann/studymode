@@ -1,4 +1,4 @@
-import { ArrowLeft, Award, BookOpen, Crown, GraduationCap, Highlighter, NotebookPen, Pencil, PenLine, Play, Plus, RotateCcw, ScrollText, Sparkles, Star, Timer, Trash2, Trophy, Wind } from 'lucide-react'
+import { ArrowLeft, Pointer, Award, BookOpen, Crown, GraduationCap, Highlighter, NotebookPen, Pencil, PenLine, Play, Plus, RotateCcw, ScrollText, Sparkles, Star, Timer, Trash2, Trophy, Wind } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import {
   aimFromPull,
@@ -9,26 +9,22 @@ import {
   binPoints,
   binX,
   canMerge,
-  dailyParagraph,
   DRAWER_ITEMS,
   DRAWER_MAX,
   DRAWER_SECONDS,
   drawerStuck,
+  findPair,
+  pairCount,
   flickLaunch,
-  HIGHLIGHT_PARAGRAPHS,
-  HIGHLIGHT_SECONDS,
-  istanbulDay,
   mergeItems,
   newDrawer,
   PAPER_R,
   PAPER_START,
-  parseParagraph,
-  powerFromPull,
+  powerFromSwipe,
   project,
   randomWind,
   readMiniRecords,
   saveMiniRecords,
-  scoreHighlight,
   SCENE_H,
   SCENE_W,
   spawnItem,
@@ -36,7 +32,6 @@ import {
   TOSS_THROWS,
   type Bin,
   type Drawer,
-  type HighlightParagraph,
   type Paper,
   type TossEnd,
   type Vec3,
@@ -44,14 +39,15 @@ import {
 import { playSound } from '../../lib/sound'
 import { Celebrate } from '../ui'
 import { useTick } from './shared'
+import { dailyTerm, MAX_GUESSES, readWordSave } from '../../lib/wordGame'
 
-export type MiniGame = 'altini-ciz' | 'kagit-top' | 'cekmece'
-export const MINI_GAMES: MiniGame[] = ['altini-ciz', 'kagit-top', 'cekmece']
+export type MiniGame = 'kavram' | 'kagit-top' | 'cekmece'
+export const MINI_GAMES: MiniGame[] = ['kavram', 'kagit-top', 'cekmece']
 
 // ---------- Shared 3D Arcade Frame ----------
 
 /** Top bar of a game: 3D keycap back button, title, and extruded score badge; 3D tube bar under it. */
-function GameFrame({ title, subtitle, onExit, score, progress, children }: { title: string; subtitle?: string; onExit: () => void; score?: ReactNode; progress?: number; children: ReactNode }) {
+export function GameFrame({ title, subtitle, onExit, score, progress, children }: { title: string; subtitle?: string; onExit: () => void; score?: ReactNode; progress?: number; children: ReactNode }) {
   return (
     <div className="page page-narrow mini-page">
       <div className="mini-bar">
@@ -137,7 +133,7 @@ function GameOver({ title, points, unit = 'puan', badge, stars, stats, note, onA
 
 export function MiniHub({ onOpen, onExit }: { onOpen: (game: MiniGame) => void; onExit: () => void }) {
   const records = readMiniRecords()
-  const playedToday = records.highlight?.day === istanbulDay()
+  const word = readWordSave()
   return (
     <div className="page page-narrow mini-page">
       <div className="mini-hub-banner">
@@ -159,13 +155,13 @@ export function MiniHub({ onOpen, onExit }: { onOpen: (game: MiniGame) => void; 
 
       <div className="mini-cards">
         <GameCard
-          tag="GÜNLÜK ODAK"
-          art={<HighlightArt />}
-          title="Fosforla altını çiz"
-          text="3B telli defterde günün paragrafındaki anahtar yerleri fosforlu kalemle yakala. Fazlasını çizersen puan düşer."
-          chips={[playedToday ? `Bugün: ${records.highlight!.points} puan` : 'Günün paragrafı hazır', `${HIGHLIGHT_SECONDS} sn`]}
-          done={playedToday}
-          onOpen={() => onOpen('altini-ciz')}
+          tag="GÜNLÜK"
+          art={<WordArt />}
+          title="Günün Kavramı"
+          text="Her gün herkese aynı ders kavramı. Harf harf tahmin et; ders konusu baştan belli, takılırsan tanımı açılır."
+          chips={[word.guesses.includes(dailyTerm().word) || word.guesses.length >= MAX_GUESSES ? 'Bugün çözüldü' : 'Bugünün kavramı hazır', `Seri: ${word.streak}`]}
+          done={false}
+          onOpen={() => onOpen('kavram')}
         />
         <GameCard
           tag="3B FİZİK & NİŞAN"
@@ -222,82 +218,35 @@ function GameCard({ tag, art, title, text, chips, done, onOpen }: { tag: string;
   )
 }
 
-/** 3D Isometric Spiral Notebook & Floating Chisel Highlighter Diorama */
-function HighlightArt() {
+/** A small letter board: today's term half found. */
+function WordArt() {
+  const cells = [
+    ['M', 'hit'],
+    ['A', 'miss'],
+    ['Y', 'miss'],
+    ['O', 'hit'],
+    ['Z', 'hit'],
+  ]
+  const second = [
+    ['M', 'hit'],
+    ['İ', 'hit'],
+    ['T', 'hit'],
+    ['O', 'hit'],
+    ['Z', 'hit'],
+  ]
   return (
-    <svg viewBox="0 0 360 150" className="art art-highlight">
-      <defs>
-        <linearGradient id="hl-desk" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="var(--surface-2)" />
-          <stop offset="1" stopColor="var(--border)" />
-        </linearGradient>
-        <linearGradient id="hl-pen-body" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff380" />
-          <stop offset="0.5" stopColor="var(--hi)" />
-          <stop offset="1" stopColor="#e0b800" />
-        </linearGradient>
-      </defs>
-      <rect x="0" y="0" width="360" height="150" fill="url(#hl-desk)" />
-      {/* Isometric 3D desk grid */}
-      <g className="art-grid" opacity="0.55">
-        {[40, 90, 140, 190, 240, 290, 340].map((x) => (
-          <line key={x} x1={x} y1="0" x2={x - 30} y2="150" />
-        ))}
-        {[35, 75, 115].map((y) => (
-          <line key={y} x1="0" y1={y} x2="360" y2={y} />
-        ))}
-      </g>
-      {/* 3D Stacked Notebook Pages with perspective drop */}
-      <g transform="translate(36 16) rotate(-3)">
-        <rect x="6" y="10" width="236" height="114" rx="12" className="art-page-shadow" />
-        <rect x="3" y="5" width="236" height="114" rx="12" className="art-page-stack" />
-        <rect x="0" y="0" width="236" height="114" rx="12" className="art-paper" />
-        {/* 3D Spiral Rings */}
-        {[24, 52, 80, 108, 136, 164, 192, 214].map((x) => (
-          <g key={x} transform={`translate(${x} -5)`}>
-            <circle cx="0" cy="11" r="3.2" className="art-hole" />
-            <rect x="-2.5" y="0" width="5" height="13" rx="2.5" className="art-ring" />
+    <svg viewBox="0 0 360 150" className="art art-word">
+      <rect x="0" y="0" width="360" height="150" className="kv-art-bg" />
+      {[cells, second].map((row, r) =>
+        row.map(([c, m], i) => (
+          <g key={`${r}-${i}`} transform={`translate(${62 + i * 48} ${24 + r * 56})`}>
+            <rect width="42" height="46" rx="9" className={`kv-art-tile is-${m}`} />
+            <text x="21" y="31" textAnchor="middle" className={`kv-art-letter is-${m}`}>
+              {c}
+            </text>
           </g>
-        ))}
-        {/* Red margin & ruled lines */}
-        <line x1="28" y1="14" x2="28" y2="110" className="art-margin" />
-        {[34, 56, 78, 100].map((y) => (
-          <line key={y} x1="12" y1={y} x2="224" y2={y} className="art-rule" />
-        ))}
-        {/* 3D Glowing Highlighter Bands & Words */}
-        <rect x="38" y="21" width="66" height="10" rx="3" className="art-ink" />
-        <rect x="110" y="18" width="94" height="15" rx="4" className="art-mark-3d" />
-        <rect x="114" y="21" width="86" height="10" rx="3" className="art-ink-dark" />
-
-        <rect x="38" y="43" width="112" height="10" rx="3" className="art-ink" />
-        <rect x="156" y="43" width="52" height="10" rx="3" className="art-ink" />
-
-        <rect x="36" y="62" width="88" height="15" rx="4" className="art-mark-3d" />
-        <rect x="40" y="65" width="80" height="10" rx="3" className="art-ink-dark" />
-        <rect x="130" y="65" width="76" height="10" rx="3" className="art-ink" />
-
-        <rect x="38" y="87" width="144" height="10" rx="3" className="art-ink" />
-      </g>
-      {/* Floating 3D Chisel Highlighter Pen */}
-      <g transform="translate(262 76) rotate(-32)">
-        <ellipse cx="10" cy="42" rx="44" ry="8" className="art-shadow-soft" />
-        {/* Chisel nib */}
-        <polygon points="-38,2 -22,-6 -22,10 -36,10" className="art-pen-nib" />
-        {/* Collar */}
-        <rect x="-24" y="-8" width="16" height="20" rx="3" className="art-pen-tip" />
-        {/* 3D Barrel */}
-        <rect x="-10" y="-13" width="78" height="30" rx="8" fill="url(#hl-pen-body)" className="art-pen-barrel" />
-        <rect x="-4" y="-9" width="66" height="6" rx="3" fill="#ffffff" opacity="0.65" />
-        {/* End cap */}
-        <rect x="64" y="-13" width="14" height="30" rx="5" className="art-pen-tip" />
-      </g>
-      {/* Floating +10 score badge */}
-      <g transform="translate(292 26)">
-        <rect x="-24" y="-12" width="48" height="24" rx="8" className="art-score-pill" />
-        <text x="0" y="5" textAnchor="middle" className="art-score-text">
-          +10
-        </text>
-      </g>
+        )),
+      )}
     </svg>
   )
 }
@@ -386,192 +335,6 @@ function DrawerArt() {
   )
 }
 
-// ---------- Fosforla altını çiz (3D Spiral Notebook) ----------
-
-export function HighlightGame({ onExit }: { onExit: () => void }) {
-  const today = istanbulDay()
-  const [round, setRound] = useState<{ n: number; paragraph: HighlightParagraph; daily: boolean }>(() => {
-    const played = readMiniRecords().highlight?.day === today
-    return { n: 0, paragraph: played ? practiceParagraph() : dailyParagraph(), daily: !played }
-  })
-  return (
-    <HighlightRound
-      key={round.n}
-      paragraph={round.paragraph}
-      daily={round.daily}
-      onExit={onExit}
-      onAgain={() => setRound((r) => ({ n: r.n + 1, paragraph: practiceParagraph(r.paragraph.id), daily: false }))}
-    />
-  )
-}
-
-function practiceParagraph(except?: string): HighlightParagraph {
-  const others = HIGHLIGHT_PARAGRAPHS.filter((p) => p.id !== except && p.id !== dailyParagraph().id)
-  return others[Math.floor(Math.random() * others.length)]
-}
-
-function HighlightRound({ paragraph, daily, onExit, onAgain }: { paragraph: HighlightParagraph; daily: boolean; onExit: () => void; onAgain: () => void }) {
-  const tokens = useMemo(() => parseParagraph(paragraph.text), [paragraph.text])
-  const keyCount = tokens.filter((t) => t.key).length
-  const [chosen, setChosen] = useState<Set<number>>(() => new Set())
-  const [startedAt, setStartedAt] = useState<number | null>(null)
-  const [done, setDone] = useState(false)
-  const now = useTick(startedAt !== null && !done, 100)
-  const leftMs = startedAt === null ? HIGHLIGHT_SECONDS * 1000 : Math.max(0, HIGHLIGHT_SECONDS * 1000 - (now - startedAt))
-  const left = Math.ceil(leftMs / 1000)
-  const drag = useRef<{ on: boolean } | null>(null)
-  const score = useMemo(() => scoreHighlight(tokens, chosen), [tokens, chosen])
-  const [best, setBest] = useState(false)
-
-  const finish = () => {
-    if (done) return
-    setDone(true)
-    playSound('done')
-    if (daily) {
-      const rec = readMiniRecords()
-      setBest(rec.highlightBest !== undefined && score.points > rec.highlightBest)
-      saveMiniRecords({ highlight: { day: istanbulDay(), points: score.points, stars: score.stars }, highlightBest: Math.max(rec.highlightBest ?? 0, score.points) })
-    }
-  }
-  useEffect(() => {
-    if (startedAt !== null && leftMs === 0) finish()
-  }, [leftMs, startedAt])
-
-  const indexAt = (x: number, y: number): number | null => {
-    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-i]')
-    return el ? Number(el.dataset.i) : null
-  }
-  const paint = (i: number, on: boolean) =>
-    setChosen((prev) => {
-      if (prev.has(i) === on) return prev
-      const next = new Set(prev)
-      if (on) next.add(i)
-      else next.delete(i)
-      return next
-    })
-  const down = (e: ReactPointerEvent) => {
-    if (done) return
-    const i = indexAt(e.clientX, e.clientY)
-    if (i === null) return
-    if (startedAt === null) setStartedAt(Date.now())
-    const on = !chosen.has(i)
-    drag.current = { on }
-    paint(i, on)
-    if (on) playSound('flip')
-    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
-  }
-  const move = (e: ReactPointerEvent) => {
-    if (!drag.current || done) return
-    const i = indexAt(e.clientX, e.clientY)
-    if (i !== null) paint(i, drag.current.on)
-  }
-  const up = () => {
-    drag.current = null
-  }
-
-  if (done)
-    return (
-      <GameFrame title="Fosforla altını çiz" subtitle={daily ? 'Günün paragrafı' : 'Antrenman modu'} onExit={onExit}>
-        <GameOver
-          title={daily ? 'Günün paragrafı' : 'Antrenman'}
-          points={score.points}
-          stars={score.stars}
-          badge={score.stars === 3 ? 'Tam isabet!' : best ? 'Yeni rekor!' : undefined}
-          stats={[
-            ['Doğru', `${score.hits}/${score.keys}`],
-            ['Kaçan', score.missed],
-            ['Fazla', score.wrong],
-          ]}
-          note={daily ? 'Yarın yeni bir paragraf gelecek.' : 'Antrenman puanı sayılmaz.'}
-          onAgain={onAgain}
-          againLabel="Antrenman yap"
-          onExit={onExit}
-        />
-        <div className="mini-notebook-stack">
-          <div className="mini-paper is-done" aria-label="Paragrafın doğru cevapları">
-            <div className="mini-spiral" aria-hidden="true">
-              {Array.from({ length: 9 }, (_, i) => (
-                <span key={i} className="mini-spiral-ring" />
-              ))}
-            </div>
-            <h2 className="mini-paper-title">{paragraph.title}</h2>
-            <p>
-              {tokens.map((t) => {
-                const on = chosen.has(t.index)
-                const state = t.key ? (on ? 'is-hit' : 'is-missed') : on ? 'is-wrong' : ''
-                return (
-                  <span key={t.index}>
-                    <span className={`mini-word ${state}`}>{t.text}</span>
-                    {t.after}{' '}
-                  </span>
-                )
-              })}
-            </p>
-            <p className="mini-legend">
-              <span className="mini-word is-hit">doğru (+10)</span> <span className="mini-word is-missed">kaçan</span> <span className="mini-word is-wrong">fazla (−5)</span>
-            </p>
-          </div>
-        </div>
-      </GameFrame>
-    )
-
-  return (
-    <GameFrame
-      title="Fosforla altını çiz"
-      subtitle={daily ? 'Günün paragrafı · +10 doğru, −5 fazla' : 'Antrenman · +10 doğru, −5 fazla'}
-      onExit={onExit}
-      progress={leftMs / (HIGHLIGHT_SECONDS * 1000)}
-      score={
-        <>
-          <Timer size={15} aria-hidden="true" /> {left} sn
-        </>
-      }
-    >
-      <div className="mini-tags">
-        <span className="mini-chip is-strong">
-          <Highlighter size={13} aria-hidden="true" /> {daily ? 'Günün paragrafı' : 'Antrenman'}
-        </span>
-        <span className="mini-chip">Hedef: {keyCount} anahtar ifade</span>
-        <span className={`mini-chip${chosen.size > keyCount ? ' is-warn' : ''}`}>Seçilen: {chosen.size}/{keyCount}</span>
-      </div>
-
-      <div className="mini-notebook-stack">
-        <div className="mini-paper" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} aria-label="Paragraf: önemli kelimeleri seç">
-          <div className="mini-spiral" aria-hidden="true">
-            {Array.from({ length: 9 }, (_, i) => (
-              <span key={i} className="mini-spiral-ring" />
-            ))}
-          </div>
-          <div className="mini-paper-head">
-            <h2 className="mini-paper-title">{paragraph.title}</h2>
-            <span className="mini-paper-corner">DERS NOTU</span>
-          </div>
-          <p>
-            {tokens.map((t) => {
-              const on = chosen.has(t.index)
-              return (
-                <span key={t.index}>
-                  <span className={`mini-word${on ? ' is-on' : ''}`} data-i={t.index} role="checkbox" aria-checked={on}>
-                    {t.text}
-                  </span>
-                  {t.after}{' '}
-                </span>
-              )
-            })}
-          </p>
-        </div>
-      </div>
-
-      <p className="subtle mini-help">
-        <Highlighter size={14} aria-hidden="true" /> Parmağını veya fareyi önemli kavramların üstünden geçir. İptal etmek için tekrar dokun. Süre ilk dokunuşta başlar.
-      </p>
-      <button className="btn btn-primary mini-wide mini-btn-3d" onClick={finish} disabled={startedAt === null}>
-        Bitir ve Kontrol Et ({chosen.size} seçili)
-      </button>
-    </GameFrame>
-  )
-}
-
 // ---------- Kâğıt top (3D Perspective Paper Toss) ----------
 
 export function TossGame({ onExit }: { onExit: () => void }) {
@@ -581,11 +344,14 @@ export function TossGame({ onExit }: { onExit: () => void }) {
 
 type Flight = { paper: Paper; landed: TossEnd | null; spin: number; trail: Vec3[] }
 
+const HOW_KEY = 'studymode.mini.tossHow'
+
 /** 3D trajectory arc preview while aiming: shows upward parabola + wind drift in 3D space. */
 function previewArc(power: number, aim: number, wind: number): Vec3[] {
   const start = flickLaunch(power, aim)
   const pts: Vec3[] = []
-  for (let i = 1; i <= 11; i += 1) {
+  // Only the first part of the flight: it shows direction and lift, not where it lands.
+  for (let i = 1; i <= 5; i += 1) {
     const t = i * 0.044
     const x = start.x + start.vx * t + 0.5 * wind * 0.35 * t * t
     const y = start.y + start.vy * t - 0.5 * 9.8 * t * t
@@ -612,6 +378,22 @@ function TossRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => voi
   const state = useRef({ results: [] as TossEnd[], points: 0 })
   const raf = useRef(0)
   const timer = useRef(0)
+  const [how, setHow] = useState(() => {
+    try {
+      return localStorage.getItem(HOW_KEY) !== '1'
+    } catch {
+      return true
+    }
+  })
+  const dismissHow = () => {
+    if (!how) return
+    setHow(false)
+    try {
+      localStorage.setItem(HOW_KEY, '1')
+    } catch {
+      // Blocked storage: the card shows again next time.
+    }
+  }
   useEffect(
     () => () => {
       cancelAnimationFrame(raf.current)
@@ -704,6 +486,7 @@ function TossRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => voi
 
   const down = (e: ReactPointerEvent<SVGSVGElement>) => {
     if (flight || record) return
+    dismissHow()
     const p = toScene(e)
     setPull({ x0: p.x, y0: p.y, dx: 0, dy: 0 })
     e.currentTarget.setPointerCapture?.(e.pointerId)
@@ -715,7 +498,7 @@ function TossRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => voi
   }
   const up = () => {
     if (!pull) return
-    const power = powerFromPull(pull.dy)
+    const power = powerFromSwipe(pull.dy)
     const aim = aimFromPull(pull.dx)
     setPull(null)
     if (power >= 0.04) fly(power, aim)
@@ -739,9 +522,14 @@ function TossRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => voi
       </GameFrame>
     )
 
-  const power = pull ? powerFromPull(pull.dy) : 0
+  const power = pull ? powerFromSwipe(pull.dy) : 0
   const aim = pull ? aimFromPull(pull.dx) : 0
   const paper = flight?.paper ?? null
+  // While swiping: an arrow from the paper the way the finger goes (up to full power).
+  const start = project(PAPER_START)
+  const swipeLen = pull ? Math.hypot(pull.dx, Math.min(0, pull.dy)) : 0
+  const arrowK = swipeLen > 0 ? Math.min(1, 170 / swipeLen) : 0
+  const arrow = pull && pull.dy < -6 ? { x: start.x + pull.dx * arrowK, y: start.y + Math.min(0, pull.dy) * arrowK } : null
   const distM = bin.z.toFixed(1)
   const windLevel = Math.ceil(Math.abs(wind) / 0.35)
 
@@ -782,7 +570,7 @@ function TossRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => voi
           viewBox={`0 0 ${SCENE_W} ${SCENE_H}`}
           className="toss-scene"
           role="img"
-          aria-label="Parmağını aşağı çekip bırak: fiske"
+          aria-label="Kâğıttan kovaya doğru yukarı kaydırıp bırak"
           onPointerDown={down}
           onPointerMove={move}
           onPointerUp={up}
@@ -822,11 +610,7 @@ function TossRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => voi
           {/* Ready paper ball sitting on the launch pad */}
           {!flight && (
             <PaperBall
-              paper={{
-                x: PAPER_START.x + aim * 0.08,
-                y: PAPER_START.y - power * 0.08,
-                z: PAPER_START.z - power * 0.06,
-              }}
+              paper={PAPER_START}
               spin={aim * 35}
             />
           )}
@@ -849,12 +633,10 @@ function TossRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => voi
             </g>
           )}
 
-          {!flight && !pull && results.length === 0 && (
-            <g className="toss-hint-box" aria-hidden="true">
-              <rect x="68" y="294" width="224" height="38" rx="12" className="toss-hint-bg" />
-              <text x={SCENE_W / 2} y="318" textAnchor="middle" className="toss-hint">
-                👇 Kâğıdı aşağı çek, nişan al ve bırak
-              </text>
+          {arrow && (
+            <g className="toss-swipe" aria-hidden="true">
+              <line x1={start.x} y1={start.y} x2={arrow.x} y2={arrow.y} />
+              <circle cx={arrow.x} cy={arrow.y} r="9" />
             </g>
           )}
 
@@ -871,10 +653,28 @@ function TossRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => voi
             </g>
           )}
         </svg>
+        {how && !flight && (
+          <div className="toss-how" role="dialog" aria-label="Nasıl oynanır">
+            <div className="toss-how-demo" aria-hidden="true">
+              <span className="toss-how-track" />
+              <span className="toss-how-finger">
+                <Pointer size={22} />
+              </span>
+            </div>
+            <ol>
+              <li>Kâğıda dokun</li>
+              <li>Kovaya doğru yukarı kaydır: uzun kaydırma = güçlü atış</li>
+              <li>Bırak, fiske at</li>
+            </ol>
+            <button className="btn btn-primary btn-sm" onClick={dismissHow}>
+              Anladım
+            </button>
+          </div>
+        )}
       </div>
 
       <p className="subtle mini-help">
-        <Trash2 size={14} aria-hidden="true" /> Parmağını aşağı çekerek fiske gücünü ayarla, sağa-sola kaydırarak rüzgâra karşı nişan al ve bırak.
+        <Trash2 size={14} aria-hidden="true" /> Kâğıttan kovaya doğru yukarı kaydır ve bırak. Ne kadar uzun kaydırırsan o kadar uzağa gider; rüzgâra göre yana kaydır.
       </p>
     </GameFrame>
   )
@@ -1169,69 +969,41 @@ function AimArc({ power, aim, wind }: { power: number; aim: number; wind: number
   )
 }
 
-/** Foreground 3D Study Desk Edge and Tactile 3D Slingshot / Flick Rig */
-function DeskLaunchPad({ power, aim, pulling }: { power: number; aim: number; pulling: boolean }) {
-  const startP = project(PAPER_START)
-  const cradleX = startP.x + aim * 28
-  const cradleY = startP.y + 8 + power * 30
+/** The desk edge in front of the player; the paper sits on it. */
+function DeskLaunchPad(_: { power: number; aim: number; pulling: boolean }) {
   return (
     <g aria-hidden="true">
-      {/* 3D Desk Surface at the bottom of the screen */}
       <polygon points={`0,494 ${SCENE_W},494 ${SCENE_W},542 0,542`} className="toss-desk-top" />
       <polygon points={`0,542 ${SCENE_W},542 ${SCENE_W},${SCENE_H} 0,${SCENE_H}`} className="toss-desk-edge" />
       <line x1="0" y1="494" x2={SCENE_W} y2="494" className="toss-desk-line" />
-      {/* 3D Perspective Launch Mat on the desk */}
-      <ellipse cx={startP.x} cy={startP.y + 22} rx="64" ry="18" className="toss-pad-outer" />
-      <ellipse cx={startP.x} cy={startP.y + 20} rx="48" ry="13" className="toss-pad-inner" />
-      {/* Left & Right 3D Anchor Pegs on the Desk Mat */}
-      <g transform={`translate(${startP.x - 42} ${startP.y + 12})`}>
-        <ellipse cx="0" cy="8" rx="7" ry="3.5" className="toss-shadow-deep" />
-        <rect x="-4.5" y="-10" width="9" height="18" rx="4.5" className="toss-peg" />
-        <circle cx="0" cy="-8" r="3" fill="var(--hi)" />
-      </g>
-      <g transform={`translate(${startP.x + 42} ${startP.y + 12})`}>
-        <ellipse cx="0" cy="8" rx="7" ry="3.5" className="toss-shadow-deep" />
-        <rect x="-4.5" y="-10" width="9" height="18" rx="4.5" className="toss-peg" />
-        <circle cx="0" cy="-8" r="3" fill="var(--hi)" />
-      </g>
-      {/* Elastic tension bands connecting pegs to the paper ball cradle */}
-      <line x1={startP.x - 42} y1={startP.y + 6} x2={cradleX - 10} y2={cradleY} className="toss-elastic" />
-      <line x1={startP.x + 42} y1={startP.y + 6} x2={cradleX + 10} y2={cradleY} className="toss-elastic" />
-      {pulling && power > 0.02 && (
-        <ellipse cx={cradleX} cy={cradleY + 2} rx="16" ry="6" className="toss-cradle" />
-      )}
     </g>
   )
 }
 
 /**
- * Compact 3D Sculpted Pinch Hand & Cuff at the front of the desk.
+ * The flicking hand (fiske), drawn as thick cartoon fingers around the paper: the thumb holds the
+ * curled middle finger just under the paper; on release the middle finger snaps straight up.
  */
-function Hand({ tension, aim, flicked }: { tension: number; aim: number; flicked: boolean }) {
-  const shiftX = aim * 28
-  const pullY = tension * 30
-  const releaseY = flicked ? -18 : pullY
+function Hand({ tension, flicked }: { tension: number; aim: number; flicked: boolean }) {
+  const b = project(PAPER_START)
+  const t = tension * 10
+  const middle = flicked ? 'M86 190 C 74 120, 40 40, 6 -18' : `M86 190 C 84 128, 62 ${74 + t}, 30 ${60 + t} C 14 ${54 + t}, 4 ${48 + t}, -2 ${38 + t * 0.5}`
+  const thumb = flicked ? 'M-92 190 C -66 128, -34 82, -10 60' : `M-92 190 C -66 128, -34 ${80 + t * 0.4}, -6 ${44 + t * 0.6}`
+  const back = ['M122 190 C 124 132, 130 84, 140 44', 'M156 190 C 160 140, 170 106, 184 80']
   return (
-    <g className={`toss-hand${flicked ? ' is-flicked' : ''}`} transform={`translate(${shiftX} ${releaseY})`} aria-hidden="true">
-      {/* Soft shadow on the desk */}
-      <ellipse cx="180" cy="540" rx="46" ry="11" className="toss-shadow-deep" />
-      {/* Left Thumb & Right Index pinching/flicking behind the paper ball */}
-      <path d="M144 556 C 146 520, 158 486, 171 468 C 176 462, 182 466, 179 475 C 172 496, 166 526, 166 556 Z" className="palm" />
-      <path d="M216 556 C 214 520, 202 486, 189 468 C 184 462, 178 466, 181 475 C 188 496, 194 526, 194 556 Z" className="palm" />
-      {/* Fingernail highlights */}
-      <ellipse cx="173" cy="471" rx="4.5" ry="3.5" transform="rotate(-25 173 471)" className="fingernail" />
-      <ellipse cx="187" cy="471" rx="4.5" ry="3.5" transform="rotate(25 187 471)" className="fingernail" />
-      {/* 3D Sculpted Hand Base & Varsity Sleeve Cuff */}
-      <rect x="138" y="534" width="84" height="28" rx="14" className="palm" />
-      <rect x="132" y="548" width="96" height="24" rx="10" className="hand-cuff" />
-      <line x1="142" y1="556" x2="218" y2="556" className="hand-cuff-stripe" />
-      {/* Snap shockwave burst when flicked */}
-      {flicked && (
-        <g className="snap-burst">
-          <path d="M158 446 l-14 -12 M180 438 l0 -18 M202 446 l14 -12" className="snap" />
-          <circle cx="180" cy="456" r="14" className="snap-ring" />
+    <g className={`toss-fiske${flicked ? ' is-flicked' : ''}`} transform={`translate(${b.x} ${b.y})`} aria-hidden="true">
+      {back.map((d) => (
+        <g key={d}>
+          <path d={d} className="fiske-edge" />
+          <path d={d} className="fiske-skin" />
         </g>
-      )}
+      ))}
+      <path d="M40 190 C 60 150, 140 142, 200 150 L200 200 L40 200 Z" className="fiske-palm" />
+      <path d={middle} className="fiske-edge" />
+      <path d={middle} className="fiske-skin" />
+      <path d={thumb} className="fiske-edge" />
+      <path d={thumb} className="fiske-skin" />
+      {flicked && <path d="M-22 -36 l-14 -10 M6 -46 l0 -16 M32 -36 l14 -10" className="fiske-snap" />}
     </g>
   )
 }
@@ -1254,6 +1026,10 @@ function DrawerRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => v
   const [startedAt] = useState(() => Date.now())
   const [end, setEnd] = useState<{ reason: 'time' | 'full' | 'diploma'; best: boolean } | null>(null)
   const now = useTick(!end, 250)
+  // Stuck for a few seconds with nothing picked: show one pair.
+  const [lastMove, setLastMove] = useState(() => Date.now())
+  const hint = !end && selected === null && now - lastMove > 4000 ? findPair(grid) : null
+  const pairs = pairCount(grid)
   const leftMs = Math.max(0, DRAWER_SECONDS * 1000 - (now - startedAt))
   const left = Math.ceil(leftMs / 1000)
   const top = bestLevel(grid)
@@ -1281,6 +1057,7 @@ function DrawerRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => v
 
   const tap = (i: number) => {
     if (end) return
+    setLastMove(Date.now())
     if (selected === null) {
       if (grid[i] !== null) setSelected(i)
       return
@@ -1346,7 +1123,15 @@ function DrawerRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => v
             {nextLevelName ? ` → ${nextLevelName}!` : ''}
           </span>
         ) : (
-          <span className="drawer-status-idle">İki aynı eşyaya sırayla dokunarak bir üst seviyeye birleştir</span>
+          <span className="drawer-status-idle">
+            {pairs ? (
+              <>
+                <strong>{pairs} çift</strong> birleşebilir: aynı renkteki iki eşyaya dokun
+              </>
+            ) : (
+              'Birleşecek çift yok: aşağıdan yeni eşya bırak'
+            )}
+          </span>
         )}
       </div>
 
@@ -1366,10 +1151,11 @@ function DrawerRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => v
               const name = level ? DRAWER_ITEMS[level - 1] : 'Boş'
               const shortName = level ? SHORT_NAMES[level - 1] : ''
               const match = selectedLevel !== null && selected !== i && level === selectedLevel && level < DRAWER_MAX
+              const hinted = !!hint && (hint[0] === i || hint[1] === i)
               return (
                 <button
                   key={i}
-                  className={`drawer-slot${selected === i ? ' is-selected' : ''}${match ? ' is-match' : ''}${pop === i ? ' is-pop' : ''}`}
+                  className={`drawer-slot${selected === i ? ' is-selected' : ''}${match ? ' is-match' : ''}${hinted ? ' is-hint' : ''}${pop === i ? ' is-pop' : ''}`}
                   onClick={() => tap(i)}
                   aria-label={`${name}${selected === i ? ', seçili' : ''}`}
                 >
@@ -1390,7 +1176,15 @@ function DrawerRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => v
         </div>
       </div>
 
-      <button className="btn mini-wide mini-btn-3d-sec" onClick={() => !end && grid.includes(null) && after(grid, 0)} disabled={!grid.includes(null)}>
+      <button
+        className="btn mini-wide mini-btn-3d-sec"
+        onClick={() => {
+          if (end || !grid.includes(null)) return
+          setLastMove(Date.now())
+          after(grid, 0)
+        }}
+        disabled={!grid.includes(null)}
+      >
         <Plus size={16} /> Çekmeceye yeni eşya bırak
       </button>
 

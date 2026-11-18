@@ -1013,6 +1013,17 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
   - Tasarım (18 Kasım, kurucu "çok kötü" dedi): sticker kartlar (2px lacivert kenar + düz gölge), her oyuna SVG illüstrasyon, oyun içi üst çubuk (geri, ad, puan) + süre çubuğu, sonuç kartı, defter çizgili paragraf, pencereli oda + rüzgâr bayrağı, çekmece kutusu + seviye renkli jetonlar.
 - **Testler:** e2e "mini games on the break page: VIP perk…"; normal hesap tile'ı görmez, adresle de açamaz.
 
+### Aşama 63 — AI Studio'nun oyun tasarımı üstüne düzeltmeler; Günün Kavramı (18 Kasım 2026, `dreamy-sagan`)
+
+- AI Studio 18 Kasım 12:54'te `main`e "3D tactile" tasarımı gönderdi (57d8842). Tasarımı kaldı; şunlar düzeltildi:
+  - **`?autostart=1` VIP kilidini deliyordu** (`Mola.tsx`), kaldırıldı; e2e artık bunu da deniyor.
+  - E2E kırmızıydı (başlık değişmişti); test yeni oyunlara göre yeniden yazıldı.
+  - 360 px'te çekmece yana taşıyordu (uzun eşya adı); hücreler `minmax(0,1fr)`.
+- **Fosforla altını çiz kaldırıldı** (kurucu: "boş, öğretici değil"). Yerine **Günün Kavramı** (`src/lib/wordGame.ts` + test, `src/components/mola/WordGame.tsx`): her gün herkese aynı ders kavramı (43 terim, 5-8 harf, ders + tanım), 6 hak, işaretler: doğru yer = fosfor sarısı, var ama yeri başka = kesik çerçeve, yok = soluk. 3 yanlıştan sonra tanım açılır. Türkçe ekran klavyesi + gerçek klavye, sonucu harfsiz kopyala (■□·), günlük seri (`studymode.kavram`). Wordle'ın adı/görünümü kullanılmadı.
+- **Kâğıt top anlaşılır oldu:** kâğıttan kovaya doğru **yukarı kaydır** (`powerFromSwipe`), kaydırırken ok, ilk açılışta "Nasıl oynanır" kartı (`studymode.mini.tossHow`), sapan mandalları kaldırıldı, el yine fiske pozu, önizleme noktaları kısaldı (yalnızca yön).
+- **Çekmece:** her seviyeye ayrı canlı renk (`--lv1..8` tokenlardan), seçilince eşleşenler nabız gibi atar, 4 sn hareketsizlikte bir çift gösterilir (`findPair`), üstte "N çift birleşebilir" (`pairCount`).
+- Oyun ekranlarında Fosfor düğmesi gizli (`body:has(.mini-page) .assistant-launcher`), klavyeyi kapatıyordu.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
