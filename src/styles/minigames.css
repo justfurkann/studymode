@@ -412,23 +412,20 @@
   gap: 20px;
 }
 
+/* Two games: two equal cards side by side on a wide screen. */
 @media (min-width: 720px) {
   .mini-cards {
     grid-template-columns: repeat(2, 1fr);
+    align-items: stretch;
   }
-  .mini-cards > .mini-card:first-child {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: 1.15fr 1fr;
+
+  .mini-cards > .mini-card {
+    display: flex;
+    flex-direction: column;
   }
-  .mini-cards > .mini-card:first-child .mini-card-art {
-    border-bottom: none;
-    border-right: 2.5px solid var(--card-line);
-    height: 100%;
-  }
-  .mini-cards > .mini-card:first-child .mini-card-art .art {
-    height: 100%;
-    object-fit: cover;
+
+  .mini-cards > .mini-card .mini-card-body {
+    flex: 1;
   }
 }
 
@@ -1654,4 +1651,160 @@ body:has(.mini-page) .assistant-launcher {
   .kv-key {
     height: 38px;
   }
+}
+
+
+/* ---------- Wide screens: games keep a phone-like column in the middle ---------- */
+
+@media (min-width: 720px) {
+  .mini-page:has(.kv-board),
+  .mini-page:has(.drawer-grid),
+  .mini-page:has(.chapter-map),
+  .mini-page:has(.mini-over) {
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Bigger letter boxes only when the screen is tall enough for board and keyboard. */
+@media (min-width: 720px) and (min-height: 860px) {
+  .kv-board {
+    max-width: calc(var(--kv-len) * 52px + (var(--kv-len) - 1) * 7px);
+  }
+
+  .kv-tile {
+    font-size: 1.45rem;
+  }
+
+  .kv-key {
+    height: 52px;
+  }
+}
+
+/* ---------- Çekmece: chapter map and goal ---------- */
+
+.chapter-map {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 4px 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.chapter-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 2px 8px;
+  border: 2px solid var(--card-line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 3px 0 var(--card-drop);
+}
+
+.chapter-tile.is-current {
+  border-color: var(--ink-line);
+  background: var(--hi-soft);
+  box-shadow: 0 4px 0 var(--ink-line);
+}
+
+.chapter-tile.is-locked {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.chapter-tile:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--card-drop);
+}
+
+.chapter-no {
+  position: absolute;
+  top: 4px;
+  left: 7px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-2);
+}
+
+.chapter-tile .drawer-mini-tile,
+.drawer-goal .drawer-mini-tile {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 2px solid var(--ink-line);
+}
+
+.chapter-tile.is-locked .drawer-mini-tile {
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+
+.chapter-goal {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.chapter-time {
+  font-size: 0.65rem;
+  color: var(--text-2);
+}
+
+.chapter-tile .mini-stars {
+  gap: 1px;
+}
+
+.chapter-free {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--card-line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  box-shadow: 0 4px 0 var(--card-drop);
+}
+
+.chapter-free > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chapter-free .muted {
+  font-size: 0.85rem;
+}
+
+.drawer-goal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border: 2px solid var(--ink-line);
+  border-radius: 14px;
+  background: var(--hi-soft);
+  color: var(--text);
+}
+
+.drawer-goal small {
+  color: var(--text-2);
+  font-size: 0.8rem;
 }
