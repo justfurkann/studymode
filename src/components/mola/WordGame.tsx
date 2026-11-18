@@ -110,7 +110,7 @@ export function WordGame({ onExit }: { onExit: () => void }) {
           </p>
         ) : (
           <p className="muted">
-            <Lock size={15} aria-hidden="true" /> Tanım ipucu {CLUE_AFTER - wrong} yanlış tahminden sonra açılır.
+            <Lock size={15} aria-hidden="true" /> Tanım ipucu {CLUE_AFTER - wrong} yanlıştan sonra açılır
           </p>
         )}
       </div>
@@ -121,8 +121,10 @@ export function WordGame({ onExit }: { onExit: () => void }) {
             {Array.from({ length }, (_, i) => {
               const letter = row.letters[i] ?? ''
               const mark = row.marks[i] ?? null
+              // The box the next letter goes in: a blinking line, so it is clear where typing starts.
+              const next = row.current && i === row.letters.length
               return (
-                <span key={i} className={`kv-tile${mark ? ` is-${mark}` : ''}${letter && !mark ? ' is-typed' : ''}`} aria-label={letter ? `${letter}${mark ? `, ${MARK_LABEL[mark]}` : ''}` : 'boş'}>
+                <span key={i} className={`kv-tile${mark ? ` is-${mark}` : ''}${letter && !mark ? ' is-typed' : ''}${row.current ? ' is-current' : ''}${next ? ' is-next' : ''}`} aria-label={letter ? `${letter}${mark ? `, ${MARK_LABEL[mark]}` : ''}` : 'boş'}>
                   {letter}
                 </span>
               )

@@ -1023,6 +1023,8 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Kâğıt top anlaşılır oldu:** kâğıttan kovaya doğru **yukarı kaydır** (`powerFromSwipe`), kaydırırken ok, ilk açılışta "Nasıl oynanır" kartı (`studymode.mini.tossHow`), sapan mandalları kaldırıldı, el yine fiske pozu, önizleme noktaları kısaldı (yalnızca yön).
 - **Çekmece:** her seviyeye ayrı canlı renk (`--lv1..8` tokenlardan), seçilince eşleşenler nabız gibi atar, 4 sn hareketsizlikte bir çift gösterilir (`findPair`), üstte "N çift birleşebilir" (`pairCount`).
 - Oyun ekranlarında Fosfor düğmesi gizli (`body:has(.mini-page) .assistant-launcher`), klavyeyi kapatıyordu.
+- **Kâğıt top kaldırıldı** (18 Kasım, kurucu: "çözülmüyor, gereksiz"): ekran, kart, 3B fizik, testler ve stiller silindi. Mini oyunlar: Günün Kavramı + Çekmece.
+- **Günün Kavramı hatası:** ilk harf yazılana kadar boş kutular minicik noktalara büzülüyordu (tahta içeriğe göre genişliyordu); kurucu bunu "ilk harften önce küçük duruyor" diye bildirdi. `.kv-board { width: 100% }`. Ayrıca sıradaki kutuda yanıp sönen imleç (`.kv-tile.is-next`) ve küçük ekranlarda (`max-height` 780/690) sıkıştırma: klavye 390×844, 360×740 ve 375×667'de alt çubuğun üstünde kalıyor (ölçüldü).
 
 ## Tasarım dili ("Fosforlu")
 
