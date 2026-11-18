@@ -2144,7 +2144,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     role = 'vip'
     await page.goto('/tekrar?bolum=mola')
     await page.getByRole('button', { name: 'Mini oyunlar' }).click()
-    await expect(page.getByRole('heading', { level: 1, name: /mini oyunlar/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /Mini oyunlar/ })).toBeVisible()
     // Fosfor's button stays out of the way of the games.
     await expect(page.locator('.assistant-launcher')).toBeHidden()
 
@@ -2171,6 +2171,11 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     })
     await page.reload()
     await page.getByRole('button', { name: 'Çekmece' }).click()
+    // Chapters: only the first is open at the start.
+    await expect(page.getByRole('list', { name: 'Bölümler' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^2\. bölüm: .*kilitli/ })).toBeDisabled()
+    await page.getByRole('button', { name: /^1\. bölüm:/ }).click()
+    await expect(page.getByText('Hedef:', { exact: false }).first()).toBeVisible()
     await expect(page.getByText(/çift birleşebilir/)).toBeVisible()
     const pencils = page.getByRole('button', { name: 'Kurşun kalem', exact: true })
     await expect(pencils.first()).toBeVisible()
@@ -2181,6 +2186,22 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     await pencils.nth(0).click()
     await expect(page.getByRole('button', { name: 'Tükenmez kalem', exact: true })).toHaveCount(1)
     await expect(page.locator('.mini-score')).toContainText('· 4')
+
+    // Reaching the chapter's target (Fosforlu kalem) finishes it and opens chapter 2.
+    const pens = page.getByRole('button', { name: 'Tükenmez kalem', exact: true })
+    for (let i = 0; i < 12 && (await pens.count()) < 2; i += 1) {
+      const p = page.getByRole('button', { name: 'Kurşun kalem', exact: true })
+      if ((await p.count()) >= 2) {
+        // Once picked, an item is named "…, seçili", so the next match is again the first one.
+        await p.nth(0).click()
+        await p.nth(0).click()
+      } else await page.getByRole('button', { name: /yeni eşya/i }).click()
+    }
+    await pens.nth(0).click()
+    await pens.nth(0).click()
+    await expect(page.getByText('1. bölüm tamam')).toBeVisible()
+    await page.getByRole('button', { name: 'Bölümlere dön' }).click()
+    await expect(page.getByRole('button', { name: /^2\. bölüm:/ })).toBeEnabled()
 
     // Fits a 360 px phone without sideways scrolling.
     await page.setViewportSize({ width: 360, height: 740 })

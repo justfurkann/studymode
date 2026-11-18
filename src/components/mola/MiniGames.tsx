@@ -1,4 +1,4 @@
-import { ArrowLeft, Pointer, Award, BookOpen, Crown, GraduationCap, Highlighter, NotebookPen, Pencil, PenLine, Play, Plus, RotateCcw, ScrollText, Sparkles, Star, Timer, Trash2, Trophy, Wind } from 'lucide-react'
+import { ArrowLeft, Lock, Award, BookOpen, Crown, GraduationCap, Highlighter, NotebookPen, Pencil, PenLine, Play, Plus, RotateCcw, ScrollText, Sparkles, Star, Timer, Trash2, Trophy, Wind } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import {
   bestLevel,
@@ -7,6 +7,11 @@ import {
   DRAWER_MAX,
   DRAWER_SECONDS,
   drawerStuck,
+  CHAPTERS,
+  chapterOpen,
+  chapterStars,
+  readDrawerProgress,
+  saveChapterResult,
   findPair,
   pairCount,
   mergeItems,
@@ -61,7 +66,7 @@ function Stars({ n, size = 18 }: { n: number; size?: number }) {
 }
 
 /** End of a round: 3D trophy plaque, big extruded score, stat tiles, play again or return. */
-function GameOver({ title, points, unit = 'puan', badge, stars, stats, note, onAgain, againLabel = 'Tekrar oyna', onExit }: {
+function GameOver({ title, points, unit = 'puan', badge, stars, stats, note, onAgain, againLabel = 'Tekrar oyna', onExit, exitLabel = 'Oyunlara dön' }: {
   title: string
   points: number
   unit?: string
@@ -72,6 +77,7 @@ function GameOver({ title, points, unit = 'puan', badge, stars, stats, note, onA
   onAgain: () => void
   againLabel?: string
   onExit: () => void
+  exitLabel?: string
 }) {
   return (
     <div className="mini-over" role="status">
@@ -102,7 +108,7 @@ function GameOver({ title, points, unit = 'puan', badge, stars, stats, note, onA
           <RotateCcw size={16} /> {againLabel}
         </button>
         <button className="btn mini-btn-3d-sec" onClick={onExit}>
-          Oyunlara dön
+          {exitLabel}
         </button>
       </div>
     </div>
@@ -112,8 +118,11 @@ function GameOver({ title, points, unit = 'puan', badge, stars, stats, note, onA
 // ---------- Hub (3D Study Desk Arcade) ----------
 
 export function MiniHub({ onOpen, onExit }: { onOpen: (game: MiniGame) => void; onExit: () => void }) {
-  const records = readMiniRecords()
   const word = readWordSave()
+  const drawer = readDrawerProgress()
+  const drawerStars = drawer.stars.reduce((a, b) => a + b, 0)
+  const drawerNext = drawer.stars.findIndex((n) => n === 0)
+  const drawerChip = drawerNext === -1 ? 'Bütün bölümler bitti' : `Sıradaki: ${drawerNext + 1}. bölüm`
   return (
     <div className="page page-narrow mini-page">
       <div className="mini-hub-banner">
@@ -123,9 +132,9 @@ export function MiniHub({ onOpen, onExit }: { onOpen: (game: MiniGame) => void; 
           </button>
           <div className="mini-hub-title-wrap">
             <h1>
-              Masaüstü <span className="hl">mini oyunlar</span>
+              Mini <span className="hl">oyunlar</span>
             </h1>
-            <p className="muted mini-hub-sub">Kart gerekmez. İki dakikalık 3B masa oyunlarıyla kafanı dağıt, derse taze dön.</p>
+            <p className="muted mini-hub-sub">Kart gerekmez. Birkaç dakikalık oyunlarla kafanı dağıt, derse taze dön.</p>
           </div>
           <span className="mini-vip">
             <Crown size={14} aria-hidden="true" /> VIP
@@ -144,11 +153,11 @@ export function MiniHub({ onOpen, onExit }: { onOpen: (game: MiniGame) => void; 
           onOpen={() => onOpen('kavram')}
         />
         <GameCard
-          tag="3B BİRLEŞTİRME"
+          tag="BİRLEŞTİRME"
           art={<DrawerArt />}
           title="Çekmece"
-          text="Ahşap çalışma çekmecesindeki eşyaları eşleştirip seviye atlat. Kurşun kalemden diplomaya kadar çık!"
-          chips={[records.drawer !== undefined ? `Rekor: ${records.drawer} puan` : 'Rekor yok', `${DRAWER_SECONDS / 60} dakika`]}
+          text="Aynı eşyaları birleştir, bölüm bölüm ilerle. Kurşun kalemden başla, diplomaya ulaş."
+          chips={[drawerChip, `${drawerStars}/${CHAPTERS.length * 3} yıldız`]}
           onOpen={() => onOpen('cekmece')}
         />
       </div>
@@ -265,31 +274,103 @@ const ITEM_ICONS = [Pencil, PenLine, Highlighter, NotebookPen, BookOpen, ScrollT
 const SHORT_NAMES = ['Kurşun', 'Tükenmez', 'Fosforlu', 'Defter', 'Kitap', 'Ders Notu', 'Kep', 'Diploma']
 
 export function DrawerGame({ onExit }: { onExit: () => void }) {
-  const [round, setRound] = useState(0)
-  return <DrawerRound key={round} onExit={onExit} onAgain={() => setRound((n) => n + 1)} />
+  // null = the chapter map; a number = that chapter; 'free' = endless play.
+  const [play, setPlay] = useState<{ chapter: number | 'free'; n: number } | null>(null)
+  if (!play) return <ChapterMap onExit={onExit} onPlay={(chapter) => setPlay({ chapter, n: Date.now() })} />
+  const chapter = play.chapter === 'free' ? null : play.chapter
+  const next = chapter !== null && chapter + 1 < CHAPTERS.length ? chapter + 1 : null
+  return (
+    <DrawerRound
+      key={play.n}
+      chapter={chapter}
+      onExit={() => setPlay(null)}
+      onAgain={() => setPlay({ chapter: play.chapter, n: Date.now() })}
+      onNext={next !== null ? () => setPlay({ chapter: next, n: Date.now() }) : undefined}
+    />
+  )
 }
 
-function DrawerRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => void }) {
+/** Ten chapters with a target item each; finished ones show their stars, the next one is open. */
+function ChapterMap({ onExit, onPlay }: { onExit: () => void; onPlay: (chapter: number | 'free') => void }) {
+  const progress = readDrawerProgress()
+  const total = progress.stars.reduce((a, b) => a + b, 0)
+  const current = progress.stars.findIndex((s) => s === 0)
+  const records = readMiniRecords()
+  return (
+    <GameFrame
+      title="Çekmece"
+      subtitle="Bölümleri geç, yıldız topla"
+      onExit={onExit}
+      score={
+        <>
+          <Star size={15} aria-hidden="true" /> {total}/{CHAPTERS.length * 3}
+        </>
+      }
+    >
+      <ol className="chapter-map" aria-label="Bölümler">
+        {CHAPTERS.map((ch, i) => {
+          const open = chapterOpen(progress, i)
+          const Icon = ITEM_ICONS[ch.target - 1]
+          return (
+            <li key={i}>
+              <button
+                className={`chapter-tile${open ? '' : ' is-locked'}${i === current ? ' is-current' : ''}`}
+                onClick={() => open && onPlay(i)}
+                disabled={!open}
+                aria-label={`${i + 1}. bölüm: ${DRAWER_ITEMS[ch.target - 1]}, ${ch.seconds} saniye${open ? '' : ', kilitli'}${progress.stars[i] ? `, ${progress.stars[i]} yıldız` : ''}`}
+              >
+                <span className="chapter-no">{i + 1}</span>
+                <span className={`drawer-mini-tile lv-${ch.target}`}>{open ? <Icon size={20} aria-hidden="true" /> : <Lock size={18} aria-hidden="true" />}</span>
+                <span className="chapter-goal">{SHORT_NAMES[ch.target - 1]}</span>
+                <span className="chapter-time">{ch.seconds} sn</span>
+                <Stars n={progress.stars[i]} size={13} />
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+      <button className="chapter-free" onClick={() => onPlay('free')}>
+        <span>
+          <strong>Serbest oyun</strong>
+          <span className="muted">{DRAWER_SECONDS / 60} dakika, hedef yok: en yüksek puan</span>
+        </span>
+        <span className="mini-chip">{records.drawer !== undefined ? `Rekor: ${records.drawer}` : 'Rekor yok'}</span>
+      </button>
+    </GameFrame>
+  )
+}
+
+function DrawerRound({ chapter, onExit, onAgain, onNext }: { chapter: number | null; onExit: () => void; onAgain: () => void; onNext?: () => void }) {
+  const goal = chapter !== null ? CHAPTERS[chapter] : null
+  const seconds = goal ? goal.seconds : DRAWER_SECONDS
+  const target = goal ? goal.target : DRAWER_MAX
   const [grid, setGrid] = useState<Drawer>(() => newDrawer())
   const [selected, setSelected] = useState<number | null>(null)
   const [points, setPoints] = useState(0)
   const [pop, setPop] = useState<number | null>(null)
   const [startedAt] = useState(() => Date.now())
-  const [end, setEnd] = useState<{ reason: 'time' | 'full' | 'diploma'; best: boolean } | null>(null)
+  const [end, setEnd] = useState<{ reason: 'time' | 'full' | 'diploma' | 'goal'; best: boolean; stars: number } | null>(null)
   const now = useTick(!end, 250)
   // Stuck for a few seconds with nothing picked: show one pair.
   const [lastMove, setLastMove] = useState(() => Date.now())
   const hint = !end && selected === null && now - lastMove > 4000 ? findPair(grid) : null
   const pairs = pairCount(grid)
-  const leftMs = Math.max(0, DRAWER_SECONDS * 1000 - (now - startedAt))
+  const leftMs = Math.max(0, seconds * 1000 - (now - startedAt))
   const left = Math.ceil(leftMs / 1000)
   const top = bestLevel(grid)
 
-  const finish = (reason: 'time' | 'full' | 'diploma', g = grid, p = points) => {
+  const finish = (reason: 'time' | 'full' | 'diploma' | 'goal', g = grid, p = points) => {
     if (end) return
+    if (goal) {
+      const stars = reason === 'goal' ? chapterStars(seconds * 1000 - (Date.now() - startedAt), seconds * 1000) : 0
+      if (stars) saveChapterResult(chapter!, stars)
+      setEnd({ reason, best: false, stars })
+      playSound(stars ? 'done' : 'wrong')
+      return
+    }
     const rec = readMiniRecords()
     saveMiniRecords({ drawer: Math.max(rec.drawer ?? 0, p), drawerLevel: Math.max(rec.drawerLevel ?? 0, bestLevel(g)) })
-    setEnd({ reason, best: rec.drawer !== undefined && p > rec.drawer })
+    setEnd({ reason, best: rec.drawer !== undefined && p > rec.drawer, stars: 0 })
     playSound('done')
   }
   useEffect(() => {
@@ -302,7 +383,8 @@ function DrawerRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => v
     setGrid(spawned)
     setPoints(total)
     setSelected(null)
-    if (bestLevel(spawned) >= DRAWER_MAX) finish('diploma', spawned, total)
+    if (goal && bestLevel(spawned) >= target) finish('goal', spawned, total)
+    else if (bestLevel(spawned) >= DRAWER_MAX) finish('diploma', spawned, total)
     else if (drawerStuck(spawned)) finish('full', spawned, total)
   }
 
@@ -334,19 +416,43 @@ function DrawerRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => v
     setSelected(i)
   }
 
+  if (end && goal) {
+    const won = end.reason === 'goal'
+    return (
+      <GameFrame title="Çekmece" subtitle={`Bölüm ${chapter! + 1}`} onExit={onExit}>
+        <GameOver
+          title={won ? `${chapter! + 1}. bölüm tamam` : end.reason === 'time' ? 'Süre doldu' : 'Çekmece doldu'}
+          points={points}
+          stars={won ? end.stars : undefined}
+          badge={won ? (end.stars === 3 ? 'Üç yıldız!' : 'Bölüm geçildi!') : undefined}
+          stats={[
+            ['Hedef', DRAWER_ITEMS[target - 1]],
+            ['Ulaştığın', top ? DRAWER_ITEMS[top - 1] : '—'],
+          ]}
+          note={won ? (onNext ? 'Sonraki bölüm açıldı.' : 'Bütün bölümleri bitirdin! Serbest oyunda rekor kırabilirsin.') : 'Tekrar dene: önce küçük eşyaları birleştir, yer açılsın.'}
+          onAgain={won && onNext ? onNext : onAgain}
+          againLabel={won && onNext ? 'Sonraki bölüm' : 'Tekrar dene'}
+          onExit={onExit}
+          exitLabel="Bölümlere dön"
+        />
+      </GameFrame>
+    )
+  }
+
   if (end)
     return (
-      <GameFrame title="Çekmece" subtitle="Çalışma masası birleştirme oyunu" onExit={onExit}>
+      <GameFrame title="Çekmece" subtitle="Serbest oyun" onExit={onExit}>
         <GameOver
           title={end.reason === 'time' ? 'Süre doldu' : end.reason === 'full' ? 'Çekmece doldu' : 'Diploma senin!'}
           points={points}
           badge={end.reason === 'diploma' ? 'Kurşun kalemden diplomaya!' : end.best ? 'Yeni rekor!' : undefined}
           stats={[
-            ['En iyi eşya', DRAWER_ITEMS[top - 1]],
+            ['En iyi eşya', top ? DRAWER_ITEMS[top - 1] : '—'],
             ['Rekor', Math.max(readMiniRecords().drawer ?? 0, points)],
           ]}
           onAgain={onAgain}
           onExit={onExit}
+          exitLabel="Bölümlere dön"
         />
       </GameFrame>
     )
@@ -357,15 +463,30 @@ function DrawerRound({ onExit, onAgain }: { onExit: () => void; onAgain: () => v
   return (
     <GameFrame
       title="Çekmece"
-      subtitle={`En yüksek: ${top ? DRAWER_ITEMS[top - 1] : '—'} · Hedef: Diploma`}
+      subtitle={goal ? `Bölüm ${chapter! + 1} · Hedef: ${DRAWER_ITEMS[target - 1]}` : `Serbest oyun · En yüksek: ${top ? DRAWER_ITEMS[top - 1] : '—'}`}
       onExit={onExit}
-      progress={leftMs / (DRAWER_SECONDS * 1000)}
+      progress={leftMs / (seconds * 1000)}
       score={
         <>
           <Timer size={15} aria-hidden="true" /> {left} sn · {points}
         </>
       }
     >
+      {goal && (
+        <div className="drawer-goal">
+          <span className={`drawer-mini-tile lv-${target}`}>{(() => {
+            const GoalIcon = ITEM_ICONS[target - 1]
+            return <GoalIcon size={20} aria-hidden="true" />
+          })()}</span>
+          <span>
+            Hedef: <strong>{DRAWER_ITEMS[target - 1]}</strong>
+            <small>
+              {' '}
+              · şu an en iyi: {top ? DRAWER_ITEMS[top - 1] : '—'}
+            </small>
+          </span>
+        </div>
+      )}
       <div className="drawer-status-bar" aria-live="polite">
         {selectedLevel ? (
           <span className="drawer-status-active">

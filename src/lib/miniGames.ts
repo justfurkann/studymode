@@ -94,6 +94,71 @@ export function bestLevel(grid: Drawer): number {
   return grid.reduce<number>((m, v) => (v !== null && v > m ? v : m), 0)
 }
 
+// ---------- Çekmece bölümleri (chapters) ----------
+//
+// Ten chapters, each with a target item and a time limit. Finishing one opens the next; time left
+// gives 1-3 stars. Times were sized with a simple bot (see miniGames.test.ts): reaching a Kitap takes
+// about 18 moves, a Kep about 81, a Diploma about 167; a person needs roughly 1.5 s a move.
+
+export interface Chapter {
+  /** Item level to reach (3 = Fosforlu kalem … 8 = Diploma). */
+  target: number
+  seconds: number
+}
+
+export const CHAPTERS: Chapter[] = [
+  { target: 3, seconds: 60 },
+  { target: 4, seconds: 60 },
+  { target: 4, seconds: 40 },
+  { target: 5, seconds: 90 },
+  { target: 5, seconds: 60 },
+  { target: 6, seconds: 120 },
+  { target: 6, seconds: 90 },
+  { target: 7, seconds: 180 },
+  { target: 7, seconds: 150 },
+  { target: 8, seconds: 360 },
+]
+
+/** 3 stars with at least half the time left, 2 with a quarter, otherwise 1. */
+export function chapterStars(leftMs: number, totalMs: number): number {
+  const share = totalMs > 0 ? leftMs / totalMs : 0
+  return share >= 0.5 ? 3 : share >= 0.25 ? 2 : 1
+}
+
+const CHAPTERS_KEY = 'studymode.cekmece.v1'
+
+export interface DrawerProgress {
+  /** Best stars per chapter (0 = not finished yet). The first chapter with 0 is the open one. */
+  stars: number[]
+}
+
+export function readDrawerProgress(): DrawerProgress {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHAPTERS_KEY) ?? '{}') as Partial<DrawerProgress>
+    const stars = CHAPTERS.map((_, i) => Math.max(0, Math.min(3, Number(raw.stars?.[i]) || 0)))
+    return { stars }
+  } catch {
+    return { stars: CHAPTERS.map(() => 0) }
+  }
+}
+
+/** Chapters up to and including the first unfinished one can be played. */
+export function chapterOpen(progress: DrawerProgress, index: number): boolean {
+  return index === 0 || progress.stars[index - 1] > 0
+}
+
+/** Keeps the best stars for a chapter. */
+export function saveChapterResult(index: number, stars: number): DrawerProgress {
+  const progress = readDrawerProgress()
+  progress.stars[index] = Math.max(progress.stars[index], stars)
+  try {
+    localStorage.setItem(CHAPTERS_KEY, JSON.stringify(progress))
+  } catch {
+    // Blocked storage: progress lasts for this visit only.
+  }
+  return progress
+}
+
 // ---------- Records (this device) ----------
 
 const RECORDS_KEY = 'studymode.miniGames'

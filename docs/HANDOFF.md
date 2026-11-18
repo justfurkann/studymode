@@ -1026,6 +1026,12 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Kâğıt top kaldırıldı** (18 Kasım, kurucu: "çözülmüyor, gereksiz"): ekran, kart, 3B fizik, testler ve stiller silindi. Mini oyunlar: Günün Kavramı + Çekmece.
 - **Günün Kavramı hatası:** ilk harf yazılana kadar boş kutular minicik noktalara büzülüyordu (tahta içeriğe göre genişliyordu); kurucu bunu "ilk harften önce küçük duruyor" diye bildirdi. `.kv-board { width: 100% }`. Ayrıca sıradaki kutuda yanıp sönen imleç (`.kv-tile.is-next`) ve küçük ekranlarda (`max-height` 780/690) sıkıştırma: klavye 390×844, 360×740 ve 375×667'de alt çubuğun üstünde kalıyor (ölçüldü).
 
+### Aşama 64 — Çekmece bölümleri, masaüstü düzeni, "Masaüstü" yazısı (18 Kasım 2026, `dreamy-sagan`)
+
+- Kurucu: "Çekmeceyi bir kere bitirince devamı yok, niye tekrar gireyim?" → **10 bölüm** (`CHAPTERS` in `miniGames.ts`): hedef eşya + süre (Fosforlu 60 sn → Diploma 360 sn). Kalan süreye göre 1-3 yıldız (`chapterStars`), bitince sonraki açılır, en iyi yıldızlar kalır (`studymode.cekmece.v1`). Bölüm haritası (`ChapterMap`), oyunda "Hedef" şeridi, sonuçta "Sonraki bölüm". Serbest oyun (eski 2 dk, rekor) haritanın altında. Süreler botla ölçüldü (testte de var: her bölüm 60 tohumda bitiyor, ortanca hamle × 1,5 sn < süre). Kart: "Sıradaki: N. bölüm", "x/30 yıldız".
+- Başlık "Masaüstü mini oyunlar" → "Mini oyunlar" (AI Studio'dan kalmıştı); "3B" etiketleri kaldırıldı.
+- Masaüstü: iki kart eşit yan yana; oyun ekranları ortada 480 px sütun; yüksek ekranda kelime kutuları büyük.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
