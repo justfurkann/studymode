@@ -8,6 +8,7 @@ vi.stubGlobal('localStorage', {
 })
 import {
   bestLevel,
+  DRAWER_ITEMS,
   chapterOpen,
   CHAPTERS,
   chapterStars,
@@ -46,31 +47,33 @@ describe('Çekmece', () => {
     expect(mergeItems(merged.grid, 1, 2)!.level).toBe(3)
   })
 
-  it('a diploma does not merge any further', () => {
-    const grid: Drawer = [8, 8, ...Array(14).fill(null)]
-    expect(canMerge(grid, 0, 1)).toBe(false)
-    expect(bestLevel(grid)).toBe(8)
+  it('a diploma still merges (into Yüksek lisans); a professorship, the last item, does not', () => {
+    expect(canMerge([8, 8, ...Array(14).fill(null)], 0, 1)).toBe(true)
+    const top: Drawer = [11, 11, ...Array(14).fill(null)]
+    expect(canMerge(top, 0, 1)).toBe(false)
+    expect(bestLevel(top)).toBe(11)
   })
 
   it('is stuck only when full with no equal pair', () => {
     const full: Drawer = [1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8]
     expect(drawerStuck(full)).toBe(false)
-    const noPairs: Drawer = [1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8]
+    const noPairs: Drawer = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 11, 11, 11, 11]
     expect(drawerStuck(noPairs)).toBe(true)
     expect(drawerStuck([null, ...noPairs.slice(1)])).toBe(false)
   })
 
   it('finds a pair to hint at and counts the pairs on the board', () => {
-    const grid: Drawer = [1, 2, null, 1, 2, 2, 8, 8, ...Array(8).fill(null)]
+    const grid: Drawer = [1, 2, null, 1, 2, 2, 11, 11, ...Array(8).fill(null)]
     expect(findPair(grid)).toEqual([0, 3])
-    // Two 1s make one pair, three 2s make one pair, diplomas do not merge.
+    // Two 1s make one pair, three 2s make one pair, professorships do not merge.
     expect(pairCount(grid)).toBe(2)
-    expect(findPair([1, 2, 3, 8, 8, ...Array(11).fill(null)])).toBeNull()
+    expect(findPair([1, 2, 3, 11, 11, ...Array(11).fill(null)])).toBeNull()
   })
 
-  it('a new item lands in an empty cell', () => {
+  it('a new item lands in an empty cell; later chapters drop better items', () => {
     const grid: Drawer = [1, 1, 1, null, ...Array(12).fill(1)]
     expect(spawnItem(grid, seq(0.5, 0.9))[3]).toBe(1)
+    expect(spawnItem(grid, seq(0.5, 0.9), 4)[3]).toBe(4)
   })
 })
 
@@ -78,41 +81,40 @@ describe('Çekmece bölümleri', () => {
   /** Steps through a fixed seed, so "random" is the same every run. */
   const rng = (seed: number) => () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296)
   /** A plain player: put the lowest pair together, otherwise drop a new item. Moves to the target, or -1. */
-  const bot = (target: number, seed: number) => {
+  const bot = (target: number, seed: number, base = 1) => {
     const rand = rng(seed)
-    let grid = newDrawer(rand)
+    let grid = newDrawer(rand, base)
     for (let moves = 1; moves <= 1000; moves += 1) {
       let pair: [number, number] | null = null
-      for (let lv = 1; lv < 8 && !pair; lv += 1) {
+      for (let lv = 1; lv < 11 && !pair; lv += 1) {
         const at = grid.flatMap((v, i) => (v === lv ? [i] : []))
         if (at.length >= 2) pair = [at[0], at[1]]
       }
       if (pair) grid = mergeItems(grid, pair[0], pair[1])!.grid
-      grid = spawnItem(grid, rand)
+      grid = spawnItem(grid, rand, base)
       if (bestLevel(grid) >= target) return moves
       if (drawerStuck(grid)) return -1
     }
     return -1
   }
 
-  it('every chapter can be finished in time at about 1.5 s a move, and gets harder', () => {
+  it('every chapter can be finished in time at about 1.5 s a move, each with its own target', () => {
     for (const [i, ch] of CHAPTERS.entries()) {
-      const runs = Array.from({ length: 60 }, (_, s) => bot(ch.target, s + 1))
+      const runs = Array.from({ length: 60 }, (_, s) => bot(ch.target, s + 1, ch.base))
       expect(runs.every((m) => m > 0), `chapter ${i + 1}`).toBe(true)
       const median = [...runs].sort((a, b) => a - b)[30]
       expect(median * 1.5, `chapter ${i + 1}`).toBeLessThan(ch.seconds)
     }
-    for (let i = 1; i < CHAPTERS.length; i += 1) {
-      const a = CHAPTERS[i - 1]
-      const b = CHAPTERS[i]
-      expect(b.target > a.target || (b.target === a.target && b.seconds < a.seconds), `chapter ${i + 1}`).toBe(true)
-    }
-    expect(CHAPTERS.at(-1)!.target).toBe(8)
+    // One chapter per item: every target is new.
+    expect(new Set(CHAPTERS.map((c) => c.target)).size).toBe(CHAPTERS.length)
+    for (let i = 1; i < CHAPTERS.length; i += 1) expect(CHAPTERS[i].target, `chapter ${i + 1}`).toBeGreaterThan(CHAPTERS[i - 1].target)
+    expect(CHAPTERS.at(-1)!.target).toBe(DRAWER_ITEMS.length)
   })
 
   it('stars come from the time left', () => {
     expect(chapterStars(30_000, 60_000)).toBe(3)
     expect(chapterStars(20_000, 60_000)).toBe(2)
+    expect(chapterStars(24_000, 60_000)).toBe(3)
     expect(chapterStars(1_000, 60_000)).toBe(1)
   })
 

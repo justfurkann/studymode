@@ -2184,22 +2184,9 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     await expect(page.getByRole('button', { name: 'Kurşun kalem, seçili' })).toBeVisible()
     await expect(page.locator('.drawer-slot.is-match').first()).toBeVisible()
     await pencils.nth(0).click()
-    await expect(page.getByRole('button', { name: 'Tükenmez kalem', exact: true })).toHaveCount(1)
-    await expect(page.locator('.mini-score')).toContainText('· 4')
-
-    // Reaching the chapter's target (Fosforlu kalem) finishes it and opens chapter 2.
-    const pens = page.getByRole('button', { name: 'Tükenmez kalem', exact: true })
-    for (let i = 0; i < 12 && (await pens.count()) < 2; i += 1) {
-      const p = page.getByRole('button', { name: 'Kurşun kalem', exact: true })
-      if ((await p.count()) >= 2) {
-        // Once picked, an item is named "…, seçili", so the next match is again the first one.
-        await p.nth(0).click()
-        await p.nth(0).click()
-      } else await page.getByRole('button', { name: /yeni eşya/i }).click()
-    }
-    await pens.nth(0).click()
-    await pens.nth(0).click()
+    // Chapter 1's target is a Tükenmez kalem: one merge finishes it and opens chapter 2.
     await expect(page.getByText('1. bölüm tamam')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sonraki bölüm' })).toBeVisible()
     await page.getByRole('button', { name: 'Bölümlere dön' }).click()
     await expect(page.getByRole('button', { name: /^2\. bölüm:/ })).toBeEnabled()
 
