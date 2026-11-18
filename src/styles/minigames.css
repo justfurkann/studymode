@@ -1,0 +1,265 @@
+/* Mini games on the break page (admins only while they are tried out). */
+
+.mini-trial {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.mini-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.mini-stars {
+  display: inline-flex;
+  gap: 2px;
+  vertical-align: -3px;
+}
+
+.mini-stars svg {
+  color: var(--text-3);
+}
+
+.mini-stars svg.is-on {
+  color: var(--text);
+  fill: var(--hi);
+}
+
+.mini-done {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Fosforla altını çiz */
+
+.mini-highlight-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.mini-paragraph {
+  padding: 18px 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 1.12rem;
+  line-height: 2;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
+}
+
+.mini-word {
+  padding: 2px 1px;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+
+.mini-word.is-on {
+  background: var(--hi);
+  color: var(--on-hi);
+  box-shadow: 0 0 0 2px var(--hi);
+}
+
+.mini-paragraph.is-done {
+  cursor: default;
+}
+
+.mini-word.is-hit {
+  background: var(--success-soft);
+  box-shadow: inset 0 -3px 0 var(--success);
+}
+
+.mini-word.is-missed {
+  outline: 2px dashed var(--text-3);
+  outline-offset: 1px;
+}
+
+.mini-word.is-wrong {
+  background: var(--danger-soft);
+  text-decoration: line-through;
+  text-decoration-color: var(--danger);
+}
+
+/* Kâğıt top */
+
+.mini-toss {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mini-toss-scene {
+  width: 100%;
+  max-width: 420px;
+  max-height: 62vh;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.toss-floor {
+  stroke: var(--border-strong);
+  stroke-width: 2;
+}
+
+.toss-bin {
+  fill: var(--surface-2);
+  stroke: var(--text);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.toss-rim {
+  stroke: var(--text);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.toss-ball polygon {
+  fill: var(--surface);
+  stroke-linejoin: round;
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+.toss-ball path {
+  fill: none;
+  stroke: var(--text-3);
+  stroke-width: 1.5;
+}
+
+.toss-wind text,
+.toss-hint {
+  fill: var(--text-2);
+  font: 600 15px var(--font-body);
+}
+
+.toss-flash {
+  font: 800 34px var(--font-display);
+}
+
+.toss-flash.is-good {
+  fill: var(--success);
+}
+
+.toss-flash.is-bad {
+  fill: var(--danger);
+}
+
+/* Çekmece */
+
+.mini-drawer {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  max-width: 420px;
+  margin: 0 auto 14px;
+}
+
+.drawer-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.drawer-cell.is-empty {
+  background: var(--surface-2);
+  border-style: dashed;
+}
+
+.drawer-cell.lv-3,
+.drawer-cell.lv-4 {
+  background: var(--hi-soft);
+}
+
+.drawer-cell.lv-5,
+.drawer-cell.lv-6 {
+  background: var(--accent-soft);
+}
+
+.drawer-cell.lv-7,
+.drawer-cell.lv-8 {
+  background: var(--hi);
+  color: var(--on-hi);
+}
+
+.drawer-cell.is-selected {
+  box-shadow: 0 0 0 3px var(--accent);
+  transform: translateY(-2px);
+}
+
+.drawer-cell.is-pop {
+  animation: drawer-pop 0.3s ease-out;
+}
+
+@keyframes drawer-pop {
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-cell.is-pop {
+    animation: none;
+  }
+}
+
+.drawer-name {
+  font-size: 0.68rem;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.drawer-ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+
+.drawer-ladder li::after {
+  content: '›';
+  margin-left: 6px;
+}
+
+.drawer-ladder li:last-child::after {
+  content: '';
+}
+
+.drawer-ladder li.is-reached {
+  color: var(--text);
+  font-weight: 700;
+}

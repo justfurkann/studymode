@@ -2125,6 +2125,77 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     ],
   }
 
+  test('mini games on the break page: admins only for now; highlight, paper toss and drawer can be played', async ({ page }) => {
+    const errors = watchErrors(page)
+    let role = 'normal'
+    await signedIn(page, { ai_quota: () => ({ role, used: 0, limit: role === 'admin' ? null : 40, allowed: true }) })
+    await page.addInitScript((id) => localStorage.setItem('studymode.vipWelcomed.' + id, '1'), me.id)
+
+    // A normal account does not see them, and the address alone does not open them.
+    await page.goto('/tekrar?bolum=mola')
+    await expect(page.getByRole('heading', { level: 1, name: /mola/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Mini oyunlar' })).toHaveCount(0)
+    await page.goto('/tekrar?bolum=mola&oyun=cekmece')
+    await expect(page.getByRole('heading', { level: 1, name: /mola/ })).toBeVisible()
+    await expect(page.getByRole('grid', { name: 'Çekmece' })).toHaveCount(0)
+
+    role = 'admin'
+    await page.goto('/tekrar?bolum=mola')
+    await page.getByRole('button', { name: 'Mini oyunlar' }).click()
+    await expect(page.getByText('Deneme: şimdilik yalnızca yöneticiler görüyor.')).toBeVisible()
+
+    // Highlight: drag across the words, finish, see the score; the day's paragraph is then done.
+    await page.getByRole('button', { name: 'Fosforla altını çiz' }).click()
+    const words = page.locator('.mini-word')
+    await expect(words.first()).toBeVisible()
+    const a = (await words.nth(0).boundingBox())!
+    const b = (await words.nth(2).boundingBox())!
+    await page.mouse.move(a.x + 3, a.y + a.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(b.x + b.width - 3, b.y + b.height / 2, { steps: 8 })
+    await page.mouse.up()
+    await expect(page.locator('.mini-word.is-on')).toHaveCount(3)
+    await page.getByRole('button', { name: 'Bitir' }).click()
+    await expect(page.getByText(/Doğru: \d+ · Kaçan: \d+ · Fazla çizilen: \d+/)).toBeVisible()
+    await page.getByRole('button', { name: 'Molaya dön' }).last().click()
+    await expect(page.getByText(/Bugün oynandı: \d+ puan/)).toBeVisible()
+
+    // Paper toss: a flick from the ball counts as a throw.
+    await page.getByRole('button', { name: 'Kâğıt top' }).click()
+    await expect(page.getByText('Atış 1/10 · 0 puan')).toBeVisible()
+    const scene = (await page.locator('.mini-toss-scene').boundingBox())!
+    const sx = scene.width / 360
+    const sy = scene.height / 520
+    await page.mouse.move(scene.x + 64 * sx, scene.y + 440 * sy)
+    await page.mouse.down()
+    await page.mouse.move(scene.x + 90 * sx, scene.y + 380 * sy, { steps: 3 })
+    await page.mouse.up()
+    await expect(page.getByText(/Atış 2\/10/)).toBeVisible({ timeout: 8000 })
+    await page.getByRole('button', { name: 'Molaya dön' }).click()
+
+    // Drawer: two equal items merge into the next one.
+    await page.addInitScript(() => {
+      // Fixed "random" so the board starts with pencils.
+      Math.random = () => 0.5
+    })
+    await page.reload()
+    await page.getByRole('button', { name: 'Çekmece' }).click()
+    const pencils = page.getByRole('button', { name: 'Kurşun kalem', exact: true })
+    await expect(pencils.first()).toBeVisible()
+    const before = await pencils.count()
+    expect(before).toBeGreaterThanOrEqual(2)
+    await pencils.nth(0).click()
+    await expect(page.getByRole('button', { name: 'Kurşun kalem, seçili' })).toBeVisible()
+    await pencils.nth(0).click()
+    await expect(page.getByRole('button', { name: 'Tükenmez kalem', exact: true })).toHaveCount(1)
+    await expect(page.getByText(/\d+ sn · 4 puan/)).toBeVisible()
+
+    // Fits a 360 px phone without sideways scrolling.
+    await page.setViewportSize({ width: 360, height: 740 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360)
+    expect(errors).toEqual([])
+  })
+
   test('Premium: VIPs get two-voice audio and smart search; others see what it is and how to get it', async ({ page }) => {
     const errors = watchErrors(page)
     let role = 'normal'

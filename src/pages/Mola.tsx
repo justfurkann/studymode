@@ -1,16 +1,18 @@
-import { Grid2x2Check, Sparkles, Timer, Zap } from 'lucide-react'
+import { Gamepad2, Grid2x2Check, Sparkles, Timer, Zap } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { FocusTimer } from '../components/mola/FocusTimer'
 import { MatchGame } from '../components/mola/MatchGame'
+import { DrawerGame, HighlightGame, MINI_GAMES, MiniHub, TossGame, type MiniGame } from '../components/mola/MiniGames'
 import { QuickGame } from '../components/mola/QuickGame'
+import { useQuota } from '../lib/account'
 import { useFocus } from '../lib/focusStore'
 import { cardsInScope, focusLastWeek, formatClock, formatSeconds, isWaiting, MATCH_MIN_PAIRS, QUICK_LIVES, QUICK_MIN_CARDS, QUICK_SECONDS, readRecords, remainingMs, scopeKey } from '../lib/mola'
 import { useStore } from '../lib/store'
 import { useLoadDemo } from '../lib/useDemo'
 
-type Game = 'eslestir' | 'hizli' | 'odak'
-const GAMES: Game[] = ['eslestir', 'hizli', 'odak']
+type Game = 'eslestir' | 'hizli' | 'odak' | 'mini' | MiniGame
+const GAMES: Game[] = ['eslestir', 'hizli', 'odak', 'mini', ...MINI_GAMES]
 const SCOPE_KEY = 'studymode.molaScope'
 
 /** "Tekrar | Mola" switch at the top of the Tekrar tab. */
@@ -44,6 +46,8 @@ export function Mola() {
   const game = GAMES.find((g) => g === params.get('oyun')) ?? null
   const [scope, setScopeState] = useState<string | null>(readScope)
   const timer = useFocus()
+  // Mini games are being tried out: only admins see them for now.
+  const isAdmin = useQuota(store.session?.user.id ?? null)?.role === 'admin'
 
   const courses = useMemo(
     () =>
@@ -70,9 +74,16 @@ export function Mola() {
     if (next) p.set('oyun', next)
     else p.delete('oyun')
     setParams(p)
+    // A game opens at the top, with its score line in view.
+    window.scrollTo(0, 0)
   }
   const exit = () => open(null)
 
+  if (isAdmin && game === 'mini') return <MiniHub onOpen={(g) => open(g)} onExit={exit} />
+  const backToMini = () => open('mini')
+  if (isAdmin && game === 'altini-ciz') return <HighlightGame onExit={backToMini} />
+  if (isAdmin && game === 'kagit-top') return <TossGame onExit={backToMini} />
+  if (isAdmin && game === 'cekmece') return <DrawerGame onExit={backToMini} />
   if (game === 'eslestir' && cards.length >= MATCH_MIN_PAIRS) return <MatchGame cards={cards} courseId={courseId} onExit={exit} />
   if (game === 'hizli' && cards.length >= QUICK_MIN_CARDS) return <QuickGame cards={cards} courseId={courseId} onExit={exit} />
   if (game === 'odak')
@@ -117,6 +128,16 @@ export function Mola() {
       )}
 
       <div className="mola-grid">
+        {isAdmin && (
+          <MolaTile
+            icon={<Gamepad2 size={22} />}
+            title="Mini oyunlar"
+            text="Fosforla altını çiz, kâğıt top ve çekmece. Kart gerekmez."
+            meta="Deneme: yalnızca yöneticiler görüyor"
+            locked={null}
+            onOpen={() => open('mini')}
+          />
+        )}
         <MolaTile
           icon={<Grid2x2Check size={22} />}
           title="Eşleştir"
