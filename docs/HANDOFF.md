@@ -1033,6 +1033,15 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Başlık "Masaüstü mini oyunlar" → "Mini oyunlar" (AI Studio'dan kalmıştı); "3B" etiketleri kaldırıldı.
 - Masaüstü: iki kart eşit yan yana; oyun ekranları ortada 480 px sütun; yüksek ekranda kelime kutuları büyük.
 
+### Aşama 65 — Lise/ortaokul (YKS, LGS) için 1. adım (22 Kasım 2026, `dreamy-sagan`)
+
+- **Neden:** vize haftası bitince kullanım sıfıra indi (16-22 Kasım). Seviye cevaplayan 52 kişiden 30'u ortaokul/lise, 19'u üniversite; ama liselilerin hiçbiri ikinci gün gelmedi (ürün "kendi notunu yükle" üstüne, sınav dili vize/final). Karar: pivot değil, genişleme; 2-3 hafta ölçülecek.
+- **Seviye sorusu zorunlu** (`EducationPrompt`): hiç cevaplamamış biri kapatamaz (`Modal closable={false}`), seviye tek dokunuşla hemen kaydedilir (`EducationForm saveLevelEarly`), gerisi için "Şimdi değil" çıkar. İpuçları: Ortaokul "Yazılılar, LGS", Lise "Yazılılar, TYT, AYT", Mezun "YKS tekrarı, KPSS, sertifika".
+- **Sınav dili seviyeye göre** (`courseExams.ts`: `setExamAudience`, `audienceForLevel`, `examKinds`, `examKindLabel`; Layout ayarlar). Veritabanı aynı (`vize/final/quiz/butunleme/diger`); okul öğrencisi "1. Yazılı, 2. Yazılı, Deneme, Sorumluluk sınavı" görür, "Diğer"de TYT/AYT/LGS/Ortak sınav önerilir. Ders formu, dönem tablosu, biten sınav bildirimi, fiş, tur ve rehber metinleri buna bağlandı.
+- **YKS/LGS geri sayımı** (`src/lib/bigExams.ts`, `BigExamCountdown`): Bugün ve karşılama ekranında. Resmî tarihler: YKS TYT 19 Haziran 2027, AYT/YDT 20 Haziran (ÖSYM); LGS 13 Haziran 2027 (MEB 2027 takvimi). **Her sonbahar yeni takvimle güncellenmeli.** Çarpı ile gizlenir (9. sınıf vb.).
+- **Not ekle:** okul öğrencisine "ders kitabının/çalışma kâğıdının fotoğrafını çek" ipucu; karşılama metni de buna göre.
+- Telefonda sınav türü kutusu kendi satırında (1. Yazılı / Bütünleme kesilmiyordu).
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

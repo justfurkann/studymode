@@ -26,7 +26,7 @@ const STEPS: Step[] = [
   { key: 'ekle', title: 'Not ekle', text: 'PDF, Word, slayt ya da fotoğrafını yükle. Özet, test ve tekrar kartları birkaç saniyede hazırlanır.' },
   { key: 'bugun', title: 'Bugün', text: 'Her gün buradan başla: tekrar bekleyen kartlar, yaklaşan sınavlar ve sıradaki konu tek ekranda.' },
   { key: 'tekrar', title: 'Tekrar', text: 'Kartlar tam unutmak üzereyken geri gelir. Yanında Mola: iki dakikalık oyunlar ve odak sayacı.' },
-  { key: 'sinavlar', title: 'Sınavlar', text: 'Vize ve final tarihlerini gir; neye önce çalışacağını söyleyelim, istersen sınav provası yap.' },
+  { key: 'sinavlar', title: 'Sınavlar', text: 'Sınav tarihlerini gir; neye önce çalışacağını söyleyelim, istersen sınav provası yap.' },
   { key: 'premium', title: 'Premium', text: 'Notunu iki sesli bir sohbet olarak dinle, anlamına göre ara, yapay zekâya görsel çizdir.', premiumOnly: true },
   {
     key: 'daha',

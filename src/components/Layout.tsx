@@ -23,6 +23,8 @@ import { PendingCodeReturn } from '../pages/RedeemLink'
 import { PremiumNudge } from './PremiumNudge'
 import { AiChoiceSync } from './AiChoiceSync'
 import { pageTitle } from '../lib/pageTitle'
+import { audienceForLevel, setExamAudience } from '../lib/courseExams'
+import { useEducation } from '../lib/education'
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -40,6 +42,9 @@ export function Layout() {
   const due = dueCards(data.cards).length
   const navigate = useNavigate()
   const { pathname, search } = useLocation()
+  // Exam words follow the student: "1. Yazılı" for ortaokul and lise, "Vize" otherwise. Set before the pages draw.
+  const education = useEducation()
+  setExamAudience(audienceForLevel(education?.level))
   // Each tab says where it is ("Biyoloji · Hücre zarı"), so several open tabs can be told apart.
   useEffect(() => {
     const title = pageTitle(pathname, search, data.courses, data.notes)

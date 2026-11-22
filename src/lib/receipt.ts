@@ -1,4 +1,4 @@
-import { upcomingExams } from './courseExams'
+import { examName, upcomingExams } from './courseExams'
 import { computeStreakSummary, localDayKey, mergeStudyDays, shiftLocalDay } from './streak'
 import type { StudyData } from './types'
 
@@ -140,7 +140,7 @@ function hash(text: string): string {
 function register(data: StudyData, now: Date): string {
   const next = upcomingExams(data, now)[0]
   if (next && next.days <= 14) {
-    const kind = next.exam.kind === 'final' ? 'FİNAL' : next.exam.kind === 'butunleme' ? 'BÜTÜNLEME' : next.exam.kind === 'quiz' ? 'QUIZ' : 'VİZE'
+    const kind = examName({ kind: next.exam.kind, title: null }).toLocaleUpperCase('tr-TR').replace(/[.\s]+/g, '')
     return next.days <= 3 ? `#${kind}-ACISI` : `#${kind}-HAFTASI`
   }
   return isNightOwlHour(now) ? '#GECE-VARDİYASI' : '#ÇALIŞMA'

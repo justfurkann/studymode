@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
+  audienceForLevel,
+  examKinds,
+  examName,
+  setExamAudience,
   cleanExamTime,
   courseExamPhrase,
   examCountdown,
@@ -160,5 +164,36 @@ describe('finished exams: time, grade, what comes next', () => {
     ])
     const real = exam({ id: 'v', date: '2026-10-20', time: '09:30', grade: 82, weight: 40 })
     expect(examDrafts({ courses: [course('c1')], courseExams: [real] }, 'c1')[0]).toMatchObject({ id: 'v', time: '09:30', grade: 82, weight: 40 })
+  })
+})
+
+describe('exam words follow the student', () => {
+  afterEach(() => setExamAudience('uni'))
+
+  it('ortaokul and lise are school; everyone else keeps vize and final', () => {
+    expect(audienceForLevel('lise')).toBe('school')
+    expect(audienceForLevel('ortaokul')).toBe('school')
+    expect(audienceForLevel('universite')).toBe('uni')
+    expect(audienceForLevel('mezun')).toBe('uni')
+    expect(audienceForLevel(null)).toBe('uni')
+  })
+
+  it('a school student sees yazılı, deneme and sorumluluk, stored as the same kinds', () => {
+    setExamAudience('school')
+    expect(examKinds().map((k) => k.label)).toEqual(['1. Yazılı', '2. Yazılı', 'Deneme', 'Sorumluluk sınavı', 'Diğer'])
+    expect(examKinds().map((k) => k.id)).toEqual(['vize', 'final', 'quiz', 'butunleme', 'diger'])
+    expect(examName({ kind: 'vize', title: null })).toBe('1. Yazılı')
+    expect(examName({ kind: 'diger', title: 'TYT' })).toBe('TYT')
+  })
+
+  it('countdowns read naturally in both', () => {
+    const now = new Date(2026, 10, 22, 9)
+    const exam = { kind: 'vize' as const, title: null, date: '2026-11-30', time: null }
+    expect(examCountdown(exam, now)?.text).toBe('Vizeye 8 gün')
+    expect(courseExamPhrase('Biyoloji', exam, 8)).toBe('Biyoloji vizesine 8 gün kaldı')
+    setExamAudience('school')
+    expect(examCountdown(exam, now)?.text).toBe('1. yazılıya 8 gün')
+    expect(courseExamPhrase('Biyoloji', exam, 8)).toBe('Biyoloji 1. yazılısına 8 gün kaldı')
+    expect(courseExamPhrase('Biyoloji', { kind: 'quiz', title: null }, 1)).toBe('Biyoloji denemesi yarın')
   })
 })

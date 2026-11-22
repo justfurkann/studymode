@@ -35,7 +35,7 @@ import { requestTour } from '../lib/tour'
 
 /** Each step with a screenshot of the real screen (public/rehber, light and dark) and a way to go there. */
 const FLOW: Array<{ title: string; text: string; shot: number; alt: string; to: string; link: string }> = [
-  { title: 'Dersini ve sınav tarihini gir', text: 'Sınavlar sekmesinden vize ve finallerini ekle. Uygulama tekrarları ve günlük planı bu tarihlere göre ayarlar.', shot: 1, alt: 'Sınavlar ekranı: Şimdi bununla başla kartı ve takvim', to: '/sinav', link: 'Sınavlara git' },
+  { title: 'Dersini ve sınav tarihini gir', text: 'Sınavlar sekmesinden sınavlarını (vize, final ya da yazılı, deneme) ekle. Uygulama tekrarları ve günlük planı bu tarihlere göre ayarlar.', shot: 1, alt: 'Sınavlar ekranı: Şimdi bununla başla kartı ve takvim', to: '/sinav', link: 'Sınavlara git' },
   { title: 'Notunu ekle', text: 'PDF, Word, slayt, fotoğraf ya da düz metin. Özet, test, kartlar ve açık uçlu sorular birkaç saniyede hazırlanır.', shot: 2, alt: 'Not ekle ekranı: ders seçimi, başlık ve dosya yükleme', to: '/not-ekle', link: 'Not ekle' },
   { title: 'Özeti oku, sonra kendini test et', text: 'Önce Kavramlar ve Ana noktalar; ardından Test. Yanlışların tek dokunuşla karta dönüşür.', shot: 3, alt: 'Not sayfası: Özet, Test, Kartlar, Anlat adımları ve Tam özet kartı', to: '/dersler', link: 'Notlarıma git' },
   { title: 'Her gün Bugün ekranına bak', text: 'Tekrar bekleyen kartları çevir, "Şimdi bununla başla" önerisine uy. Günde 10-15 dakika yeter.', shot: 4, alt: 'Bugün ekranı: tekrar bekleyen kartlar ve sıradaki adım', to: '/', link: 'Bugün’e git' },

@@ -1,3 +1,4 @@
+import { BigExamCountdown } from '../components/BigExamCountdown'
 import { ArrowRight, Brain, Trophy, CalendarClock, Compass, FileText, Flame, Sparkles, Target } from 'lucide-react'
 import { PremiumReminder } from '../components/PremiumCode'
 import { LevelBadge } from '../components/Level'
@@ -112,6 +113,8 @@ export function Today() {
           <ReceiptButton className="btn btn-sm" />
         </div>
       </div>
+
+      <BigExamCountdown />
 
       {due.length > 0 ? (
         <section className="hero" aria-label="Tekrar">

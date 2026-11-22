@@ -1,14 +1,13 @@
 import { ArrowRight, Check, Pencil, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { examDateText, examDrafts, examName, examsAwaitingGrade, examsForCourse, gradeText, hasGrade, nextExamToAdd, parseGrade } from '../lib/courseExams'
+import { examDateText, examDrafts, examKindLabel, examName, examsAwaitingGrade, examsForCourse, gradeText, hasGrade, nextExamToAdd, parseGrade } from '../lib/courseExams'
 import { gradeKey, hideExamAsks, nextKey, useHiddenExamAsks } from '../lib/hiddenExams'
 import { useStore } from '../lib/store'
 import type { Course, CourseExam, CourseExamKind, StudyData } from '../lib/types'
 import { useToast } from './ui'
 
-const NEXT_LABEL: Partial<Record<CourseExamKind, string>> = { final: 'Final' }
-const nextLabel = (kind: CourseExamKind) => NEXT_LABEL[kind] ?? 'Sınav'
+const nextLabel = (kind: CourseExamKind) => (kind === 'final' ? examKindLabel('final') : 'Sınav')
 
 /** Date and optional time for the course's next exam (the final after a midterm). */
 function NextExamForm({ course, kind, onDone }: { course: Course; kind: CourseExamKind; onDone: () => void }) {
@@ -295,7 +294,7 @@ export function FinishedExamsNotice() {
   if (!exams.length && !next.length) return null
   const text = exams.length
     ? `${exams.length} sınavın bitti. Notun açıklandıysa gir.`
-    : `${next.length} dersin vizesi bitti. Final tarihini ekle.`
+    : `${next.length} dersin ${examKindLabel('vize').toLocaleLowerCase('tr-TR')} sınavı bitti. ${examKindLabel('final')} tarihini ekle.`
 
   return (
     <div className="exam-notice" role="group" aria-label="Biten sınavlar">

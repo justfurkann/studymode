@@ -2,22 +2,70 @@ import { daysUntil } from './srs'
 import type { CourseExamDraft } from './store'
 import type { Card, Course, CourseExam, CourseExamKind, StudyData } from './types'
 
-export const EXAM_KINDS: Array<{ id: CourseExamKind; label: string }> = [
-  { id: 'vize', label: 'Vize' },
-  { id: 'final', label: 'Final' },
-  { id: 'butunleme', label: 'Bütünleme' },
-  { id: 'quiz', label: 'Quiz' },
-  { id: 'diger', label: 'Diğer' },
-]
+/*
+ * Exam words depend on who the student is. The stored kinds stay the same ('vize', 'final', …);
+ * only what is shown changes: a school student (ortaokul, lise) sees "1. Yazılı", "2. Yazılı",
+ * "Deneme" and "Sorumluluk sınavı" instead of vize, final, quiz and bütünleme. Layout sets the
+ * audience from the account's education level before the pages draw.
+ */
+export type ExamAudience = 'uni' | 'school'
 
-const LABELS: Record<CourseExamKind, string> = { vize: 'Vize', final: 'Final', butunleme: 'Bütünleme', quiz: 'Quiz', diger: 'Sınav' }
-/** "Vizeye 8 gün" needs the dative form of each name. */
-const DATIVE: Record<CourseExamKind, string> = { vize: 'Vizeye', final: 'Finale', butunleme: 'Bütünlemeye', quiz: 'Quiz’e', diger: 'Sınava' }
-/** After a course name the suffix goes on the exam word: "Biyoloji vizesi", "Biyoloji vizesine". */
-const POSSESSIVE: Record<CourseExamKind, string> = { vize: 'vizesi', final: 'finali', butunleme: 'bütünlemesi', quiz: 'quizi', diger: 'sınavı' }
-const POSSESSIVE_DATIVE: Record<CourseExamKind, string> = { vize: 'vizesine', final: 'finaline', butunleme: 'bütünlemesine', quiz: 'quizine', diger: 'sınavına' }
+let audience: ExamAudience = 'uni'
 
-export const examName = (exam: Pick<CourseExam, 'kind' | 'title'>) => (exam.kind === 'diger' && exam.title?.trim() ? exam.title.trim() : LABELS[exam.kind])
+export function setExamAudience(next: ExamAudience) {
+  audience = next
+}
+
+export const examAudience = () => audience
+
+/** Ortaokul and lise have yazılı exams, LGS and YKS; everyone else keeps vize and final. */
+export const audienceForLevel = (level: string | null | undefined): ExamAudience => (level === 'ortaokul' || level === 'lise' ? 'school' : 'uni')
+
+interface KindWords {
+  label: string
+  /** "Vizeye 8 gün" */
+  dative: string
+  /** "Biyoloji vizesi" */
+  possessive: string
+  /** "Biyoloji vizesine" */
+  possessiveDative: string
+}
+
+const WORDS: Record<ExamAudience, Record<CourseExamKind, KindWords>> = {
+  uni: {
+    vize: { label: 'Vize', dative: 'Vizeye', possessive: 'vizesi', possessiveDative: 'vizesine' },
+    final: { label: 'Final', dative: 'Finale', possessive: 'finali', possessiveDative: 'finaline' },
+    butunleme: { label: 'Bütünleme', dative: 'Bütünlemeye', possessive: 'bütünlemesi', possessiveDative: 'bütünlemesine' },
+    quiz: { label: 'Quiz', dative: 'Quiz’e', possessive: 'quizi', possessiveDative: 'quizine' },
+    diger: { label: 'Sınav', dative: 'Sınava', possessive: 'sınavı', possessiveDative: 'sınavına' },
+  },
+  school: {
+    vize: { label: '1. Yazılı', dative: '1. yazılıya', possessive: '1. yazılısı', possessiveDative: '1. yazılısına' },
+    final: { label: '2. Yazılı', dative: '2. yazılıya', possessive: '2. yazılısı', possessiveDative: '2. yazılısına' },
+    butunleme: { label: 'Sorumluluk sınavı', dative: 'Sorumluluk sınavına', possessive: 'sorumluluk sınavı', possessiveDative: 'sorumluluk sınavına' },
+    quiz: { label: 'Deneme', dative: 'Denemeye', possessive: 'denemesi', possessiveDative: 'denemesine' },
+    diger: { label: 'Sınav', dative: 'Sınava', possessive: 'sınavı', possessiveDative: 'sınavına' },
+  },
+}
+
+const ORDER: Record<ExamAudience, CourseExamKind[]> = {
+  uni: ['vize', 'final', 'butunleme', 'quiz', 'diger'],
+  school: ['vize', 'final', 'quiz', 'butunleme', 'diger'],
+}
+
+/** The exam types to offer, in this student's words. */
+export const examKinds = (): Array<{ id: CourseExamKind; label: string }> =>
+  ORDER[audience].map((id) => ({ id, label: id === 'diger' ? 'Diğer' : WORDS[audience][id].label }))
+
+/** University words, for code that must not depend on the student (kept for older imports). */
+export const EXAM_KINDS: Array<{ id: CourseExamKind; label: string }> = ORDER.uni.map((id) => ({ id, label: id === 'diger' ? 'Diğer' : WORDS.uni[id].label }))
+
+export const examKindLabel = (kind: CourseExamKind) => WORDS[audience][kind].label
+
+/** Ready-made names for a "Diğer" exam a school student is likely to have. */
+export const SCHOOL_EXAM_TITLES = ['TYT', 'AYT', 'LGS', 'Ortak sınav'] as const
+
+export const examName = (exam: Pick<CourseExam, 'kind' | 'title'>) => (exam.kind === 'diger' && exam.title?.trim() ? exam.title.trim() : WORDS[audience][exam.kind].label)
 
 /** How long after its start time an exam counts as finished. */
 export const EXAM_LENGTH_MS = 60 * 60 * 1000
@@ -71,7 +119,7 @@ export function examCountdown(exam: Pick<CourseExam, 'kind' | 'title' | 'date' |
   if (days === 0) return { text: `${name} bugün${at}`, days, tone }
   if (days === 1) return { text: `${name} yarın${at}`, days, tone }
   // Custom names ("Proje sunumu") cannot be declined reliably, so they get a neutral form.
-  const text = exam.kind === 'diger' && exam.title?.trim() ? `${name}: ${days} gün kaldı` : `${DATIVE[exam.kind]} ${days} gün`
+  const text = exam.kind === 'diger' && exam.title?.trim() ? `${name}: ${days} gün kaldı` : `${WORDS[audience][exam.kind].dative} ${days} gün`
   return { text, days, tone }
 }
 
@@ -79,7 +127,7 @@ export function examCountdown(exam: Pick<CourseExam, 'kind' | 'title' | 'date' |
 export function courseExamPhrase(courseName: string, exam: Pick<CourseExam, 'kind' | 'title'>, days: number): string {
   const when = days === 0 ? 'bugün' : days === 1 ? 'yarın' : null
   if (exam.kind === 'diger' && exam.title?.trim()) return `${courseName} · ${exam.title.trim()}${when ? ` ${when}` : `: ${days} gün kaldı`}`
-  return when ? `${courseName} ${POSSESSIVE[exam.kind]} ${when}` : `${courseName} ${POSSESSIVE_DATIVE[exam.kind]} ${days} gün kaldı`
+  return when ? `${courseName} ${WORDS[audience][exam.kind].possessive} ${when}` : `${courseName} ${WORDS[audience][exam.kind].possessiveDative} ${days} gün kaldı`
 }
 
 /** "28 Ekim Çarşamba" style date for an exam day, with the time when there is one. */

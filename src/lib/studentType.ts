@@ -10,11 +10,11 @@
 export type Level = 'ortaokul' | 'lise' | 'universite' | 'yukseklisans' | 'mezun'
 
 export const LEVELS: Array<{ id: Level; label: string; hint: string }> = [
-  { id: 'ortaokul', label: 'Ortaokul', hint: 'LGS yolcusu' },
-  { id: 'lise', label: 'Lise', hint: 'Yazılılar, YKS' },
+  { id: 'ortaokul', label: 'Ortaokul', hint: 'Yazılılar, LGS' },
+  { id: 'lise', label: 'Lise', hint: 'Yazılılar, TYT, AYT' },
   { id: 'universite', label: 'Üniversite', hint: 'Vize, final, bütünleme' },
   { id: 'yukseklisans', label: 'Yüksek lisans / doktora', hint: 'Tez, makale, seminer' },
-  { id: 'mezun', label: 'Mezun / çalışıyorum', hint: 'Sertifika, KPSS, kendimi geliştiriyorum' },
+  { id: 'mezun', label: 'Mezun / çalışıyorum', hint: 'YKS tekrarı, KPSS, sertifika' },
 ]
 
 /** Levels that pick a university. */
