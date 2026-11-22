@@ -26,7 +26,8 @@ const BIRTH_YEARS = Array.from({ length: 61 }, (_, i) => thisYear - 10 - i)
  * gender and "where did you hear about us" (each optional). Saves once, at the end.
  * `startAt` = 'level' re-asks everything (Settings → Değiştir).
  */
-export function EducationForm({ initial, startAt, onSaved }: { initial?: Education | null; startAt?: 'level'; onSaved: (e: Education) => void }) {
+/** `saveLevelEarly`: the first time, the level is saved as soon as it is picked; the rest can wait. */
+export function EducationForm({ initial, startAt, onSaved, saveLevelEarly }: { initial?: Education | null; startAt?: 'level'; onSaved: (e: Education) => void; saveLevelEarly?: boolean }) {
   const [step, setStep] = useState<Step>(startAt ?? firstStep(initial))
   const [level, setLevel] = useState<Level | null>(initial?.level ?? null)
   const [school, setSchool] = useState(initial?.school ?? '')
@@ -207,6 +208,7 @@ export function EducationForm({ initial, startAt, onSaved }: { initial?: Educati
               }
               setLevel(l.id)
               setStep(hasUniversity(l.id) ? 'school' : 'about')
+              if (saveLevelEarly) void saveEducation({ level: l.id, school: '', department: '', classYear: '', birthYear: null, gender: null, heardFrom: null }).catch(() => {})
             }}
           >
             <GraduationCap size={17} aria-hidden />

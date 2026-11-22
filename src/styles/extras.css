@@ -1815,3 +1815,58 @@
 .review-course .course-swatch {
   border-radius: 50%;
 }
+
+/* YKS / LGS countdown on Bugün */
+.big-exam {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1.5px solid var(--ink-line);
+  border-radius: var(--radius);
+  background: var(--hi-soft);
+  color: var(--text);
+}
+
+.big-exam > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.big-exam strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+/* Add note: "take a photo of the book page" for school students */
+.school-photo-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 460px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--hi-soft);
+  color: var(--text);
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.school-photo-tip svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Narrow phones: the exam type gets its own line, so "1. Yazılı" or "Bütünleme" is not cut off. */
+@media (max-width: 480px) {
+  .exam-row-main {
+    grid-template-columns: minmax(0, 1fr) 64px 36px;
+  }
+
+  .exam-row-main > select {
+    grid-column: 1 / -1;
+  }
+}

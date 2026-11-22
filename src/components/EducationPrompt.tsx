@@ -29,7 +29,9 @@ export function EducationPrompt() {
   const userId = session?.user.id ?? null
   const [open, setOpen] = useState(false)
   const [done, setDone] = useState(false)
-  const due = !!userId && needsEducation(education) && !done && allowed() && !askedRecently(userId)
+  // Never answered: the level is required (one tap); "Şimdi değil" only once it is known.
+  const mustPick = !education
+  const due = !!userId && needsEducation(education) && !done && allowed() && (mustPick || !askedRecently(userId))
 
   useEffect(() => {
     if (!due || open || tour) return
@@ -47,6 +49,7 @@ export function EducationPrompt() {
   return (
     <Modal
       title="Seni biraz tanıyalım"
+      closable={!mustPick}
       onClose={() => {
         askLater(userId)
         setOpen(false)
@@ -55,26 +58,37 @@ export function EducationPrompt() {
     >
       <div className="edu-prompt">
         <p className="muted">
-          Birkaç kısa soru, <Celebrate>yarım dakika</Celebrate>. Okul bilgin profilinde görünür; istediğin zaman Ayarlar'dan değiştirebilirsin.
+          {mustPick ? (
+            <>
+              Önce tek bir soru: <Celebrate>nerede okuyorsun?</Celebrate> Sınav isimlerini ve planı buna göre ayarlıyoruz; Ayarlar'dan değiştirebilirsin.
+            </>
+          ) : (
+            <>
+              Birkaç kısa soru, <Celebrate>yarım dakika</Celebrate>. Okul bilgin profilinde görünür; istediğin zaman Ayarlar'dan değiştirebilirsin.
+            </>
+          )}
         </p>
         <EducationForm
           initial={education}
+          saveLevelEarly={mustPick}
           onSaved={() => {
             setOpen(false)
             setDone(true)
           }}
         />
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={() => {
-            askLater(userId)
-            setOpen(false)
-            setDone(true)
-          }}
-        >
-          Şimdi değil
-        </button>
+        {!mustPick && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              askLater(userId)
+              setOpen(false)
+              setDone(true)
+            }}
+          >
+            Şimdi değil
+          </button>
+        )}
       </div>
     </Modal>
   )

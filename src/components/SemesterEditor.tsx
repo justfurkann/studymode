@@ -1,3 +1,4 @@
+import { examKindLabel } from '../lib/courseExams'
 import { Plus, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { normalizeCourseName, planSemester, semesterRows, type SemesterRow } from '../lib/examFocus'
@@ -26,7 +27,7 @@ export function SemesterEditor({ onDone }: { onDone: () => void }) {
   function save(event: FormEvent) {
     event.preventDefault()
     const bad = rows.find((r) => r.vize && r.final && r.final < r.vize)
-    if (bad) return setError(`${bad.name || 'Bir ders'}: final, vizeden önce olamaz.`)
+    if (bad) return setError(`${bad.name || 'Bir ders'}: ${examKindLabel('final')}, ${examKindLabel('vize')} tarihinden önce olamaz.`)
     const plan = planSemester(store.data, rows)
     if (!plan.create.length && !plan.update.length) {
       setError('Kaydedilecek bir değişiklik yok. Bir ders adı ya da tarih gir.')
@@ -48,7 +49,7 @@ export function SemesterEditor({ onDone }: { onDone: () => void }) {
     <form className="panel semester" onSubmit={save} aria-label="Dönemini kur">
       <div>
         <h2>Dönemini kur</h2>
-        <p className="subtle">Derslerini ve vize, final tarihlerini tek seferde gir. Yeni yazdığın her ders, Dersler sayfasında not eklemeye hazır olur.</p>
+        <p className="subtle">Derslerini ve {examKindLabel('vize')}, {examKindLabel('final')} tarihlerini tek seferde gir. Yeni yazdığın her ders, Dersler sayfasında not eklemeye hazır olur.</p>
       </div>
       <div className="semester-rows">
         {rows.map((row, i) => {
@@ -72,11 +73,11 @@ export function SemesterEditor({ onDone }: { onDone: () => void }) {
                 )}
               </div>
               <label className="semester-date">
-                <span>Vize</span>
+                <span>{examKindLabel('vize')}</span>
                 <input className="input" type="date" value={row.vize} onChange={(e) => update(row.key, { vize: e.target.value })} />
               </label>
               <label className="semester-date">
-                <span>Final</span>
+                <span>{examKindLabel('final')}</span>
                 <input className="input" type="date" value={row.final} onChange={(e) => update(row.key, { final: e.target.value })} />
               </label>
               {repeated && <p className="subtle semester-note">Bu ders zaten listede; ilk satır kullanılır.</p>}
@@ -89,7 +90,7 @@ export function SemesterEditor({ onDone }: { onDone: () => void }) {
           <Plus size={15} /> Ders ekle
         </button>
       </div>
-      <p className="subtle">Bütünleme, quiz, sınav saati ve ağırlıkları dersin sayfasından ekleyebilirsin. Boş bıraktığın tarih hiçbir sınavı silmez.</p>
+      <p className="subtle">{examKindLabel('butunleme')}, {examKindLabel('quiz').toLocaleLowerCase('tr-TR')}, sınav saati ve ağırlıkları dersin sayfasından ekleyebilirsin. Boş bıraktığın tarih hiçbir sınavı silmez.</p>
       {error && (
         <p role="alert" style={{ color: 'var(--danger)' }}>
           {error}

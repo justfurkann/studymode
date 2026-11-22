@@ -888,18 +888,23 @@ test('Okul bilgisi: üye olunca bir kez sorulur, profile yazılır, Ayarlar’da
   await expect(page.getByRole('heading', { name: 'Arkadaşlarla buluşacaksınız. Grupta senin mesajın hangisi?' })).toBeVisible()
 })
 
-test('Okul bilgisi: "Şimdi değil" denince bu cihazda birkaç gün sorulmaz', async ({ page }) => {
+test('Okul bilgisi: seviye zorunlu (atlanamaz); seçince hemen kaydedilir, gerisi için "Şimdi değil" çıkar', async ({ page }) => {
   await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
   await page.addInitScript(() => localStorage.setItem('studymode.education.force', '1'))
   const { updates } = await signedInAs(page, 'normal')
   await page.goto('/')
   const dialog = page.getByRole('dialog', { name: 'Seni biraz tanıyalım' })
+  await expect(dialog).toBeVisible()
+  // Never answered: no way around the level question.
+  await expect(dialog.getByRole('button', { name: 'Şimdi değil' })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Kapat' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeVisible()
+  // One tap saves the level; the optional questions can then wait.
+  await dialog.getByRole('button', { name: /^Lise/ }).click()
+  await expect.poll(() => updates.filter((u) => 'education' in u).at(-1)?.education).toMatchObject({ level: 'lise' })
   await dialog.getByRole('button', { name: 'Şimdi değil' }).click()
   await expect(dialog).toHaveCount(0)
-  await page.reload()
-  await page.waitForTimeout(2500)
-  await expect(page.getByRole('dialog', { name: 'Seni biraz tanıyalım' })).toHaveCount(0)
-  expect(updates.filter((u) => 'education' in u)).toHaveLength(0)
 })
 
 test('Yönetim: kullanıcıların okulu ve okullar özeti görünür; veritabanı fonksiyonu yoksa liste yine açılır', async ({ page }) => {
@@ -1529,4 +1534,52 @@ test('Fosfor: signed out, it says how to start instead of failing', async ({ pag
   await expect(panel).toContainText('giriş yapman gerekiyor')
   await expect(panel.getByRole('link', { name: 'Giriş yap' })).toBeVisible()
   await expect(panel.getByLabel('Fosfor’a sorun')).toHaveCount(0)
+})
+
+test('Lise öğrencisi: YKS geri sayımı, yazılı/deneme/TYT sınav dili, kitap fotoğrafı ipucu; üniversiteli vize görür', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 22, 10, 0) })
+  const lise = { level: 'lise', school: '', department: '', classYear: '', birthYear: null, gender: null, heardFrom: null, v: 2, at: '2026-11-22T00:00:00Z' }
+  await signedInAs(page, 'normal', { education: lise })
+  await page.goto('/')
+  // Bugün: the official YKS day, 19 June 2027.
+  const countdown = page.getByRole('region', { name: 'YKS geri sayımı' })
+  await expect(countdown).toContainText('YKS’ye 209 gün')
+  await expect(countdown).toContainText('TYT 19 Haziran')
+
+  // A course's exams use school words; "Diğer" suggests TYT, AYT, LGS.
+  await page.goto('/dersler')
+  await page.getByRole('button', { name: 'Yeni ders' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Yeni ders' })
+  await expect(dialog.getByText(/Yazılılarını, denemeleri ya da TYT, AYT, LGS/)).toBeVisible()
+  await dialog.getByRole('button', { name: 'Sınav ekle' }).click()
+  const kind = dialog.getByLabel('Sınav türü')
+  await expect(kind.locator('option')).toHaveText(['1. Yazılı', '2. Yazılı', 'Deneme', 'Sorumluluk sınavı', 'Diğer'])
+  await kind.selectOption('diger')
+  await expect(dialog.getByLabel('Sınav adı')).toHaveAttribute('placeholder', 'Adı (ör. TYT, AYT, LGS)')
+  await dialog.getByRole('button', { name: 'Kapat' }).click()
+
+  // Add note: a photo of the book page.
+  await page.goto('/not-ekle')
+  await expect(page.getByText(/Ders kitabının, çalışma kâğıdının ya da defterinin sayfalarının fotoğrafını çek/)).toBeVisible()
+
+  // "Benim sınavım değil": hidden, and stays hidden.
+  await page.goto('/')
+  await page.getByRole('button', { name: 'YKS geri sayımını gizle' }).click()
+  await expect(page.getByRole('region', { name: 'YKS geri sayımı' })).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'YKS geri sayımı' })).toHaveCount(0)
+})
+
+test('Üniversiteli: YKS geri sayımı yok, sınav türleri vize/final', async ({ page }) => {
+  const uni = { level: 'universite', school: 'ODTÜ', department: 'Fizik', classYear: '2. sınıf', birthYear: null, gender: null, heardFrom: null, v: 2, at: '2026-11-22T00:00:00Z' }
+  await signedInAs(page, 'normal', { education: uni })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.locator('.big-exam')).toHaveCount(0)
+  await page.goto('/dersler')
+  await page.getByRole('button', { name: 'Yeni ders' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Yeni ders' })
+  await dialog.getByRole('button', { name: 'Sınav ekle' }).click()
+  await expect(dialog.getByLabel('Sınav türü').locator('option')).toHaveText(['Vize', 'Final', 'Bütünleme', 'Quiz', 'Diğer'])
 })

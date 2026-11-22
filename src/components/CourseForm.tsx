@@ -1,6 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { EXAM_KINDS, examDrafts, examEnded, gradeText, parseGrade } from '../lib/courseExams'
+import { examAudience, examDrafts, examEnded, examKindLabel, examKinds, gradeText, parseGrade, SCHOOL_EXAM_TITLES } from '../lib/courseExams'
 import { COURSE_COLORS, useStore, type CourseExamDraft } from '../lib/store'
 import type { Course, CourseExamKind } from '../lib/types'
 import { ColorPicker, Modal } from './ui'
@@ -68,13 +68,17 @@ export function CourseForm({ course, onSave, onClose }: { course?: Course; onSav
 
         <div className="field">
           <span>Sınavlar</span>
-          {rows.length === 0 && <p className="subtle">Vize, final gibi sınavları eklersen tekrarlar sınavdan önce bitecek şekilde planlanır.</p>}
+          {rows.length === 0 && (
+            <p className="subtle">
+              {examAudience() === 'school' ? 'Yazılılarını, denemeleri ya da TYT, AYT, LGS gibi sınavları' : `${examKindLabel('vize')}, ${examKindLabel('final').toLocaleLowerCase('tr-TR')} gibi sınavları`} eklersen tekrarlar sınavdan önce bitecek şekilde planlanır.
+            </p>
+          )}
           {rows.length > 0 && <p className="subtle">Saat girersen sınav, başlamasından bir saat sonra “bitti” sayılır; girmezsen gün bitince.</p>}
           {rows.map((row, i) => (
             <fieldset className="exam-row" key={row.key} aria-label={`${i + 1}. sınav`}>
               <div className="exam-row-main">
                 <select className="select" aria-label="Sınav türü" value={row.kind} onChange={(e) => update(row.key, { kind: e.target.value as CourseExamKind })}>
-                  {EXAM_KINDS.map((k) => (
+                  {examKinds().map((k) => (
                     <option key={k.id} value={k.id}>
                       {k.label}
                     </option>
@@ -106,7 +110,24 @@ export function CourseForm({ course, onSave, onClose }: { course?: Course; onSav
                 )}
               </div>
               {row.kind === 'diger' && (
-                <input className="input" aria-label="Sınav adı" placeholder="Adı (ör. Proje sunumu)" maxLength={80} value={row.title ?? ''} onChange={(e) => update(row.key, { title: e.target.value })} />
+                <>
+                  <input
+                    className="input"
+                    aria-label="Sınav adı"
+                    placeholder={examAudience() === 'school' ? 'Adı (ör. TYT, AYT, LGS)' : 'Adı (ör. Proje sunumu)'}
+                    maxLength={80}
+                    list={examAudience() === 'school' ? 'school-exam-titles' : undefined}
+                    value={row.title ?? ''}
+                    onChange={(e) => update(row.key, { title: e.target.value })}
+                  />
+                  {examAudience() === 'school' && (
+                    <datalist id="school-exam-titles">
+                      {SCHOOL_EXAM_TITLES.map((t) => (
+                        <option key={t} value={t} />
+                      ))}
+                    </datalist>
+                  )}
+                </>
               )}
               {notes.length > 0 && (
                 <details className="exam-scope">

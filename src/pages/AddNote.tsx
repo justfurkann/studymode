@@ -1,4 +1,6 @@
-import { ArrowLeft, Check, CircleAlert, FileText, FileUp, Plus, Sparkles, Wand2, X } from 'lucide-react'
+import { audienceForLevel } from '../lib/courseExams'
+import { useEducation } from '../lib/education'
+import { ArrowLeft, Camera, Check, CircleAlert, FileText, FileUp, Plus, Sparkles, Wand2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { checkMerged, mergeContents, mergedTitle, mergeMessage, SERVER_STUDY_CHUNK_CHARS, STUDY_CHUNK_CHARS } from '../lib/mergeNotes'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -33,6 +35,8 @@ const isLongEnough = (text: string) => text.replace(/\s/g, '').length >= MIN_CHA
 
 export function AddNote() {
   const store = useStore()
+  // School students rarely have typed notes: tell them a photo of the book page works.
+  const school = audienceForLevel(useEducation()?.level) === 'school'
   const settings = useSettings()
   const toast = useToast()
   const navigate = useNavigate()
@@ -472,6 +476,11 @@ export function AddNote() {
                       : 'Dosya okunuyor…'
                     : 'Dosyaları buraya bırak ya da seç'}
                 </strong>
+                {school && !reading && (
+                  <span className="school-photo-tip">
+                    <Camera size={16} aria-hidden="true" /> Notun yok mu? Ders kitabının, çalışma kâğıdının ya da defterinin sayfalarının fotoğrafını çek; yazılar okunur, özet ve sorular hazırlanır.
+                  </span>
+                )}
                 <span className="subtle">
                   PDF (taranmış dahil), fotoğraf (.jpg, .png, .webp), Word, PowerPoint, TXT veya Markdown · birden fazla seçebilirsin (en fazla {MAX_BATCH}) · dosya başına 10 MB
                 </span>

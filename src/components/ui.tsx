@@ -3,16 +3,19 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { createPortal } from 'react-dom'
 import { playSound } from '../lib/sound'
 
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+/** `closable={false}`: no close button, Escape or backdrop click (a question that must be answered). */
+export function Modal({ title, onClose, children, closable = true }: { title: string; onClose: () => void; children: ReactNode; closable?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
 
   const closeRef = useRef(onClose)
   closeRef.current = onClose
+  const closableRef = useRef(closable)
+  closableRef.current = closable
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
     ref.current?.querySelector<HTMLElement>('input, textarea, select, button:not([aria-label="Kapat"])')?.focus()
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeRef.current()
+      if (event.key === 'Escape' && closableRef.current) closeRef.current()
       if (event.key !== 'Tab') return
       const items = Array.from(ref.current?.querySelectorAll<HTMLElement>('input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), a[href]') ?? []).filter(el => el.getClientRects().length)
       const first = items[0], last = items.at(-1)
@@ -29,13 +32,15 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   // Drawn at the end of <body>: inside the blurred top bar or sidebar a fixed backdrop would be
   // trapped in that box instead of covering the screen.
   return createPortal(
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-backdrop" onMouseDown={(e) => closable && e.target === e.currentTarget && onClose()}>
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} ref={ref}>
         <div className="modal-head">
           <h2>{title}</h2>
+{closable && (
           <button className="btn btn-ghost btn-icon" aria-label="Kapat" onClick={onClose}>
             <X size={18} />
           </button>
+          )}
         </div>
         {children}
       </div>
