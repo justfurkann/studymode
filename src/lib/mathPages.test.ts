@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { looksLikeBrokenMath, mathHeavyText, pagesToReadAsPictures } from './mathPages'
+import { fixSymbolFont, looksLikeBrokenMath, mathHeavyText, pagesToReadAsPictures } from './mathPages'
 
 // Text exactly as pdf.js gives it for pages of a real equation-editor math PDF (Modul 1 Mathematics).
 const SETS = `SAYILAR
@@ -75,5 +75,13 @@ describe('which PDF pages to read as pictures', () => {
     const texts = [HISTORY, PSYCH, HISTORY, PSYCH, HISTORY, PSYCH, FRACTIONS]
     const figures = [1, 3, 1, 3, 1, 3, 1]
     expect(pagesToReadAsPictures(texts, figures)).toEqual([7])
+  })
+})
+
+describe('number sets from a broken symbol font', () => {
+  it('become \\mathbb inside formulas and ℕ ℤ ℚ ℝ in plain text', () => {
+    expect(fixSymbolFont('$¥ = \\{0,1,2\\}$ ve $a \\in ¢^+$')).toBe('$\\mathbb{N} = \\{0,1,2\\}$ ve $a \\in \\mathbb{Z}^+$')
+    expect(fixSymbolFont('∀ x, y ∈ ¡ için')).toBe('∀ x, y ∈ ℝ için')
+    expect(fixSymbolFont("$¡ = ¤ \\cup ¤'$")).toBe("$\\mathbb{R} = \\mathbb{Q} \\cup \\mathbb{Q}'$")
   })
 })

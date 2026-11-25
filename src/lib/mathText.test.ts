@@ -25,6 +25,10 @@ describe('formulas in study text', () => {
     expect(splitMath('düz metin')).toEqual([{ kind: 'text', value: 'düz metin' }])
   })
 
+  it('turns \\cline (unknown to KaTeX) into \\hline', () => {
+    expect(splitMath('$$\\begin{array}{r|l} 3450 & 360 \\\\ \\cline{2-2} \\end{array}$$')[0]).toMatchObject({ value: '\\begin{array}{r|l} 3450 & 360 \\\\ \\hline \\end{array}' })
+  })
+
   it('has a readable plain form for copying', () => {
     expect(mathToPlain('Kural: $\\frac{a}{b} \\cdot c$')).toBe('Kural: (a)/(b) · c')
     expect(mathToPlain('$a \\in \\mathbb{Z}$')).toBe('a in Z')

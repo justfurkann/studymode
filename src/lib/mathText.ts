@@ -13,7 +13,10 @@ const PATTERN = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$(?!\
  * form feed + "rac", "\\times" as a tab + "imes". Put the backslash back.
  */
 function repairEscapes(tex: string): string {
-  return tex.replace(/\f/g, '\\f').replace(/\x08/g, '\\b').replace(/\t/g, '\\t').replace(/\r/g, '\\r')
+  return tex
+    // KaTeX has no \cline (partial line in long-division tables); a full line reads the same.
+    .replace(/\\cline\{[^}]*\}/g, '\\hline')
+    .replace(/\f/g, '\\f').replace(/\x08/g, '\\b').replace(/\t/g, '\\t').replace(/\r/g, '\\r')
 }
 
 export function hasMath(text: string): boolean {

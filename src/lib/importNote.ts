@@ -1,7 +1,7 @@
 import type { ImageMimeType, TranscribeImage } from './ai/tasks'
 import { freshImport, StaleVersionError } from './version'
 import { reportError } from './feedback'
-import { mathHeavyText, pagesToReadAsPictures } from './mathPages'
+import { fixSymbolFont, mathHeavyText, pagesToReadAsPictures } from './mathPages'
 import { MISSING_FOR_MODERN_PDF, MODERN_PDF, NEEDS_WORKER_POLYFILL, POLYFILL_SOURCE } from './polyfills'
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024
@@ -307,9 +307,10 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
     // Pages read as pictures: scanned ones, and pages whose text breaks the math (equation-editor
     // fractions, ℕ ℤ ℚ ℝ as ¥ ¢ ¤ ¡, lost exponents). In a math-heavy document pages with figures
     // too, so geometry drawings and graphs are described. See mathPages.ts.
+    const mathHeavy = mathHeavyText(pages)
     if (options?.transcribe) {
       let figures: Array<number | null> = []
-      if (mathHeavyText(pages)) {
+      if (mathHeavy) {
         figures = []
         for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
           try {
@@ -376,7 +377,13 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
           wave.map(async ({ nums, images }) => {
             let transcribed = ''
             try {
-              transcribed = await options.transcribe!(images)
+              try {
+                transcribed = await options.transcribe!(images)
+              } catch (first) {
+                // One more try for a passing server error (a 502 dropped a few pages of a long PDF).
+                if ((first as { code?: string } | null)?.code === 'blocked') throw first
+                transcribed = await options.transcribe!(images)
+              }
             } catch (err) {
               // A page Google's content filter refuses is skipped and marked; the other pages still count.
               if ((err as { code?: string } | null)?.code === 'blocked') {
@@ -409,7 +416,8 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
       }
     }
 
-    const text = pages.filter(Boolean).join('\n\n')
+    const joined = pages.filter(Boolean).join('\n\n')
+    const text = mathHeavy ? fixSymbolFont(joined) : joined
     // Nothing but "could not be read" lines: say so instead of saving an empty note.
     if (blockedPages.length && !text.replace(/\[Sayfa \d+: [^\]]*\]/g, '').trim()) {
       throw new NoteImportError('Bu PDF’in sayfaları yapay zekânın içerik filtresine takıldı; okunamadı. Metnini kopyalayıp “Metin yapıştır” ile eklemeyi dene.')
