@@ -380,9 +380,12 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
               try {
                 transcribed = await options.transcribe!(images)
               } catch (first) {
-                // One more try for a passing server error (a 502 dropped a few pages of a long PDF).
+                // One more try for a passing server error. Two dense formula pages can be too much for
+                // one answer (live: pages 1-2 of a math PDF failed twice together), so page by page.
                 if ((first as { code?: string } | null)?.code === 'blocked') throw first
-                transcribed = await options.transcribe!(images)
+                const parts: string[] = []
+                for (const image of images) parts.push(await options.transcribe!([image]))
+                transcribed = parts.join('\n\n')
               }
             } catch (err) {
               // A page Google's content filter refuses is skipped and marked; the other pages still count.

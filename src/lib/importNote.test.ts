@@ -166,6 +166,20 @@ describe('extractNoteText', () => {
     expect(text).toBe('Parça 1\n\nParça 2\n\nParça 3')
   })
 
+  it('a failed two-page read is tried again page by page', async () => {
+    fakePdf({ numPages: 6, pages: ['', '', '', '', '', ''] })
+    let call = 0
+    const transcribe = vi.fn(async (images: unknown[]) => {
+      call += 1
+      if (call === 1) throw new Error('502')
+      return `Okundu ${images.length}`
+    })
+    const text = await extractNoteText(new File(['scan'], 'tarama.pdf'), { transcribe })
+    // The first pair failed, then pages 1 and 2 were read one at a time.
+    expect(transcribe).toHaveBeenCalledTimes(5)
+    expect(text.startsWith('Okundu 1\n\nOkundu 1')).toBe(true)
+  })
+
   it('transcribes uploaded image files (.jpg, .png, .webp) and requires AI when signed out', async () => {
     await expect(extractNoteText(new File(['img'], 'defter.jpg'))).rejects.toThrow('Fotoğraftan metin çıkarmak için')
 
