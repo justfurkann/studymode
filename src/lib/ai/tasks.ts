@@ -185,7 +185,7 @@ Rules:
 - Keep the original language of the document (usually Turkish).
 - Transcribe all visible lecture content in reading order. If multiple pages are provided, separate pages with a blank line.
 - Preserve headings, bullet points, numbered lists and tables (using Markdown tables).
-- Write every mathematical expression in LaTeX: inline as $...$, a formula on its own line as $$...$$. Keep fractions, exponents, roots, indices, sets and symbols exactly: $\frac{a}{b}$, $x^{2}$, $\sqrt[3]{10}$, $\log_{2} 8$, $\mathbb{N}, \mathbb{Z}, \mathbb{Q}, \mathbb{R}$, $a \in \mathbb{Z}$, $0,2\overline{15}$.
+- Write every mathematical expression in LaTeX: inline as $...$, a formula on its own line as $$...$$. Keep fractions, exponents, roots, indices, sets and symbols exactly: $\\frac{a}{b}$, $x^{2}$, $\\sqrt[3]{10}$, $\\log_{2} 8$, $\\mathbb{N}, \\mathbb{Z}, \\mathbb{Q}, \\mathbb{R}$, $a \\in \\mathbb{Z}$, $0,2\\overline{15}$. Some PDFs draw the number sets with a broken font as ¥ ¢ ¤ ¡: write them as $\\mathbb{N}$, $\\mathbb{Z}$, $\\mathbb{Q}$, $\\mathbb{R}$.
 - Worked examples: keep "Örnek" and "Çözüm" and every step of the solution, in order.
 - Figures (geometry drawings, graphs, diagrams, number-base tables drawn as pictures): describe each one on its own line as [Şekil: ...] in the document's language, with every label, length, angle and value shown, and what is drawn (e.g. [Şekil: ABC dik üçgeni, C'de dik açı, |AB| = 13, |BC| = 5, [CH] AB'ye dik yükseklik]).
 - Do NOT summarize, explain, or invent content. Only transcribe what is written or drawn in the images.

@@ -84,3 +84,20 @@ export function mathHeavyText(texts: string[]): boolean {
   const math = textPages.filter((t) => looksLikeBrokenMath(t)).length
   return math >= 2 && math >= textPages.length * 0.3
 }
+
+const SET_LETTERS: Record<string, string> = { '¥': 'N', '¢': 'Z', '¤': 'Q', '¡': 'R' }
+
+/**
+ * In a math-heavy document, puts ℕ ℤ ℚ ℝ back where the PDF's symbol font left ¥ ¢ ¤ ¡ (the AI reading
+ * a page picture copies them too): \mathbb{N} inside a formula, ℕ in plain text.
+ */
+export function fixSymbolFont(text: string): string {
+  return text
+    .split(/(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/)
+    .map((part, i) =>
+      i % 2 === 1
+        ? part.replace(/[¥¢¤¡]/g, (c) => `\\mathbb{${SET_LETTERS[c]}}`)
+        : part.replace(/[¥¢¤¡]/g, (c) => ({ N: 'ℕ', Z: 'ℤ', Q: 'ℚ', R: 'ℝ' })[SET_LETTERS[c]]!),
+    )
+    .join('')
+}
