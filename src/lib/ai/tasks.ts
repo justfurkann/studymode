@@ -633,9 +633,29 @@ export function jsonModeSystem(task: TaskName): string {
   return `${TASKS[task].system}\n\nRespond with a single JSON object only, no prose and no code fences, matching this JSON Schema:\n${JSON.stringify(schema)}`
 }
 
+/** LaTeX commands that start with a letter JSON reads as an escape (\b \f \n \r \t). */
+const LATEX_ESCAPE_LOOKALIKES = new Set(['frac', 'forall', 'beta', 'bar', 'binom', 'bmod', 'big', 'bigg', 'bigcup', 'bigcap', 'boxed', 'bullet', 'because', 'neq', 'ne', 'nabla', 'nu', 'not', 'notin', 'neg', 'nleq', 'ngeq', 'right', 'rightarrow', 'rho', 'rangle', 'rceil', 'rfloor', 'times', 'theta', 'tau', 'tan', 'tanh', 'text', 'textbf', 'textit', 'to', 'top', 'triangle', 'tfrac', 'therefore', 'tilde'])
+
+/**
+ * Models asked for LaTeX inside a JSON answer often write "\sqrt" or "\in" with one backslash:
+ * an invalid JSON escape, so the whole answer was thrown away (live: 10 of 64 pages of a math PDF).
+ * "\frac" or "\neq" would parse, but as a form feed or a newline. Doubles such backslashes and
+ * leaves real escapes (\n before ordinary text, \", \u00e7) alone.
+ */
+export function repairLatexEscapes(json: string): string {
+  return json.replace(/(\\+)([a-zA-Z]+|[\s\S])?/g, (whole, slashes: string, next: string | undefined, offset: number) => {
+    if (slashes.length % 2 === 0 || next === undefined) return whole
+    const first = next[0]
+    if ('"\\/'.includes(first)) return whole
+    if (first === 'u') return /^u[0-9a-fA-F]{4}/.test(json.slice(offset + slashes.length, offset + slashes.length + 5)) ? whole : `\\${whole}`
+    if (/[a-zA-Z]/.test(first) && 'bfnrt'.includes(first) && !LATEX_ESCAPE_LOOKALIKES.has(next)) return whole
+    return `\\${whole}`
+  })
+}
+
 /** Parses a model's JSON reply (tolerating code fences and null string fields) and checks it against the task schema. */
 export function parseTaskOutput<T extends TaskName>(task: T, text: string): TaskOutput<T> | null {
-  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+  const cleaned = repairLatexEscapes(text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''))
   try {
     const parsed = JSON.parse(cleaned, (key, value) => (key && value === null ? '' : value))
     const result = TASKS[task].schema.safeParse(parsed)
