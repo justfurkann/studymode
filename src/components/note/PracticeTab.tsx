@@ -8,6 +8,7 @@ import { useStore } from '../../lib/store'
 import type { Note, PracticeItem } from '../../lib/types'
 import { Alert, Celebrate, Empty, Spinner, useToast } from '../ui'
 import { freshImport } from '../../lib/version'
+import { MathText } from '../MathText'
 
 /** How long to wait after the last keystroke before saving a written answer. */
 const SAVE_DELAY_MS = 700
@@ -63,7 +64,7 @@ function PracticeCard({ noteId, item, index, onInteracted }: { noteId: string; i
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <span className="subtle">Soru {index + 1}</span>
-      <p style={{ fontWeight: 600, fontSize: '1.0625rem', lineHeight: 1.55 }}>{item.question}</p>
+      <p style={{ fontWeight: 600, fontSize: '1.0625rem', lineHeight: 1.55 }}><MathText text={item.question} /></p>
       <textarea
         className="textarea"
         style={{ minHeight: 120 }}
@@ -91,7 +92,7 @@ function PracticeCard({ noteId, item, index, onInteracted }: { noteId: string; i
       {evaluation && (
         <div className="explain" role="status">
           <strong>Geri bildirim · {Math.round(evaluation.score * 100)}/100</strong>
-          <p>{evaluation.feedback}</p>
+          <p><MathText text={evaluation.feedback} /></p>
           <small className="subtle">Bu bir çalışma önerisidir; resmi sınav puanı değildir.</small>
         </div>
       )}
@@ -100,13 +101,13 @@ function PracticeCard({ noteId, item, index, onInteracted }: { noteId: string; i
           {item.answer ? (
             <>
               <strong>Örnek cevap</strong>
-              <p className="prewrap">{item.answer}</p>
+              <p className="prewrap"><MathText text={item.answer} /></p>
               <p className="subtle">Cevabını karşılaştır: ana fikri yakaladın mı, eksik kalan bir nokta var mı?</p>
             </>
           ) : (
             <>
               <strong>Kendini değerlendir</strong>
-              {item.hint && <p>{item.hint}</p>}
+              {item.hint && <p><MathText text={item.hint} /></p>}
               <p className="subtle">Basit modda örnek cevap yok. Cevabını notundaki ilgili bölümle karşılaştır.</p>
             </>
           )}
@@ -122,7 +123,7 @@ function PracticeCard({ noteId, item, index, onInteracted }: { noteId: string; i
           >
             <Lightbulb size={16} /> {item.answer ? 'Örnek cevabı göster' : 'Değerlendir'}
           </button>
-          {item.hint && item.answer && <span className="subtle">İpucu: {item.hint}</span>}
+          {item.hint && item.answer && <span className="subtle">İpucu: <MathText text={item.hint} /></span>}
         </div>
       )}
     </div>

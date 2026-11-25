@@ -6,6 +6,7 @@ import type { DetailedSummary, Note } from '../../lib/types'
 import { freshImport } from '../../lib/version'
 import { AiSignupPrompt } from '../AiSignupPrompt'
 import { Alert, Spinner, useToast } from '../ui'
+import { MathText } from '../MathText'
 
 /*
  * "Tam özet": the whole summary on one page, to read top to bottom (or print). On request the AI
@@ -66,7 +67,7 @@ export function FullSummary({ note, onBack, onTest }: { note: Note; onBack: () =
       <header className="full-summary-head">
         <span className="chip chip-accent">Tam özet</span>
         <h2>{note.title}</h2>
-        {(detailed?.intro || summary.overview) && <p className="full-summary-lead">{detailed?.intro || summary.overview}</p>}
+        {(detailed?.intro || summary.overview) && <p className="full-summary-lead"><MathText text={detailed?.intro || summary.overview} /></p>}
       </header>
 
       {!detailed && (
@@ -118,13 +119,13 @@ export function FullSummary({ note, onBack, onTest }: { note: Note; onBack: () =
           </h3>
           {section.paragraphs.map((p, j) => (
             <p key={j} className="prose">
-              {p}
+              <MathText text={p} />
             </p>
           ))}
           {section.bullets.length > 0 && (
             <ul className="full-summary-bullets">
               {section.bullets.map((b, j) => (
-                <li key={j}>{b}</li>
+                <li key={j}><MathText text={b} /></li>
               ))}
             </ul>
           )}
@@ -133,7 +134,7 @@ export function FullSummary({ note, onBack, onTest }: { note: Note; onBack: () =
               <Lightbulb size={16} aria-hidden />
               <p>
                 <strong>Örnek: </strong>
-                {section.example}
+                <MathText text={section.example} />
               </p>
             </div>
           )}
@@ -147,7 +148,7 @@ export function FullSummary({ note, onBack, onTest }: { note: Note; onBack: () =
           </h3>
           <ul>
             {detailed.takeaways.map((t, i) => (
-              <li key={i}>{t}</li>
+              <li key={i}><MathText text={t} /></li>
             ))}
           </ul>
         </section>
@@ -161,7 +162,7 @@ export function FullSummary({ note, onBack, onTest }: { note: Note; onBack: () =
               {summary.points.map((point, i) => (
                 <li key={i}>
                   <span className="n">{i + 1}</span>
-                  <span>{point}</span>
+                  <span><MathText text={point} /></span>
                 </li>
               ))}
             </ol>
@@ -175,8 +176,8 @@ export function FullSummary({ note, onBack, onTest }: { note: Note; onBack: () =
           <div className="terms">
             {summary.keyTerms.map((term, i) => (
               <div className="term" key={i}>
-                <strong>{term.term}</strong>
-                <p>{term.definition}</p>
+                <strong><MathText text={term.term} /></strong>
+                <p><MathText text={term.definition} /></p>
               </div>
             ))}
           </div>

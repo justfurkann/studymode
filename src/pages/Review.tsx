@@ -10,6 +10,7 @@ import { intervalLabel, schedule, type Grade } from '../lib/srs'
 import { useStore } from '../lib/store'
 import { useLoadDemo } from '../lib/useDemo'
 import { Mola, ReviewSwitch } from './Mola'
+import { MathText } from '../components/MathText'
 
 const GRADES: Array<{ grade: Grade; label: string; key: string }> = [
   { grade: 'again', label: 'Bilemedim', key: '1' },
@@ -231,8 +232,8 @@ function ReviewSession({ showSwitch }: { showSwitch: boolean }) {
               {course.name}
             </span>
           )}
-          <p className="front">{card.front}</p>
-          {revealed && <p className="back">{card.back}</p>}
+          <p className="front"><MathText text={card.front} /></p>
+          {revealed && <p className="back"><MathText text={card.back} /></p>}
           {revealed && card.source && <p className="source">“{card.source}”</p>}
         </article>
 

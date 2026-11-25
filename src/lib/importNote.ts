@@ -1,6 +1,7 @@
 import type { ImageMimeType, TranscribeImage } from './ai/tasks'
 import { freshImport, StaleVersionError } from './version'
 import { reportError } from './feedback'
+import { mathHeavyText, pagesToReadAsPictures } from './mathPages'
 import { MISSING_FOR_MODERN_PDF, MODERN_PDF, NEEDS_WORKER_POLYFILL, POLYFILL_SOURCE } from './polyfills'
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024
@@ -300,8 +301,34 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
     }
 
     const hasSelectableText = pages.some((p) => p.length > 0)
+    // The page's own text, kept for pages that are read again as pictures but fail.
+    const ownText = [...pages]
 
-    // If the PDF has scanned (textless) pages and an AI transcriber is available, OCR those pages.
+    // Pages read as pictures: scanned ones, and pages whose text breaks the math (equation-editor
+    // fractions, ℕ ℤ ℚ ℝ as ¥ ¢ ¤ ¡, lost exponents). In a math-heavy document pages with figures
+    // too, so geometry drawings and graphs are described. See mathPages.ts.
+    if (options?.transcribe) {
+      let figures: Array<number | null> = []
+      if (mathHeavyText(pages)) {
+        figures = []
+        for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+          try {
+            const page = await document.getPage(pageNumber)
+            try {
+              const ops = await withTimeout(page.getOperatorList(), 5_000, `PDF figures ${pageNumber}`)
+              figures.push(ops.fnArray.filter((fn) => fn === pdfjs.OPS.paintImageXObject || fn === pdfjs.OPS.paintInlineImageXObject || fn === pdfjs.OPS.paintImageMaskXObject).length)
+            } finally {
+              page.cleanup()
+            }
+          } catch {
+            figures.push(null)
+          }
+        }
+      }
+      scannedPageNumbers.splice(0, scannedPageNumbers.length, ...pagesToReadAsPictures(pages, figures))
+    }
+
+    // If the PDF has pages to read as pictures and an AI transcriber is available, read them.
     if (scannedPageNumbers.length > 0 && options?.transcribe) {
       const totalScanned = scannedPageNumbers.length
       options.onProgress?.(0, totalScanned)
@@ -367,9 +394,14 @@ async function extractPdfText(file: File, options?: NoteImportOptions): Promise<
           }),
         )
         for (const { nums, transcribed } of results) {
+          if (!transcribed.trim()) {
+            // Reading failed: keep whatever text the pages had (scanned pages stay empty).
+            for (const n of nums) pages[n - 1] = ownText[n - 1]
+            continue
+          }
           pages[nums[0] - 1] = transcribed.trim()
           for (let k = 1; k < nums.length; k += 1) pages[nums[k] - 1] = ''
-          totalCharacters += transcribed.length
+          totalCharacters += transcribed.length - nums.reduce((sum, n) => sum + ownText[n - 1].length, 0)
         }
         if (totalCharacters > MAX_TEXT_CHARACTERS) {
           throw new NoteImportError('Not çok uzun. Tek seferde en fazla 400.000 karakter yükleyebilirsin; notunu bölümlere ayır.')

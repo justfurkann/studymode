@@ -4,6 +4,7 @@ import { toggleCompletedStep } from '../../lib/learningPath'
 import { useStore } from '../../lib/store'
 import type { Note, Question, QuizAttempt } from '../../lib/types'
 import { Celebrate, Empty, useToast } from '../ui'
+import { MathText } from '../MathText'
 
 const LETTERS = 'ABCDEF'
 
@@ -159,7 +160,7 @@ export function QuizTab({
             <h2>Yanlışların</h2>
             {wrong.map(({ q, given }) => (
               <div className="panel" key={q.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <p style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}>{q.prompt}</p>
+                <p style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}><MathText text={q.prompt} /></p>
                 {given !== undefined && (
                   <p style={{ color: 'var(--danger)', display: 'flex', gap: 8 }}>
                     <X size={18} /> {q.options[given]}
@@ -168,7 +169,7 @@ export function QuizTab({
                 <p style={{ color: 'var(--success)', display: 'flex', gap: 8 }}>
                   <Check size={18} /> {q.options[q.answerIndex]}
                 </p>
-                {q.explanation && <p className="muted">{q.explanation}</p>}
+                {q.explanation && <p className="muted"><MathText text={q.explanation} /></p>}
                 {q.source && (
                   <div className="source-row">
                     <p className="source">“{q.source}”</p>
@@ -206,7 +207,7 @@ export function QuizTab({
         </div>
       </div>
 
-      <p className="question">{question.prompt}</p>
+      <p className="question"><MathText text={question.prompt} /></p>
 
       <div className="options" role="radiogroup" aria-label="Seçenekler">
         {question.options.map((option, i) => {
@@ -221,7 +222,7 @@ export function QuizTab({
               onClick={() => setSelected(i)}
             >
               <span className="letter">{LETTERS[i]}</span>
-              <span>{option}</span>
+              <span><MathText text={option} /></span>
             </button>
           )
         })}
@@ -232,7 +233,7 @@ export function QuizTab({
           <strong style={{ color: selected === correct ? 'var(--success)' : 'var(--danger)' }}>
             {selected === correct ? 'Doğru!' : `Yanlış — doğru cevap ${LETTERS[correct]}.`}
           </strong>
-          {question.explanation && <p>{question.explanation}</p>}
+          {question.explanation && <p><MathText text={question.explanation} /></p>}
           {question.source && (
             <div className="source-row">
               <p className="source">“{question.source}”</p>

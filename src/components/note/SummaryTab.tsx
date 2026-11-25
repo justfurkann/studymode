@@ -11,6 +11,7 @@ import { freshImport } from '../../lib/version'
 import { ComparisonTab, MemoryCodingTab } from './MemoryTabs'
 import { PodcastTab, VisualTab } from './VisualAndPodcastTabs'
 import { FullSummary } from './FullSummary'
+import { MathText } from '../MathText'
 
 /** The extra study tools, folded into one "Araçlar" menu so the step bar stays short. */
 const TOOLS: Array<{ id: SummarySubTab; label: string; text: string; icon: typeof KeyRound; premium?: boolean }> = [
@@ -181,7 +182,7 @@ function ConceptExplainer({
       {reply && fallbackReason && !ai.ok && <AiSignupPrompt reason="Yapay zekâ kavramı daha basit anlatsın, örnek versin ya da adım adım öğretsin." />}
       {reply && (
         <div className="explain-helper-reply prewrap" role="status">
-          {reply}
+          <MathText text={reply} />
         </div>
       )}
     </div>
@@ -318,7 +319,7 @@ export function SummaryTab({
         <div className="section no-print" style={{ gap: 16 }} aria-label="Kavramlar">
           {summary.overview && (
             <div className="guided-overview-card">
-              <p>{summary.overview}</p>
+              <p><MathText text={summary.overview} /></p>
             </div>
           )}
 
@@ -348,14 +349,14 @@ export function SummaryTab({
                     <div key={i} className={`term-check-card ${isChecked ? 'checked' : ''}`}>
                       <button type="button" className="term-check-hit" onClick={() => handleCheckTerm(term.term)} aria-pressed={isChecked}>
                         <div className="term-check-top">
-                          <strong>{term.term}</strong>
+                          <strong><MathText text={term.term} /></strong>
                           {isChecked && (
                             <span className="term-check-badge">
                               <Check size={13} /> Anladım
                             </span>
                           )}
                         </div>
-                        <p>{term.definition}</p>
+                        <p><MathText text={term.definition} /></p>
                       </button>
                       <ConceptExplainer note={note} topic={`${term.term}: ${term.definition}`} compact />
                     </div>
@@ -385,7 +386,7 @@ export function SummaryTab({
           <div className="point-focus-card" style={{ flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
               <span className="point-focus-num">{safePointIndex + 1}</span>
-              <p className="point-focus-text">{summary.points[safePointIndex]}</p>
+              <p className="point-focus-text"><MathText text={summary.points[safePointIndex]} /></p>
             </div>
             <ConceptExplainer key={safePointIndex} note={note} topic={summary.points[safePointIndex]} />
           </div>
@@ -423,7 +424,7 @@ export function SummaryTab({
         <div className="summary-reference-body">
           {summary.overview && (
             <div className="panel">
-              <p className="prose">{summary.overview}</p>
+              <p className="prose"><MathText text={summary.overview} /></p>
             </div>
           )}
 
@@ -435,7 +436,7 @@ export function SummaryTab({
                   {summary.points.map((point, i) => (
                     <li key={i}>
                       <span className="n">{i + 1}</span>
-                      <span>{point}</span>
+                      <span><MathText text={point} /></span>
                     </li>
                   ))}
                 </ol>
@@ -449,8 +450,8 @@ export function SummaryTab({
               <div className="terms">
                 {summary.keyTerms.map((term, i) => (
                   <div className="term" key={i}>
-                    <strong>{term.term}</strong>
-                    <p>{term.definition}</p>
+                    <strong><MathText text={term.term} /></strong>
+                    <p><MathText text={term.definition} /></p>
                   </div>
                 ))}
               </div>

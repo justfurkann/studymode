@@ -17,6 +17,7 @@
     "@supabase/supabase-js": "2.118.0",
     "@vercel/analytics": "2.0.1",
     "fflate": "0.8.3",
+    "katex": "0.16.11",
     "lucide-react": "1.64.0",
     "pdfjs-dist": "6.4.299",
     "qrcode-generator": "1.4.4",

@@ -30,6 +30,8 @@ export interface StudyInput {
   text: string
 }
 
+const MATH_RULE = `Math: if the notes contain formulas, numbers with units, or calculations, write every mathematical expression in LaTeX, inline as $...$ (a formula on its own as $$...$$): $\\frac{a}{b}$, $x^{2}$, $\\sqrt{2}$, $\\log_{2} 8$, $F = m \\cdot a$, $\\mathbb{R}$. Copy formulas exactly from the notes; never change a number, sign or exponent. Ordinary text, years and plain numbers stay as normal text. Never use $ for money.`
+
 const STUDY_PROMPT = `You turn a university student's lecture notes into a study set.
 
 Write everything in the language of the notes (usually Turkish). Use only information that is in the notes: do not add facts, numbers, or examples from outside them. If the notes are thin, produce fewer items rather than padding.
@@ -182,8 +184,11 @@ const TRANSCRIBE_PROMPT = `You transcribe university lecture notes, slides, and 
 Rules:
 - Keep the original language of the document (usually Turkish).
 - Transcribe all visible lecture content in reading order. If multiple pages are provided, separate pages with a blank line.
-- Preserve headings, bullet points, numbered lists, mathematical formulas (using clear notation or LaTeX such as $E = mc^2$), and tables (using Markdown tables).
-- Do NOT summarize, explain, or invent content. Only transcribe what is written in the images.
+- Preserve headings, bullet points, numbered lists and tables (using Markdown tables).
+- Write every mathematical expression in LaTeX: inline as $...$, a formula on its own line as $$...$$. Keep fractions, exponents, roots, indices, sets and symbols exactly: $\frac{a}{b}$, $x^{2}$, $\sqrt[3]{10}$, $\log_{2} 8$, $\mathbb{N}, \mathbb{Z}, \mathbb{Q}, \mathbb{R}$, $a \in \mathbb{Z}$, $0,2\overline{15}$.
+- Worked examples: keep "Örnek" and "Çözüm" and every step of the solution, in order.
+- Figures (geometry drawings, graphs, diagrams, number-base tables drawn as pictures): describe each one on its own line as [Şekil: ...] in the document's language, with every label, length, angle and value shown, and what is drawn (e.g. [Şekil: ABC dik üçgeni, C'de dik açı, |AB| = 13, |BC| = 5, [CH] AB'ye dik yükseklik]).
+- Do NOT summarize, explain, or invent content. Only transcribe what is written or drawn in the images.
 - If an image contains no readable text at all, return {"text": ""}.`
 
 // ---------- Interactive concept explainer ("Bu konuyu anlamadım") ----------
@@ -239,7 +244,7 @@ How to answer:
 - Be short: usually 2-6 sentences, or a short list. Go longer only if the student asks for detail.
 - When <notes> are given, ground the answer in them and use their terms. If the notes do not cover the question, answer from general knowledge and say so in a few words (e.g. "Notlarında yok ama genel olarak...").
 - Never invent what the notes say. Do not make up sources, page numbers or quotes.
-- Formatting: plain text. You may use "- " for list items and **bold** for one or two key terms. No headings, no tables, no code blocks. Write formulas in plain text (e.g. F = m·a).
+- Formatting: plain text. You may use "- " for list items and **bold** for one or two key terms. No headings, no tables, no code blocks. Write formulas in LaTeX: inline $...$ (e.g. $F = m \\cdot a$, $x^{2}$, $\\frac{a}{b}$).
 - If the student asks for a quiz question, give one question, then wait for their answer before revealing it.
 - If the question has nothing to do with studying, answer briefly and kindly steer back to their lesson.
 - Use <conversation> for context; answer only the latest <question>.`
@@ -471,17 +476,17 @@ export function splitNoteIntoChunks(text: string, maxChars = 20_000): string[] {
 export const TASKS = {
   detail: {
     schema: DetailSchema,
-    system: DETAIL_PROMPT,
+    system: `${DETAIL_PROMPT}\n\n${MATH_RULE}`,
     user: (input: DetailInput) => `<note_title>${input.title}${input.part ? ` (${input.part})` : ''}</note_title>\n<notes>\n${trimNoteText(input.text)}\n</notes>`,
   },
   study: {
     schema: StudySetSchema,
-    system: STUDY_PROMPT,
+    system: `${STUDY_PROMPT}\n\n${MATH_RULE}`,
     user: (input: StudyInput) => `<note_title>${input.title}</note_title>\n<notes>\n${trimNoteText(input.text)}\n</notes>`,
   },
   exam: {
     schema: ExamSchema,
-    system: EXAM_PROMPT,
+    system: `${EXAM_PROMPT}\n\n${MATH_RULE}`,
     user: (input: ExamInput) => {
       const perNoteBudget = Math.max(4_000, Math.floor(MAX_PROMPT_NOTE_CHARS / Math.max(1, input.notes.length)))
       return [
@@ -521,7 +526,7 @@ export const TASKS = {
   },
   explain: {
     schema: ExplainSchema,
-    system: EXPLAIN_PROMPT,
+    system: `${EXPLAIN_PROMPT}\n\n${MATH_RULE}`,
     user: (input: ExplainInput) =>
       [
         `<note_title>${input.title}</note_title>`,
@@ -550,7 +555,7 @@ export const TASKS = {
   },
   memory: {
     schema: MemoryToolsSchema,
-    system: MEMORY_PROMPT,
+    system: `${MEMORY_PROMPT}\n\n${MATH_RULE}`,
     user: (input: MemoryInput) => {
       const searchFocus = input.focusTopic || input.leftTerm || input.rightTerm || ''
       const noteSlice = searchFocus ? contextAround(input.text, searchFocus, 14_000) : trimNoteText(input.text, 16_000)

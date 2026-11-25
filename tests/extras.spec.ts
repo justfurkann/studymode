@@ -1583,3 +1583,19 @@ test('Üniversiteli: YKS geri sayımı yok, sınav türleri vize/final', async (
   await dialog.getByRole('button', { name: 'Sınav ekle' }).click()
   await expect(dialog.getByLabel('Sınav türü').locator('option')).toHaveText(['Vize', 'Final', 'Bütünleme', 'Quiz', 'Diğer'])
 })
+
+test('Formüller: LaTeX in a summary is drawn as real math (fraction, exponent), plain text stays plain', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  const T = '2026-10-01T00:00:00Z'
+  await signedInAs(page, 'normal', {}, {
+    courses: [{ id: 'c1', name: 'Matematik', color: '#4f46e5', exam_date: null, created_at: T, updated_at: T }],
+    notes: [{ id: 'n1', course_id: 'c1', title: 'Rasyonel sayılar', content: 'Kesirlerde toplama.', summary: { overview: 'Kesirler $\\frac{a}{b} + \\frac{c}{d} = \\frac{ad + bc}{bd}$ ile toplanır.', points: ['Üslü sayı: $x^{3} - y^{3} = (x - y)(x^{2} + xy + y^{2})$', 'Fiyatı 5 $ olan defter.'], keyTerms: [{ term: 'Reel sayılar', definition: '$\\mathbb{R}$ ile gösterilir.' }] }, questions: [], practice: [], generator: 'ai', created_at: T, updated_at: T }],
+  })
+  await page.goto('/not/n1?adim=tam')
+  await expect(page.locator('.full-summary-lead .katex .mfrac').first()).toBeVisible()
+  await expect(page.locator('.full-summary-lead')).not.toContainText('\\frac')
+  await expect(page.locator('.katex .msupsub').first()).toBeVisible()
+  // A lone dollar sign is not math.
+  await expect(page.getByText('Fiyatı 5 $ olan defter.')).toBeVisible()
+  await expect(page.locator('.math-src')).toHaveCount(0)
+})
