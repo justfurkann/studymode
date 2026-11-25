@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AiError, localExplainConcept, mergeStudySets, normalizeStudySet, splitNoteIntoChunks, type RawStudySet } from './index'
+import { parseTaskOutput, repairLatexEscapes } from './tasks'
 
 const base: RawStudySet = {
   summary: { overview: ' Hücre  yapıları. ', points: ['Mitokondri enerji üretir.', ' '], keyTerms: [{ term: 'Ribozom', definition: 'Protein sentezler.' }] },
@@ -88,3 +89,17 @@ describe('splitNoteIntoChunks & mergeStudySets', () => {
   })
 })
 
+
+describe('LaTeX written with one backslash inside the JSON answer', () => {
+  it('keeps the formula instead of throwing the answer away', () => {
+    const raw = '{"text": "$\\sqrt{2}$ ve $a \\in \\mathbb{Z}$, $\\frac{a}{b} \\neq 0$, $2 \\times 3$\\nSonraki satır \\u00e7 \\"tırnak\\" \\\\sqrt{3}"}'
+    const out = parseTaskOutput('transcribe', raw)
+    expect(out).not.toBeNull()
+    expect((out as { text: string }).text).toBe('$\\sqrt{2}$ ve $a \\in \\mathbb{Z}$, $\\frac{a}{b} \\neq 0$, $2 \\times 3$\nSonraki satır ç "tırnak" \\sqrt{3}')
+  })
+
+  it('leaves correctly escaped JSON exactly as it was', () => {
+    const good = JSON.stringify({ a: 'x\ny\t"z" \\frac{1}{2} \u00e7' })
+    expect(repairLatexEscapes(good)).toBe(good)
+  })
+})
