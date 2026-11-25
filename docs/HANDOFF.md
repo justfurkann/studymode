@@ -1042,6 +1042,15 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - **Not ekle:** okul öğrencisine "ders kitabının/çalışma kâğıdının fotoğrafını çek" ipucu; karşılama metni de buna göre.
 - Telefonda sınav türü kutusu kendi satırında (1. Yazılı / Bütünleme kesilmiyordu).
 
+### Aşama 66 — Sayısal dersler 1. adım: formüller doğru okunsun, doğru görünsün (25 Kasım 2026, `dreamy-sagan`)
+
+- Sorun (Modül 1 Matematik PDF'iyle kanıtlandı): denklem editörüyle yazılmış PDF'lerin metin katmanı matematiği bozuyor. ℕℤℚℝ "¥¢¤¡" çıkıyor, kesirler alt alta satırlara bölünüyor, üsler düşüyor ("x 3", "102"). Bu metinden yapılan özet formülleri yanlış veriyordu.
+- `src/lib/mathPages.ts`: formülü bozulmuş sayfaları tespit eder (bozuk sembol, çok kısa satırlar ve eşitlikler, düşmüş üsler). Belge matematik yoğunsa (metinli sayfaların en az %30'u) logodan fazla resim içeren sayfalar da eklenir. Bu sayfalar `importNote.ts`'te metin yerine **resim olarak** yapay zekâya okutulur (VIP'te Vertex, sayılmaz). Okuma boş dönerse sayfanın kendi metni kullanılır. Modül 1'de 67 sayfadan 64'ü resimle okunuyor. Tarih, psikoloji ve normal slaytlar etkilenmiyor (testli).
+- Okuma talimatı (TRANSCRIBE_PROMPT): formüller LaTeX (`$...$`, `$$...$$`), örnek ve çözüm adımları sırayla, şekiller `[Şekil: ...]` olarak bütün etiketleriyle.
+- Özet, test, kart, sınav ve açıklama talimatlarına `MATH_RULE` eklendi: formüller LaTeX'le yazılır, sayı, işaret ve üs değiştirilmez, `$` paraya kullanılmaz. Fosfor da formülleri LaTeX'le yazar.
+- `src/components/MathText.tsx` ve `src/lib/mathText.ts`: metindeki LaTeX, KaTeX 0.16.11 ile gerçek kesir, üs ve kök olarak çizilir. KaTeX ayrı parça halinde, sadece formül görünen ilk ekranda yüklenir. Tek başına "5 $" metin kalır. JSON kaçışıyla bozulan `\frac` onarılır. Özet, tam özet, kavramlar, kartlar, tekrar, test, pratik, sınav, sınav incelemesi, "Anlamadım" açıklaması ve asistan cevaplarında kullanılır.
+- Sonraki adımlar (konuşuldu): ders türü sayısal/sözel/karışık, formül kâğıdı ve formül kartları, çözümlü örnek, "benzer soru çöz" ve cevap kontrolü (yapay zekâ hesap hatası riski).
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

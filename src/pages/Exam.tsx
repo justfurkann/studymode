@@ -12,6 +12,7 @@ import { aiAvailability, useSettings } from '../lib/settings'
 import { clearActiveExam, loadActiveExam, saveActiveExam, secondsRemaining, type ActiveExamDraft, type ExamAnswer } from '../lib/examSession'
 import { useStore } from '../lib/store'
 import { freshImport } from '../lib/version'
+import { MathText } from '../components/MathText'
 
 type Phase = 'setup' | 'preparing' | 'running' | 'grading' | 'result'
 type Answer = ExamAnswer
@@ -599,7 +600,7 @@ export function Exam() {
                 {blankParts(q.prompt)[1]}
               </p>
             ) : (
-              <p className="question">{q.prompt}</p>
+              <p className="question"><MathText text={q.prompt} /></p>
             )}
             {q.type === 'blank' ? null : q.type === 'mcq' ? (
               <div className="options" role="radiogroup" aria-label={`Soru ${i + 1} seçenekleri`}>
@@ -613,7 +614,7 @@ export function Exam() {
                     onClick={() => setAnswers(answers.map((a, j) => (j === i ? k : a)))}
                   >
                     <span className="letter">{LETTERS[k]}</span>
-                    <span>{option}</span>
+                    <span><MathText text={option} /></span>
                   </button>
                 ))}
               </div>

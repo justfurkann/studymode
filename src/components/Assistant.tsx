@@ -19,6 +19,7 @@ import {
 import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import { freshImport } from '../lib/version'
+import { MathText } from './MathText'
 import { Alert } from './ui'
 
 /*
@@ -58,7 +59,7 @@ const SUGGESTION_ICONS: Record<SuggestionIcon, LucideIcon> = { list: ListChecks,
 function Inline({ text }: { text: string }) {
   return (
     <>
-      {boldParts(text).map((part, i) => (part.bold ? <strong key={i}>{part.text}</strong> : <span key={i}>{part.text}</span>))}
+      {boldParts(text).map((part, i) => (part.bold ? <strong key={i}><MathText text={part.text} /></strong> : <span key={i}><MathText text={part.text} /></span>))}
     </>
   )
 }

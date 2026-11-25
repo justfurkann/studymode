@@ -7,6 +7,7 @@ import { toggleCompletedStep } from '../../lib/learningPath'
 import { useStore } from '../../lib/store'
 import type { Card, Note } from '../../lib/types'
 import { Celebrate, Empty, Modal } from '../ui'
+import { MathText } from '../MathText'
 
 function CardEditor({ card, onSave, onClose }: { card?: Card; onSave: (front: string, back: string) => void; onClose: () => void }) {
   const [front, setFront] = useState(card?.front ?? '')
@@ -145,13 +146,13 @@ export function CardsTab({ note, onNext, onShowSource }: { note: Note; onNext?: 
           </div>
 
           <article key={card.id + String(revealed)} className={`flashcard flip-reveal ${revealed ? 'is-revealed' : ''}`} aria-live="polite">
-            <p className="front">{card.front}</p>
+            <p className="front"><MathText text={card.front} /></p>
             {!revealed && hint && hintText && (
               <p className="card-hint" role="status">
                 <Lightbulb size={15} /> {hintText}
               </p>
             )}
-            {revealed && <p className="back">{card.back}</p>}
+            {revealed && <p className="back"><MathText text={card.back} /></p>}
             {revealed && card.source && (
               <div className="source-row">
                 <p className="source">“{card.source}”</p>
@@ -222,11 +223,11 @@ export function CardsTab({ note, onNext, onShowSource }: { note: Note; onNext?: 
               <div className="card-row" key={c.id}>
                 <div>
                   <span className="label">Soru</span>
-                  <span className="prewrap">{c.front}</span>
+                  <span className="prewrap"><MathText text={c.front} /></span>
                 </div>
                 <div>
                   <span className="label">Cevap</span>
-                  <span className="prewrap muted">{c.back}</span>
+                  <span className="prewrap muted"><MathText text={c.back} /></span>
                 </div>
                 <div className="btn-row" style={{ flexWrap: 'nowrap', gap: 2 }}>
                   <button className="btn btn-ghost btn-icon" aria-label="Kartı düzenle" onClick={() => setEditing(c)}>

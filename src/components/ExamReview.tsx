@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { noteForSource } from '../lib/exam'
 import { matchQuestionToNote } from '../lib/semanticSearch'
 import type { ExamQuestion, Note } from '../lib/types'
+import { MathText } from './MathText'
 
 const FORMAT_LABELS = { test: 'Test', classic: 'Klasik', mixed: 'Karışık' } as const
 const DIFFICULTY_LABELS = { easy: 'Kolay', medium: 'Orta', hard: 'Zor' } as const
@@ -73,7 +74,7 @@ export function ExamReview({
                   {q.type !== 'open' ? (good ? 'Doğru' : 'Yanlış') : `${Math.round(value * 100)}/100`}
                 </span>
               </div>
-              <p style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}>{q.prompt}</p>
+              <p style={{ fontWeight: 600, whiteSpace: 'pre-wrap' }}><MathText text={q.prompt} /></p>
               {q.type !== 'open' ? (
                 <>
                   {!good && (
@@ -84,7 +85,7 @@ export function ExamReview({
                   <p style={{ color: 'var(--success)', display: 'flex', gap: 8 }}>
                     <Check size={18} /> {q.options[q.answerIndex]}
                   </p>
-                  {q.explanation && <p className="muted">{q.explanation}</p>}
+                  {q.explanation && <p className="muted"><MathText text={q.explanation} /></p>}
                 </>
               ) : (
                 <>
@@ -95,7 +96,7 @@ export function ExamReview({
                   {feedback[i] && <p>{feedback[i]}</p>}
                   <div className="explain">
                     <strong>Örnek cevap</strong>
-                    <p className="prewrap">{q.modelAnswer}</p>
+                    <p className="prewrap"><MathText text={q.modelAnswer} /></p>
                   </div>
                 </>
               )}
