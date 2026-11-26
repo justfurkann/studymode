@@ -110,7 +110,7 @@ struct CourseShareSheet: View {
                     } else if let share {
                         linkPanel(share)
                     } else {
-                        Message(text: "Bağlantıya sahip olan herkes bu dersi görebilir. Hocanın materyallerini yalnızca güvendiğin kişilerle paylaş; istediğin an kapatabilirsin.", kind: .info)
+                        Message(text: "Bağlantıya sahip olan herkes bu dersi görebilir. Hocanın materyallerini yalnızca güvendiğin kişilerle paylaş; istediğin an kapatabilirsin.", kind: .warning)
                         Button {
                             Task { await create() }
                         } label: {

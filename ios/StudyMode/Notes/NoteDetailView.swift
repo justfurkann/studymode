@@ -199,7 +199,7 @@ struct NoteDetailView: View {
             }
         } else if let summary, !summary.overview.isEmpty || !summary.points.isEmpty {
             if summary.sourceChanged {
-                Message(text: "Kaynak metin değişti. Özet, kartlar ve sorular önceki metne ait; güncellemek için sağ üstteki menüden Yeniden hazırla’yı seç.", kind: .info)
+                Message(text: "Kaynak metin değişti. Özet, kartlar ve sorular önceki metne ait; güncellemek için sağ üstteki menüden Yeniden hazırla’yı seç.", kind: .warning)
             }
             FosforSegmentedBar(
                 segments: [
@@ -264,7 +264,7 @@ struct NoteDetailView: View {
                                 VStack(alignment: .leading, spacing: 18) {
                                     FullSummarySection(detailed: detailed)
                                     if summary.sourceChanged {
-                                        Message(text: "Not bu özetten sonra değişti. Güncel hâli için ayrıntılı özeti yeniden yaz.", kind: .info)
+                                        Message(text: "Not bu özetten sonra değişti. Güncel hâli için ayrıntılı özeti yeniden yaz.", kind: .warning)
                                     }
                                     DetailedSummaryMaker(note: note, rewrite: true) { await load() }
                                 }
