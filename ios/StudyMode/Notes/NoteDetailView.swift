@@ -20,6 +20,13 @@ struct NoteDetailView: View {
     @State private var point = 0
     @State private var fullIndex = 0
     @State private var restoreFull: Int?
+    @State private var editing = false
+    @State private var showSource = false
+    @State private var askDelete = false
+    @State private var askRegenerate = false
+    @State private var regenerating: (Int, Int)?
+    @State private var actionError: String?
+    @Environment(\.dismiss) private var dismissNote
 
     private func bookmark() {
         guard loaded, summary != nil, step == .summary, loadError == nil else { return }
@@ -64,7 +71,89 @@ struct NoteDetailView: View {
         .onChange(of: step) { bookmark() }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { noteMenu } }
+        .sheet(isPresented: $editing, onDismiss: { Task { await load() } }) { NoteEditSheet(note: currentNote).environment(store) }
+        .sheet(isPresented: $showSource) { SourceTextSheet(note: currentNote).environment(store) }
+        .confirmationDialog("“\(currentNote.title)” notu ve kartları silinsin mi?", isPresented: $askDelete, titleVisibility: .visible) {
+            Button("Notu sil", role: .destructive) { Task { await remove() } }
+        } message: {
+            Text("Bu işlem geri alınamaz. Site ve uygulama aynı hesabı kullandığı için not ikisinden de silinir.")
+        }
+        .confirmationDialog("Çalışma seti yeniden hazırlansın mı?", isPresented: $askRegenerate, titleVisibility: .visible) {
+            Button("Yeniden hazırla") { regenerate() }
+        } message: {
+            Text("Özet, sorular ve açık uçlu sorular notun güncel metninden yeniden yazılır. Çalıştığın kartların ilerlemesi korunur.")
+        }
+        .overlay {
+            if let regenerating {
+                ZStack {
+                    Color.black.opacity(0.25).ignoresSafeArea()
+                    VStack(spacing: 10) {
+                        ProgressView()
+                        Text(regenerating.1 > 1 ? "Yeniden hazırlanıyor · \(regenerating.0)/\(regenerating.1)" : "Yeniden hazırlanıyor…")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.text)
+                    }
+                    .padding(22)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18))
+                }
+            }
+        }
+        .alert("Olmadı", isPresented: Binding(get: { actionError != nil }, set: { if !$0 { actionError = nil } })) {
+            Button("Tamam") {}
+        } message: { Text(actionError ?? "") }
         .task { await load() }
+    }
+
+    /// The note as the store knows it now (the title may have been edited).
+    private var currentNote: NoteItem { store.notes.first { $0.id == note.id } ?? note }
+
+    private var noteMenu: some View {
+        Menu {
+            Button { showSource = true } label: { Label("Kaynak metin", systemImage: "doc.text") }
+            Button { editing = true } label: { Label("Notu düzenle", systemImage: "pencil") }
+            if currentNote.isPrepared {
+                Button { askRegenerate = true } label: { Label("Yeniden hazırla", systemImage: "arrow.clockwise") }
+            }
+            if let summary {
+                ShareLink(item: summary.markdown(title: currentNote.title)) { Label("Özeti paylaş", systemImage: "square.and.arrow.up") }
+            }
+            Divider()
+            Button(role: .destructive) { askDelete = true } label: { Label("Notu sil", systemImage: "trash") }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .accessibilityLabel("Not menüsü")
+        .disabled(regenerating != nil)
+    }
+
+    private func remove() async {
+        do {
+            try await store.deleteNote(currentNote)
+            OnboardingHaptics.success()
+            dismissNote()
+        } catch {
+            actionError = "Not silinemedi. Bağlantını kontrol edip tekrar dene."
+        }
+    }
+
+    private func regenerate() {
+        OnboardingHaptics.medium()
+        regenerating = (0, 1)
+        UIApplication.shared.isIdleTimerDisabled = true
+        Task {
+            defer { UIApplication.shared.isIdleTimerDisabled = false; regenerating = nil }
+            do {
+                let note = currentNote
+                let content = try await store.noteContent(note.id)
+                let set = try await StudySetMaker.make(title: note.title, text: content) { done, total in regenerating = (done, total) }
+                try await store.applyStudySet(set, noteId: note.id, courseId: note.courseId)
+                OnboardingHaptics.success()
+                await load()
+            } catch {
+                actionError = (error as? LocalizedError)?.errorDescription ?? "Çalışma seti yeniden hazırlanamadı."
+            }
+        }
     }
 
     private var header: some View {
@@ -77,7 +166,7 @@ struct NoteDetailView: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Theme.text2)
             }
-            Text(note.title)
+            Text(currentNote.title)
                 .font(Theme.display(.title))
                 .foregroundStyle(Theme.text)
             if let tags = summary?.tags, !tags.isEmpty {
@@ -109,6 +198,9 @@ struct NoteDetailView: View {
                 Button("Tekrar dene") { Task { await load() } }.buttonStyle(SecondaryButtonStyle())
             }
         } else if let summary, !summary.overview.isEmpty || !summary.points.isEmpty {
+            if summary.sourceChanged {
+                Message(text: "Kaynak metin değişti. Özet, kartlar ve sorular önceki metne ait; güncellemek için sağ üstteki menüden Yeniden hazırla’yı seç.", kind: .info)
+            }
             FosforSegmentedBar(
                 segments: [
                     .init(
@@ -150,7 +242,7 @@ struct NoteDetailView: View {
 
                         switch section {
                         case .terms:
-                            TermsSection(summary: summary) {
+                            TermsSection(note: note, summary: summary) {
                                 OnboardingHaptics.medium()
                                 store.markStepDone(note, step: "tanis")
                                 withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
@@ -159,7 +251,7 @@ struct NoteDetailView: View {
                             }
                             .transition(.opacity.combined(with: .offset(y: 8)))
                         case .points:
-                            PointsSection(points: summary.points, index: $point) {
+                            PointsSection(note: note, points: summary.points, index: $point) {
                                 OnboardingHaptics.medium()
                                 store.markStepDone(note, step: "anla")
                                 withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
@@ -169,7 +261,16 @@ struct NoteDetailView: View {
                             .transition(.opacity.combined(with: .offset(y: 8)))
                         case .full:
                             if let detailed = summary.detailed {
-                                FullSummarySection(detailed: detailed)
+                                VStack(alignment: .leading, spacing: 18) {
+                                    FullSummarySection(detailed: detailed)
+                                    if summary.sourceChanged {
+                                        Message(text: "Not bu özetten sonra değişti. Güncel hâli için ayrıntılı özeti yeniden yaz.", kind: .info)
+                                    }
+                                    DetailedSummaryMaker(note: note, rewrite: true) { await load() }
+                                }
+                                .transition(.opacity.combined(with: .offset(y: 8)))
+                            } else {
+                                DetailedSummaryMaker(note: note) { await load() }
                                     .transition(.opacity.combined(with: .offset(y: 8)))
                             }
                         }
@@ -202,9 +303,7 @@ struct NoteDetailView: View {
             .init(value: .terms, title: "Kavramlar", isDone: doneSteps.contains("tanis")),
             .init(value: .points, title: "Ana noktalar", isDone: doneSteps.contains("anla"))
         ]
-        if hasDetailed {
-            list.append(.init(value: .full, title: "Tam özet"))
-        }
+        list.append(.init(value: .full, title: "Tam özet", isDone: hasDetailed))
         return list
     }
 
@@ -229,7 +328,6 @@ struct NoteDetailView: View {
                     restoreFull = fullIndex
                 }
             }
-            if summary?.detailed == nil, section == .full { section = .terms }
         } catch is CancellationError {
             return
         } catch {
@@ -243,6 +341,7 @@ struct NoteDetailView: View {
 // MARK: - Kavramlar
 
 private struct TermsSection: View {
+    let note: NoteItem
     let summary: NoteSummary
     let next: () -> Void
 
@@ -280,15 +379,19 @@ private struct TermsSection: View {
                 LazyVStack(spacing: 10) {
                     ForEach(Array(summary.keyTerms.enumerated()), id: \.element) { idx, term in
                         let isKnown = summary.checkedTerms.contains(term.term) || localMarked.contains(term.term)
-                        TermCard(term: term, known: isKnown) {
-                            OnboardingHaptics.selection()
-                            withAnimation(.spring(response: 0.34, dampingFraction: 0.76)) {
-                                if localMarked.contains(term.term) {
-                                    localMarked.remove(term.term)
-                                } else {
-                                    localMarked.insert(term.term)
+                        VStack(alignment: .leading, spacing: 2) {
+                            TermCard(term: term, known: isKnown) {
+                                OnboardingHaptics.selection()
+                                withAnimation(.spring(response: 0.34, dampingFraction: 0.76)) {
+                                    if localMarked.contains(term.term) {
+                                        localMarked.remove(term.term)
+                                    } else {
+                                        localMarked.insert(term.term)
+                                    }
                                 }
                             }
+                            ConceptExplainer(note: note, topic: "\(term.term): \(term.definition)", compact: true)
+                                .padding(.leading, 6)
                         }
                         .staggeredAppear(idx + 1)
                     }
@@ -357,6 +460,7 @@ private struct TermCard: View {
 
 /// One point at a time, like the site's point stepper: swipe or use the buttons.
 private struct PointsSection: View {
+    let note: NoteItem
     let points: [String]
     @Binding var index: Int
     let toCards: () -> Void
@@ -393,6 +497,11 @@ private struct PointsSection: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .frame(height: 250)
                 .onChange(of: index) { _, _ in OnboardingHaptics.selection() }
+
+                if points.indices.contains(index) {
+                    ConceptExplainer(note: note, topic: points[index])
+                        .id(index)
+                }
 
                 HStack(spacing: 12) {
                     Button {
