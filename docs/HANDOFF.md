@@ -1068,6 +1068,7 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - `src/components/MathText.tsx` ve `src/lib/mathText.ts`: metindeki LaTeX, KaTeX 0.16.11 ile gerçek kesir, üs ve kök olarak çizilir. KaTeX ayrı parça halinde, sadece formül görünen ilk ekranda yüklenir. Tek başına "5 $" metin kalır. JSON kaçışıyla bozulan `\frac` onarılır. Özet, tam özet, kavramlar, kartlar, tekrar, test, pratik, sınav, sınav incelemesi, "Anlamadım" açıklaması ve asistan cevaplarında kullanılır.
 - Sonraki adımlar (konuşuldu): ders türü sayısal/sözel/karışık, formül kâğıdı ve formül kartları, çözümlü örnek, "benzer soru çöz" ve cevap kontrolü (yapay zekâ hesap hatası riski).
 
+<<<<<<< HEAD
 ### Aşama 67 — Formül işinin canlı denemesi ve düzeltmeleri; soru kalitesi; iOS kararları (25-26 Kasım 2026, `dreamy-sagan`)
 
 **Canlı deneme (Modül 1 Matematik PDF'i, 67 sayfa, VIP test hesabı):** Okuma 100 sn, 64 sayfadan 63'ü düzgün LaTeX; 108 şekil "[Şekil: ...]" olarak tarif edildi; özet ve tam özette 205 formül KaTeX ile hatasız çizildi; okuma + özet toplam ~7,5 dk. Kontrol edilen ~15 test sorusunun cevabı doğruydu. Test hesabında "modul1" adlı not duruyor (deneme verisi).
@@ -1097,7 +1098,7 @@ Kalan sorunlar (yapılmadı):
 - **Apple ile ödeme:** Uygulama içinde Premium satılırsa Apple ödemesi zorunlu (küçük geliştiriciye %15 pay). Uygulamada Shopier'e yönlendirmek ya da Premium kodu girdirmek yasak. Taslakta satış yok; karar mağaza aşamasında. Seçilirse Apple'ın satın alma bildirimini alıp `premium_until`'i açan bir sunucu kapısı gerekir.
 - **Doğrulama dosyası (şifre otomatik doldurma):** `public/.well-known/apple-app-site-association`, önce yalnızca `webcredentials` (`TEAMID.bundleid`). `vercel.json`'a bu yol için `Content-Type: application/json` başlığı. Sitenin yönlendirme kuralı noktalı yollara dokunmadığı için dosya doğrudan sunulur. Team ID ve bundle ID kullanıcıdan bekleniyor. `applinks` ileride sadece belirli yollar için; "bütün site" denirse uygulaması olan herkesin her studymode.fun bağlantısı uygulamaya düşer. E-posta bağlantıları Supabase üzerinden yönlendirildiği için uygulama tarafında özel adres (custom URL scheme) yolu önerildi.
 
-### Aşama 67 — Hesap silme ve Apple ile giriş (26 Kasım 2026, `apple-signin-account-delete`)
+### Aşama 68 — Hesap silme ve Apple ile giriş (26 Kasım 2026, `apple-signin-account-delete`)
 
 Neden: iPhone uygulaması (`ios/`, ayrı oturum yapıyor) App Store'a çıkacak. Apple, hesap açılan her uygulamada uygulama içinden hesap silmeyi şart koşuyor; Apple ile giriş de isteniyor.
 
@@ -1113,7 +1114,8 @@ Neden: iPhone uygulaması (`ios/`, ayrı oturum yapıyor) App Store'a çıkacak.
   - Apple adı yalnızca ilk girişte verir: site ve iOS bunu hemen `updateUser({ data: { first_name, last_name, full_name } })` ile yazar (var olan adın üstüne yazmaz).
   - Gizli e-posta (`…@privaterelay.appleid.com`): `emailLabel` / `isPrivateRelayEmail` (`auth.ts`) her yerde "Apple (gizli e-posta)" gösterir; paylaşımda sahip adı olarak çıkmaz; yönetimde başlıkta etiket, altında gerçek adres. Resend'den bu adreslere giden e-postaların ulaşması için Apple Developer → Sign in with Apple for Email Communication'a `studymode.fun` (ve `noreply@studymode.fun`) eklenmeli.
   - Gizlilik sayfası (26 Kasım): Apple işleyen olarak, hesabı kendin silme, Premium uyarısı, kod kayıtları.
-- **Associated Domains (`/.well-known/apple-app-site-association`)**: kullanıcı istiyor, Team ID gelince eklenecek (henüz yok).
+- **Doğrulama dosyası:** `public/.well-known/apple-app-site-association`, yalnızca `{"webcredentials":{"apps":["Q2VWX7322K.fun.studymode.app"]}}` (Team ID `Q2VWX7322K`, gizli değil). `vercel.json` bu yola `Content-Type: application/json` verir; SPA yönlendirmesi noktalı yollara dokunmaz. `applinks` yok (bilinçli).
+- iOS oturumu ile haberleşme: `docs/IOS_SYNC.md` (bkz. 0. bölüm).
 - **Sonra (yapılmadı):** iOS'ta Premium Apple ile ödensin (uygulama içi satın alma / abonelik). App Store Server Notifications → sunucu → `premium_access` gerekecek. Shopier kodları sitede kalır.
 - Bu Mac'te e2e için Playwright Chromium'u `npx playwright install chromium` ile kuruldu; artık `npm run test:e2e` doğrudan çalışıyor.
 
