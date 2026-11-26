@@ -51,6 +51,7 @@ struct CoursesView: View {
             .navigationDestination(for: CourseExam.self) { ExamStudyView(exam: $0) }
             .navigationDestination(for: Course.self) { CourseDetailView(course: $0) }
             .navigationDestination(for: NoteItem.self) { NoteDetailView(note: $0) }
+            .navigationDestination(for: NoteRoute.self) { NoteDetailView(note: $0.note, start: $0.start) }
         }
         .fullScreenCover(item: $session) { box in
             ReviewSession(title: "Tekrar", cards: box.cards, mode: .daily).environment(store)
@@ -120,8 +121,11 @@ struct CoursesView: View {
                         emptyDeskCard
                             .staggeredAppear(0)
                     } else {
+                        TodayFeed(part: .greeting)
                         dailyReview
                             .staggeredAppear(0)
+                        TodayFeed(part: .top)
+                            .staggeredAppear(1)
                         if let place, let note = store.notes.first(where: { $0.id == place.noteID }) {
                             NavigationLink(value: note) {
                                 HStack {
@@ -137,8 +141,10 @@ struct CoursesView: View {
                             }
                             .buttonStyle(.plain)
                         }
+                        TodayFeed(part: .lists)
+                            .staggeredAppear(2)
                         library
-                            .staggeredAppear(1)
+                            .staggeredAppear(3)
                     }
                 }
                 .padding(.horizontal, 16)

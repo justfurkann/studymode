@@ -5,8 +5,10 @@ struct NoteDetailView: View {
     @Environment(StudyStore.self) private var store
     @Environment(AuthModel.self) private var auth
     let note: NoteItem
+    /// Where to open (a link on Bugün); nil opens at the saved reading place.
+    var start: NoteStart? = nil
 
-    enum Step: Hashable { case summary, test, cards }
+    enum Step: Hashable { case summary, test, cards, explain }
     enum Section: String, Codable, Hashable { case terms, points, full }
 
     @State private var summary: NoteSummary?
@@ -126,6 +128,12 @@ struct NoteDetailView: View {
                         title: "Kartlar",
                         icon: "rectangle.stack",
                         isDone: doneSteps.contains("pekistir")
+                    ),
+                    .init(
+                        value: Step.explain,
+                        title: "Anlat",
+                        icon: "pencil.line",
+                        isDone: doneSteps.contains("anlat")
                     )
                 ],
                 selection: $step
@@ -177,6 +185,9 @@ struct NoteDetailView: View {
                 case .cards:
                     NoteCardsSection(note: note)
                         .transition(.opacity.combined(with: .offset(y: 8)))
+                case .explain:
+                    ExplainSection(note: note)
+                        .transition(.opacity.combined(with: .offset(y: 8)))
                 }
             }
             .animation(.spring(response: 0.40, dampingFraction: 0.84), value: step)
@@ -201,7 +212,16 @@ struct NoteDetailView: View {
         loadError = nil
         do {
             summary = try await store.summary(for: note)
-            if !loaded, let place = ReadingPlace.saved(note: note.id, user: auth.session?.user.id) {
+            if !loaded, let start {
+                switch start {
+                case .summary: break
+                case .explain: step = .explain
+                case .terms: section = .terms
+                case .points: section = .points
+                case .test: step = .test
+                case .cards: step = .cards
+                }
+            } else if !loaded, let place = ReadingPlace.saved(note: note.id, user: auth.session?.user.id) {
                 section = place.section
                 point = max(0, min(place.index, (summary?.points.count ?? 0) - 1))
                 if section == .full, let count = summary?.detailed?.sections.count, count > 0 {

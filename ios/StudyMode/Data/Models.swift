@@ -104,6 +104,7 @@ struct NoteItem: Identifiable, Decodable, Hashable {
     let title: String
     let generator: String?
     let createdAt: String
+    var updatedAt: String?
     /// summary->>overview; nil when the note has not been prepared yet.
     let overview: String?
     /// summary->completedSteps
@@ -121,12 +122,13 @@ struct NoteItem: Identifiable, Decodable, Hashable {
         case id, title, generator, overview
         case courseId = "course_id"
         case createdAt = "created_at"
+        case updatedAt = "updated_at"
         case completedSteps = "steps"
         case checkedTerms = "checked"
         case keyTerms = "terms"
     }
 
-    static let columns = "id,course_id,title,generator,created_at,overview:summary->>overview,steps:summary->completedSteps,checked:summary->checkedTerms,terms:summary->keyTerms"
+    static let columns = "id,course_id,title,generator,created_at,updated_at,overview:summary->>overview,steps:summary->completedSteps,checked:summary->checkedTerms,terms:summary->keyTerms"
 }
 
 /// One study_days row, only the counts the app needs.

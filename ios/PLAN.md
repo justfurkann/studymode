@@ -17,6 +17,7 @@ Uygulama Claude'unun çalışma planı. Site ile ortak işler `docs/IOS_SYNC.md`
 | 6 | Not ekleme: metin, fotoğraf (kamera/galeri → `transcribe`), PDF (PDFKit metni, taranmış sayfa → `transcribe`); not önce kaydedilir, sonra `study` ile 12.000 karakterlik parçalar, 3 aynı anda, zaman aşımında yarıya bölme (bölme sitenin koduyla karşılaştırıldı, aynı); yeni ders ekleme; hazırlanmamış notta "Şimdi hazırla" | ✅ kodlandı 26 Kasım; gerçek notla henüz denenmedi |
 | — | Bilinen eksik (6): formül ağırlıklı PDF sayfalarını resim olarak okutma (sitedeki `mathPages`) yok; formüllü PDF'lerin metni bozuk çıkabilir | |
 | — | Kart turu "karıştır" (`ReviewSession` sağ üst araç çubuğu), 3B kart çevirme + sağa/sola kaydırma damgaları (`BİLDİM` / `TEKRAR`), tüm iç ekranlarda (`CoursesView`, `CourseDetailView`, `NoteDetailView`, `QuizSection`, `NoteCardsSection`, `AddNoteView`, `ReviewTab`, `MainTabs`) "Fosforlu" animasyon kiti (`MotionKit.swift`: kayan fosforlu sekme çubuğu, iskelet yükleme, doğru/yanlış fiziksel tepkiler, Fosfor kutlama rozetleri, Hesap → "Açılış tanıtımını gör") | ✅ 26 Kasım (`son tekrarı geri al` hâlâ yapılacaklar listesinde) |
+| — | Bugün (sitenin Today.tsx'i, "Çalışma masam" sekmesinde): selam + tarih, YKS/LGS geri sayımı (gizlenebilir), "Şimdi bununla başla" (`pickExamFocus` birebir), son 7 gün şeridi ve seri, akıllı plan (`buildSmartStudyPlan` birebir), adım adım devam, diğer sınavlar, zayıf konular, son notlar; her not bir kez görünür. Bağlantılar notu doğru adımda açar (`NoteRoute`). Adım 5 "Anlat" (PracticeTab): açık uçlu sorular, otomatik kaydedilen cevap (`notes.practice` ham JSON, yalnızca `draft`/`evaluation`), yapay zekâ puanlama (`grade`), örnek cevap, "Bitir: Konuyu öğrendim". `study_days` yazımları artık `bump_study_day` RPC ile | ✅ kodlandı 26 Kasım; giriş yapılmış ekranda henüz görülmedi |
 | 7 | Toparlama: hata mesajları, boş ekranlar, erişilebilirlik, birim testleri | boş ekranlar ve yükleme durumları yenilendi; birim testleri sırada |
 
 ## Bekleyenler (dış engel)
@@ -46,7 +47,7 @@ Uygulama Claude'unun çalışma planı. Site ile ortak işler `docs/IOS_SYNC.md`
 
 **Diğer küçük notlar**
 - Kart turu "son tekrarı geri al" (sitede var, uygulamada yok; "karıştır" `ReviewSession` sağ üst çubuğuna eklendi).
-- Site ve uygulama aynı anda açıkken `study_days` günlük sayacında birkaç tekrar kaybolabilir (kartlar kaybolmaz).
+- ~~Site ve uygulama aynı anda açıkken `study_days` sayacı kaybı~~ → çözüldü: uygulama `bump_study_day` RPC kullanıyor (26 Kasım).
 - Formüller Unicode ile çiziliyor; büyük matris/tabloda zayıf. Gerekirse yalnızca formül olan yerlerde KaTeX (web görünümü).
 
 ## Devir notu (Google Antigravity oturumu — 26 Kasım)
