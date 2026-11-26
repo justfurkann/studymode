@@ -58,7 +58,7 @@ extension StudyStore {
         enqueueWrite { [weak self] in
             do {
                 try await supabase.from("cards").update(update).eq("id", value: card.id).execute()
-                try await StudyDays.bump(day: day, reviews: 1, newCards: wasNew && trackNew ? 1 : 0)
+                try await StudyDays.bump(day: day, reviews: 1, newCards: wasNew && trackNew ? 1 : 0, into: self)
             } catch {
                 await MainActor.run {
                     self?.replace(card)

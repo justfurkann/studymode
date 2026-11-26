@@ -111,7 +111,7 @@ extension StudyStore {
                 if let evaluationJSON { fields["evaluation"] = evaluationJSON }
                 items[index] = .object(fields)
                 try await supabase.from("notes").update(PracticeUpdate(practice: .array(items), updated_at: ISO.string(.now))).eq("id", value: note.id).execute()
-                if countsAsActivity { try await StudyDays.bump(day: day, actions: 1) }
+                if countsAsActivity { try await StudyDays.bump(day: day, actions: 1, into: self) }
             } catch {
                 await MainActor.run { self?.saveError = "Cevabın kaydedilemedi. İnternet bağlantını kontrol et." }
             }

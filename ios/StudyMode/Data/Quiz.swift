@@ -64,7 +64,7 @@ extension StudyStore {
         enqueueWrite { [weak self] in
             do {
                 try await supabase.from("quiz_attempts").insert(row).execute()
-                try await StudyDays.bump(day: day, quizzes: 1)
+                try await StudyDays.bump(day: day, quizzes: 1, into: self)
             } catch {
                 await MainActor.run { self?.saveError = "Test sonucun kaydedilemedi. İnternet bağlantını kontrol et." }
             }

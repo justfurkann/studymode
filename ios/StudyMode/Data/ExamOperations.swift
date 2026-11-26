@@ -319,7 +319,7 @@ extension StudyStore {
         enqueueWrite { [weak self] in
             do {
                 try await supabase.from("exam_results").insert(row).execute()
-                try await StudyDays.bump(day: day, quizzes: 1)
+                try await StudyDays.bump(day: day, quizzes: 1, into: self)
             } catch {
                 await MainActor.run {
                     self?.saveError = "Sınav provası sonucu kaydedilemedi. İnternet bağlantını kontrol et."
