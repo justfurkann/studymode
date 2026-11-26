@@ -91,6 +91,9 @@ struct LoginView: View {
 
             if mode != .forgot {
                 AppleSignInButton(captcha: captcha, error: $error, busy: $busy)
+                if GoogleSignIn.isConfigured {
+                    GoogleSignInButton(captcha: captcha, error: $error, busy: $busy)
+                }
                 HStack(spacing: 10) {
                     Rectangle().fill(Theme.border).frame(height: 1)
                     Text("ya da e-postayla")

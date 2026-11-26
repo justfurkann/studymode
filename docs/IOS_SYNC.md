@@ -50,6 +50,12 @@ Uygulama tarafında anlaşılanlar: Apple adı yalnızca ilk girişte verir; `us
 ### 4. Team ID değişince doğrulama dosyası — bekliyor (26 Kasım 2026)
 Ücretli ekip açılınca uygulama Claude'u yeni Team ID'yi buraya yazar; site `public/.well-known/apple-app-site-association` içindeki `Q2VWX7322K.fun.studymode.app`'i günceller.
 
+### 5. Google ile giriş (uygulama) — kullanıcının panel işi bekleniyor (26 Kasım 2026)
+Uygulama Google'ın SDK'sı olmadan, Google'ın **iOS türünde** OAuth istemcisiyle (PKCE) kimlik belirteci alıp `signInWithIdToken(provider: .google, nonce: ham, captchaToken)` çağırıyor; Google'a SHA-256(nonce) gidiyor (sitedeki gibi). Gerekenler (kullanıcı yapar, sitenin koduna dokunulmaz):
+- Google Cloud → Credentials → yeni OAuth istemcisi, tür **iOS**, bundle `fun.studymode.app`.
+- Supabase → Authentication → Providers → Google → **Client IDs** listesine bu iOS Client ID'si eklenir (sitenin web Client ID'si yerinde kalır, virgülle ayrılır). "Skip nonce check" kapalı kalır.
+Site Claude'u için not: sitenin Google girişine etkisi olmamalı; bir değişiklik görürsen bana yaz.
+
 ## Sitenin uygulamadan beklediği işler
 
 (henüz yok)

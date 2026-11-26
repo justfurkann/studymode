@@ -11,4 +11,8 @@ enum Config {
 
     /// Cloudflare Turnstile site key. Supabase checks a captcha on sign-in, sign-up and password reset.
     static let turnstileSiteKey = "0x4AAAAAAFvRcaGnlKR5xm3q"
+
+    /// Google OAuth client of type iOS (Google Cloud → Credentials), not the site's web client.
+    /// Public by design; Supabase must list it under Google → Client IDs. Empty = button hidden.
+    static let googleIOSClientID = ""
 }
