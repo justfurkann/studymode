@@ -45,6 +45,20 @@ Uygulama Claude'unun çalışma planı. Site ile ortak işler `docs/IOS_SYNC.md`
 - **Google ile girişte her seferinde e-posta (kullanıcı, 26 Kasım; Gmail'de doğrulandı):** her uygulama girişinde Google "Bazı Google Hesabı verilerinizi StudyMode ile paylaştınız" gönderiyor (26 Kasım 17:07, 17:33, 17:42: üç giriş, üç e-posta). E-posta sebebi kendisi yazıyor: "Google ile oturum açma özelliğini kullanarak StudyMode uygulamasında oturum açtığınız için". Site yalnızca ilk girişte alıyor: site Google'ın kimlik düğmesini (GIS, kimlik belirteci) kullanıyor, uygulama ise iOS istemcisiyle tam OAuth akışı (yetki kodu + PKCE, `prompt=select_account`) yapıyor. Normal kullanımda bir cihazda bir kez giriş yapıldığı için e-posta da bir kez gelir; testteki tekrarlar çıkış/yeniden kurulumdan. Denenebilecekler (etkisi doğrulanmadı): `prompt=select_account`'u kaldırmak, ya da Google'ın iOS kütüphanesi (GoogleSignIn) ile tekrar girişte önceki oturumu geri yüklemek.
 
 **Diğer küçük notlar**
-- Kart turu "son tekrarı geri al" ve "karıştır" (sitede var, uygulamada yok).
+- Kart turu "son tekrarı geri al" (sitede var, uygulamada yok; "karıştır" `ReviewSession` sağ üst çubuğuna eklendi).
 - Site ve uygulama aynı anda açıkken `study_days` günlük sayacında birkaç tekrar kaybolabilir (kartlar kaybolmaz).
 - Formüller Unicode ile çiziliyor; büyük matris/tabloda zayıf. Gerekirse yalnızca formül olan yerlerde KaTeX (web görünümü).
+
+## Devir notu (Google Antigravity oturumu — 26 Kasım)
+
+Kullanıcının isteğiyle yalnızca arayüz, etkileşim ve animasyon katmanı (`ios/StudyMode/`) yenilendi; **veri, Supabase, kimlik doğrulama, SRS, AI istemcisi ve Xcode proje ayarlarına (`Data/`, `Auth/`, `AI/`, `Config.swift`, `project.pbxproj`) hiç dokunulmadı.**
+
+- **Commit `7425556` — Açılış akışı (`ios/StudyMode/Onboarding/`):**
+  - `FosforMascotView.swift`: Sitedeki `FosforCharacter` maskotunun native SwiftUI `Canvas` çizimi (göz kırpma, nefes salınımı, sahneye göre ifade, dokununca zıplama + haptik) ve geometrik kıvılcım efekti (`HighlighterSparkBurst`).
+  - `OnboardingScenes.swift`: 3 interaktif sahne — (1) tarama çizgisi + harfleri piksel maskeyle boyayan canlı fosforlu kalem (`ScannerHighlightScene`), (2) gerçek 3B dönen ezber kartı, özet ve canlı mini test destesi (`StudyDeckOrchestraScene`), (3) tekrarsız unutma eğrisine karşı StudyMode yakalama grafiği ve sayaçlı hazırlık çubuğu (`ExamReadinessArenaScene`).
+  - `Onboarding.swift`: Paralaks spot ışıklı kareli zemin, başlıklarda gecikmeli fosforlu vurgu, seviye seçilince canlı önizleme bandı. `OnboardingStore` tamamlanma anahtarı `studymode.onboarding.v2` yapıldı; `StudentLevel`, `pendingLevel` (`studymode.onboarding.level`), `onFinish` ve arka plan `TurnstileView` sözleşmeleri birebir korundu.
+- **Commit `e6bfa0d` — İç ekran animasyon kiti ve 3B kart destesi:**
+  - `MotionKit.swift`: Ortak `FosforSegmentedBar` (`matchedGeometryEffect` kayan fosforlu sekme çubuğu), `StudyLoadingStage` (iskelet shimmer + Fosfor), `FosforProgressBar`, `CelebrationBadgeView`, `StaggeredAppearModifier` ve `TactileCardButtonStyle`.
+  - `ReviewSession.swift` & `ReviewTab.swift`: Gerçek 3B kart çevirme (`FlippableStudyCard`), alttan yükselen deste derinliği, `.simple` modda sağa/sola sürükleyerek cevaplama (`BİLDİM` / `TEKRAR` damgaları), sağ üst araç çubuğunda kalan kuyruğu karıştıran **Karıştır** düğmesi ve tur sonunda Fosfor'lu kutlama rozeti.
+  - `CoursesView.swift`, `CourseDetailView.swift`, `NoteDetailView.swift`, `QuizSection.swift`, `NoteCardsSection.swift`, `AddNoteView.swift`, `MainTabs.swift`: PR #126 ("Çalışma masam") yapısı korunarak kayan sekmeler, testte doğru/yanlış fiziksel tepkiler (kıvılcım / yatay sarsıntı), AI hazırlık aşamalarında çalışan Fosfor göstergesi ve `Hesap` sekmesine çıkış yapmadan tanıtımı açan **"Açılış tanıtımını gör"** düğmesi eklendi.
+  - Tüm animasyonlarda `@Environment(\.accessibilityReduceMotion)` kontrolü var; tasarım kurallarına uygun olarak emoji kullanılmadı ve sarı (`Theme.hi`) hiçbir yerde metin rengi yapılmadı.
