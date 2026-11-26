@@ -112,7 +112,7 @@ struct NoteDetailView: View {
                 NoteCardsSection(note: note)
             }
         } else {
-            NotPrepared()
+            NotPrepared(note: note) { await load() }
         }
     }
 
@@ -386,17 +386,54 @@ private struct FullSummarySection: View {
 }
 
 private struct NotPrepared: View {
+    @Environment(StudyStore.self) private var store
+    let note: NoteItem
+    let onReady: () async -> Void
+    @State private var progress: (done: Int, total: Int)?
+    @State private var error: String?
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Bu not henüz hazırlanmadı")
                 .font(Theme.display(.title3))
                 .foregroundStyle(Theme.text)
-            Text("Özet, kartlar ve test yapay zekâyla hazırlanınca burada görünür. Uygulamada hazırlama birazdan geliyor; şimdilik notu studymode.fun'da açıp hazırlayabilirsin.")
+            Text("Özet, kartlar ve test yapay zekâyla hazırlanır. Uzun notlarda birkaç dakika sürebilir.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.text2)
                 .fixedSize(horizontal: false, vertical: true)
+            if let progress {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(progress.total > 1 ? "Hazırlanıyor · bölüm \(progress.done)/\(progress.total)" : "Hazırlanıyor…")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.text)
+                    ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1))).tint(Theme.accent)
+                }
+            }
+            if let error { Message(text: error, kind: .error) }
+            Button { prepare() } label: {
+                HStack(spacing: 6) { Text(error == nil ? "Şimdi hazırla" : "Tekrar dene"); Image(systemName: "sparkles") }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(progress != nil)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .focusCard()
+    }
+
+    private func prepare() {
+        error = nil
+        progress = (0, 1)
+        UIApplication.shared.isIdleTimerDisabled = true
+        Task {
+            defer { UIApplication.shared.isIdleTimerDisabled = false; progress = nil }
+            do {
+                let content = try await store.noteContent(note.id)
+                let set = try await StudySetMaker.make(title: note.title, text: content) { done, total in progress = (done, total) }
+                try await store.applyStudySet(set, noteId: note.id, courseId: note.courseId)
+                await onReady()
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
     }
 }

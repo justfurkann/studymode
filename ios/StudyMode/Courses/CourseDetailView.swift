@@ -3,7 +3,9 @@ import SwiftUI
 /// One course: its exams and its notes, newest first.
 struct CourseDetailView: View {
     @Environment(StudyStore.self) private var store
+    @Environment(\.openNote) private var openNote
     let course: Course
+    @State private var adding = false
 
     var body: some View {
         let notes = store.notes(in: course)
@@ -24,6 +26,14 @@ struct CourseDetailView: View {
         // The big header already names the course; an inline title would repeat it.
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { adding = true } label: { Label("Not ekle", systemImage: "plus") }
+            }
+        }
+        .sheet(isPresented: $adding) {
+            AddNoteView(course: course, onDone: openNote).environment(store)
+        }
     }
 
     private func header(noteCount: Int) -> some View {
@@ -60,7 +70,7 @@ struct CourseDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionTitle("Notlar")
             if notes.isEmpty {
-                Text("Bu derste henüz not yok. Not ekleme uygulamaya birazdan geliyor; şimdilik sitede ekleyebilirsin.")
+                Text("Bu derste henüz not yok. Sağ üstteki + ile not ekle: yapıştır, fotoğrafını çek ya da PDF seç.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.text2)
                     .frame(maxWidth: .infinity, alignment: .leading)

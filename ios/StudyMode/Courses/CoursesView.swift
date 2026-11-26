@@ -1,21 +1,54 @@
 import SwiftUI
 
-/// "Dersler": every course with its next exam and how many cards are waiting.
+/// "Dersler": every course with its next exam and readiness, and "Not ekle".
+
+/// Opens a note after it is added, from wherever "Not ekle" was used.
+private struct OpenNoteKey: EnvironmentKey {
+    static let defaultValue: (Course, UUID) -> Void = { _, _ in }
+}
+
+extension EnvironmentValues {
+    var openNote: (Course, UUID) -> Void {
+        get { self[OpenNoteKey.self] }
+        set { self[OpenNoteKey.self] = newValue }
+    }
+}
+
 struct CoursesView: View {
     @Environment(StudyStore.self) private var store
     @Environment(AuthModel.self) private var auth
+    @State private var path = NavigationPath()
+    @State private var adding = false
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ZStack {
                 GridPaper()
                 content
             }
             .navigationTitle("Dersler")
             .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { adding = true } label: { Label("Not ekle", systemImage: "plus") }
+                        .disabled(store.status != .ready)
+                }
+            }
             .navigationDestination(for: Course.self) { CourseDetailView(course: $0) }
             .navigationDestination(for: NoteItem.self) { NoteDetailView(note: $0) }
         }
+        .environment(\.openNote, openNote)
+        .sheet(isPresented: $adding) {
+            AddNoteView(onDone: openNote).environment(store)
+        }
+    }
+
+    /// After a note is added: its course, then the note itself.
+    private func openNote(_ course: Course, _ noteId: UUID) {
+        var next = NavigationPath()
+        next.append(course)
+        if let note = store.notes.first(where: { $0.id == noteId }) { next.append(note) }
+        path = next
     }
 
     @ViewBuilder
@@ -155,13 +188,9 @@ private struct EmptyCourses: View {
             Text("Henüz dersin yok")
                 .font(Theme.display(.title3))
                 .foregroundStyle(Theme.text)
-            Text("Ders ve not ekleme uygulamaya birazdan geliyor. Şimdilik studymode.fun'da eklediğin dersler burada görünür.")
+            Text("Sağ üstteki + ile ilk notunu ekle: ders adını orada yazabilirsin. Notunu yapıştır, fotoğrafını çek ya da PDF'ini seç.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.text2)
-            Link("Sitede ders ekle", destination: Config.siteURL)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.text)
-                .underline()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .focusCard()
