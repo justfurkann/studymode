@@ -2,6 +2,14 @@
 
 Uygulama Claude'u (`ios/`, `ios-taslak` dalı) ile Site Claude'u arasındaki iş listesi. Kurallar `docs/HANDOFF.md` → "0. Ekip düzeni". En yeni giriş en üstte. Bir iş bitince satırına ✅ ve tarih eklenir; silinmez.
 
+## 26 Kasım 2026 · Codex → Claude · iPhone çalışma akışları
+
+- Not ekle → Fotoğraf → Defteri tara, VisionKit ile çok sayfalı belge yakalar. Küçük resimdeki menü sayfayı taşır, çıkarır veya yeniden tarar. Okuma ve not hazırlama mevcut akışı kullanır. Kamera ve perspektif düzeltme için gerçek defterle cihaz testi hâlâ gerekli.
+- PDF paylaşım uzantısı, seçilen ders ve dosyayı App Group içinde oturum sahibine ait gelen kutusuna bırakır. Çalışma masasında PDF’ye dokununca metin açılır. Kullanıcı notu kaydedene kadar dosya tekrar açılabilir. Uygulama ve uzantı aynı `group.$(STUDYMODE_APP_ID).share` yetkisini kullanmalı. Geliştirme kurulumlarında tüm hedeflere boş `CODE_SIGN_ENTITLEMENTS` vermek bu paylaşımı devre dışı bırakır.
+- Hesaba ve nota özel yer imi ana nokta numarasını veya tam özet bölümünü bu iPhone’da tutar. Çalışma masası son okunan nota döner.
+- Ders satırındaki sınav etiketinden veya dersin sınav listesinden kapsamdaki notlara, zamanı gelmiş kartlara ve en fazla beş soruluk alıştırmaya geçilir. Boş not kapsamı bütün dersi içerir. Kısa sınav alıştırması ayrı bir notun test sonucuna yazılmaz.
+- iPhone simülatöründe sistem paylaşım menüsünden örnek PDF gönderme, metin düzenleyicide açma ve uygulamayı kapatıp ana noktaya dönme denendi. Kapsam filtreleri açık not listesi, eski sınav, farklı ders ve nota bağlı olmayan kartlarla kontrol edildi.
+
 ## 26 Kasım 2026 · Codex → Claude · Apple Watch
 
 ✅ iPhone uygulamasına gömülen `StudyModeWatch` hedefi eklendi (SwiftUI, watchOS 10+). Saatteki Mola sayacı sitedeki 25+5 ve 50+10 planlarını kullanır. Dördüncü turun molası 15 veya 20 dakikadır. Duraklatma, devam, günün biten odak dakikaları ve bitiş bildirimleri saatte yereldir. Sonraki odak turunu öğrenci başlatır. Kartlar, hesap ve site ilerlemesi bu kapsamın dışında.

@@ -5,6 +5,12 @@ struct MainTabs: View {
     @Environment(AuthModel.self) private var auth
     @State private var store = StudyStore()
 
+    private var shareCatalog: PDFInbox.Catalog? {
+        guard store.status == .ready, let user = auth.session?.user.id else { return nil }
+        let courses = store.sortedCourses.map { PDFInbox.CourseChoice(id: $0.id, name: $0.name) }
+        return PDFInbox.Catalog(user: user, courses: courses)
+    }
+
     var body: some View {
         TabView {
             CoursesView()
@@ -16,6 +22,7 @@ struct MainTabs: View {
                 .tabItem { Label("Hesap", systemImage: "person.crop.circle") }
         }
         .environment(store)
+        .onChange(of: shareCatalog, initial: true) { _, catalog in try? PDFInbox.publish(catalog) }
         .task {
             store.audience = Exams.audience(forLevel: auth.educationLevel)
             await store.load()

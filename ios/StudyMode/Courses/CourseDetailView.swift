@@ -81,7 +81,7 @@ struct CourseDetailView: View {
             VStack(spacing: 0) {
                 ForEach(Array(exams.enumerated()), id: \.element.id) { index, exam in
                     if index > 0 { Divider().overlay(Theme.border) }
-                    ExamRow(exam: exam)
+                    NavigationLink(value: exam) { ExamRow(exam: exam) }.buttonStyle(.plain)
                 }
             }
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))

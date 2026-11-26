@@ -46,12 +46,13 @@ struct RootView: View {
                     .transition(.opacity)
                 }
             case .signedIn:
-                MainTabs()
+                MainTabs().id(auth.session?.user.id)
             }
         }
         .animation(.easeInOut(duration: 0.2), value: auth.state)
         .onChange(of: auth.state) { _, state in
             // Someone who signs out later goes straight to the sign-in card.
+            if state == .signedOut { try? PDFInbox.publish(nil) }
             if state == .signedIn { signUpFirst = false; showIntro = false }
         }
     }
