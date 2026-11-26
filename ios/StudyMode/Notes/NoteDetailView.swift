@@ -6,7 +6,7 @@ struct NoteDetailView: View {
     @Environment(StudyStore.self) private var store
     let note: NoteItem
 
-    enum Step: Hashable { case summary, cards }
+    enum Step: Hashable { case summary, test, cards }
     enum Section: Hashable { case terms, points, full }
 
     @State private var summary: NoteSummary?
@@ -76,8 +76,9 @@ struct NoteDetailView: View {
             }
         } else if let summary, !summary.overview.isEmpty || !summary.points.isEmpty {
             Picker("Adım", selection: $step) {
-                Label("Özet", systemImage: "text.alignleft").tag(Step.summary)
-                Label("Kartlar", systemImage: "rectangle.on.rectangle").tag(Step.cards)
+                Text("Özet").tag(Step.summary)
+                Text("Test").tag(Step.test)
+                Text("Kartlar").tag(Step.cards)
             }
             .pickerStyle(.segmented)
             .controlSize(.large)
@@ -101,10 +102,12 @@ struct NoteDetailView: View {
                 case .points: PointsSection(points: summary.points) {
                     // Reaching the end of the main points completes Anla, as on the site.
                     store.markStepDone(note, step: "anla")
-                    withAnimation { step = .cards }
+                    withAnimation { step = .test }
                 }
                 case .full: if let detailed = summary.detailed { FullSummarySection(detailed: detailed) }
                 }
+            case .test:
+                QuizSection(note: note) { withAnimation { step = .cards } }
             case .cards:
                 NoteCardsSection(note: note)
             }
@@ -259,7 +262,7 @@ private struct PointsSection: View {
                         .buttonStyle(PrimaryButtonStyle())
                     } else {
                         Button(action: toCards) {
-                            HStack(spacing: 6) { Text("Kartlarla pekiştir"); Image(systemName: "arrow.right") }
+                            HStack(spacing: 6) { Text("Teste geç"); Image(systemName: "arrow.right") }
                         }
                         .buttonStyle(PrimaryButtonStyle())
                     }

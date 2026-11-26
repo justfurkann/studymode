@@ -127,14 +127,40 @@ struct QuizAttempt: Decodable, Hashable {
     let score: Int
     let total: Int
     let createdAt: String
+    /// Ids of the questions answered wrong, and the option chosen for each question (older rows have none).
+    var wrongIds: [String]?
+    var answers: [Int]?
 
     enum CodingKeys: String, CodingKey {
-        case score, total
+        case score, total, answers
         case noteId = "note_id"
         case createdAt = "created_at"
+        case wrongIds = "wrong_ids"
     }
 
-    static let columns = "note_id,score,total,created_at"
+    static let columns = "note_id,score,total,created_at,wrong_ids,answers"
+}
+
+/// One multiple-choice question of a note (notes.questions, the site's Question type).
+struct Question: Decodable, Hashable, Identifiable {
+    let id: String
+    let prompt: String
+    let options: [String]
+    let answerIndex: Int
+    let explanation: String
+    let source: String?
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(String.self, forKey: .id)) ?? UUID().uuidString
+        prompt = (try? c.decode(String.self, forKey: .prompt)) ?? ""
+        options = (try? c.decode([String].self, forKey: .options)) ?? []
+        answerIndex = (try? c.decode(Int.self, forKey: .answerIndex)) ?? 0
+        explanation = (try? c.decode(String.self, forKey: .explanation)) ?? ""
+        source = try? c.decodeIfPresent(String.self, forKey: .source)
+    }
+
+    enum CodingKeys: String, CodingKey { case id, prompt, options, answerIndex, explanation, source }
 }
 
 /// A flashcard with its review state (the cards table, without user_id and timestamps).

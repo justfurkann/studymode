@@ -13,7 +13,7 @@ final class StudyStore {
     private(set) var exams: [CourseExam] = []
     private(set) var notes: [NoteItem] = []
     private(set) var cards: [Card] = []
-    private(set) var attempts: [QuizAttempt] = []
+    var attempts: [QuizAttempt] = []
     /// Study days (day → reviews), newest first: today's goal and the streak.
     var days: [StudyDayCount] = []
     /// New cards started today, from study_days.new_cards; nil while that column does not exist yet.
@@ -31,6 +31,8 @@ final class StudyStore {
             await work()
         }
     }
+
+    func addCardsLocally(_ new: [Card]) { cards += new }
 
     func replace(_ card: Card) {
         if let index = cards.firstIndex(where: { $0.id == card.id }) { cards[index] = card }
