@@ -20,6 +20,8 @@ struct MainTabs: View {
             store.audience = Exams.audience(forLevel: auth.educationLevel)
             await store.load()
         }
+        // The level from the intro reaches the account a moment after sign-in.
+        .onChange(of: auth.educationLevel) { _, level in store.audience = Exams.audience(forLevel: level) }
     }
 }
 

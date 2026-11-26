@@ -50,10 +50,41 @@ final class AuthModel {
             if let session, !session.isExpired {
                 self.session = session
                 state = .signedIn
+                await savePendingLevel()
             } else {
                 self.session = nil
                 state = .signedOut
             }
+        }
+    }
+
+    /// The level picked in the intro ("Seni tanıyalım") goes on the account the way the site saves
+    /// it (src/lib/education.ts saveEducation, as EducationForm's saveLevelEarly does): the whole
+    /// education object, other answers empty, v: 2. An account that already has one keeps its own.
+    /// A university student is then asked for school and department by the site, as usual.
+    private func savePendingLevel() async {
+        guard let level = OnboardingStore.pendingLevel else { return }
+        guard session?.user.userMetadata["education"] == nil else {
+            OnboardingStore.pendingLevel = nil
+            return
+        }
+        let education: AnyJSON = .object([
+            "level": .string(level.rawValue),
+            "school": .string(""),
+            "department": .string(""),
+            "classYear": .string(""),
+            "birthYear": .null,
+            "gender": .null,
+            "heardFrom": .null,
+            "v": .integer(2),
+            "at": .string(ISO.string(.now)),
+        ])
+        do {
+            let user = try await supabase.auth.update(user: UserAttributes(data: ["education": education]))
+            session?.user = user
+            OnboardingStore.pendingLevel = nil
+        } catch {
+            // Kept on the phone; tried again at the next sign-in. The site asks for it anyway.
         }
     }
 

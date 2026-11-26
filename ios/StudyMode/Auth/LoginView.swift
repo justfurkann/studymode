@@ -5,7 +5,15 @@ struct LoginView: View {
     enum Mode { case signIn, signUp, forgot }
 
     @Environment(AuthModel.self) private var auth
-    @State private var mode: Mode = .signIn
+    @Environment(CaptchaController.self) private var captcha
+    @State private var mode: Mode
+    /// Back to the intro (only when the intro led here).
+    var onBack: (() -> Void)?
+
+    init(initialMode: Mode = .signIn, onBack: (() -> Void)? = nil) {
+        _mode = State(initialValue: initialMode)
+        self.onBack = onBack
+    }
     @State private var firstName = ""
     @State private var lastName = ""
     @State private var email = ""
@@ -15,7 +23,6 @@ struct LoginView: View {
     @State private var busy = false
     @State private var error: String?
     @State private var info: String?
-    @State private var captcha = CaptchaController()
     @FocusState private var focus: Field?
 
     enum Field { case first, last, email, password, repeatPassword }
@@ -51,11 +58,21 @@ struct LoginView: View {
 
     private var header: some View {
         VStack(spacing: 14) {
+            if let onBack {
+                Button(action: onBack) {
+                    Label("Tanıtıma dön", systemImage: "chevron.left")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.text2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
             Image("Logo")
                 .resizable()
                 .scaledToFit()
                 .frame(height: 40)
                 .accessibilityLabel("StudyMode")
+            // Someone coming from the intro has just read the slogan; the card moves up instead.
+            if onBack == nil {
             VStack(spacing: 2) {
                 Text("Notunu yükle,")
                     .font(Theme.display(.title))
@@ -71,6 +88,7 @@ struct LoginView: View {
                     .foregroundStyle(Theme.text)
             }
             .multilineTextAlignment(.center)
+            }
         }
         .padding(.top, 8)
     }
@@ -157,10 +175,14 @@ struct LoginView: View {
                 }
             }
 
+            // Invisible unless Cloudflare asks for a tap; then the box takes its place here.
             TurnstileView(controller: captcha)
-                .frame(height: 68)
+                .frame(height: captcha.needsInteraction ? 68 : 1)
                 .frame(maxWidth: .infinity)
+                .opacity(captcha.needsInteraction ? 1 : 0)
+                .animation(.snappy, value: captcha.needsInteraction)
                 .accessibilityLabel("Bot doğrulaması")
+                .accessibilityHidden(!captcha.needsInteraction)
 
             if let error {
                 Message(text: error, kind: .error)
@@ -251,7 +273,9 @@ struct LoginView: View {
             return error = "Şifreni yaz."
         }
         guard let token = captcha.take() else {
-            return error = "Bot doğrulamasının bitmesini bekle; kutu birkaç saniyede kendiliğinden işaretlenir."
+            return error = captcha.needsInteraction
+                ? "Aşağıdaki kutuya dokunup bot doğrulamasını tamamla, sonra tekrar dene."
+                : "Bot doğrulaması birkaç saniye sürüyor; biraz bekleyip tekrar dene."
         }
         focus = nil
         busy = true
@@ -315,5 +339,5 @@ struct Message: View {
 }
 
 #Preview {
-    LoginView().environment(AuthModel())
+    LoginView().environment(AuthModel()).environment(CaptchaController())
 }

@@ -128,7 +128,7 @@ struct GoogleSignInButton: View {
 
     private func start() {
         guard let token = captcha.take() else {
-            error = "Bot doğrulamasının bitmesini bekle; kutu birkaç saniyede kendiliğinden işaretlenir. Sonra Google ile tekrar dene."
+            error = captcha.needsInteraction ? "Aşağıdaki kutuya dokunup bot doğrulamasını tamamla, sonra Google ile tekrar dene." : "Bot doğrulaması birkaç saniye sürüyor; biraz bekleyip Google ile tekrar dene."
             return
         }
         guard let anchor = UIApplication.shared.connectedScenes.compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first else { return }

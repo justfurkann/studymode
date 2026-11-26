@@ -112,7 +112,7 @@ struct AppleSignInButton: View {
             case let .success(authorization):
                 guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else { return }
                 guard let token = captcha.take() else {
-                    error = "Bot doğrulamasının bitmesini bekle; kutu birkaç saniyede kendiliğinden işaretlenir. Sonra Apple ile tekrar dene."
+                    error = captcha.needsInteraction ? "Aşağıdaki kutuya dokunup bot doğrulamasını tamamla, sonra Apple ile tekrar dene." : "Bot doğrulaması birkaç saniye sürüyor; biraz bekleyip Apple ile tekrar dene."
                     return
                 }
                 busy = true
