@@ -4,6 +4,7 @@ import SwiftUI
 struct MainTabs: View {
     @Environment(AuthModel.self) private var auth
     @State private var store = StudyStore()
+    @State private var place = AssistantPlace()
 
     private var shareCatalog: PDFInbox.Catalog? {
         guard store.status == .ready, let user = auth.session?.user.id else { return nil }
@@ -23,7 +24,21 @@ struct MainTabs: View {
             AccountView()
                 .tabItem { Label("Hesap", systemImage: "person.crop.circle") }
         }
+        .overlay(alignment: .bottomTrailing) {
+            if store.status == .ready {
+                AssistantButton()
+                    .padding(.trailing, 14)
+                    .padding(.bottom, 92)
+            }
+        }
+        .sheet(isPresented: Binding(get: { place.open }, set: { place.open = $0 })) {
+            AssistantSheet()
+                .environment(store)
+                .environment(place)
+                .presentationDetents([.large])
+        }
         .environment(store)
+        .environment(place)
         .onChange(of: shareCatalog, initial: true) { _, catalog in try? PDFInbox.publish(catalog) }
         .task {
             store.audience = Exams.audience(forLevel: auth.educationLevel)
@@ -96,6 +111,7 @@ struct AccountView: View {
                             Task {
                                 await auth.signOut()
                                 store.reset()
+                                Assistant.clearAll()
                             }
                         } label: {
                             Text("Çıkış yap").foregroundStyle(Theme.danger)

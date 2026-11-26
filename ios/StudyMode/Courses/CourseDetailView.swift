@@ -14,6 +14,7 @@ struct CourseDetailView: View {
     @State private var askDelete = false
     @State private var deleteError = false
     @Environment(\.dismiss) private var dismissCourse
+    @Environment(AssistantPlace.self) private var place
 
     /// The course as the store knows it now (name and color may have been edited).
     private var current: Course { store.courses.first { $0.id == course.id } ?? course }
@@ -77,6 +78,7 @@ struct CourseDetailView: View {
         } message: {
             Text("Dersin bütün notları, kartları, test sonuçları ve sınavları da silinir. Bu işlem geri alınamaz; site ve uygulama aynı hesabı kullandığı için ikisinden de silinir.")
         }
+        .onAppear { place.courseId = course.id; place.noteId = nil }
         .alert("Ders silinemedi", isPresented: $deleteError) { Button("Tamam") {} } message: { Text("Bağlantını kontrol edip tekrar dene.") }
         .sheet(isPresented: $adding) {
             AddNoteView(course: course, onDone: openNote).environment(store)

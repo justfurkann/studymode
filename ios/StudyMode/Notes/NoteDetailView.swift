@@ -27,6 +27,7 @@ struct NoteDetailView: View {
     @State private var regenerating: (Int, Int)?
     @State private var actionError: String?
     @Environment(\.dismiss) private var dismissNote
+    @Environment(AssistantPlace.self) private var place
 
     private func bookmark() {
         guard loaded, summary != nil, step == .summary, loadError == nil else { return }
@@ -103,6 +104,8 @@ struct NoteDetailView: View {
             Button("Tamam") {}
         } message: { Text(actionError ?? "") }
         .task { await load() }
+        .onAppear { place.courseId = note.courseId; place.noteId = note.id }
+        .onDisappear { if place.noteId == note.id { place.noteId = nil } }
     }
 
     /// The note as the store knows it now (the title may have been edited).
@@ -110,6 +113,7 @@ struct NoteDetailView: View {
 
     private var noteMenu: some View {
         Menu {
+            Button { place.show(course: note.courseId, note: note.id) } label: { Label("Fosfor'a sor", systemImage: "bubble.left.and.text.bubble.right") }
             Button { showSource = true } label: { Label("Kaynak metin", systemImage: "doc.text") }
             Button { editing = true } label: { Label("Notu düzenle", systemImage: "pencil") }
             if currentNote.isPrepared {
