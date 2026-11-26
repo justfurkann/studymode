@@ -93,8 +93,16 @@ struct NoteDetailView: View {
                 .controlSize(.small)
 
                 switch section {
-                case .terms: TermsSection(summary: summary) { withAnimation { section = .points } }
-                case .points: PointsSection(points: summary.points) { withAnimation { step = .cards } }
+                    case .terms: TermsSection(summary: summary) {
+                    // Like the site's "Devam: Ana noktalar": the Tanış step is done.
+                    store.markStepDone(note, step: "tanis")
+                    withAnimation { section = .points }
+                }
+                case .points: PointsSection(points: summary.points) {
+                    // Reaching the end of the main points completes Anla, as on the site.
+                    store.markStepDone(note, step: "anla")
+                    withAnimation { step = .cards }
+                }
                 case .full: if let detailed = summary.detailed { FullSummarySection(detailed: detailed) }
                 }
             case .cards:

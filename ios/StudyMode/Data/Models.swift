@@ -83,6 +83,12 @@ struct NoteItem: Identifiable, Decodable, Hashable {
     let overview: String?
     /// summary->completedSteps
     var completedSteps: [String]?
+    /// summary->checkedTerms and the key terms' names: the site's "Tanış" step counts as done when
+    /// every term is checked (computeNoteProgress).
+    let checkedTerms: [String]?
+    let keyTerms: [TermName]?
+
+    struct TermName: Decodable, Hashable { let term: String }
 
     var isPrepared: Bool { !(overview ?? "").isEmpty }
 
@@ -91,9 +97,44 @@ struct NoteItem: Identifiable, Decodable, Hashable {
         case courseId = "course_id"
         case createdAt = "created_at"
         case completedSteps = "steps"
+        case checkedTerms = "checked"
+        case keyTerms = "terms"
     }
 
-    static let columns = "id,course_id,title,generator,created_at,overview:summary->>overview,steps:summary->completedSteps"
+    static let columns = "id,course_id,title,generator,created_at,overview:summary->>overview,steps:summary->completedSteps,checked:summary->checkedTerms,terms:summary->keyTerms"
+}
+
+/// One study_days row, only the counts the app needs.
+struct StudyDayCount: Decodable, Hashable {
+    let day: String
+    var reviews: Int
+    let quizzes: Int
+    let actions: Int?
+    var newCards: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case day, reviews, quizzes, actions
+        case newCards = "new_cards"
+    }
+
+    /// Any study counts for the streak (cards, tests, written answers).
+    var studied: Bool { reviews + quizzes + (actions ?? 0) > 0 }
+}
+
+/// A finished test of a note (quiz_attempts), for readiness and for "the test was solved".
+struct QuizAttempt: Decodable, Hashable {
+    let noteId: UUID
+    let score: Int
+    let total: Int
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case score, total
+        case noteId = "note_id"
+        case createdAt = "created_at"
+    }
+
+    static let columns = "note_id,score,total,created_at"
 }
 
 /// A flashcard with its review state (the cards table, without user_id and timestamps).

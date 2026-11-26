@@ -12,6 +12,7 @@ Uygulama Claude'unun çalışma planı. Site ile ortak işler `docs/IOS_SYNC.md`
 | 4 | Kartlar ve Tekrar (srs.ts birebir; `cards`, `study_days`, `completedSteps` yazımı) | ✅ |
 | — | Hesap silme, Apple ile giriş, Google ile giriş, şifre otomatik doldurma, uygulama simgesi | ✅ (Apple ve otomatik doldurma ücretli ekibi bekliyor) |
 | — | Açılış akışı: 3 tanıtım sayfası, "Seni tanıyalım" (seviye → `user_metadata.education`, site gibi v2), sonra kayıt; bot doğrulaması arka planda ve görünmez | ✅ 26 Kasım |
+| — | Yeni Tekrar (kalite kontrol önerisi): günlük hedef 15, günde en fazla 5 yeni, sıra (sınav → bilinemeyen → gecikmiş → yeni), "Bugün tamam" + "Biraz daha", ders bazında hazırlık (sitenin `examReadiness`'i birebir) | ✅ kodlandı 26 Kasım; giriş yapılmış ekranda henüz görülmedi |
 | 5 | Test (sorular, `quiz_attempts`, son sonuç, tekrar çöz) | sırada |
 | 6 | Not ekleme: metin, fotoğraf (sayfa okuma), PDF; hazırlama 12.000 karakterlik parçalar, 3 aynı anda | |
 | 7 | Toparlama: hata mesajları, boş ekranlar, erişilebilirlik, birim testleri | |

@@ -53,17 +53,18 @@ struct CoursesView: View {
     }
 
     private var greeting: some View {
-        let due = store.dueCount()
+        let left = min(store.goalLeft, store.todayQueue.count)
+        let done = min(ReviewRules.dailyGoal, store.reviewsToday)
         return VStack(alignment: .leading, spacing: 10) {
             if !auth.firstName.isEmpty {
                 Text("Selam, \(auth.firstName)")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.text2)
             }
-            if due > 0 {
+            if left > 0 || done > 0 {
                 HStack(spacing: 8) {
-                    Image(systemName: "rectangle.stack.fill")
-                    Text("\(due) kart tekrar bekliyor")
+                    Image(systemName: left == 0 ? "checkmark.circle.fill" : "rectangle.stack.fill")
+                    Text(left == 0 ? "Bugünkü tekrar tamam" : "Bugünkü hedef: \(done)/\(ReviewRules.dailyGoal)")
                 }
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.onHi)
@@ -83,7 +84,7 @@ struct CourseRow: View {
     var body: some View {
         let notes = store.notes(in: course).count
         let cards = store.cardCount(course: course)
-        let due = store.dueCount(course: course)
+        let readiness = store.readiness(of: course)
         HStack(spacing: 14) {
             RoundedRectangle(cornerRadius: 3)
                 .fill(course.tint)
@@ -99,9 +100,9 @@ struct CourseRow: View {
                     Text(notes == 0 ? "Not yok" : "\(notes) not")
                     Text("·")
                     Text("\(cards) kart")
-                    if due > 0 {
+                    if let readiness {
                         Text("·")
-                        Text("\(due) tekrar").fontWeight(.semibold).foregroundStyle(Theme.text)
+                        Text("Hazırlık %\(readiness)").fontWeight(.semibold).foregroundStyle(Theme.text)
                     }
                 }
                 .font(.footnote)

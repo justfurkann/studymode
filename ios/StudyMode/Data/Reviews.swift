@@ -16,10 +16,17 @@ private struct CardReviewUpdate: Encodable {
 private struct StudyDayRow: Decodable {
     let id: UUID
     let reviews: Int
+    let new_cards: Int?
 }
 
 private struct StudyDayReviewsUpdate: Encodable {
     let reviews: Int
+    let updated_at: String
+}
+
+private struct StudyDayReviewsAndNewUpdate: Encodable {
+    let reviews: Int
+    let new_cards: Int
     let updated_at: String
 }
 
@@ -29,6 +36,17 @@ private struct NewStudyDay: Encodable {
     let reviews: Int
     let quizzes: Int
     let actions: Int
+    let created_at: String
+    let updated_at: String
+}
+
+private struct NewStudyDayWithNew: Encodable {
+    let id: UUID
+    let day: String
+    let reviews: Int
+    let quizzes: Int
+    let actions: Int
+    let new_cards: Int
     let created_at: String
     let updated_at: String
 }
@@ -69,13 +87,16 @@ extension StudyStore {
         updated.reps = result.reps
         updated.lapses = result.lapses
         replace(updated)
+        countLocally(review: card)
+        let wasNew = card.isNew
+        let trackNew = serverNewToday != nil
 
         let update = CardReviewUpdate(due: updated.due, interval: result.interval, ease: result.ease, reps: result.reps, lapses: result.lapses, updated_at: ISO.string(now))
         let day = SRS.dayKey(now)
         enqueueWrite { [weak self] in
             do {
                 try await supabase.from("cards").update(update).eq("id", value: card.id).execute()
-                try await Self.addReview(day: day, now: now)
+                try await Self.addReview(day: day, now: now, newCard: wasNew && trackNew)
             } catch {
                 await MainActor.run {
                     self?.replace(card)
@@ -86,11 +107,19 @@ extension StudyStore {
     }
 
     /// Today's row, read fresh right before writing so counts made on the site are not lost.
-    private static func addReview(day: String, now: Date) async throws {
-        let rows: [StudyDayRow] = try await supabase.from("study_days").select("id,reviews").eq("day", value: day).order("created_at").limit(1).execute().value
+    /// `newCard` is only true once study_days.new_cards exists (the load found it).
+    private static func addReview(day: String, now: Date, newCard: Bool) async throws {
+        let columns = newCard ? "id,reviews,new_cards" : "id,reviews"
+        let rows: [StudyDayRow] = try await supabase.from("study_days").select(columns).eq("day", value: day).order("created_at").limit(1).execute().value
         let stamp = ISO.string(now)
         if let row = rows.first {
-            try await supabase.from("study_days").update(StudyDayReviewsUpdate(reviews: row.reviews + 1, updated_at: stamp)).eq("id", value: row.id).execute()
+            if newCard {
+                try await supabase.from("study_days").update(StudyDayReviewsAndNewUpdate(reviews: row.reviews + 1, new_cards: (row.new_cards ?? 0) + 1, updated_at: stamp)).eq("id", value: row.id).execute()
+            } else {
+                try await supabase.from("study_days").update(StudyDayReviewsUpdate(reviews: row.reviews + 1, updated_at: stamp)).eq("id", value: row.id).execute()
+            }
+        } else if newCard {
+            try await supabase.from("study_days").insert(NewStudyDayWithNew(id: UUID(), day: day, reviews: 1, quizzes: 0, actions: 0, new_cards: 1, created_at: stamp, updated_at: stamp)).execute()
         } else {
             try await supabase.from("study_days").insert(NewStudyDay(id: UUID(), day: day, reviews: 1, quizzes: 0, actions: 0, created_at: stamp, updated_at: stamp)).execute()
         }

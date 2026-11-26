@@ -11,7 +11,7 @@ struct MainTabs: View {
                 .tabItem { Label("Dersler", systemImage: "books.vertical") }
             ReviewTab()
                 .tabItem { Label("Tekrar", systemImage: "rectangle.stack") }
-                .badge(store.dueCount())
+                .badge(store.status == .ready ? min(store.goalLeft, store.todayQueue.count) : 0)
             AccountView()
                 .tabItem { Label("Hesap", systemImage: "person.crop.circle") }
         }

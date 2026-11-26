@@ -27,7 +27,7 @@ struct CourseDetailView: View {
     }
 
     private func header(noteCount: Int) -> some View {
-        let due = store.dueCount(course: course)
+        let readiness = store.readiness(of: course)
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Circle().fill(course.tint).frame(width: 14, height: 14)
@@ -35,7 +35,7 @@ struct CourseDetailView: View {
                     .font(Theme.display(.title))
                     .foregroundStyle(Theme.text)
             }
-            Text("\(noteCount) not · \(store.cardCount(course: course)) kart\(due > 0 ? " · \(due) tekrar bekliyor" : "")")
+            Text("\(noteCount) not · \(store.cardCount(course: course)) kart\(readiness.map { " · Hazırlık %\($0)" } ?? "")")
                 .font(.subheadline)
                 .foregroundStyle(Theme.text2)
         }

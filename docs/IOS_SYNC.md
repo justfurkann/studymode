@@ -67,6 +67,8 @@ Kaynak: kalite kontrol Claude'unun önerisi, kullanıcı onayladı. "15 kart" ve
 1. **Günde tek oturum.** Gün = cihazın yerel günü (`localDayKey`). Varsayılan hedef **15 kart** (~5 dk). Hedefin ilerlemesi `study_days.reviews` (bugünün satırı) üzerinden sayılır; böylece site ve uygulama aynı sayıyı görür.
 2. **Bitince "Bugün tamam" ekranı.** İsteğe bağlı **"Biraz daha"** aynı kurallarla **+10 kart** ekler (sınırsız tekrarlanabilir).
 3. **Kuyruğa kim girer:** yalnızca **özeti okunmuş ya da testi çözülmüş** notların kartları.
+   - **Uygulama Claude'unun eklediği yorum (26 Kasım, kalite kontrol baksın):** bu şart yalnızca **hiç görülmemiş yeni kartlar** için uygulanıyor. En az bir kez cevaplanmış bir kart, notunun adımları ne olursa olsun zamanı gelince tekrara girer. Sebep: test hesabında 70 kartın hepsi elendi (hiçbir notta `tanis`/`anla` yok, test sonucu yok); bugün çalışılmış 8 kart bile bir daha gelmeyecekti, yani unutulacaktı. Kuralın amacı yeni kart yağmurunu kesmek; eski kartları kesmek değil.
+   - Uygulamada özet ekranı artık adımı işaretliyor: "Devam: Ana noktalar" → `tanis`, ana noktaların sonunda "Kartlarla pekiştir" → `anla` (sitedekiyle aynı yerler). Önceden işaretlemiyordu.
    - Özeti okunmuş = `summary.completedSteps` içinde `tanis` veya `anla` var.
    - Testi çözülmüş = `quiz_attempts` içinde o nota ait en az bir satır var.
    - Nota bağlı olmayan kartlar (`note_id` boş: elle eklenen) **girer** (kullanıcı kararı, 26 Kasım).

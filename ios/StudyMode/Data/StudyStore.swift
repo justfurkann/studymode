@@ -13,6 +13,11 @@ final class StudyStore {
     private(set) var exams: [CourseExam] = []
     private(set) var notes: [NoteItem] = []
     private(set) var cards: [Card] = []
+    private(set) var attempts: [QuizAttempt] = []
+    /// Study days (day → reviews), newest first: today's goal and the streak.
+    var days: [StudyDayCount] = []
+    /// New cards started today, from study_days.new_cards; nil while that column does not exist yet.
+    var serverNewToday: Int?
     var audience: ExamAudience = .uni
     /// Shown as a banner when a save fails; the screen clears it.
     var saveError: String?
@@ -54,7 +59,10 @@ final class StudyStore {
             async let notes: [NoteItem] = supabase.from("notes").select(NoteItem.columns).order("created_at", ascending: false).execute().value
             async let cards: [Card] = fetchCards()
             async let exams: [CourseExam] = fetchExams()
-            (self.courses, self.notes, self.cards, self.exams) = try await (courses, notes, cards, exams)
+            async let attempts: [QuizAttempt] = supabase.from("quiz_attempts").select(QuizAttempt.columns).execute().value
+            async let days = fetchDays()
+            (self.courses, self.notes, self.cards, self.exams, self.attempts) = try await (courses, notes, cards, exams, attempts)
+            (self.days, self.serverNewToday) = try await days
             status = .ready
         } catch is CancellationError {
             // Pull to refresh was let go; keep what is shown.
@@ -73,6 +81,20 @@ final class StudyStore {
             all += rows
             if rows.count < page { return all }
             from += page
+        }
+    }
+
+    /// The last two months of study days (enough for the streak), and today's new-card count when
+    /// study_days.new_cards exists (docs/IOS_SYNC.md item 6).
+    private func fetchDays() async throws -> ([StudyDayCount], Int?) {
+        let since = SRS.dayKey(Calendar.current.date(byAdding: .day, value: -62, to: .now) ?? .now)
+        do {
+            let rows: [StudyDayCount] = try await supabase.from("study_days").select("day,reviews,quizzes,actions,new_cards").gte("day", value: since).order("day", ascending: false).execute().value
+            let today = rows.filter { $0.day == SRS.dayKey() }
+            return (rows, today.isEmpty ? 0 : today.reduce(0) { $0 + ($1.newCards ?? 0) })
+        } catch let error as PostgrestError where error.code == "PGRST204" || error.code == "42703" {
+            let rows: [StudyDayCount] = try await supabase.from("study_days").select("day,reviews,quizzes,actions").gte("day", value: since).order("day", ascending: false).execute().value
+            return (rows, nil)
         }
     }
 
@@ -125,7 +147,7 @@ final class StudyStore {
     }
 
     func reset() {
-        courses = []; exams = []; notes = []; cards = []
+        courses = []; exams = []; notes = []; cards = []; attempts = []; days = []; serverNewToday = nil
         status = .idle
     }
 

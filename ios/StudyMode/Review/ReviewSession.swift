@@ -4,7 +4,8 @@ import SwiftUI
 /// `.grades` (Tekrar tab): Bilemedim / Zor / İyi / Kolay with when each brings the card back.
 /// `.simple` (a note's Kartlar): Tekrar / Bildim. Cards answered "again" go to the back of the queue.
 struct ReviewSession: View {
-    enum Mode { case grades, simple }
+    /// `.daily`: the Tekrar tab's daily session (grades, card context, "Bugün tamam" and "Biraz daha").
+    enum Mode { case grades, simple, daily }
 
     @Environment(StudyStore.self) private var store
     @Environment(\.dismiss) private var dismiss
@@ -22,14 +23,16 @@ struct ReviewSession: View {
     @State private var revealed = false
     @State private var showHint = false
     @State private var finished = false
-    private let startIds: [UUID]
+    @State private var startedAt = Date.now
+    @State private var readinessBefore: (course: Course, value: Int)?
+    @State private var startIds: [UUID]
 
     init(title: String, cards: [Card], mode: Mode, onFinish: (() -> Void)? = nil) {
         self.title = title
         self.mode = mode
         self.onFinish = onFinish
         let ids = cards.map(\.id)
-        startIds = ids
+        _startIds = State(initialValue: ids)
         _queue = State(initialValue: ids)
         _total = State(initialValue: ids.count)
     }
@@ -43,9 +46,12 @@ struct ReviewSession: View {
                 VStack(spacing: 18) {
                     if let card, !finished {
                         progress
+                        if mode == .daily { context(for: card) }
                         CardFace(card: card, revealed: revealed, hint: showHint ? CardHint.make(card.back) : nil)
                             .onTapGesture { if !revealed { withAnimation(.snappy) { revealed = true } } }
                         controls(for: card)
+                    } else if mode == .daily {
+                        dailyDone
                     } else {
                         done
                     }
@@ -63,6 +69,130 @@ struct ReviewSession: View {
             .overlay(alignment: .top) { SaveErrorBanner() }
         }
         .sensoryFeedback(.selection, trigger: revealed)
+        .onAppear { captureReadiness() }
+    }
+
+    /// The course of the session's first card, and its readiness now, to show the change at the end.
+    private func captureReadiness() {
+        guard mode == .daily, readinessBefore == nil,
+              let first = queue.first.flatMap({ id in store.cards.first { $0.id == id } }),
+              let course = store.courses.first(where: { $0.id == first.courseId }),
+              let value = store.readiness(of: course) else { return }
+        readinessBefore = (course, value)
+    }
+
+    /// Which course the card is from, its exam, and whether it was missed before.
+    private func context(for card: Card) -> some View {
+        let course = store.courses.first { $0.id == card.courseId }
+        let exam = course.flatMap { store.nextExam($0) }.flatMap { Exams.countdown($0, store.audience) }
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                if let course {
+                    HStack(spacing: 5) {
+                        Circle().fill(course.tint).frame(width: 7, height: 7)
+                        Text(exam.map { "\(course.name) · \($0.text)" } ?? course.name)
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.text)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Theme.surface, in: Capsule())
+                    .overlay(Capsule().stroke(Theme.border, lineWidth: 1))
+                }
+                if card.failedBefore {
+                    Label("Geçen sefer bilemedin", systemImage: "arrow.counterclockwise")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.danger)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Theme.dangerSoft, in: Capsule())
+                } else if card.isNew {
+                    Label("Yeni kart", systemImage: "sparkle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.text)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Theme.hiSoft, in: Capsule())
+                }
+            }
+        }
+    }
+
+    /// "Bugün tamam": what was done, what changed, and an optional "Biraz daha".
+    private var dailyDone: some View {
+        let minutes = max(1, Int((Date.now.timeIntervalSince(startedAt) / 60).rounded()))
+        let after = readinessBefore.flatMap { store.readiness(of: $0.course) }
+        let more = store.hasMore()
+        return VStack(spacing: 18) {
+            Spacer()
+            Image(systemName: "checkmark")
+                .font(.system(size: 34, weight: .heavy))
+                .foregroundStyle(Theme.onHi)
+                .frame(width: 76, height: 76)
+                .background(Theme.hi, in: Circle())
+            VStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    Text("Bugün")
+                        .font(Theme.display(.title))
+                        .foregroundStyle(Theme.text)
+                    Highlighted(text: "tamam", font: Theme.display(.title))
+                }
+                Text(total == 0 ? "Şu an tekrar edilecek kart yok." : "\(total) kart · \(minutes) dk · \(knownFirstTry) tanesini ilk denemede bildin")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.text2)
+                    .multilineTextAlignment(.center)
+            }
+            VStack(spacing: 8) {
+                if let before = readinessBefore, let after {
+                    HStack {
+                        Text("\(before.course.name) hazırlık").lineLimit(1)
+                        Spacer()
+                        Text(after == before.value ? "%\(after)" : "%\(before.value) → %\(after)").fontWeight(.semibold)
+                    }
+                }
+                if store.streak > 0 {
+                    HStack {
+                        Text("Seri")
+                        Spacer()
+                        Text("\(store.streak) gün").fontWeight(.semibold)
+                    }
+                }
+            }
+            .font(.subheadline)
+            .foregroundStyle(Theme.text)
+            .padding(14)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
+            Text("Yarın yaklaşık \(store.tomorrowEstimate) kart seni bekliyor.")
+                .font(.footnote)
+                .foregroundStyle(Theme.text3)
+            Spacer()
+            VStack(spacing: 10) {
+                Button("Bitir") { dismiss() }
+                    .buttonStyle(PrimaryButtonStyle())
+                if more {
+                    Button("Biraz daha (+\(ReviewRules.moreSize))") { more10() }
+                        .buttonStyle(SecondaryButtonStyle())
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Ten more under the same rules; cards just answered are no longer due, so they don't repeat.
+    private func more10() {
+        let next = store.reviewQueue(size: ReviewRules.moreSize, newAllowed: store.newLeftToday).map(\.id)
+        guard !next.isEmpty else { return }
+        startIds = next
+        queue = next
+        total = next.count
+        answered = 0
+        knownFirstTry = 0
+        missed = []
+        startedAt = .now
+        readinessBefore = nil
+        withAnimation(.snappy) { finished = false }
+        captureReadiness()
     }
 
     private var progress: some View {
@@ -101,7 +231,7 @@ struct ReviewSession: View {
                     Button { answer(card, .good) } label: { Label("Bildim", systemImage: "checkmark") }
                         .buttonStyle(PrimaryButtonStyle())
                 }
-            case .grades:
+            case .grades, .daily:
                 HStack(spacing: 8) {
                     ForEach(Grade.allCases, id: \.self) { grade in
                         Button { answer(card, grade) } label: {
