@@ -9,6 +9,14 @@ struct CourseDetailView: View {
     @State private var addingExam = false
     @State private var editingExam: CourseExam?
     @State private var showMockExam = false
+    @State private var editingCourse = false
+    @State private var sharing = false
+    @State private var askDelete = false
+    @State private var deleteError = false
+    @Environment(\.dismiss) private var dismissCourse
+
+    /// The course as the store knows it now (name and color may have been edited).
+    private var current: Course { store.courses.first { $0.id == course.id } ?? course }
 
     var body: some View {
         let notes = store.notes(in: course)
@@ -41,7 +49,35 @@ struct CourseDetailView: View {
                     Label("Not ekle", systemImage: "plus")
                 }
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button { editingCourse = true } label: { Label("Dersi düzenle", systemImage: "pencil") }
+                    Button { sharing = true } label: { Label("Dersi paylaş", systemImage: "person.2") }
+                    Divider()
+                    Button(role: .destructive) { askDelete = true } label: { Label("Dersi sil", systemImage: "trash") }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Ders menüsü")
+            }
         }
+        .sheet(isPresented: $editingCourse) { CourseEditSheet(course: current).environment(store) }
+        .sheet(isPresented: $sharing) { CourseShareSheet(course: current).environment(store) }
+        .confirmationDialog("“\(current.name)” dersi silinsin mi?", isPresented: $askDelete, titleVisibility: .visible) {
+            Button("Dersi sil", role: .destructive) {
+                Task {
+                    do {
+                        try await store.deleteCourse(current)
+                        dismissCourse()
+                    } catch {
+                        deleteError = true
+                    }
+                }
+            }
+        } message: {
+            Text("Dersin bütün notları, kartları, test sonuçları ve sınavları da silinir. Bu işlem geri alınamaz; site ve uygulama aynı hesabı kullandığı için ikisinden de silinir.")
+        }
+        .alert("Ders silinemedi", isPresented: $deleteError) { Button("Tamam") {} } message: { Text("Bağlantını kontrol edip tekrar dene.") }
         .sheet(isPresented: $adding) {
             AddNoteView(course: course, onDone: openNote).environment(store)
         }
@@ -60,8 +96,8 @@ struct CourseDetailView: View {
         let readiness = store.readiness(of: course)
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Circle().fill(course.tint).frame(width: 14, height: 14)
-                Text(course.name)
+                Circle().fill(current.tint).frame(width: 14, height: 14)
+                Text(current.name)
                     .font(Theme.display(.title))
                     .foregroundStyle(Theme.text)
             }
