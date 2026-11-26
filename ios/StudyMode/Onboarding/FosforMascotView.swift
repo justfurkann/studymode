@@ -11,6 +11,9 @@ struct FosforMascotView: View {
         case cheering
     }
 
+    /// A small light tile with an outline behind Fosfor, so the dark cap and outline stay visible on
+    /// dark cards (the Bugün hero) as well as on paper. The intro scenes draw it bare.
+    var framed: Bool = true
     var size: CGFloat = 58
     var mood: Mood = .curious
     var badge: String? = nil
@@ -68,6 +71,17 @@ struct FosforMascotView: View {
                 .onTapGesture {
                     OnboardingHaptics.light()
                     hopTrigger += 1
+                }
+                .padding(framed ? size * 0.14 : 0)
+                .background {
+                    if framed {
+                        RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
+                            .fill(Theme.surface)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
+                                    .stroke(Theme.cardLine, lineWidth: max(1.5, size * 0.035))
+                            )
+                    }
                 }
 
             if let badge {

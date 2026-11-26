@@ -184,7 +184,7 @@ struct ScannerHighlightScene: View {
             }
 
             // Fosfor mascot perched at bottom-right corner reacting to highlights
-            FosforMascotView(
+            FosforMascotView(framed: false, 
                 size: 50,
                 mood: extractedReady ? .proud : .marking
             )
@@ -861,7 +861,7 @@ struct ExamReadinessArenaScene: View {
             .background(RoundedRectangle(cornerRadius: 20).fill(Theme.cardDrop).offset(y: 5))
             .padding(.horizontal, 12)
 
-            FosforMascotView(
+            FosforMascotView(framed: false, 
                 size: 48,
                 mood: activeDays >= 6 ? .cheering : .proud
             )
