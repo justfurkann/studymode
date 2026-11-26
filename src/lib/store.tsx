@@ -62,7 +62,13 @@ export type CourseExamDraft = Pick<CourseExam, 'kind' | 'date' | 'noteIds'> & { 
 
 const StoreContext = createContext<StoreValue | null>(null)
 
+/** A tab left alone this long reads the account again when it is shown. */
+export const STALE_AFTER_MS = 2 * 60 * 1000
+
 const nowIso = () => new Date().toISOString()
+
+/** A day's counters change by a delta, so another device's counts for the same day are kept. */
+const dayBump = (activity: ReturnType<typeof recordStudyActivity>): Change => ({ type: 'bump', table: 'studyDays', day: activity.updated.day, delta: activity.delta, row: activity.updated })
 const uuid = () => crypto.randomUUID()
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -91,6 +97,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const userId = session?.user.id ?? null
   const backend: Backend = useMemo(() => (supabase && userId ? supabaseBackend(supabase) : localBackend), [userId])
 
+  // When the data was last read from the server; a tab left open refreshes after this long away.
+  const loadedAt = useRef(0)
+
   useEffect(() => {
     if (!authReady) return
     let cancelled = false
@@ -100,6 +109,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .then((loaded) => {
         if (cancelled) return
         dataRef.current = loaded
+        loadedAt.current = Date.now()
         setData(loaded)
         setStatus('ready')
       })
@@ -126,7 +136,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const batch = [...unsaved.current, ...changes]
           unsaved.current = []
           try {
-            if (batch.length) await backend.apply(batch, dataRef.current)
+            const days = batch.length ? await backend.apply(batch, dataRef.current) : undefined
+            // The server's day rows include the phone's counts. Taken only when nothing else of ours is
+            // still on its way, so a newer answer in this tab is never hidden.
+            if (days?.length && pending.current === 1 && !unsaved.current.length) {
+              const touched = new Set(days.map((d) => d.day))
+              const next = { ...dataRef.current, studyDays: [...dataRef.current.studyDays.filter((d) => !touched.has(d.day)), ...days] }
+              dataRef.current = next
+              setData(next)
+            }
           } catch (e) {
             const message = e instanceof Error ? e.message : 'Değişiklik kaydedilemedi.'
             // Only a lost connection is worth retrying; a rejected row would fail forever and block every later save.
@@ -174,6 +192,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('beforeunload', onUnload)
     }
   }, [save])
+
+  // Back to a tab that was open for a while (the phone may have studied meanwhile): read the account
+  // again, quietly. Our own saves finish first; if anything changes here during the read, the fresh copy
+  // is dropped and read again next time, so nothing done in this tab is overwritten. Open pages keep
+  // their state (a card round or a test goes on), they only see newer data.
+  useEffect(() => {
+    if (!userId) return
+    let busy = false
+    const refresh = async () => {
+      if (busy || document.visibilityState !== 'visible' || status !== 'ready') return
+      if (Date.now() - loadedAt.current < STALE_AFTER_MS || unsaved.current.length) return
+      busy = true
+      try {
+        await queue.current
+        const before = dataRef.current
+        const loaded = await backend.load()
+        if (dataRef.current !== before || pending.current || unsaved.current.length) return
+        dataRef.current = loaded
+        loadedAt.current = Date.now()
+        setData(loaded)
+      } catch {
+        // Offline or a hiccup: keep what we have and try on the next return.
+      } finally {
+        busy = false
+      }
+    }
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [backend, userId, status])
 
   // A different account or the local store: what failed for the previous one must not go to this one.
   useEffect(() => {
@@ -382,7 +433,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { ...d, cards: d.cards.map(c => c.id === card.id ? restored : c), studyDays: activity.studyDays },
           [
             { type: 'upsert', table: 'cards', rows: [restored] },
-            { type: 'upsert', table: 'studyDays', rows: [activity.updated] },
+            dayBump(activity),
           ],
         )
       },
@@ -400,7 +451,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { ...d, cards: d.cards.map((c) => (c.id === id ? updated : c)), studyDays: activity.studyDays },
           [
             { type: 'upsert', table: 'cards', rows: [updated] },
-            { type: 'upsert', table: 'studyDays', rows: [activity.updated] },
+            dayBump(activity),
           ],
         )
       },
@@ -414,7 +465,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { ...d, attempts: [...d.attempts, attempt], studyDays: activity.studyDays },
           [
             { type: 'upsert', table: 'attempts', rows: [attempt] },
-            { type: 'upsert', table: 'studyDays', rows: [activity.updated] },
+            dayBump(activity),
           ],
         )
       },
@@ -513,7 +564,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       recordActivity() {
         const d = current()
         const activity = recordStudyActivity(d.studyDays, { actions: 1 })
-        commit({ ...d, studyDays: activity.studyDays }, [{ type: 'upsert', table: 'studyDays', rows: [activity.updated] }])
+        commit({ ...d, studyDays: activity.studyDays }, [dayBump(activity)])
       },
 
       updatePractice(noteId, itemId, patch, countsAsActivity = false) {
@@ -526,7 +577,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { ...d, notes: d.notes.map((n) => (n.id === noteId ? updated : n)), studyDays: activity ? activity.studyDays : d.studyDays },
           [
             { type: 'upsert', table: 'notes', rows: [updated] },
-            ...(activity ? [{ type: 'upsert' as const, table: 'studyDays' as const, rows: [activity.updated] }] : []),
+            ...(activity ? [dayBump(activity)] : []),
           ],
         )
       },
@@ -540,7 +591,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           { ...d, exams: [...d.exams, exam], studyDays: activity.studyDays },
           [
             { type: 'upsert', table: 'exams', rows: [exam] },
-            { type: 'upsert', table: 'studyDays', rows: [activity.updated] },
+            dayBump(activity),
           ],
         )
         return exam
@@ -577,7 +628,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         dataRef.current = next
         setData(next)
         const run = queue.current.then(() => backend.apply(changes, next))
-        queue.current = run.catch(() => undefined)
+        queue.current = run.then(
+          () => undefined,
+          () => undefined,
+        )
         await run
       },
     }

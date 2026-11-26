@@ -1,16 +1,20 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { emptyData, type StudyData } from './types'
+import { mergeStudyDays, type StudyDelta } from './streak'
+import { emptyData, type StudyData, type StudyDay } from './types'
 
 export type Table = 'courses' | 'notes' | 'cards' | 'attempts' | 'exams' | 'studyDays' | 'courseExams'
 
 export type Change =
   | { type: 'upsert'; table: Table; rows: object[] }
   | { type: 'delete'; table: Table; ids: string[] }
+  /** Adds to one day's counters. In the account only the delta is sent (another device may have counted too); `row` is this tab's copy. */
+  | { type: 'bump'; table: 'studyDays'; day: string; delta: StudyDelta; row: StudyDay }
 
 /** Where study data lives. The store applies changes to memory first, then hands them here. */
 export interface Backend {
   load(): Promise<StudyData>
-  apply(changes: Change[], next: StudyData): Promise<void>
+  /** Resolves with the day rows the server now has after `bump` changes (they include other devices' counts). */
+  apply(changes: Change[], next: StudyData): Promise<StudyDay[] | void>
 }
 
 // ---------- Local (this browser only) ----------
@@ -104,6 +108,9 @@ function chunks<T>(items: T[], size: number): T[][] {
 
 const PAGE = 1000
 
+/** PostgREST / Postgres codes for "this function does not exist". */
+const isMissingFunction = (error: { code?: string }) => error.code === 'PGRST202' || error.code === '42883'
+
 /** PostgREST / Postgres codes for "this table does not exist". */
 const isMissingTable = (error: { code?: string }) => error.code === 'PGRST205' || error.code === '42P01'
 
@@ -142,19 +149,45 @@ export function supabaseBackend(client: SupabaseClient): Backend {
       return Object.fromEntries(entries) as unknown as StudyData
     },
     async apply(changes) {
+      const days: StudyDay[] = []
       for (const change of changes) {
         const name = TABLE_NAMES[change.table]
+        if (change.type === 'bump') {
+          const { delta } = change
+          const { data, error } = await client.rpc('bump_study_day', {
+            p_day: change.day,
+            p_reviews: delta.reviews ?? 0,
+            p_quizzes: delta.quizzes ?? 0,
+            p_actions: delta.actions ?? 0,
+            p_new_cards: delta.newCards ?? 0,
+          })
+          if (!error) {
+            if (data && typeof data === 'object' && !Array.isArray(data)) days.push(mapKeys(data, toCamel, ['user_id']) as unknown as StudyDay)
+            continue
+          }
+          // A database without the function yet: save this tab's row as before.
+          if (!isMissingFunction(error)) {
+            if (isMissingTable(error)) continue
+            throw new Error(`Kaydedilemedi: ${error.message}`)
+          }
+          const { error: fallback } = await client.from(name).upsert(mapKeys(change.row, toSnake))
+          if (fallback && !isMissingTable(fallback) && !OPTIONAL_COLUMNS.has(missingColumn(fallback) ?? '')) throw new Error(`Kaydedilemedi: ${fallback.message}`)
+          continue
+        }
         if (change.type === 'upsert') {
-          for (const rows of chunks(change.rows, 500)) {
+          // A day has one row per account: rows for the same day are added up and saved onto that day.
+          const source = change.table === 'studyDays' ? mergeStudyDays(change.rows as StudyDay[]) : change.rows
+          const options = change.table === 'studyDays' ? { onConflict: 'user_id,day' } : undefined
+          for (const rows of chunks(source, 500)) {
             let payload = rows.map((row) => mapKeys(row, toSnake))
-            let { error } = await client.from(name).upsert(payload)
+            let { error } = await client.from(name).upsert(payload, options)
             // A column added in a later schema version (e.g. study_days.actions) may not exist yet in
             // this database; drop it and save the rest instead of failing every save until the owner
             // runs the migration.
             for (let tries = 0; error && OPTIONAL_COLUMNS.has(missingColumn(error) ?? '') && tries < 3; tries += 1) {
               const column = missingColumn(error)!
               payload = payload.map(({ [column]: _dropped, ...rest }) => rest)
-              ;({ error } = await client.from(name).upsert(payload))
+              ;({ error } = await client.from(name).upsert(payload, options))
             }
             if (error && isMissingTable(error)) {
               if (change.table === 'studyDays') continue
@@ -171,6 +204,7 @@ export function supabaseBackend(client: SupabaseClient): Backend {
           }
         }
       }
+      return days
     },
   }
 }
