@@ -41,6 +41,8 @@ Uygulama Claude'unun çalışma planı. Site ile ortak işler `docs/IOS_SYNC.md`
 - **Cloudflare kutusu:** gerçek iPhone'da hâlâ çıkıyor, tıklayınca geçiyor. Kullanıcı: "Okey gibi, sonra bakarız." Turnstile Managed kalıyor (IOS_SYNC madde 7).
 - **Sınav notu girilince (taşıma bitince bakılacak):** not girilince kısa bir kutlama/tepki animasyonu, notun yorumu (ör. ağırlıklara göre "finalden şu kadar alman yeterli") ve ona göre bir çalışma yolu önerisi. Kullanıcı emin değil ("belki"), fikir olarak duruyor. Sitede de olacaksa IOS_SYNC'e taşınır. Not: HANDOFF Aşama 60'ta "ağırlıklı ortalama / finalden kaç almam lazım" bilinçli olarak yapılmamıştı (geçme kuralları okula göre değişiyor); yapılırsa bu dikkate alınmalı.
 
+- **Google ile girişte her seferinde e-posta (kullanıcı, 26 Kasım):** uygulamada Google ile her girişte Google'dan "paylaşıldı" e-postası geliyor; sitede yalnızca ilk seferde geliyordu. Olası sebep: site Google'ın kimlik düğmesini (Google Identity Services, yalnızca kimlik belirteci) kullanıyor; uygulama ise iOS istemcisiyle tam OAuth akışı (yetki kodu + PKCE) yapıyor, Google bunu her seferinde "uygulamaya erişim verildi" olarak görüyor olabilir. Doğrulanmadı; e-postanın tam başlığına bakılacak. Olası çözümler: Google'ın iOS kütüphanesi (GoogleSignIn) ya da istekte `prompt=select_account`'u kaldırıp hesap seçiciyi Google'a bırakmak.
+
 **Diğer küçük notlar**
 - Kart turu "son tekrarı geri al" ve "karıştır" (sitede var, uygulamada yok).
 - Site ve uygulama aynı anda açıkken `study_days` günlük sayacında birkaç tekrar kaybolabilir (kartlar kaybolmaz).
