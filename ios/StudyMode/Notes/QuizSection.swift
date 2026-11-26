@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// A note's test, like the site's QuizTab: one question at a time, "Kontrol et", the explanation,
-/// then the score, the mistakes, "Tekrar çöz" and "Yanlışlarımı karta çevir". The last result stays
-/// on screen when the student comes back, until they retake it.
+/// then the score, the mistakes, "Tekrar çöz" and "Yanlışlarımı karta çevir".
 struct QuizSection: View {
     @Environment(StudyStore.self) private var store
     let note: NoteItem
@@ -19,19 +18,24 @@ struct QuizSection: View {
     @State private var retaking = false
     @State private var converted = false
 
+    // Animation triggers
+    @State private var wrongShakeTrigger = 0
+    @State private var correctBurstTrigger = 0
+
     private var finished: Bool { !questions.isEmpty && answers.count == questions.count }
     private var showingPast: Bool { !finished && !retaking && answers.isEmpty && store.lastAttempt(for: note) != nil }
 
     var body: some View {
         Group {
             if !loaded {
-                ProgressView().tint(Theme.text2).frame(maxWidth: .infinity).padding(.top, 30)
+                StudyLoadingStage(message: "Test soruları hazırlanıyor…", cardCount: 2)
             } else if let loadError {
                 Message(text: loadError, kind: .error)
             } else if questions.isEmpty {
                 EmptyBox(title: "Bu not için soru yok", text: "Not yeniden hazırlanınca sorular burada görünür.")
             } else if finished || showingPast {
                 result
+                    .transition(.scale(scale: 0.96).combined(with: .opacity))
             } else {
                 questionView
             }
@@ -56,73 +60,136 @@ struct QuizSection: View {
     private var questionView: some View {
         let question = questions[index]
         let correct = question.answerIndex
-        return VStack(alignment: .leading, spacing: 16) {
-            if index == 0 && !checked && store.lastAttempt(for: note) == nil {
-                Text("Önce ne bildiğini görelim. Bilmediğin soruda tahmin etme; yanlışlar karta dönüşür.")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.text2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Soru \(index + 1) / \(questions.count)")
-                    .font(.subheadline.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(Theme.text2)
-                ProgressView(value: Double(index), total: Double(questions.count)).tint(Theme.accent)
-            }
+        return ZStack {
+            VStack(alignment: .leading, spacing: 16) {
+                if index == 0 && !checked && store.lastAttempt(for: note) == nil {
+                    Text("Önce ne bildiğini görelim. Bilmediğin soruda tahmin etme; yanlışlar karta dönüşür.")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
-            VStack(alignment: .leading, spacing: 14) {
-                MathText(question.prompt)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.text)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack {
+                        Text("Soru \(index + 1) / \(questions.count)")
+                            .font(.subheadline.weight(.bold).monospacedDigit())
+                            .foregroundStyle(Theme.text2)
+                            .contentTransition(.numericText(value: Double(index + 1)))
+                        Spacer()
+                    }
+                    FosforProgressBar(
+                        value: Double(index + (checked ? 1 : 0)),
+                        total: Double(max(questions.count, 1)),
+                        height: 9
+                    )
+                }
 
-                VStack(spacing: 8) {
-                    ForEach(Array(question.options.enumerated()), id: \.offset) { i, option in
-                        OptionRow(letter: Self.letters[i % Self.letters.count], text: option, state: state(i, correct: correct)) {
-                            if !checked { selected = i }
+                VStack(alignment: .leading, spacing: 14) {
+                    MathText(question.prompt)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Theme.text)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    VStack(spacing: 8) {
+                        ForEach(Array(question.options.enumerated()), id: \.offset) { i, option in
+                            OptionRow(
+                                letter: Self.letters[i % Self.letters.count],
+                                text: option,
+                                state: state(i, correct: correct)
+                            ) {
+                                if !checked {
+                                    withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                                        selected = i
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .focusCard()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .focusCard()
+                .id(question.id)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
+                .keyframeAnimator(initialValue: CGFloat.zero, trigger: wrongShakeTrigger) { view, dx in
+                    view.offset(x: dx)
+                } keyframes: { _ in
+                    CubicKeyframe(-9, duration: 0.06)
+                    CubicKeyframe(8, duration: 0.06)
+                    CubicKeyframe(-6, duration: 0.06)
+                    CubicKeyframe(5, duration: 0.06)
+                    SpringKeyframe(0, duration: 0.14, spring: .bouncy)
+                }
 
-            if checked, let selected {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(selected == correct ? "Doğru!" : "Yanlış — doğru cevap \(Self.letters[correct]).", systemImage: selected == correct ? "checkmark.circle.fill" : "xmark.circle.fill")
+                if checked, let selected {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(
+                            selected == correct ? "Doğru!" : "Yanlış — doğru cevap \(Self.letters[correct]).",
+                            systemImage: selected == correct ? "checkmark.circle.fill" : "xmark.circle.fill"
+                        )
                         .font(.headline)
                         .foregroundStyle(selected == correct ? Theme.success : Theme.danger)
-                    if !question.explanation.isEmpty {
-                        MathText(question.explanation)
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.text)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let source = question.source, !source.isEmpty {
-                        Text("“\(source)”")
-                            .font(.footnote.italic())
-                            .foregroundStyle(Theme.text3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(selected == correct ? Theme.hiSoft : Theme.dangerSoft, in: RoundedRectangle(cornerRadius: 14))
-            }
 
-            if checked {
-                Button(index + 1 == questions.count ? "Sonucu gör" : "Sonraki soru") { next() }
+                        if !question.explanation.isEmpty {
+                            MathText(question.explanation)
+                                .font(.subheadline)
+                                .foregroundStyle(Theme.text)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if let source = question.source, !source.isEmpty {
+                            Text("“\(source)”")
+                                .font(.footnote.italic())
+                                .foregroundStyle(Theme.text3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(selected == correct ? Theme.hiSoft : Theme.dangerSoft, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(selected == correct ? Theme.cardLine.opacity(0.45) : Theme.danger.opacity(0.45), lineWidth: 1)
+                    )
+                    .transition(.scale(scale: 0.94).combined(with: .opacity))
+                }
+
+                if checked {
+                    Button {
+                        next()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(index + 1 == questions.count ? "Sonucu gör" : "Sonraki soru")
+                            Image(systemName: "arrow.right")
+                        }
+                    }
                     .buttonStyle(PrimaryButtonStyle())
-            } else {
-                Button("Kontrol et") { withAnimation(.snappy) { checked = true } }
+                } else {
+                    Button("Kontrol et") {
+                        checkCurrentAnswer(correct: correct)
+                    }
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(selected == nil)
+                }
             }
+
+            HighlighterSparkBurst(trigger: correctBurstTrigger)
         }
         .sensoryFeedback(.selection, trigger: selected)
-        .sensoryFeedback(trigger: checked) { _, isChecked in
-            guard isChecked, let selected else { return nil }
-            return selected == correct ? .success : .error
+    }
+
+    private func checkCurrentAnswer(correct: Int) {
+        guard let selected else { return }
+        withAnimation(.spring(response: 0.36, dampingFraction: 0.78)) {
+            checked = true
+        }
+        if selected == correct {
+            OnboardingHaptics.success()
+            correctBurstTrigger += 1
+        } else {
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            wrongShakeTrigger += 1
         }
     }
 
@@ -137,10 +204,11 @@ struct QuizSection: View {
 
     private func next() {
         guard let selected else { return }
+        OnboardingHaptics.light()
         let all = answers + [selected]
         self.selected = nil
         checked = false
-        withAnimation(.snappy) {
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
             answers = all
             if all.count == questions.count {
                 store.saveAttempt(note: note, questions: questions, answers: all)
@@ -151,7 +219,8 @@ struct QuizSection: View {
     }
 
     private func restart() {
-        withAnimation(.snappy) {
+        OnboardingHaptics.medium()
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
             retaking = true
             index = 0
             selected = nil
@@ -163,7 +232,6 @@ struct QuizSection: View {
 
     // MARK: Result
 
-    /// The mistakes of this run, or of the saved attempt when its questions are still the same.
     private var mistakes: (items: [(question: Question, given: Int?)], outdated: Bool) {
         if finished {
             return (questions.enumerated().compactMap { i, q in answers[i] == q.answerIndex ? nil : (q, answers[i]) }, false)
@@ -184,39 +252,73 @@ struct QuizSection: View {
         let ratio = Double(score) / Double(max(total, 1))
 
         return VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(finished ? "Sonuç" : "Son sonucun\(attempt.flatMap { Dates.parse($0.createdAt) }.map { " · " + Dates.short($0) } ?? "")")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.text2)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("\(score)")
-                        .font(Theme.display(.largeTitle))
-                        .padding(.horizontal, 6)
-                        .background(ratio == 1 && finished ? Theme.hi : .clear, in: RoundedRectangle(cornerRadius: 6))
-                    Text("/ \(total)").font(Theme.display(.title2))
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(finished ? "Sonuç" : "Son sonucun\(attempt.flatMap { Dates.parse($0.createdAt) }.map { " · " + Dates.short($0) } ?? "")")
+                            .font(.footnote.weight(.bold))
+                            .foregroundStyle(Theme.text2)
+
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            Text("\(score)")
+                                .font(Theme.display(.largeTitle))
+                                .foregroundStyle(ratio == 1 && finished ? Theme.onHi : Theme.text)
+                                .padding(.horizontal, ratio == 1 && finished ? 8 : 0)
+                                .background(ratio == 1 && finished ? Theme.hi : .clear, in: RoundedRectangle(cornerRadius: 8))
+                            Text("/ \(total)")
+                                .font(Theme.display(.title2))
+                                .foregroundStyle(Theme.text2)
+                        }
+                    }
+
+                    Spacer()
+
+                    FosforMascotView(
+                        size: 56,
+                        mood: ratio == 1 ? .cheering : (ratio >= 0.7 ? .proud : .curious)
+                    )
                 }
-                .foregroundStyle(Theme.text)
-                Text(ratio == 1 ? "Hepsi doğru, harika!" : ratio >= 0.7 ? "İyi gidiyorsun. Eksiklerini karta çevir, kartlarla kapat." : "Eksiklerin belli oldu. Yanlışlarını karta çevir, kartlarla çalış.")
+
+                FosforProgressBar(value: Double(score), total: Double(max(total, 1)), height: 10)
+
+                Text(ratio == 1
+                     ? "Hepsi doğru, harika!"
+                     : ratio >= 0.7
+                        ? "İyi gidiyorsun. Eksiklerini karta çevir, kartlarla kapat."
+                        : "Eksiklerin belli oldu. Yanlışlarını karta çevir, kartlarla çalış.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.text2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 VStack(spacing: 10) {
                     Button(action: toCards) {
-                        HStack(spacing: 6) { Text("Kartlarla pekiştir"); Image(systemName: "arrow.right") }
+                        HStack(spacing: 6) {
+                            Text("Kartlarla pekiştir")
+                            Image(systemName: "arrow.right")
+                        }
                     }
                     .buttonStyle(PrimaryButtonStyle())
+
                     HStack(spacing: 10) {
-                        Button { restart() } label: { Label("Tekrar çöz", systemImage: "arrow.counterclockwise") }
-                            .buttonStyle(SecondaryButtonStyle())
+                        Button { restart() } label: {
+                            Label("Tekrar çöz", systemImage: "arrow.counterclockwise")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+
                         if !wrong.items.isEmpty {
                             Button {
+                                OnboardingHaptics.success()
                                 store.cardsFromMistakes(note: note, questions: wrong.items.map(\.question))
-                                converted = true
+                                withAnimation(.spring(response: 0.36, dampingFraction: 0.76)) {
+                                    converted = true
+                                }
                             } label: {
-                                Text(converted ? "Kartlara eklendi" : "Yanlışlarımı karta çevir")
-                                    .lineLimit(2)
-                                    .multilineTextAlignment(.center)
+                                Label(
+                                    converted ? "Kartlara eklendi" : "Yanlışları karta çevir",
+                                    systemImage: converted ? "checkmark.circle.fill" : "plus.rectangle.on.rectangle"
+                                )
+                                .lineLimit(2)
+                                .multilineTextAlignment(.center)
                             }
                             .buttonStyle(SecondaryButtonStyle())
                             .disabled(converted)
@@ -236,7 +338,7 @@ struct QuizSection: View {
 
             if !wrong.items.isEmpty {
                 SectionTitle("Yanlışların")
-                ForEach(wrong.items, id: \.question.id) { item in
+                ForEach(Array(wrong.items.enumerated()), id: \.element.question.id) { idx, item in
                     VStack(alignment: .leading, spacing: 8) {
                         MathText(item.question.prompt)
                             .font(.subheadline.weight(.semibold))
@@ -261,6 +363,7 @@ struct QuizSection: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
+                    .staggeredAppear(idx)
                 }
             }
         }
@@ -284,21 +387,35 @@ private struct OptionRow: View {
                     .foregroundStyle(letterForeground)
                     .frame(width: 30, height: 30)
                     .background(letterBackground, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(state == .selected ? Theme.cardLine : Color.clear, lineWidth: 1.5)
+                    )
                 MathText(text)
                     .font(.body)
                     .foregroundStyle(Theme.text)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
-                if state == .correct { Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.success).padding(.top, 5) }
-                if state == .wrong { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.danger).padding(.top, 5) }
+                if state == .correct {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.success)
+                        .padding(.top, 5)
+                        .transition(.scale.combined(with: .opacity))
+                }
+                if state == .wrong {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Theme.danger)
+                        .padding(.top, 5)
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
-            .padding(10)
-            .background(rowBackground, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(border, lineWidth: state == .idle ? 1 : 2))
-            .contentShape(RoundedRectangle(cornerRadius: 12))
+            .padding(11)
+            .background(rowBackground, in: RoundedRectangle(cornerRadius: 13))
+            .overlay(RoundedRectangle(cornerRadius: 13).stroke(border, lineWidth: state == .idle ? 1 : 2))
+            .contentShape(RoundedRectangle(cornerRadius: 13))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TactileCardButtonStyle(scale: 0.985))
         .accessibilityAddTraits(state == .selected ? .isSelected : [])
     }
 
@@ -344,14 +461,18 @@ struct EmptyBox: View {
     let text: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(Theme.display(.title3))
-                .foregroundStyle(Theme.text)
-            Text(text)
-                .font(.subheadline)
-                .foregroundStyle(Theme.text2)
-                .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(Theme.display(.title3))
+                    .foregroundStyle(Theme.text)
+                Text(text)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.text2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 4)
+            FosforMascotView(size: 46, mood: .curious)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .focusCard()

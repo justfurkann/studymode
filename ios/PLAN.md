@@ -16,7 +16,8 @@ Uygulama Claude'unun çalışma planı. Site ile ortak işler `docs/IOS_SYNC.md`
 | 5 | Test (sorular, "Kontrol et" + açıklama, sonuç, yanlışlar, tekrar çöz, yanlışları karta çevir; `quiz_attempts`, `study_days.quizzes`, `sina` adımı) | ✅ kodlandı 26 Kasım; giriş yapılmış ekranda henüz görülmedi |
 | 6 | Not ekleme: metin, fotoğraf (kamera/galeri → `transcribe`), PDF (PDFKit metni, taranmış sayfa → `transcribe`); not önce kaydedilir, sonra `study` ile 12.000 karakterlik parçalar, 3 aynı anda, zaman aşımında yarıya bölme (bölme sitenin koduyla karşılaştırıldı, aynı); yeni ders ekleme; hazırlanmamış notta "Şimdi hazırla" | ✅ kodlandı 26 Kasım; gerçek notla henüz denenmedi |
 | — | Bilinen eksik (6): formül ağırlıklı PDF sayfalarını resim olarak okutma (sitedeki `mathPages`) yok; formüllü PDF'lerin metni bozuk çıkabilir | |
-| 7 | Toparlama: hata mesajları, boş ekranlar, erişilebilirlik, birim testleri | sırada |
+| — | Kart turu "karıştır" (`ReviewSession` sağ üst araç çubuğu), 3B kart çevirme + sağa/sola kaydırma damgaları (`BİLDİM` / `TEKRAR`), tüm iç ekranlarda (`CoursesView`, `CourseDetailView`, `NoteDetailView`, `QuizSection`, `NoteCardsSection`, `AddNoteView`, `ReviewTab`, `MainTabs`) "Fosforlu" animasyon kiti (`MotionKit.swift`: kayan fosforlu sekme çubuğu, iskelet yükleme, doğru/yanlış fiziksel tepkiler, Fosfor kutlama rozetleri, Hesap → "Açılış tanıtımını gör") | ✅ 26 Kasım (`son tekrarı geri al` hâlâ yapılacaklar listesinde) |
+| 7 | Toparlama: hata mesajları, boş ekranlar, erişilebilirlik, birim testleri | boş ekranlar ve yükleme durumları yenilendi; birim testleri sırada |
 
 ## Bekleyenler (dış engel)
 

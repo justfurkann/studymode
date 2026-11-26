@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// A note's summary, in the site's order: Kavramlar → Ana noktalar → (Tam özet, when it was written).
-/// Test and Kartlar join this screen in the next steps. Read only: nothing here writes to the account.
+/// A note's study flow: Özet (Kavramlar → Ana noktalar → Tam özet) → Test → Kartlar.
 struct NoteDetailView: View {
     @Environment(StudyStore.self) private var store
     let note: NoteItem
@@ -16,6 +15,7 @@ struct NoteDetailView: View {
     @State private var step: Step = .summary
 
     private var course: Course? { store.courses.first { $0.id == note.courseId } }
+    private var doneSteps: [String] { store.noteSteps(note) }
 
     var body: some View {
         ZStack {
@@ -23,6 +23,7 @@ struct NoteDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     header
+                        .staggeredAppear(0)
                     content
                 }
                 .padding(.horizontal, 16)
@@ -52,11 +53,12 @@ struct NoteDetailView: View {
                     HStack(spacing: 6) {
                         ForEach(tags, id: \.self) { tag in
                             Text(tag)
-                                .font(.caption.weight(.medium))
+                                .font(.caption.weight(.semibold))
                                 .foregroundStyle(Theme.text2)
-                                .padding(.horizontal, 8)
+                                .padding(.horizontal, 9)
                                 .padding(.vertical, 4)
-                                .background(Theme.surface2, in: Capsule())
+                                .background(Theme.surface, in: Capsule())
+                                .overlay(Capsule().stroke(Theme.border, lineWidth: 1))
                         }
                     }
                 }
@@ -68,52 +70,101 @@ struct NoteDetailView: View {
     @ViewBuilder
     private var content: some View {
         if !loaded {
-            ProgressView().tint(Theme.text2).frame(maxWidth: .infinity).padding(.top, 40)
+            StudyLoadingStage(message: "Notun özeti ve soruları açılıyor…", cardCount: 2)
         } else if let loadError {
             VStack(spacing: 12) {
                 Message(text: loadError, kind: .error)
                 Button("Tekrar dene") { Task { await load() } }.buttonStyle(SecondaryButtonStyle())
             }
         } else if let summary, !summary.overview.isEmpty || !summary.points.isEmpty {
-            Picker("Adım", selection: $step) {
-                Text("Özet").tag(Step.summary)
-                Text("Test").tag(Step.test)
-                Text("Kartlar").tag(Step.cards)
-            }
-            .pickerStyle(.segmented)
-            .controlSize(.large)
+            FosforSegmentedBar(
+                segments: [
+                    .init(
+                        value: Step.summary,
+                        title: "Özet",
+                        icon: "text.alignleft",
+                        isDone: doneSteps.contains("tanis") && doneSteps.contains("anla")
+                    ),
+                    .init(
+                        value: Step.test,
+                        title: "Test",
+                        icon: "checklist",
+                        isDone: doneSteps.contains("sina")
+                    ),
+                    .init(
+                        value: Step.cards,
+                        title: "Kartlar",
+                        icon: "rectangle.stack",
+                        isDone: doneSteps.contains("pekistir")
+                    )
+                ],
+                selection: $step
+            )
 
-            switch step {
-            case .summary:
-                Picker("Bölüm", selection: $section) {
-                    Text("Kavramlar").tag(Section.terms)
-                    Text("Ana noktalar").tag(Section.points)
-                    if summary.detailed != nil { Text("Tam özet").tag(Section.full) }
-                }
-                .pickerStyle(.segmented)
-                .controlSize(.small)
+            Group {
+                switch step {
+                case .summary:
+                    VStack(alignment: .leading, spacing: 18) {
+                        FosforSegmentedBar(
+                            segments: summarySegments(hasDetailed: summary.detailed != nil),
+                            selection: $section
+                        )
 
-                switch section {
-                    case .terms: TermsSection(summary: summary) {
-                    // Like the site's "Devam: Ana noktalar": the Tanış step is done.
-                    store.markStepDone(note, step: "tanis")
-                    withAnimation { section = .points }
+                        switch section {
+                        case .terms:
+                            TermsSection(summary: summary) {
+                                OnboardingHaptics.medium()
+                                store.markStepDone(note, step: "tanis")
+                                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                                    section = .points
+                                }
+                            }
+                            .transition(.opacity.combined(with: .offset(y: 8)))
+                        case .points:
+                            PointsSection(points: summary.points) {
+                                OnboardingHaptics.medium()
+                                store.markStepDone(note, step: "anla")
+                                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                                    step = .test
+                                }
+                            }
+                            .transition(.opacity.combined(with: .offset(y: 8)))
+                        case .full:
+                            if let detailed = summary.detailed {
+                                FullSummarySection(detailed: detailed)
+                                    .transition(.opacity.combined(with: .offset(y: 8)))
+                            }
+                        }
+                    }
+                case .test:
+                    QuizSection(note: note) {
+                        OnboardingHaptics.medium()
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                            step = .cards
+                        }
+                    }
+                    .transition(.opacity.combined(with: .offset(y: 8)))
+                case .cards:
+                    NoteCardsSection(note: note)
+                        .transition(.opacity.combined(with: .offset(y: 8)))
                 }
-                case .points: PointsSection(points: summary.points) {
-                    // Reaching the end of the main points completes Anla, as on the site.
-                    store.markStepDone(note, step: "anla")
-                    withAnimation { step = .test }
-                }
-                case .full: if let detailed = summary.detailed { FullSummarySection(detailed: detailed) }
-                }
-            case .test:
-                QuizSection(note: note) { withAnimation { step = .cards } }
-            case .cards:
-                NoteCardsSection(note: note)
             }
+            .animation(.spring(response: 0.40, dampingFraction: 0.84), value: step)
+            .animation(.spring(response: 0.38, dampingFraction: 0.84), value: section)
         } else {
             NotPrepared(note: note) { await load() }
         }
+    }
+
+    private func summarySegments(hasDetailed: Bool) -> [FosforSegmentedBar<Section>.Segment] {
+        var list: [FosforSegmentedBar<Section>.Segment] = [
+            .init(value: .terms, title: "Kavramlar", isDone: doneSteps.contains("tanis")),
+            .init(value: .points, title: "Ana noktalar", isDone: doneSteps.contains("anla"))
+        ]
+        if hasDetailed {
+            list.append(.init(value: .full, title: "Tam özet"))
+        }
+        return list
     }
 
     private func load() async {
@@ -136,12 +187,14 @@ private struct TermsSection: View {
     let summary: NoteSummary
     let next: () -> Void
 
+    @State private var localMarked: Set<String> = []
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             if !summary.overview.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Genel bakış", systemImage: "eye")
-                        .font(.footnote.weight(.semibold))
+                    Label("Genel bakış", systemImage: "eye.fill")
+                        .font(.footnote.weight(.bold))
                         .foregroundStyle(Theme.text2)
                     MathText(summary.overview)
                         .font(.body)
@@ -150,16 +203,35 @@ private struct TermsSection: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .focusCard()
+                .staggeredAppear(0)
             }
 
             if !summary.keyTerms.isEmpty {
-                Text("\(summary.keyTerms.count) kavram")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.text2)
-                    .padding(.top, 4)
+                HStack {
+                    Text("\(summary.keyTerms.count) kavram")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Theme.text2)
+                    Spacer()
+                    Text("Dokunup işaretle")
+                        .font(.caption)
+                        .foregroundStyle(Theme.text3)
+                }
+                .padding(.top, 4)
+
                 LazyVStack(spacing: 10) {
-                    ForEach(summary.keyTerms, id: \.self) { term in
-                        TermCard(term: term, known: summary.checkedTerms.contains(term.term))
+                    ForEach(Array(summary.keyTerms.enumerated()), id: \.element) { idx, term in
+                        let isKnown = summary.checkedTerms.contains(term.term) || localMarked.contains(term.term)
+                        TermCard(term: term, known: isKnown) {
+                            OnboardingHaptics.selection()
+                            withAnimation(.spring(response: 0.34, dampingFraction: 0.76)) {
+                                if localMarked.contains(term.term) {
+                                    localMarked.remove(term.term)
+                                } else {
+                                    localMarked.insert(term.term)
+                                }
+                            }
+                        }
+                        .staggeredAppear(idx + 1)
                     }
                 }
             }
@@ -179,32 +251,46 @@ private struct TermsSection: View {
 private struct TermCard: View {
     let term: NoteSummary.KeyTerm
     let known: Bool
+    let onTap: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                MathText(term.term)
-                    .font(.headline)
-                    .foregroundStyle(Theme.text)
-                Spacer(minLength: 8)
-                if known {
-                    Label("Biliyorum", systemImage: "checkmark")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Theme.onHi)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(Theme.hi, in: Capsule())
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    MathText(term.term)
+                        .font(.headline)
+                        .foregroundStyle(Theme.text)
+                    Spacer(minLength: 8)
+                    if known {
+                        Label("Biliyorum", systemImage: "checkmark")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(Theme.onHi)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Theme.hi, in: Capsule())
+                            .overlay(Capsule().stroke(Theme.cardLine, lineWidth: 1))
+                            .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    } else {
+                        Image(systemName: "circle")
+                            .font(.caption)
+                            .foregroundStyle(Theme.border)
+                    }
                 }
+                MathText(term.definition)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.text2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            MathText(term.definition)
-                .font(.subheadline)
-                .foregroundStyle(Theme.text2)
-                .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(known ? Theme.hiSoft.opacity(0.55) : Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(known ? Theme.cardLine : Theme.border, lineWidth: known ? 1.5 : 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 16))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
+        .buttonStyle(TactileCardButtonStyle(scale: 0.985))
     }
 }
 
@@ -223,28 +309,38 @@ private struct PointsSection: View {
                 .foregroundStyle(Theme.text2)
         } else {
             VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("\(index + 1) / \(points.count)")
-                        .font(.subheadline.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(Theme.text2)
-                    ProgressView(value: Double(index + 1), total: Double(points.count))
-                        .tint(Theme.accent)
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack {
+                        Text("Ana nokta \(index + 1) / \(points.count)")
+                            .font(.subheadline.weight(.bold).monospacedDigit())
+                            .foregroundStyle(Theme.text2)
+                            .contentTransition(.numericText(value: Double(index + 1)))
+                        Spacer()
+                        Text("Kaydırabilirsin")
+                            .font(.caption)
+                            .foregroundStyle(Theme.text3)
+                    }
+                    FosforProgressBar(value: Double(index + 1), total: Double(points.count), height: 9)
                 }
 
                 TabView(selection: $index) {
                     ForEach(Array(points.enumerated()), id: \.offset) { i, point in
-                        PointCard(number: i + 1, text: point)
+                        PointCard(number: i + 1, total: points.count, text: point)
                             .padding(.horizontal, 2)
                             .padding(.bottom, 8)
                             .tag(i)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .frame(height: 240)
+                .frame(height: 250)
+                .onChange(of: index) { _, _ in OnboardingHaptics.selection() }
 
                 HStack(spacing: 12) {
                     Button {
-                        withAnimation { index = max(0, index - 1) }
+                        OnboardingHaptics.light()
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.80)) {
+                            index = max(0, index - 1)
+                        }
                     } label: {
                         Image(systemName: "arrow.left")
                     }
@@ -255,7 +351,10 @@ private struct PointsSection: View {
 
                     if index < points.count - 1 {
                         Button {
-                            withAnimation { index += 1 }
+                            OnboardingHaptics.light()
+                            withAnimation(.spring(response: 0.38, dampingFraction: 0.80)) {
+                                index += 1
+                            }
                         } label: {
                             HStack(spacing: 6) { Text("Sonraki"); Image(systemName: "arrow.right") }
                         }
@@ -274,15 +373,25 @@ private struct PointsSection: View {
 
 private struct PointCard: View {
     let number: Int
+    let total: Int
     let text: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("\(number)")
-                .font(Theme.display(.title3))
-                .foregroundStyle(Theme.onHi)
-                .frame(width: 40, height: 40)
-                .background(Theme.hi, in: Circle())
+            HStack {
+                Text("\(number)")
+                    .font(Theme.display(.title3))
+                    .foregroundStyle(Theme.onHi)
+                    .frame(width: 40, height: 40)
+                    .background(Theme.hi, in: Circle())
+                    .overlay(Circle().stroke(Theme.cardLine, lineWidth: 1.5))
+                Spacer()
+                if number == total {
+                    Label("Son madde", systemImage: "flag.checkered")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.text2)
+                }
+            }
             ScrollView {
                 MathText(text)
                     .font(.title3.weight(.medium))
@@ -317,8 +426,9 @@ private struct FullSummarySection: View {
                         Text("\(i + 1)")
                             .font(.footnote.weight(.heavy))
                             .foregroundStyle(Theme.onHi)
-                            .frame(width: 24, height: 24)
-                            .background(Theme.hi, in: RoundedRectangle(cornerRadius: 6))
+                            .frame(width: 26, height: 26)
+                            .background(Theme.hi, in: RoundedRectangle(cornerRadius: 7))
+                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(Theme.cardLine, lineWidth: 1))
                         MathText(section.heading)
                             .font(Theme.display(.title3, weight: .bold))
                             .foregroundStyle(Theme.text)
@@ -361,11 +471,12 @@ private struct FullSummarySection: View {
                         .background(Theme.hiSoft, in: RoundedRectangle(cornerRadius: 14))
                     }
                 }
+                .staggeredAppear(i)
             }
 
             if !detailed.takeaways.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("Sınavda dikkat", systemImage: "exclamationmark.triangle")
+                    Label("Sınavda dikkat", systemImage: "exclamationmark.triangle.fill")
                         .font(.headline)
                         .foregroundStyle(Theme.text)
                     ForEach(detailed.takeaways, id: \.self) { item in
@@ -393,25 +504,37 @@ private struct NotPrepared: View {
     @State private var error: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Bu not henüz hazırlanmadı")
-                .font(Theme.display(.title3))
-                .foregroundStyle(Theme.text)
-            Text("Özet, kartlar ve test yapay zekâyla hazırlanır. Uzun notlarda birkaç dakika sürebilir.")
-                .font(.subheadline)
-                .foregroundStyle(Theme.text2)
-                .fixedSize(horizontal: false, vertical: true)
-            if let progress {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(progress.total > 1 ? "Hazırlanıyor · bölüm \(progress.done)/\(progress.total)" : "Hazırlanıyor…")
+                    Text("Bu not henüz hazırlanmadı")
+                        .font(Theme.display(.title3))
+                        .foregroundStyle(Theme.text)
+                    Text("Özet, kartlar ve test yapay zekâyla hazırlanır. Uzun notlarda birkaç dakika sürebilir.")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 4)
+                FosforMascotView(size: 50, mood: progress == nil ? .curious : .marking)
+            }
+
+            if let progress {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(progress.total > 1 ? "Hazırlanıyor · bölüm \(progress.done)/\(progress.total)" : "Fosfor önemli yerleri işaretliyor…")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.text)
-                    ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1))).tint(Theme.accent)
+                    FosforProgressBar(value: Double(max(1, progress.done)), total: Double(max(progress.total, 1)), height: 10)
                 }
+                .padding(12)
+                .background(Theme.hiSoft, in: RoundedRectangle(cornerRadius: 12))
             }
             if let error { Message(text: error, kind: .error) }
             Button { prepare() } label: {
-                HStack(spacing: 6) { Text(error == nil ? "Şimdi hazırla" : "Tekrar dene"); Image(systemName: "sparkles") }
+                HStack(spacing: 6) {
+                    Text(error == nil ? "Şimdi hazırla" : "Tekrar dene")
+                    Image(systemName: "sparkles")
+                }
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(progress != nil)
@@ -421,6 +544,7 @@ private struct NotPrepared: View {
     }
 
     private func prepare() {
+        OnboardingHaptics.medium()
         error = nil
         progress = (0, 1)
         UIApplication.shared.isIdleTimerDisabled = true
@@ -430,6 +554,7 @@ private struct NotPrepared: View {
                 let content = try await store.noteContent(note.id)
                 let set = try await StudySetMaker.make(title: note.title, text: content) { done, total in progress = (done, total) }
                 try await store.applyStudySet(set, noteId: note.id, courseId: note.courseId)
+                OnboardingHaptics.success()
                 await onReady()
             } catch {
                 self.error = error.localizedDescription

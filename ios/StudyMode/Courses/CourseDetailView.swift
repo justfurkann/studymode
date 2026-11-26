@@ -13,10 +13,15 @@ struct CourseDetailView: View {
         ZStack {
             GridPaper()
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 22) {
                     header(noteCount: notes.count)
-                    if !exams.isEmpty { examsSection(exams) }
+                        .staggeredAppear(0)
+                    if !exams.isEmpty {
+                        examsSection(exams)
+                            .staggeredAppear(1)
+                    }
                     notesSection(notes)
+                        .staggeredAppear(2)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 32)
@@ -28,7 +33,12 @@ struct CourseDetailView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { adding = true } label: { Label("Not ekle", systemImage: "plus") }
+                Button {
+                    OnboardingHaptics.light()
+                    adding = true
+                } label: {
+                    Label("Not ekle", systemImage: "plus")
+                }
             }
         }
         .sheet(isPresented: $adding) {
@@ -38,16 +48,29 @@ struct CourseDetailView: View {
 
     private func header(noteCount: Int) -> some View {
         let readiness = store.readiness(of: course)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 Circle().fill(course.tint).frame(width: 14, height: 14)
                 Text(course.name)
                     .font(Theme.display(.title))
                     .foregroundStyle(Theme.text)
             }
-            Text("\(noteCount) not · \(store.cardCount(course: course)) kart\(readiness.map { " · Hazırlık %\($0)" } ?? "")")
-                .font(.subheadline)
-                .foregroundStyle(Theme.text2)
+
+            HStack {
+                Text("\(noteCount) not · \(store.cardCount(course: course)) kart")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.text2)
+                Spacer()
+                if let readiness {
+                    Text("Hazırlık: %\(readiness)")
+                        .font(.subheadline.weight(.bold).monospacedDigit())
+                        .foregroundStyle(Theme.text)
+                }
+            }
+
+            if let readiness {
+                FosforProgressBar(value: Double(readiness), total: 100, height: 9)
+            }
         }
         .padding(.top, 8)
     }
@@ -70,18 +93,29 @@ struct CourseDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionTitle("Notlar")
             if notes.isEmpty {
-                Text("Bu derste henüz not yok. Sağ üstteki + ile not ekle: yapıştır, fotoğrafını çek ya da PDF seç.")
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.text2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
+                HStack(alignment: .center, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Bu derste henüz not yok")
+                            .font(Theme.display(.headline))
+                            .foregroundStyle(Theme.text)
+                        Text("Sağ üstteki + ile yapıştır, fotoğraf çek ya da PDF ekle.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.text2)
+                    }
+                    Spacer(minLength: 4)
+                    FosforMascotView(size: 48, mood: .curious)
+                }
+                .padding(16)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
             } else {
                 LazyVStack(spacing: 10) {
-                    ForEach(notes) { note in
-                        NavigationLink(value: note) { NoteRow(note: note) }
-                            .buttonStyle(.plain)
+                    ForEach(Array(notes.enumerated()), id: \.element.id) { idx, note in
+                        NavigationLink(value: note) {
+                            NoteRow(note: note)
+                        }
+                        .buttonStyle(TactileCardButtonStyle())
+                        .staggeredAppear(idx + 2)
                     }
                 }
             }
@@ -133,11 +167,18 @@ private struct ExamRow: View {
     @ViewBuilder
     private var trailing: some View {
         if let countdown = Exams.countdown(exam, store.audience) {
-            CountdownChip(text: countdown.days == 0 ? "Bugün" : countdown.days == 1 ? "Yarın" : "\(countdown.days) gün", tone: countdown.tone)
+            CountdownChip(
+                text: countdown.days == 0 ? "Bugün" : countdown.days == 1 ? "Yarın" : "\(countdown.days) gün",
+                tone: countdown.tone
+            )
         } else if let grade = exam.grade {
             Text("Notun: \(grade.formatted(.number.precision(.fractionLength(0...1)).locale(Dates.turkish)))")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.text)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Theme.onHi)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(Theme.hi, in: Capsule())
+                .overlay(Capsule().stroke(Theme.cardLine, lineWidth: 1))
         } else {
             Text("Bitti")
                 .font(.caption.weight(.semibold))
@@ -152,15 +193,34 @@ private struct NoteRow: View {
 
     var body: some View {
         let cards = store.cardCount(note: note)
+        let stepsDone = min(5, store.noteSteps(note).count)
+
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 7) {
                 Text(note.title)
                     .font(.headline)
                     .foregroundStyle(Theme.text)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
+
                 HStack(spacing: 8) {
-                    StatusChip(note: note)
+                    StatusChip(note: note, stepsDone: stepsDone)
+
+                    if note.isPrepared {
+                        HStack(spacing: 3) {
+                            ForEach(0..<5, id: \.self) { idx in
+                                Capsule()
+                                    .fill(idx < stepsDone ? Theme.hi : Theme.surface2)
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(idx < stepsDone ? Theme.cardLine : Theme.border, lineWidth: 0.8)
+                                    )
+                                    .frame(width: 9, height: 5)
+                            }
+                        }
+                        .accessibilityHidden(true)
+                    }
+
                     if cards > 0 {
                         Text("\(cards) kart")
                             .font(.caption)
@@ -175,7 +235,7 @@ private struct NoteRow: View {
             }
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
+                .font(.footnote.weight(.bold))
                 .foregroundStyle(Theme.text3)
         }
         .padding(14)
@@ -188,16 +248,17 @@ private struct NoteRow: View {
 
 private struct StatusChip: View {
     let note: NoteItem
+    let stepsDone: Int
 
     var body: some View {
         if !note.isPrepared {
             Label("Hazırlanmadı", systemImage: "circle.dashed")
                 .labelStyle(Chip(foreground: Theme.text2, background: Theme.surface2))
-        } else if let done = note.completedSteps?.count, done >= 5 {
+        } else if stepsDone >= 5 {
             Label("Bitti", systemImage: "checkmark.circle.fill")
                 .labelStyle(Chip(foreground: Theme.onHi, background: Theme.hi))
-        } else if let done = note.completedSteps?.count, done > 0 {
-            Label("\(done)/5 adım", systemImage: "circle.lefthalf.filled")
+        } else if stepsDone > 0 {
+            Label("\(stepsDone)/5 adım", systemImage: "circle.lefthalf.filled")
                 .labelStyle(Chip(foreground: Theme.text, background: Theme.hiSoft))
         } else {
             Label("Hazır", systemImage: "sparkles")

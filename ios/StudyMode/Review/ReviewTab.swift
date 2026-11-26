@@ -13,9 +13,10 @@ struct ReviewTab: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         if store.status != .ready {
-                            ProgressView().tint(Theme.text2).frame(maxWidth: .infinity).padding(.top, 40)
+                            StudyLoadingStage(message: "Tekrar planın hesaplanıyor…", cardCount: 2)
                         } else {
                             goalCard
+                                .staggeredAppear(0)
                             readinessList
                         }
                     }
@@ -43,37 +44,69 @@ struct ReviewTab: View {
         let nothing = !reached && queue.isEmpty
 
         return VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 16) {
+            HStack(spacing: 14) {
                 GoalRing(done: done, goal: goal)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(reached ? "Bugün tamam" : "Bugünkü hedef")
-                        .font(Theme.display(.title3, weight: .bold))
-                        .foregroundStyle(Theme.text)
+                    HStack(spacing: 6) {
+                        Text(reached ? "Bugün tamam" : "Bugünkü hedef")
+                            .font(Theme.display(.title3, weight: .bold))
+                            .foregroundStyle(Theme.text)
+                        if store.streak > 0 {
+                            Label("\(store.streak)", systemImage: "flame.fill")
+                                .font(.caption.weight(.bold).monospacedDigit())
+                                .foregroundStyle(Theme.onHi)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Theme.hi, in: Capsule())
+                                .overlay(Capsule().stroke(Theme.cardLine, lineWidth: 1))
+                        }
+                    }
                     Text(subtitle(reached: reached, nothing: nothing, left: queue.count))
                         .font(.subheadline)
                         .foregroundStyle(Theme.text2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                Spacer(minLength: 0)
+                FosforMascotView(
+                    size: 46,
+                    mood: reached ? .cheering : (nothing ? .proud : .curious)
+                )
             }
 
             if reached {
                 if store.hasMore() {
                     Button {
+                        OnboardingHaptics.medium()
                         let more = store.reviewQueue(size: ReviewRules.moreSize, newAllowed: store.newLeftToday)
                         if !more.isEmpty { session = SessionBox(cards: more) }
-                    } label: { Text("Biraz daha (+\(ReviewRules.moreSize))") }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Biraz daha (+\(ReviewRules.moreSize))")
+                        }
+                    }
                     .buttonStyle(SecondaryButtonStyle())
                 }
             } else if !nothing {
-                Button { session = SessionBox(cards: queue) } label: {
-                    HStack(spacing: 6) { Text(done == 0 ? "Başla" : "Devam et"); Image(systemName: "arrow.right") }
+                Button {
+                    OnboardingHaptics.medium()
+                    session = SessionBox(cards: queue)
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(done == 0 ? "Başla" : "Devam et")
+                        Image(systemName: "arrow.right")
+                    }
                 }
                 .buttonStyle(PrimaryButtonStyle())
             }
 
-            Text("Bugün başlayan yeni kart: \(min(store.newToday, ReviewRules.newPerDay)) / \(ReviewRules.newPerDay)")
-                .font(.caption)
-                .foregroundStyle(Theme.text3)
+            HStack(spacing: 6) {
+                Image(systemName: "sparkle")
+                    .font(.caption2)
+                Text("Bugün başlayan yeni kart: \(min(store.newToday, ReviewRules.newPerDay)) / \(ReviewRules.newPerDay)")
+                    .font(.caption)
+            }
+            .foregroundStyle(Theme.text3)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .focusCard()
@@ -99,8 +132,10 @@ struct ReviewTab: View {
         if !rows.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 SectionTitle("Derslere göre hazırlık")
-                ForEach(rows, id: \.course.id) { row in
+                    .staggeredAppear(1)
+                ForEach(Array(rows.enumerated()), id: \.element.course.id) { idx, row in
                     ReadinessRow(course: row.course, readiness: row.readiness)
+                        .staggeredAppear(idx + 2)
                 }
             }
         }
@@ -111,19 +146,45 @@ private struct GoalRing: View {
     let done: Int
     let goal: Int
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var animatedFraction: CGFloat = 0
+
+    private var targetFraction: CGFloat {
+        min(1, CGFloat(done) / CGFloat(max(goal, 1)))
+    }
+
     var body: some View {
         ZStack {
-            Circle().stroke(Theme.surface2, lineWidth: 9)
             Circle()
-                .trim(from: 0, to: CGFloat(done) / CGFloat(max(goal, 1)))
-                .stroke(Theme.hi, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                .stroke(Theme.surface2, lineWidth: 9)
+            Circle()
+                .trim(from: 0, to: animatedFraction)
+                .stroke(Theme.cardLine, style: StrokeStyle(lineWidth: 11, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Circle()
+                .trim(from: 0, to: animatedFraction)
+                .stroke(Theme.hi, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             Text("\(done)/\(goal)")
                 .font(.subheadline.weight(.bold).monospacedDigit())
                 .foregroundStyle(Theme.text)
+                .contentTransition(.numericText(value: Double(done)))
         }
         .frame(width: 68, height: 68)
-        .animation(.snappy, value: done)
+        .onAppear {
+            if reduceMotion {
+                animatedFraction = targetFraction
+            } else {
+                withAnimation(.spring(response: 0.65, dampingFraction: 0.78)) {
+                    animatedFraction = targetFraction
+                }
+            }
+        }
+        .onChange(of: done) { _, _ in
+            withAnimation(.spring(response: 0.50, dampingFraction: 0.78)) {
+                animatedFraction = targetFraction
+            }
+        }
         .accessibilityElement()
         .accessibilityLabel("Bugünkü hedef: \(goal) kartın \(done) tanesi")
     }
@@ -136,11 +197,11 @@ private struct ReadinessRow: View {
 
     var body: some View {
         let exam = store.nextExam(course).flatMap { Exams.countdown($0, store.audience) }
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 9) {
             HStack {
                 Circle().fill(course.tint).frame(width: 9, height: 9)
                 Text(course.name)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
                 Spacer(minLength: 8)
@@ -150,21 +211,20 @@ private struct ReadinessRow: View {
                     Text("Sınav yok").font(.caption).foregroundStyle(Theme.text3)
                 }
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.surface2)
-                    Capsule().fill(Theme.accent)
-                        .frame(width: geo.size.width * CGFloat(readiness ?? 0) / 100)
-                }
+            FosforProgressBar(value: Double(readiness ?? 0), total: 100, height: 8)
+            HStack {
+                Text(readiness.map { "Hazırlık: %\($0)" } ?? "Hazırlık henüz ölçülmedi")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.text2)
+                Spacer()
+                Text("\(store.cardCount(course: course)) kart")
+                    .font(.caption)
+                    .foregroundStyle(Theme.text3)
             }
-            .frame(height: 7)
-            Text(readiness.map { "Hazırlık %\($0)" } ?? "Hazırlık henüz ölçülmedi")
-                .font(.caption)
-                .foregroundStyle(Theme.text2)
         }
-        .padding(12)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
+        .padding(14)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
         .accessibilityElement(children: .combine)
     }
 }

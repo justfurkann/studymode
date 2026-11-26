@@ -54,19 +54,25 @@ struct AddNoteView: View {
                         TextField("Not başlığı (ör. Hafta 3 · Hücre zarı)", text: $title)
                             .field()
                             .disabled(busy)
-                        Picker("Kaynak", selection: $source) {
-                            Text("Metin").tag(Source.text)
-                            Text("Fotoğraf").tag(Source.photo)
-                            Text("PDF").tag(Source.pdf)
-                        }
-                        .pickerStyle(.segmented)
+
+                        FosforSegmentedBar(
+                            segments: [
+                                .init(value: Source.text, title: "Metin", icon: "doc.plaintext"),
+                                .init(value: Source.photo, title: "Fotoğraf", icon: "camera"),
+                                .init(value: Source.pdf, title: "PDF", icon: "doc.richtext")
+                            ],
+                            selection: $source
+                        )
                         .disabled(busy)
 
-                        switch source {
-                        case .text: textEditor(placeholder: "Ders notunu buraya yapıştır ya da yaz.")
-                        case .photo: photoSection
-                        case .pdf: pdfSection
+                        Group {
+                            switch source {
+                            case .text: textEditor(placeholder: "Ders notunu buraya yapıştır ya da yaz.")
+                            case .photo: photoSection
+                            case .pdf: pdfSection
+                            }
                         }
+                        .animation(.spring(response: 0.36, dampingFraction: 0.82), value: source)
 
                         if let info { Message(text: info, kind: .info) }
                         status
@@ -178,16 +184,22 @@ struct AddNoteView: View {
                     HStack(spacing: 8) {
                         ForEach(Array(photos.enumerated()), id: \.offset) { i, image in
                             Image(uiImage: image).resizable().scaledToFill()
-                                .frame(width: 72, height: 96).clipShape(RoundedRectangle(cornerRadius: 8))
+                                .frame(width: 72, height: 96).clipShape(RoundedRectangle(cornerRadius: 10))
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.cardLine, lineWidth: 1.2))
                                 .overlay(alignment: .topTrailing) {
                                     if !busy {
-                                        Button { photos.remove(at: i) } label: {
+                                        Button {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) {
+                                                _ = photos.remove(at: i)
+                                            }
+                                        } label: {
                                             Image(systemName: "xmark.circle.fill").foregroundStyle(.white, .black.opacity(0.6))
                                         }
                                         .padding(3)
                                         .accessibilityLabel("Fotoğrafı çıkar")
                                     }
                                 }
+                                .transition(.scale.combined(with: .opacity))
                         }
                     }
                 }
@@ -218,14 +230,26 @@ struct AddNoteView: View {
     private var status: some View {
         switch phase {
         case let .reading(p):
-            ProgressRow(text: "Sayfalar okunuyor · \(p.done)/\(p.total)", value: Double(p.done), total: Double(max(p.total, 1)))
+            ProgressRow(
+                title: "Sayfalar okunuyor · \(p.done)/\(p.total)",
+                subtitle: "Fosfor yazıları çözümlüyor",
+                value: Double(p.done),
+                total: Double(max(p.total, 1))
+            )
         case .saving:
-            ProgressRow(text: "Not kaydediliyor…", value: nil, total: 1)
+            ProgressRow(
+                title: "Not kaydediliyor…",
+                subtitle: "Hesabına işleniyor",
+                value: nil,
+                total: 1
+            )
         case let .preparing(done, total):
-            ProgressRow(text: total > 1 ? "Hazırlanıyor · bölüm \(done)/\(total)" : "Özet, kartlar ve sorular hazırlanıyor…", value: total > 1 ? Double(done) : nil, total: Double(max(total, 1)))
-            Text("Bu birkaç dakika sürebilir. Uygulamayı kapatma; ekran açık kalacak.")
-                .font(.footnote)
-                .foregroundStyle(Theme.text3)
+            ProgressRow(
+                title: total > 1 ? "Hazırlanıyor · bölüm \(done)/\(total)" : "Özet, kartlar ve sorular hazırlanıyor…",
+                subtitle: "Birkaç dakika sürebilir; ekran açık kalacak.",
+                value: total > 1 ? Double(max(1, done)) : nil,
+                total: Double(max(total, 1))
+            )
         case let .failed(message):
             Message(text: message, kind: .error)
         case .editing:
@@ -280,6 +304,7 @@ struct AddNoteView: View {
     }
 
     private func readPhotos() {
+        OnboardingHaptics.medium()
         let pages = photos
         phase = .reading(.init(done: 0, total: pages.count))
         UIApplication.shared.isIdleTimerDisabled = true
@@ -289,6 +314,7 @@ struct AddNoteView: View {
                 text = try await NoteImport.transcribe(pages) { phase = .reading($0) }
                 if title.isEmpty { title = "Fotoğraf notu · \(Dates.short(.now))" }
                 phase = .editing
+                OnboardingHaptics.success()
                 info = "Sayfalar okundu. Metni kontrol et, sonra \"Notu hazırla\"ya bas."
             } catch is CancellationError {
                 phase = .editing
@@ -299,6 +325,7 @@ struct AddNoteView: View {
     }
 
     private func readPDF(_ url: URL) {
+        OnboardingHaptics.medium()
         phase = .reading(.init(done: 0, total: 0))
         info = nil
         UIApplication.shared.isIdleTimerDisabled = true
@@ -309,6 +336,7 @@ struct AddNoteView: View {
                 text = result.text
                 if title.isEmpty { title = url.deletingPathExtension().lastPathComponent }
                 phase = .editing
+                OnboardingHaptics.success()
                 info = result.scannedPages > 0
                     ? "\(result.pageCount) sayfa okundu (\(result.scannedPages) taranmış sayfa yapay zekâyla). Metni kontrol et, sonra \"Notu hazırla\"ya bas."
                     : "\(result.pageCount) sayfa okundu. Metni kontrol et, sonra \"Notu hazırla\"ya bas."
@@ -322,6 +350,7 @@ struct AddNoteView: View {
 
     private func prepare() {
         guard let course else { return }
+        OnboardingHaptics.medium()
         let content = trimmed
         let noteTitle = title.trimmingCharacters(in: .whitespaces).isEmpty ? "Not · \(Dates.short(.now))" : title
         info = nil
@@ -345,6 +374,7 @@ struct AddNoteView: View {
                 if set.failedParts > 0 {
                     store.saveError = "Notun \(set.totalParts) bölümünden \(set.failedParts) tanesi hazırlanamadı; kalanlar hazır."
                 }
+                OnboardingHaptics.success()
                 finish(noteId: noteId)
             } catch is CancellationError {
                 phase = .editing
@@ -366,24 +396,36 @@ struct AddNoteView: View {
 }
 
 private struct ProgressRow: View {
-    let text: String
+    let title: String
+    let subtitle: String
     let value: Double?
     let total: Double
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(text)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.text)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                FosforMascotView(size: 42, mood: .marking)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Theme.text)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(Theme.text2)
+                }
+                Spacer(minLength: 0)
+            }
             if let value {
-                ProgressView(value: value, total: total).tint(Theme.accent)
+                FosforProgressBar(value: value, total: total, height: 9)
             } else {
-                ProgressView().tint(Theme.text2)
+                ProgressView().tint(Theme.accent)
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.hiSoft, in: RoundedRectangle(cornerRadius: 14))
+        .background(Theme.hiSoft, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.cardLine.opacity(0.45), lineWidth: 1))
+        .transition(.scale(scale: 0.96).combined(with: .opacity))
     }
 }
 
