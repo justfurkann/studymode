@@ -4,9 +4,37 @@ import SwiftUI
 /// then the score, the mistakes, "Tekrar çöz" and "Yanlışlarımı karta çevir".
 struct QuizSection: View {
     @Environment(StudyStore.self) private var store
+    @Environment(AssistantPlace.self) private var place: AssistantPlace?
     let note: NoteItem
     /// "Kartlarla pekiştir".
     let toCards: () -> Void
+
+    /// After checking: Fosfor explains why, with the question, the choices and both answers.
+    private func askWhy(_ question: Question, picked: Int, correct: Int) -> some View {
+        let letter = { (i: Int) in Self.letters[i % Self.letters.count] }
+        let options = question.options.enumerated().map { "\(letter($0.offset))) \($0.element)" }.joined(separator: "\n")
+        let quote = "\(question.prompt)\n\(options)\nDoğru cevap: \(letter(correct))" + (picked == correct ? "" : " · Benim cevabım: \(letter(picked))")
+        let prompt = picked == correct
+            ? "Doğru bildim ama emin değilim. Neden bu cevap doğru, kısaca açıklar mısın?"
+            : "Neden yanlış yaptım? Doğru cevabın neden doğru, benimkinin neden yanlış olduğunu açıklar mısın?"
+        return Button {
+            OnboardingHaptics.light()
+            place?.ask(FosforAsk(quote: quote, source: "Test · Soru \(index + 1)", prompt: prompt), course: note.courseId, note: note.id)
+        } label: {
+            HStack(spacing: 6) {
+                FosforMascotView(size: 20, animated: false, tappable: false)
+                Text(picked == correct ? "Neden doğru?" : "Neden yanlış?")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.text)
+            }
+            .padding(.leading, 6)
+            .padding(.trailing, 12)
+            .padding(.vertical, 5)
+            .background(Theme.surface, in: Capsule())
+            .overlay(Capsule().stroke(Theme.cardLine.opacity(0.4), lineWidth: 1))
+        }
+        .buttonStyle(TactileCardButtonStyle(scale: 0.95))
+    }
 
     @State private var questions: [Question] = []
     @State private var loaded = false
@@ -143,6 +171,10 @@ struct QuizSection: View {
                                 .font(.footnote.italic())
                                 .foregroundStyle(Theme.text3)
                                 .fixedSize(horizontal: false, vertical: true)
+                        }
+                        HStack {
+                            Spacer()
+                            askWhy(question, picked: selected, correct: correct)
                         }
                     }
                     .padding(14)

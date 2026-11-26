@@ -1,104 +1,6 @@
 import SwiftUI
 
-// MARK: - "Bu konuyu anlamadım"
-
-/// The site's ConceptExplainer: under a key term or point, ask the AI to explain it more simply,
-/// with an everyday example, or step by step. Only the passage of the note around the topic is sent.
-struct ConceptExplainer: View {
-    @Environment(StudyStore.self) private var store
-    let note: NoteItem
-    let topic: String
-    var compact = false
-
-    @State private var open = false
-    @State private var mode: NoteAI.ExplainMode?
-    @State private var busy = false
-    @State private var reply: String?
-    @State private var error: String?
-
-    var body: some View {
-        if !open {
-            Button {
-                OnboardingHaptics.light()
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) { open = true }
-            } label: {
-                Label("Bu konuyu anlamadım", systemImage: "questionmark.circle")
-                    .font((compact ? Font.caption : .subheadline).weight(.semibold))
-                    .foregroundStyle(Theme.text2)
-                    .padding(.vertical, compact ? 4 : 8)
-                    .frame(minHeight: 36)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-        } else {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Nasıl açıklamamı istersin?")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Theme.text2)
-                    Spacer()
-                    Button("Kapat") {
-                        withAnimation { open = false; reply = nil; error = nil; mode = nil }
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.text2)
-                }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(NoteAI.ExplainMode.allCases) { option in
-                            Button {
-                                Task { await ask(option) }
-                            } label: {
-                                HStack(spacing: 5) {
-                                    if busy && mode == option { ProgressView().controlSize(.mini) }
-                                    Text(option.label)
-                                }
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(mode == option ? Theme.onHi : Theme.text)
-                                .padding(.horizontal, 11)
-                                .padding(.vertical, 7)
-                                .background(mode == option ? Theme.hi : Theme.surface2, in: Capsule())
-                                .overlay(Capsule().stroke(mode == option ? Theme.cardLine : Theme.border, lineWidth: 1))
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(busy)
-                        }
-                    }
-                }
-                if let error { Message(text: error, kind: .error) }
-                if let reply {
-                    MathText(reply)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.text)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Theme.hiSoft, in: RoundedRectangle(cornerRadius: 12))
-                        .transition(.opacity.combined(with: .offset(y: 6)))
-                }
-            }
-            .padding(12)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
-            .transition(.opacity.combined(with: .offset(y: 6)))
-        }
-    }
-
-    private func ask(_ option: NoteAI.ExplainMode) async {
-        mode = option
-        busy = true
-        error = nil
-        defer { busy = false }
-        do {
-            let content = try await store.noteContent(note.id)
-            let text = try await NoteAI.explain(title: note.title, topic: topic, content: content, mode: option)
-            withAnimation { reply = text }
-            store.recordActivity()
-        } catch {
-            self.error = (error as? LocalizedError)?.errorDescription ?? "Açıklama hazırlanamadı. Bağlantını kontrol edip tekrar dene."
-        }
-    }
-}
+// "Bu konuyu anlamadım" now opens Fosfor with the passage: see Assistant/AskFosfor.swift.
 
 // MARK: - Tam özet
 
@@ -274,6 +176,7 @@ struct NoteEditSheet: View {
 
 struct SourceTextSheet: View {
     @Environment(StudyStore.self) private var store
+    @Environment(AssistantPlace.self) private var place: AssistantPlace?
     @Environment(\.dismiss) private var dismiss
     let note: NoteItem
     @State private var content: String?
@@ -281,26 +184,35 @@ struct SourceTextSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if let content {
+            Group {
+                if let content {
+                    VStack(alignment: .leading, spacing: 0) {
                         let words = content.split(whereSeparator: \.isWhitespace).count
-                        Text("\(words.formatted(.number.locale(Dates.turkish))) kelime · \(max(1, Int((Double(words) / 200).rounded()))) dk")
-                            .font(.caption)
-                            .foregroundStyle(Theme.text2)
-                        Text(content)
-                            .font(.body)
-                            .foregroundStyle(Theme.text)
-                            .textSelection(.enabled)
-                            .lineSpacing(4)
-                    } else if failed {
-                        Message(text: "Notun metni yüklenemedi.", kind: .error)
-                    } else {
-                        ProgressView().frame(maxWidth: .infinity)
+                        HStack(spacing: 6) {
+                            Text("\(words.formatted(.number.locale(Dates.turkish))) kelime · \(max(1, Int((Double(words) / 200).rounded()))) dk")
+                            Spacer()
+                            Label("Seç → Fosfor'a sor", systemImage: "text.cursor")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(Theme.text2)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        SelectableNoteText(text: content, scrolls: true) { picked in
+                            // Fosfor opens from the tab view, so this sheet steps aside first.
+                            dismiss()
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(450))
+                                place?.ask(FosforAsk(quote: picked, source: "Kaynak metin"), course: note.courseId, note: note.id)
+                            }
+                        }
                     }
+                } else if failed {
+                    Message(text: "Notun metni yüklenemedi.", kind: .error).padding(16)
+                } else {
+                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(16)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Theme.bg)
             .navigationTitle("Kaynak metin")
             .navigationBarTitleDisplayMode(.inline)

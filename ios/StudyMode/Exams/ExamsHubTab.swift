@@ -138,7 +138,8 @@ struct ExamsHubTab: View {
 
                 FosforMascotView(
                     size: 52,
-                    mood: (readiness ?? 0) >= 75 ? .cheering : .marking
+                    mood: (readiness ?? 0) >= 75 ? .cheering : .marking,
+                    onDark: true
                 )
             }
 

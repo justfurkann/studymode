@@ -74,7 +74,7 @@ struct NoteDetailView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar { ToolbarItem(placement: .topBarTrailing) { noteMenu } }
         .sheet(isPresented: $editing, onDismiss: { Task { await load() } }) { NoteEditSheet(note: currentNote).environment(store) }
-        .sheet(isPresented: $showSource) { SourceTextSheet(note: currentNote).environment(store) }
+        .sheet(isPresented: $showSource) { SourceTextSheet(note: currentNote).environment(store).environment(place) }
         .confirmationDialog("“\(currentNote.title)” notu ve kartları silinsin mi?", isPresented: $askDelete, titleVisibility: .visible) {
             Button("Notu sil", role: .destructive) { Task { await remove() } }
         } message: {
@@ -266,7 +266,7 @@ struct NoteDetailView: View {
                         case .full:
                             if let detailed = summary.detailed {
                                 VStack(alignment: .leading, spacing: 18) {
-                                    FullSummarySection(detailed: detailed)
+                                    FullSummarySection(note: note, detailed: detailed)
                                     if summary.sourceChanged {
                                         Message(text: "Not bu özetten sonra değişti. Güncel hâli için ayrıntılı özeti yeniden yaz.", kind: .warning)
                                     }
@@ -345,6 +345,7 @@ struct NoteDetailView: View {
 // MARK: - Kavramlar
 
 private struct TermsSection: View {
+    @Environment(AssistantPlace.self) private var place: AssistantPlace?
     let note: NoteItem
     let summary: NoteSummary
     let next: () -> Void
@@ -358,10 +359,9 @@ private struct TermsSection: View {
                     Label("Genel bakış", systemImage: "eye.fill")
                         .font(.footnote.weight(.bold))
                         .foregroundStyle(Theme.text2)
-                    MathText(summary.overview)
-                        .font(.body)
-                        .foregroundStyle(Theme.text)
-                        .fixedSize(horizontal: false, vertical: true)
+                    SelectableNoteText(text: summary.overview) { picked in
+                        place?.ask(FosforAsk(quote: picked, source: "Genel bakış"), course: note.courseId, note: note.id)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .focusCard()
@@ -374,7 +374,7 @@ private struct TermsSection: View {
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(Theme.text2)
                     Spacer()
-                    Text("Dokunup işaretle")
+                    Text("Bildiğine dokun")
                         .font(.caption)
                         .foregroundStyle(Theme.text3)
                 }
@@ -383,19 +383,15 @@ private struct TermsSection: View {
                 LazyVStack(spacing: 10) {
                     ForEach(Array(summary.keyTerms.enumerated()), id: \.element) { idx, term in
                         let isKnown = summary.checkedTerms.contains(term.term) || localMarked.contains(term.term)
-                        VStack(alignment: .leading, spacing: 2) {
-                            TermCard(term: term, known: isKnown) {
-                                OnboardingHaptics.selection()
-                                withAnimation(.spring(response: 0.34, dampingFraction: 0.76)) {
-                                    if localMarked.contains(term.term) {
-                                        localMarked.remove(term.term)
-                                    } else {
-                                        localMarked.insert(term.term)
-                                    }
+                        TermCard(note: note, term: term, known: isKnown) {
+                            OnboardingHaptics.selection()
+                            withAnimation(.spring(response: 0.34, dampingFraction: 0.76)) {
+                                if localMarked.contains(term.term) {
+                                    localMarked.remove(term.term)
+                                } else {
+                                    localMarked.insert(term.term)
                                 }
                             }
-                            ConceptExplainer(note: note, topic: "\(term.term): \(term.definition)", compact: true)
-                                .padding(.leading, 6)
                         }
                         .staggeredAppear(idx + 1)
                     }
@@ -414,49 +410,60 @@ private struct TermsSection: View {
     }
 }
 
+/// A key term. Tap marks it known; "Anlamadım" (or a long press) sends it to Fosfor.
 private struct TermCard: View {
+    let note: NoteItem
     let term: NoteSummary.KeyTerm
     let known: Bool
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    MathText(term.term)
-                        .font(.headline)
-                        .foregroundStyle(Theme.text)
-                    Spacer(minLength: 8)
-                    if known {
-                        Label("Biliyorum", systemImage: "checkmark")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(Theme.onHi)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Theme.hi, in: Capsule())
-                            .overlay(Capsule().stroke(Theme.cardLine, lineWidth: 1))
-                            .transition(.scale(scale: 0.8).combined(with: .opacity))
-                    } else {
-                        Image(systemName: "circle")
-                            .font(.caption)
-                            .foregroundStyle(Theme.border)
-                    }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                MathText(term.term)
+                    .font(.headline)
+                    .foregroundStyle(Theme.text)
+                Spacer(minLength: 8)
+                if known {
+                    Label("Biliyorum", systemImage: "checkmark")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Theme.onHi)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Theme.hi, in: Capsule())
+                        .overlay(Capsule().stroke(Theme.cardLine, lineWidth: 1))
+                        .transition(.scale(scale: 0.8).combined(with: .opacity))
+                } else {
+                    Image(systemName: "circle")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.text3.opacity(0.6))
                 }
-                MathText(term.definition)
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.text2)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(known ? Theme.hiSoft.opacity(0.55) : Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(known ? Theme.cardLine : Theme.border, lineWidth: known ? 1.5 : 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 16))
+            MathText(term.definition)
+                .font(.subheadline)
+                .foregroundStyle(Theme.text2)
+                .fixedSize(horizontal: false, vertical: true)
+            if !known {
+                HStack {
+                    Spacer()
+                    ConceptExplainer(note: note, topic: "\(term.term): \(term.definition)", compact: true, source: "Kavram")
+                }
+                .transition(.opacity)
+            }
         }
-        .buttonStyle(TactileCardButtonStyle(scale: 0.985))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(known ? Theme.hiSoft.opacity(0.55) : Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(known ? Theme.cardLine : Theme.border, lineWidth: known ? 1.5 : 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .onTapGesture(perform: onTap)
+        .askFosfor("\(term.term): \(term.definition)", source: "Kavram", note: note)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(known ? "Bilmiyorum olarak işaretle" : "Biliyorum olarak işaretle")
     }
 }
 
@@ -492,20 +499,15 @@ private struct PointsSection: View {
 
                 TabView(selection: $index) {
                     ForEach(Array(points.enumerated()), id: \.offset) { i, point in
-                        PointCard(number: i + 1, total: points.count, text: point)
+                        PointCard(note: note, number: i + 1, total: points.count, text: point)
                             .padding(.horizontal, 2)
                             .padding(.bottom, 8)
                             .tag(i)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .frame(height: 250)
+                .frame(height: 270)
                 .onChange(of: index) { _, _ in OnboardingHaptics.selection() }
-
-                if points.indices.contains(index) {
-                    ConceptExplainer(note: note, topic: points[index])
-                        .id(index)
-                }
 
                 HStack(spacing: 12) {
                     Button {
@@ -544,6 +546,7 @@ private struct PointsSection: View {
 }
 
 private struct PointCard: View {
+    let note: NoteItem
     let number: Int
     let total: Int
     let text: String
@@ -558,11 +561,7 @@ private struct PointCard: View {
                     .background(Theme.hi, in: Circle())
                     .overlay(Circle().stroke(Theme.cardLine, lineWidth: 1.5))
                 Spacer()
-                if number == total {
-                    Label("Son madde", systemImage: "flag.checkered")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.text2)
-                }
+                ConceptExplainer(note: note, topic: text, source: "Ana nokta \(number)")
             }
             ScrollView {
                 MathText(text)
@@ -575,6 +574,8 @@ private struct PointCard: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .focusCard()
+        .contentShape(RoundedRectangle(cornerRadius: 20))
+        .askFosfor(text, source: "Ana nokta \(number)", note: note)
     }
 }
 
@@ -588,18 +589,22 @@ private struct SectionOffsets: PreferenceKey {
 }
 
 private struct FullSummarySection: View {
+    @Environment(AssistantPlace.self) private var place: AssistantPlace?
+    let note: NoteItem
     let detailed: NoteSummary.Detailed
+
+    private func ask(_ text: String, source: String) {
+        place?.ask(FosforAsk(quote: text, source: source), course: note.courseId, note: note.id)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             if !detailed.intro.isEmpty {
-                MathText(detailed.intro)
-                    .font(.body)
-                    .foregroundStyle(Theme.text)
-                    .fixedSize(horizontal: false, vertical: true)
+                SelectableNoteText(text: detailed.intro) { ask($0, source: "Tam özet") }
             }
 
             ForEach(Array(detailed.sections.enumerated()), id: \.offset) { i, section in
+                let source = "Tam özet · \(section.heading)"
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text("\(i + 1)")
@@ -613,10 +618,7 @@ private struct FullSummarySection: View {
                             .foregroundStyle(Theme.text)
                     }
                     ForEach(section.paragraphs, id: \.self) { paragraph in
-                        MathText(paragraph)
-                            .font(.body)
-                            .foregroundStyle(Theme.text)
-                            .fixedSize(horizontal: false, vertical: true)
+                        SelectableNoteText(text: paragraph) { ask($0, source: source) }
                     }
                     if !section.bullets.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
@@ -628,6 +630,9 @@ private struct FullSummarySection: View {
                                         .foregroundStyle(Theme.text)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .askFosfor(bullet, source: source, note: note)
                             }
                         }
                         .padding(14)
@@ -648,6 +653,17 @@ private struct FullSummarySection: View {
                         .padding(14)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.hiSoft, in: RoundedRectangle(cornerRadius: 14))
+                        .contentShape(RoundedRectangle(cornerRadius: 14))
+                        .askFosfor(section.example, source: "\(source) · örnek", note: note)
+                    }
+                    HStack {
+                        Spacer()
+                        ConceptExplainer(
+                            note: note,
+                            topic: String(([section.heading] + section.paragraphs).joined(separator: "\n").prefix(1_200)),
+                            compact: true,
+                            source: source
+                        )
                     }
                 }
                 .id("full-\(i)")

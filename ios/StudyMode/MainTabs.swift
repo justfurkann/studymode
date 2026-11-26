@@ -5,6 +5,7 @@ struct MainTabs: View {
     @Environment(AuthModel.self) private var auth
     @State private var store = StudyStore()
     @State private var place = AssistantPlace()
+    @State private var keyboardUp = false
 
     private var shareCatalog: PDFInbox.Catalog? {
         guard store.status == .ready, let user = auth.session?.user.id else { return nil }
@@ -25,17 +26,26 @@ struct MainTabs: View {
                 .tabItem { Label("Hesap", systemImage: "person.crop.circle") }
         }
         .overlay(alignment: .bottomTrailing) {
-            if store.status == .ready {
+            if store.status == .ready && !place.open && !keyboardUp {
                 AssistantButton()
-                    .padding(.trailing, 14)
-                    .padding(.bottom, 92)
+                    .padding(.trailing, 12)
+                    .padding(.bottom, 86)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
             }
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: place.open)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardUp = false }
         .sheet(isPresented: Binding(get: { place.open }, set: { place.open = $0 })) {
             AssistantSheet()
                 .environment(store)
                 .environment(place)
-                .presentationDetents([.large])
+                .presentationDetents([.medium, .large], selection: Binding(get: { place.detent }, set: { place.detent = $0 }))
+                // Half height: the note underneath can still be read, scrolled and long-pressed.
+                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+                .presentationCornerRadius(28)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Theme.bg)
         }
         .environment(store)
         .environment(place)

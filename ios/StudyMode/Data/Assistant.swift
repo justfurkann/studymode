@@ -13,11 +13,63 @@ final class AssistantPlace {
     var courseId: UUID?
     var noteId: UUID?
     var open = false
+    /// A question from somewhere in the app ("Anlamadım" under a point, a long-pressed paragraph,
+    /// selected text). The open sheet picks it up and answers it right away.
+    var pending: FosforAsk?
+    /// How tall the sheet is. Questions from inside a note open half height, so the note stays in view.
+    var detent: PresentationDetent = .large
 
     func show(course: UUID?, note: UUID?) {
         courseId = course
         noteId = note
+        detent = .large
         open = true
+    }
+
+    /// Ask about a piece of a note: Fosfor opens half height over the note and answers at once.
+    func ask(_ request: FosforAsk, course: UUID?, note: UUID?) {
+        courseId = course
+        noteId = note
+        pending = request
+        if !open { detent = .medium }
+        open = true
+    }
+}
+
+/// "I didn't get this": the exact text the student pointed at, where it sits in the note, and how to
+/// explain it. `prompt` replaces the default question (e.g. "Neden bu cevap?" on a test question).
+struct FosforAsk: Equatable, Identifiable {
+    let id = UUID()
+    var quote: String
+    var source: String?
+    var mode: NoteAI.ExplainMode = .simple
+    var prompt: String? = nil
+
+    var question: String { prompt ?? mode.question }
+}
+
+extension NoteAI.ExplainMode {
+    /// What the student "says" when picking this way of explaining.
+    var question: String {
+        switch self {
+        case .simple: "Bunu anlamadım, daha basit anlatır mısın?"
+        case .example: "Günlük hayattan bir örnekle anlatır mısın?"
+        case .step_by_step: "Bana bunu adım adım öğretir misin?"
+        }
+    }
+    var shortLabel: String {
+        switch self {
+        case .simple: "Daha basit"
+        case .example: "Örnekle"
+        case .step_by_step: "Adım adım"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .simple: "text.bubble"
+        case .example: "lightbulb"
+        case .step_by_step: "list.number"
+        }
     }
 }
 
@@ -28,6 +80,16 @@ struct ChatMessage: Codable, Identifiable, Hashable {
     let text: String
     /// The answer was saved as a study card.
     var carded = false
+    /// The part of the note the question is about, shown above the question.
+    var quote: String? = nil
+    /// Where the quote is from ("Ana nokta 3", "Tam özet", "Test sorusu").
+    var source: String? = nil
+
+    /// The text sent to the AI as this turn: the quote first, so follow-ups know what "bu" is.
+    var turnText: String {
+        guard let quote, !quote.isEmpty else { return text }
+        return "“\(quote.prefix(700))”\n\(text)"
+    }
 }
 
 enum Assistant {
@@ -94,7 +156,7 @@ enum Assistant {
         let input = ChatInput(
             course: course,
             context: String(context.prefix(18_000)),
-            history: history.suffix(10).map { Turn(role: $0.role.rawValue, text: String($0.text.prefix(1_500))) },
+            history: history.suffix(10).map { Turn(role: $0.role.rawValue, text: String($0.turnText.prefix(1_500))) },
             question: String(question.prefix(2_000))
         )
         let output = try await AIClient.run("chat", input, as: ChatOutput.self)

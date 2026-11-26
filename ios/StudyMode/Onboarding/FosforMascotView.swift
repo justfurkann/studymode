@@ -9,14 +9,20 @@ struct FosforMascotView: View {
         case marking
         case proud
         case cheering
+        /// Looking up, small round mouth: while Fosfor is writing an answer.
+        case thinking
     }
 
-    /// A small light tile with an outline behind Fosfor, so the dark cap and outline stay visible on
-    /// dark cards (the Bugün hero) as well as on paper. The intro scenes draw it bare.
-    var framed: Bool = true
     var size: CGFloat = 58
     var mood: Mood = .curious
     var badge: String? = nil
+    /// On a navy surface (the Bugün and Sınavlar heroes) the navy cap would melt into the card, so
+    /// Fosfor gets a thin paper-colored sticker cut-out around its own shape. No box behind it.
+    var onDark: Bool = false
+    /// Float and blink. Off for tiny inline uses (chips, avatars in a list).
+    var animated: Bool = true
+    /// Hop on tap. Off when Fosfor sits inside a button, so the button gets the tap.
+    var tappable: Bool = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
@@ -41,7 +47,7 @@ struct FosforMascotView: View {
         HStack(spacing: 8) {
             mascotBody
                 .frame(width: size, height: size)
-                .offset(y: reduceMotion ? 0 : (floatPhase ? -3.5 : 2.5))
+                .offset(y: (reduceMotion || !animated) ? 0 : (floatPhase ? -size * 0.06 : size * 0.04))
                 .keyframeAnimator(initialValue: HopValues(), trigger: hopTrigger) { content, val in
                     content
                         .scaleEffect(x: val.scaleX, y: val.scaleY)
@@ -69,20 +75,11 @@ struct FosforMascotView: View {
                     }
                 }
                 .onTapGesture {
+                    guard tappable else { return }
                     OnboardingHaptics.light()
                     hopTrigger += 1
                 }
-                .padding(framed ? size * 0.14 : 0)
-                .background {
-                    if framed {
-                        RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
-                            .fill(Theme.surface)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
-                                    .stroke(Theme.cardLine, lineWidth: max(1.5, size * 0.035))
-                            )
-                    }
-                }
+                .allowsHitTesting(tappable)
 
             if let badge {
                 Text(badge)
@@ -98,17 +95,17 @@ struct FosforMascotView: View {
         }
         .accessibilityHidden(true)
         .onAppear {
-            guard !reduceMotion else { return }
+            guard !reduceMotion, animated else { return }
             withAnimation(.easeInOut(duration: 2.1).repeatForever(autoreverses: true)) {
                 floatPhase = true
             }
         }
-        .onChange(of: mood) { _, _ in
-            guard !reduceMotion else { return }
+        .onChange(of: mood) { _, new in
+            guard !reduceMotion, animated, new != .thinking else { return }
             hopTrigger += 1
         }
         .task {
-            guard !reduceMotion else { return }
+            guard !reduceMotion, animated else { return }
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(Int.random(in: 2600...4400)))
                 guard !Task.isCancelled else { break }
@@ -130,10 +127,25 @@ struct FosforMascotView: View {
                 CGRect(x: x * s, y: y * s, width: w * s, height: h * s)
             }
 
+            // Sticker cut-out on navy cards: the pen's own silhouette, a little larger, in paper color.
+            if onDark {
+                var outline = Path()
+                outline.addRoundedRect(in: rect(15, 17, 34, 44.5), cornerSize: CGSize(width: 13 * s, height: 13 * s))
+                outline.addRoundedRect(in: rect(19.5, 11.5, 25, 8), cornerSize: CGSize(width: 3 * s, height: 3 * s))
+                outline.move(to: pt(24.5, 4.5))
+                outline.addLine(to: pt(37.5, 4.5))
+                outline.addLine(to: pt(42.5, 13.0))
+                outline.addLine(to: pt(21.5, 13.0))
+                outline.closeSubpath()
+                let paper = Color(uiColor: UIColor(hex: 0xF8F8F2))
+                context.stroke(outline, with: .color(paper), style: StrokeStyle(lineWidth: 5.5 * s, lineCap: .round, lineJoin: .round))
+                context.fill(outline, with: .color(paper))
+            }
+
             // Soft tactile drop shadow under body
             let shadowRect = rect(15, 19.5, 34, 42)
             let shadowPath = Path(roundedRect: shadowRect, cornerRadius: 13 * s)
-            context.fill(shadowPath, with: .color(Theme.cardDrop.opacity(0.85)))
+            context.fill(shadowPath, with: .color(Theme.cardDrop.opacity(onDark ? 0.35 : 0.85)))
 
             // Chisel tip
             var tip = Path()
@@ -162,8 +174,16 @@ struct FosforMascotView: View {
             context.fill(shine, with: .color(.white.opacity(0.65)))
 
             // Eyes (blink or mood)
-            let eyeOffsetX: CGFloat = mood == .marking ? -1.2 : (mood == .proud ? 0.8 : 0)
-            if isBlinking {
+            let eyeOffsetX: CGFloat = mood == .marking ? -1.2 : (mood == .proud ? 0.8 : (mood == .thinking ? 1.4 : 0))
+            if mood == .thinking && !isBlinking {
+                // Looking up and to the side, as if reading the note again.
+                let leftEye = Path(ellipseIn: rect(24.1 + eyeOffsetX, 31.6, 5.8, 7.0))
+                let rightEye = Path(ellipseIn: rect(34.1 + eyeOffsetX, 31.6, 5.8, 7.0))
+                context.fill(leftEye, with: .color(inkColor))
+                context.fill(rightEye, with: .color(inkColor))
+                context.fill(Path(ellipseIn: rect(27.6 + eyeOffsetX, 32.2, 2.1, 2.1)), with: .color(.white))
+                context.fill(Path(ellipseIn: rect(37.6 + eyeOffsetX, 32.2, 2.1, 2.1)), with: .color(.white))
+            } else if isBlinking {
                 var leftBlink = Path()
                 leftBlink.move(to: pt(24.2 + eyeOffsetX, 37))
                 leftBlink.addLine(to: pt(29.8 + eyeOffsetX, 37))
@@ -201,11 +221,15 @@ struct FosforMascotView: View {
             context.fill(rightCheek, with: .color(Theme.danger.opacity(0.32)))
 
             // Expressive mouth
-            var mouth = Path()
-            let smileDepth: CGFloat = (mood == .cheering || mood == .proud) ? 6.8 : 4.8
-            mouth.move(to: pt(27.6, 44.0))
-            mouth.addQuadCurve(to: pt(36.4, 44.0), control: pt(32.0, 44.0 + smileDepth))
-            context.stroke(mouth, with: .color(inkColor), style: StrokeStyle(lineWidth: 2.6 * s, lineCap: .round))
+            if mood == .thinking {
+                context.stroke(Path(ellipseIn: rect(30.4, 44.0, 3.6, 3.4)), with: .color(inkColor), lineWidth: 2.2 * s)
+            } else {
+                var mouth = Path()
+                let smileDepth: CGFloat = (mood == .cheering || mood == .proud) ? 6.8 : 4.8
+                mouth.move(to: pt(27.6, 44.0))
+                mouth.addQuadCurve(to: pt(36.4, 44.0), control: pt(32.0, 44.0 + smileDepth))
+                context.stroke(mouth, with: .color(inkColor), style: StrokeStyle(lineWidth: 2.6 * s, lineCap: .round))
+            }
         }
     }
 

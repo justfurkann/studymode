@@ -491,7 +491,7 @@ private struct LevelStagePage: View {
                     Spacer(minLength: 4)
 
                     ZStack {
-                        FosforMascotView(framed: false, 
+                        FosforMascotView(
                             size: 54,
                             mood: level == nil ? .curious : .cheering
                         )
