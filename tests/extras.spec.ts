@@ -1384,27 +1384,61 @@ test('Free+: Premium’u biten hesabın Free+ seçimi ücretsize döner', async 
   await expect(page.getByRole('button', { name: /Yapay zekâ/ })).toContainText('Ücretsiz yapay zekâ')
 })
 
-test('Tekrar: bekleyen kartlar dersler arasında seçilebilir; seçilen ders yalnızca kendi kartlarını getirir', async ({ page }) => {
+test('Tekrar: günlük oturum — yakın sınavlı ders önce, günde en fazla 5 yeni kart, hedef sayacı, “Bugün tamam” ve “Biraz daha”', async ({ page }) => {
   const T = '2026-10-01T00:00:00Z'
   const uid = 'aaaaaaaa-0000-0000-0000-000000000011'
-  const fiz = { id: 'cccccccc-0000-0000-0000-0000000000a1', user_id: uid, name: 'Fizyoloji', color: '#e5484d', exam_date: null, created_at: T, updated_at: T }
-  const kim = { ...fiz, id: 'cccccccc-0000-0000-0000-0000000000a2', name: 'Kimya', color: '#3ccf91' }
-  const card = (n: number, course: typeof fiz, front: string) => ({ id: `eeeeeeee-0000-0000-0000-0000000000${String(n).padStart(2, '0')}`, user_id: uid, course_id: course.id, note_id: null, front, back: 'Cevap', source: null, due: T, interval: 0, ease: 2.5, reps: 0, lapses: 0, created_at: T, updated_at: T })
-  const cards = [card(1, fiz, 'Kalp kaç odalıdır?'), card(2, fiz, 'Sol karıncık ne yapar?'), card(3, fiz, 'Nabız nedir?'), card(4, kim, 'Mol nedir?'), card(5, kim, 'pH neyi ölçer?')]
+  const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10)
+  const fiz = { id: 'cccccccc-0000-0000-0000-0000000000a1', user_id: uid, name: 'Fizyoloji', color: '#e5484d', exam_date: inDays(3), created_at: T, updated_at: T }
+  const kim = { ...fiz, id: 'cccccccc-0000-0000-0000-0000000000a2', name: 'Kimya', color: '#3ccf91', exam_date: null }
+  const card = (n: number, course: typeof fiz, front: string, seen: boolean) => ({
+    id: `eeeeeeee-0000-0000-0000-0000000000${String(n).padStart(2, '0')}`, user_id: uid, course_id: course.id, note_id: null, front, back: 'Cevap', source: null,
+    due: T, interval: seen ? 3 : 0, ease: 2.5, reps: seen ? 2 : 0, lapses: 0, created_at: T, updated_at: T,
+  })
+  const cards = [
+    ...Array.from({ length: 7 }, (_, i) => card(i + 1, kim, `Kimya yeni ${i + 1}`, false)),
+    card(20, fiz, 'Kalp kaç odalıdır?', true),
+    card(21, fiz, 'Nabız nedir?', true),
+  ]
+  const saved: Array<Record<string, unknown>> = []
+  page.on('request', (r) => {
+    if (r.url().includes('/rest/v1/study_days') && r.method() === 'POST') saved.push(...([] as Array<Record<string, unknown>>).concat(r.postDataJSON()))
+  })
+  await page.addInitScript(() => localStorage.setItem('studymode.settings.v1', JSON.stringify({ dailyGoal: 3 })))
   await signedInAs(page, 'normal', {}, { courses: [fiz, kim], cards })
   await page.goto('/tekrar')
-  const picker = page.getByRole('group', { name: 'Hangi dersi tekrar edeceksin?' })
-  await expect(picker.getByRole('button', { name: /Tümü/ })).toContainText('5')
-  await expect(picker.getByRole('button', { name: /Fizyoloji/ })).toContainText('3')
-  await expect(picker.getByRole('button', { name: /Kimya/ })).toContainText('2')
-  await picker.getByRole('button', { name: /Kimya/ }).click()
-  await expect(page).toHaveURL(/ders=cccccccc-0000-0000-0000-0000000000a2/)
-  await expect(page.getByText('Kimya · 2 kart kaldı')).toBeVisible()
-  await expect(page.locator('.flashcard .front')).toHaveText(/Mol nedir\?|pH neyi ölçer\?/)
-  // The tab stays a tab: the Tekrar / Mola switch and the picker are still there.
-  await expect(picker.getByRole('button', { name: /Kimya/ })).toHaveAttribute('aria-pressed', 'true')
-  await picker.getByRole('button', { name: /Tümü/ }).click()
-  await expect(page.getByText(/^5 kart kaldı/)).toBeVisible()
+  // No total backlog on screen: today's goal, and the tab badge says what is left of it.
+  await expect(page.getByRole('progressbar', { name: 'Bugünkü hedef' })).toHaveAttribute('aria-valuemax', '3')
+  await expect(page.getByText('0/3')).toBeVisible()
+  await expect(page.getByText(/kart kaldı|kart bekliyor/)).toHaveCount(0)
+  await expect(page.locator('a[href="/tekrar"] :is(.nav-badge, .dot)').filter({ visible: true })).toHaveText('3')
+
+  // The course with the nearest exam comes first.
+  const answer = async (grade: RegExp) => {
+    await page.getByRole('button', { name: /Cevabı göster/ }).click()
+    await page.getByRole('button', { name: grade }).click()
+  }
+  await expect(page.locator('.flashcard .front')).toHaveText(/Kalp kaç odalıdır\?|Nabız nedir\?/)
+  await answer(/^İyi/)
+  await expect(page.locator('.flashcard .front')).toHaveText(/Kalp kaç odalıdır\?|Nabız nedir\?/)
+  await answer(/^İyi/)
+  // Then new cards.
+  await expect(page.locator('.flashcard .front')).toHaveText(/Kimya yeni/)
+  await answer(/^İyi/)
+
+  await expect(page.getByRole('heading', { name: /Bugün tamam/ })).toBeVisible()
+  await expect(page.getByText('3/3')).toBeVisible()
+  await expect(page.locator('a[href="/tekrar"] :is(.nav-badge, .dot)')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Derslere hazırlık' })).toBeVisible()
+  // The first answer to a never-seen card is counted for the daily limit of new cards.
+  await expect.poll(() => saved.at(-1)).toMatchObject({ reviews: 3, new_cards: 1 })
+
+  // "Biraz daha": the same rules, but only 4 more new cards today (5 a day).
+  await page.getByRole('button', { name: /Biraz daha/ }).click()
+  await expect(page.getByText('3/13')).toBeVisible()
+  for (let i = 0; i < 4; i += 1) await answer(/^İyi/)
+  await expect(page.getByRole('heading', { name: 'Şu an tekrar edilecek kart yok' })).toBeVisible()
+  await expect(page.getByText('7/13')).toBeVisible()
+  await expect.poll(() => saved.at(-1)).toMatchObject({ reviews: 7, new_cards: 5 })
 })
 
 test('Google içeriği filtreye takarsa kullanıcı “Sunucu hata verdi” değil, ne olduğunu ve ne yapacağını görür', async ({ page }) => {

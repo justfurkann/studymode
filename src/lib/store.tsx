@@ -4,6 +4,7 @@ import { clearLocalData, localBackend, readLocalData, supabaseBackend, type Back
 import { newCardState, schedule, type Grade } from './srs'
 import { cleanExamTime, examDateForCard, nextExamDate } from './courseExams'
 import { mergeStudyDays, recordStudyActivity } from './streak'
+import { isNewCard } from './dailyReview'
 import type { ShareSnapshot } from './share'
 import { supabase } from './supabase'
 import { emptyData, type Card, type Course, type CourseExam, type ExamRecord, type GeneratedSet, type Note, type PracticeItem, type QuizAttempt, type StudyData } from './types'
@@ -375,7 +376,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const d = current()
         if (!d.cards.some(c => c.id === card.id)) return
         const restored = { ...card, updatedAt: nowIso() }
-        const activity = recordStudyActivity(d.studyDays, { reviews: -1 })
+        // Undoing the first answer to a new card gives the day's new-card slot back.
+        const activity = recordStudyActivity(d.studyDays, { reviews: -1, newCards: isNewCard(card) ? -1 : 0 })
         commit(
           { ...d, cards: d.cards.map(c => c.id === card.id ? restored : c), studyDays: activity.studyDays },
           [
@@ -392,7 +394,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const now = new Date()
         const exam = examDateForCard(d, card, now)
         const updated = { ...card, ...schedule(card, grade, now, exam), updatedAt: now.toISOString() }
-        const activity = recordStudyActivity(d.studyDays, { reviews: 1 }, now)
+        // A never-seen card counts toward today's limit of new cards (study_days.new_cards).
+        const activity = recordStudyActivity(d.studyDays, { reviews: 1, newCards: isNewCard(card) ? 1 : 0 }, now)
         commit(
           { ...d, cards: d.cards.map((c) => (c.id === id ? updated : c)), studyDays: activity.studyDays },
           [

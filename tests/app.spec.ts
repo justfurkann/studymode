@@ -92,6 +92,8 @@ test('course with exam, pasted note in simple mode, spaced review and persistenc
   await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
 
   await expect(page.getByRole('heading', { level: 1, name: 'Hücre ve organeller' })).toBeVisible()
+  // Reading the summary's first step lets this note's new cards into the daily Tekrar.
+  await page.getByRole('button', { name: /Devam: Ana noktalar/ }).click()
   // The browser tab names the course first, so tabs of different courses can be told apart.
   await expect(page).toHaveTitle('Biyoloji 101 · Hücre ve organeller · StudyMode')
   await expect(page.getByText('Basit mod', { exact: true })).toBeVisible()
@@ -113,15 +115,17 @@ test('course with exam, pasted note in simple mode, spaced review and persistenc
   expect(due).toBeGreaterThan(1)
 
   await page.getByRole('link', { name: 'Tekrara başla' }).click()
-  await expect(page.getByText(`${due} kart kaldı`)).toBeVisible()
+  // Today's goal, not the backlog: every answer moves the counter.
+  const goal = page.getByRole('progressbar', { name: 'Bugünkü hedef' })
+  await expect(goal).toHaveAttribute('aria-valuenow', '0')
   await page.getByRole('button', { name: /Cevabı göster/ }).click()
   await page.getByRole('button', { name: /^İyi/ }).click()
-  await expect(page.getByText(`${due - 1} kart kaldı`)).toBeVisible()
+  await expect(goal).toHaveAttribute('aria-valuenow', '1')
 
-  // "Bilemedim" keeps the card in this session.
+  // "Bilemedim" keeps the card in this session, and still counts as an answer.
   await page.keyboard.press('Space')
   await page.keyboard.press('1')
-  await expect(page.getByText(`${due - 1} kart kaldı`)).toBeVisible()
+  await expect(goal).toHaveAttribute('aria-valuenow', '2')
 
   // One card is scheduled for later, the forgotten one comes back in 10 minutes; both survive a reload.
   await page.reload()
@@ -939,11 +943,13 @@ test('daily card goal and study streak update on Today page after reviewing card
   const errors = watchErrors(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'Örnek notla dene' }).click()
+  // New cards come to Tekrar once their note's summary is read.
+  await page.getByRole('button', { name: /Devam: Ana noktalar/ }).click()
 
   // Update daily card goal in Settings to 5
   await page.goto('/ayarlar')
   const goalInput = page.getByLabel('Günlük kart hedefi')
-  await expect(goalInput).toHaveValue('20')
+  await expect(goalInput).toHaveValue('15')
   await goalInput.fill('5')
 
   await page.goto('/')
@@ -1360,7 +1366,7 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
     await page.goto('/')
     const streakPanel = page.getByRole('region', { name: 'Günlük hedef ve seri' })
     await expect(streakPanel.getByText('1 gündür çalışıyorsun')).toBeVisible()
-    await expect(streakPanel.getByText('0/20')).toBeVisible()
+    await expect(streakPanel.getByText('0/15')).toBeVisible()
     expect(errors).toEqual([])
   })
 

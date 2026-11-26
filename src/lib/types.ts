@@ -212,6 +212,8 @@ export interface StudyDay {
   quizzes: number
   /** Other study work (written answers, explanations asked for). Counts toward the streak only. Missing in older rows. */
   actions?: number
+  /** Never-seen cards answered for the first time (the daily limit of new cards). Missing in older rows. */
+  newCards?: number
   createdAt: string
   updatedAt: string
 }
