@@ -1055,7 +1055,8 @@ test('Seviye ve XP: Bugün’de rozet, Başarımlar’da kart ve döküm; seviye
 
 
 test('Premium kodu: her hata kendi mesajıyla; doğru kodda Premium hemen açılır ve bitiş tarihi görünür', async ({ page }) => {
-  await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
+  // In UTC, like the Premium end date below, so "30 gün kaldı" holds in any time zone (the Mac is UTC+3).
+  await page.clock.install({ time: new Date(Date.UTC(2026, 10, 2, 14, 0)) })
   let until: string | null = null
   const answers = ['invalid', 'used', 'already_yours', 'too_many']
   await signedInAs(page, 'normal', {}, {}, {
