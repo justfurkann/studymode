@@ -37,6 +37,10 @@ Uygulama Claude'unun çalışma planı. Site ile ortak işler `docs/IOS_SYNC.md`
 - Doğrulamayı uygulama açılınca arka planda başlatmak; kullanıcı tanıtımı geçerken jeton hazır olur. Jeton tek kullanımlık ve ~5 dk geçerli; süresi dolarsa sessizce yenilenir.
 - Tamamen kaldırmak (Apple App Attest) sunucu değişikliği ister; şimdilik değil.
 
+**Sonra bakılacak (kullanıcı, 26 Kasım)**
+- **Cloudflare kutusu:** gerçek iPhone'da hâlâ çıkıyor, tıklayınca geçiyor. Kullanıcı: "Okey gibi, sonra bakarız." Turnstile Managed kalıyor (IOS_SYNC madde 7).
+- **Sınav notu girilince (taşıma bitince bakılacak):** not girilince kısa bir kutlama/tepki animasyonu, notun yorumu (ör. ağırlıklara göre "finalden şu kadar alman yeterli") ve ona göre bir çalışma yolu önerisi. Kullanıcı emin değil ("belki"), fikir olarak duruyor. Sitede de olacaksa IOS_SYNC'e taşınır. Not: HANDOFF Aşama 60'ta "ağırlıklı ortalama / finalden kaç almam lazım" bilinçli olarak yapılmamıştı (geçme kuralları okula göre değişiyor); yapılırsa bu dikkate alınmalı.
+
 **Diğer küçük notlar**
 - Kart turu "son tekrarı geri al" ve "karıştır" (sitede var, uygulamada yok).
 - Site ve uygulama aynı anda açıkken `study_days` günlük sayacında birkaç tekrar kaybolabilir (kartlar kaybolmaz).
