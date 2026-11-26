@@ -3,10 +3,11 @@ import SwiftUI
 /// A note's study flow: Özet (Kavramlar → Ana noktalar → Tam özet) → Test → Kartlar.
 struct NoteDetailView: View {
     @Environment(StudyStore.self) private var store
+    @Environment(AuthModel.self) private var auth
     let note: NoteItem
 
     enum Step: Hashable { case summary, test, cards }
-    enum Section: Hashable { case terms, points, full }
+    enum Section: String, Codable, Hashable { case terms, points, full }
 
     @State private var summary: NoteSummary?
     @State private var loadError: String?
@@ -14,22 +15,51 @@ struct NoteDetailView: View {
     @State private var section: Section = .terms
     @State private var step: Step = .summary
 
+    @State private var point = 0
+    @State private var fullIndex = 0
+    @State private var restoreFull: Int?
+
+    private func bookmark() {
+        guard loaded, summary != nil, step == .summary, loadError == nil else { return }
+        ReadingPlace(noteID: note.id, section: section,
+                     index: section == .points ? point : (section == .full ? fullIndex : 0))
+            .save(for: auth.session?.user.id)
+    }
+
     private var course: Course? { store.courses.first { $0.id == note.courseId } }
     private var doneSteps: [String] { store.noteSteps(note) }
 
     var body: some View {
         ZStack {
             GridPaper()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    header
-                        .staggeredAppear(0)
-                    content
+            ScrollViewReader { reader in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        header
+                            .staggeredAppear(0)
+                        content
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 40)
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 40)
+                .coordinateSpace(name: "note-scroll")
+                .onPreferenceChange(SectionOffsets.self) { offsets in
+                    guard section == .full, restoreFull == nil, !offsets.isEmpty else { return }
+                    let past = offsets.filter { $0.value <= 90 }.max { $0.value < $1.value }
+                    fullIndex = past?.key ?? 0
+                }
+                .task(id: restoreFull) {
+                    guard let index = restoreFull else { return }
+                    await Task.yield()
+                    reader.scrollTo("full-\(index)", anchor: .top)
+                    restoreFull = nil
+                }
             }
         }
+        .onChange(of: point) { bookmark() }
+        .onChange(of: section) { bookmark() }
+        .onChange(of: fullIndex) { bookmark() }
+        .onChange(of: step) { bookmark() }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .task { await load() }
@@ -121,7 +151,7 @@ struct NoteDetailView: View {
                             }
                             .transition(.opacity.combined(with: .offset(y: 8)))
                         case .points:
-                            PointsSection(points: summary.points) {
+                            PointsSection(points: summary.points, index: $point) {
                                 OnboardingHaptics.medium()
                                 store.markStepDone(note, step: "anla")
                                 withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
@@ -171,6 +201,14 @@ struct NoteDetailView: View {
         loadError = nil
         do {
             summary = try await store.summary(for: note)
+            if !loaded, let place = ReadingPlace.saved(note: note.id, user: auth.session?.user.id) {
+                section = place.section
+                point = max(0, min(place.index, (summary?.points.count ?? 0) - 1))
+                if section == .full, let count = summary?.detailed?.sections.count, count > 0 {
+                    fullIndex = max(0, min(place.index, count - 1))
+                    restoreFull = fullIndex
+                }
+            }
             if summary?.detailed == nil, section == .full { section = .terms }
         } catch is CancellationError {
             return
@@ -178,6 +216,7 @@ struct NoteDetailView: View {
             loadError = "Not yüklenemedi. Bağlantını kontrol edip tekrar dene."
         }
         loaded = true
+        bookmark()
     }
 }
 
@@ -299,8 +338,8 @@ private struct TermCard: View {
 /// One point at a time, like the site's point stepper: swipe or use the buttons.
 private struct PointsSection: View {
     let points: [String]
+    @Binding var index: Int
     let toCards: () -> Void
-    @State private var index = 0
 
     var body: some View {
         if points.isEmpty {
@@ -408,6 +447,13 @@ private struct PointCard: View {
 
 // MARK: - Tam özet
 
+private struct SectionOffsets: PreferenceKey {
+    static var defaultValue: [Int: CGFloat] { [:] }
+    static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
 private struct FullSummarySection: View {
     let detailed: NoteSummary.Detailed
 
@@ -471,6 +517,10 @@ private struct FullSummarySection: View {
                         .background(Theme.hiSoft, in: RoundedRectangle(cornerRadius: 14))
                     }
                 }
+                .id("full-\(i)")
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: SectionOffsets.self, value: [i: geo.frame(in: .named("note-scroll")).minY])
+                })
                 .staggeredAppear(i)
             }
 

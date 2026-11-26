@@ -14,6 +14,12 @@ extension EnvironmentValues {
 
 struct CoursesView: View {
     @Environment(StudyStore.self) private var store
+    @Environment(AuthModel.self) private var auth
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var inbox: [PDFInbox.Item] = []
+    @State private var importing: PDFInbox.Item?
+    @State private var inboxError = false
+    @State private var place: ReadingPlace?
     @State private var session: SessionBox?
     @State private var showAll = false
     @State private var path = NavigationPath()
@@ -42,17 +48,30 @@ struct CoursesView: View {
                     .disabled(store.status != .ready)
                 }
             }
+            .navigationDestination(for: CourseExam.self) { ExamStudyView(exam: $0) }
             .navigationDestination(for: Course.self) { CourseDetailView(course: $0) }
             .navigationDestination(for: NoteItem.self) { NoteDetailView(note: $0) }
         }
         .fullScreenCover(item: $session) { box in
             ReviewSession(title: "Tekrar", cards: box.cards, mode: .daily).environment(store)
         }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            if phase == .active { reloadInbox() }
+        }
+        .sheet(item: $importing, onDismiss: reloadInbox) { item in
+            let course = store.courses.first(where: { $0.id == item.course })
+            AddNoteView(course: course, incoming: item, onDone: openNote).environment(store)
+        }
+        .alert("PDF kaldırılamadı", isPresented: $inboxError) { Button("Tamam") {} }
+        .onAppear { reloadInbox(); place = ReadingPlace.latest(for: auth.session?.user.id) }
+        .onChange(of: path.count) { place = ReadingPlace.latest(for: auth.session?.user.id) }
         .environment(\.openNote, openNote)
         .sheet(isPresented: $adding) {
             AddNoteView(onDone: openNote).environment(store)
         }
     }
+
+    private func reloadInbox() { inbox = PDFInbox.items(for: auth.session?.user.id) }
 
     /// After a note is added: its course, then the note itself.
     private func openNote(_ course: Course, _ noteId: UUID) {
@@ -80,12 +99,44 @@ struct CoursesView: View {
         case .ready:
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    if !inbox.isEmpty {
+                        VStack(alignment: .leading) {
+                            SectionTitle("Paylaşılan PDF’ler")
+                            ForEach(inbox) { item in
+                                HStack {
+                                    Button { importing = item } label: {
+                                        Label(item.title, systemImage: "doc.richtext").frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    Menu {
+                                        Button("Paylaşılan PDF’yi kaldır", role: .destructive) {
+                                            do { try item.remove(); reloadInbox() } catch { inboxError = true }
+                                        }
+                                    } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }
+                                }
+                            }
+                        }.focusCard()
+                    }
                     if store.courses.isEmpty {
                         emptyDeskCard
                             .staggeredAppear(0)
                     } else {
                         dailyReview
                             .staggeredAppear(0)
+                        if let place, let note = store.notes.first(where: { $0.id == place.noteID }) {
+                            NavigationLink(value: note) {
+                                HStack {
+                                    Image(systemName: "bookmark.fill")
+                                    VStack(alignment: .leading) {
+                                        Text(note.title).font(.headline)
+                                        Text(place.label).font(.subheadline)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "arrow.right")
+                                }
+                                .focusCard()
+                            }
+                            .buttonStyle(.plain)
+                        }
                         library
                             .staggeredAppear(1)
                     }
@@ -223,10 +274,18 @@ struct CoursesView: View {
 
             LazyVStack(spacing: 10) {
                 ForEach(Array(visible.enumerated()), id: \.element.id) { idx, course in
-                    NavigationLink(value: course) {
-                        CourseRow(course: course)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        NavigationLink(value: course) { CourseRow(course: course) }
+                            .buttonStyle(TactileCardButtonStyle())
+                        if let exam = store.nextExam(course), let countdown = Exams.countdown(exam, store.audience) {
+                            NavigationLink(value: exam) {
+                                HStack {
+                                    CountdownChip(text: countdown.text, tone: countdown.tone)
+                                    Image(systemName: "arrow.right").font(.caption)
+                                }.padding(.horizontal, 8).frame(minHeight: 44)
+                            }
+                        }
                     }
-                    .buttonStyle(TactileCardButtonStyle())
                     .staggeredAppear(idx + 1)
                 }
 
@@ -277,9 +336,6 @@ private struct CourseRow: View {
                         .foregroundStyle(Theme.text)
                         .lineLimit(1)
                     Spacer(minLength: 4)
-                    if let exam = store.nextExam(course), let countdown = Exams.countdown(exam, store.audience) {
-                        CountdownChip(text: countdown.text, tone: countdown.tone)
-                    }
                 }
 
                 HStack(spacing: 8) {

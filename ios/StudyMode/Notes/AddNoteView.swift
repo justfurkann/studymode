@@ -1,3 +1,4 @@
+import VisionKit
 import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
@@ -9,6 +10,7 @@ struct AddNoteView: View {
     @Environment(\.dismiss) private var dismiss
 
     /// Called with the new note's id when it is ready (or saved unprepared).
+    let incoming: PDFInbox.Item?
     let onDone: (Course, UUID) -> Void
 
     enum Source: Hashable { case text, photo, pdf }
@@ -22,15 +24,18 @@ struct AddNoteView: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var photos: [UIImage] = []
     @State private var showCamera = false
+    @State private var replacing: Int?
     @State private var showPDF = false
+    @State private var openedIncoming = false
     @State private var newCourse = false
     @State private var newCourseName = ""
     @State private var savedNoteId: UUID?
     @State private var info: String?
     @State private var work: Task<Void, Never>?
 
-    init(course: Course? = nil, onDone: @escaping (Course, UUID) -> Void) {
+    init(course: Course? = nil, incoming: PDFInbox.Item? = nil, onDone: @escaping (Course, UUID) -> Void) {
         _courseId = State(initialValue: course?.id)
+        self.incoming = incoming
         self.onDone = onDone
     }
 
@@ -98,14 +103,33 @@ struct AddNoteView: View {
                 Button("Ekle") { addCourse() }
             }
             .sheet(isPresented: $showCamera) {
-                CameraPicker { image in photos.append(image) }.ignoresSafeArea()
+                if VNDocumentCameraViewController.isSupported {
+                    DocumentScanner(limit: replacing == nil ? 30 - photos.count : 1) { pages in
+                        if let replacing, photos.indices.contains(replacing), let first = pages.first {
+                            photos[replacing] = first
+                        } else {
+                            photos.append(contentsOf: pages)
+                        }
+                    } fail: { info = $0 }
+                    .ignoresSafeArea()
+                } else {
+                    CameraPicker { image in photos.append(image) }.ignoresSafeArea()
+                }
             }
             .fileImporter(isPresented: $showPDF, allowedContentTypes: [.pdf]) { result in
                 if case let .success(url) = result { readPDF(url) }
             }
             .onChange(of: photoItems) { _, items in loadPhotos(items) }
         }
-        .onAppear { if courseId == nil { courseId = store.sortedCourses.first?.id } }
+        .onAppear {
+            if courseId == nil && incoming == nil { courseId = store.sortedCourses.first?.id }
+            if !openedIncoming, let incoming, let url = incoming.file {
+                openedIncoming = true
+                title = incoming.title
+                source = .pdf
+                readPDF(url)
+            }
+        }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
     }
 
@@ -166,10 +190,10 @@ struct AddNoteView: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                    Button { showCamera = true } label: { Label("Fotoğraf çek", systemImage: "camera") }
+                    Button { replacing = nil; showCamera = true } label: { Label(VNDocumentCameraViewController.isSupported ? "Defteri tara" : "Fotoğraf çek", systemImage: "doc.viewfinder") }
                         .buttonStyle(SecondaryButtonStyle())
                 }
-                PhotosPicker(selection: $photoItems, maxSelectionCount: 30, matching: .images) {
+                PhotosPicker(selection: $photoItems, maxSelectionCount: max(1, 30 - photos.count), selectionBehavior: .ordered, matching: .images) {
                     Label("Galeriden seç", systemImage: "photo.on.rectangle")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.text)
@@ -178,7 +202,7 @@ struct AddNoteView: View {
                         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1.5))
                 }
             }
-            .disabled(busy)
+            .disabled(busy || photos.count >= 30 || !text.isEmpty)
             if !photos.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -187,17 +211,24 @@ struct AddNoteView: View {
                                 .frame(width: 72, height: 96).clipShape(RoundedRectangle(cornerRadius: 10))
                                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.cardLine, lineWidth: 1.2))
                                 .overlay(alignment: .topTrailing) {
-                                    if !busy {
-                                        Button {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.78)) {
-                                                _ = photos.remove(at: i)
+                                    if !busy && text.isEmpty {
+                                        Menu {
+                                            Button("Öne al") { photos.swapAt(i, i - 1) }.disabled(i == 0)
+                                            Button("Arkaya al") { photos.swapAt(i, i + 1) }.disabled(i + 1 == photos.count)
+                                            if VNDocumentCameraViewController.isSupported {
+                                                Button("Yeniden tara") { replacing = i; showCamera = true }
                                             }
+                                            Button("Sayfayı çıkar", role: .destructive) { photos.remove(at: i) }
                                         } label: {
-                                            Image(systemName: "xmark.circle.fill").foregroundStyle(.white, .black.opacity(0.6))
+                                            Image(systemName: "ellipsis.circle.fill").foregroundStyle(.white, .black)
+                                                .frame(width: 44, height: 44)
                                         }
-                                        .padding(3)
-                                        .accessibilityLabel("Fotoğrafı çıkar")
+                                        .accessibilityLabel("\(i + 1). sayfa işlemleri")
                                     }
+                                }
+                                .overlay(alignment: .bottomLeading) {
+                                    Text("\(i + 1)").font(.caption.bold()).padding(4)
+                                        .foregroundStyle(.white).background(.black.opacity(0.75))
                                 }
                                 .transition(.scale.combined(with: .opacity))
                         }
@@ -222,6 +253,9 @@ struct AddNoteView: View {
             Button { showPDF = true } label: { Label(text.isEmpty ? "PDF seç" : "Başka PDF seç", systemImage: "doc.richtext") }
                 .buttonStyle(SecondaryButtonStyle())
                 .disabled(busy)
+            if let url = incoming?.file, case .failed = phase, text.isEmpty {
+                Button("Paylaşılan PDF’yi tekrar oku") { readPDF(url) }
+            }
             if !text.isEmpty { textEditor(placeholder: "") }
         }
     }
@@ -365,6 +399,7 @@ struct AddNoteView: View {
                     phase = .saving
                     noteId = try await store.createNote(course: course, title: noteTitle, content: content)
                     savedNoteId = noteId
+                    try? incoming?.remove()
                 }
                 phase = .preparing(done: 0, total: parts)
                 let set = try await StudySetMaker.make(title: noteTitle, text: content) { done, total in
