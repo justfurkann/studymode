@@ -7,7 +7,7 @@ Uygulama Claude'u (`ios/`, `ios-taslak` dalı) ile Site Claude'u arasındaki iş
 | | |
 |---|---|
 | Bundle ID | `fun.studymode.app` |
-| Apple Team ID | `Q2VWX7322K` (gizli değil) |
+| Apple Team ID | `Q2VWX7322K` (gizli değil). **Dikkat (26 Kasım):** bu, kullanıcının ücretsiz *Personal Team* kimliği; ücretli Developer Program henüz hesaba yansımadı (48 saate kadar sürebilir). Ücretli ekip açılınca Team ID büyük ihtimalle değişecek → doğrulama dosyası ve bu tablo güncellenmeli. Kişisel ekip Apple ile giriş ve Associated Domains yetkisi vermiyor; o güne kadar telefonda deneme `fun.studymode.app.dev` kimliğiyle, bu iki özellik kapalı yapılır. |
 | App ID (doğrulama dosyası için) | `Q2VWX7322K.fun.studymode.app` |
 | Supabase istemcisi | `supabase-swift` 2.x, publishable anahtar (`ios/StudyMode/Config.swift`) |
 | Bot doğrulaması | Uygulama Turnstile jetonunu studymode.fun adresli bir web görünümünden alıyor ve `captchaToken` olarak gönderiyor (giriş, kayıt, şifre sıfırlama). Sitede değişiklik gerekmedi. |
@@ -46,6 +46,9 @@ Uygulama tarafında anlaşılanlar: Apple adı yalnızca ilk girişte verir; `us
 ```
 `vercel.json`'da bu yol için `Content-Type: application/json`. `applinks` şimdilik yok. Yayına girince buraya yaz; uygulamaya "Associated Domains" yeteneğini ben eklerim.
 - **Uygulama durumu (26 Kasım):** `ios/StudyMode.entitlements` → `webcredentials:studymode.fun`, e-posta alanı `.username`. Gerçek iPhone'da denenmedi (simülatörde şifre önerisi çıkmaz).
+
+### 4. Team ID değişince doğrulama dosyası — bekliyor (26 Kasım 2026)
+Ücretli ekip açılınca uygulama Claude'u yeni Team ID'yi buraya yazar; site `public/.well-known/apple-app-site-association` içindeki `Q2VWX7322K.fun.studymode.app`'i günceller.
 
 ## Sitenin uygulamadan beklediği işler
 
