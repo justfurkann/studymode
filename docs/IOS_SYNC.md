@@ -81,15 +81,18 @@ Kaynak: kalite kontrol Claude'unun önerisi, kullanıcı onayladı. "15 kart" ve
 
 **iOS durumu:** taslak onaylandı (26 Kasım), kodlanıyor. **Site:** kullanıcı istedi, site Claude'u aynısını siteye yapar (madde 6).
 
-### 6. Site: yeni Tekrar + `study_days.new_cards` — bekliyor (26 Kasım 2026)
+### 6. Site: yeni Tekrar + `study_days.new_cards` — ✅ yayında (26 Kasım 2026, PR #125)
 - Yukarıdaki "Ortak kural: yeni Tekrar" maddelerini sitenin Tekrar sekmesine uygula (zamanlama ve dört değerlendirme aynı kalır).
 - SQL (önce kullanıcıya göster, onaydan sonra çalıştır; `schema.sql`'e de "if not exists" ile):
   `alter table public.study_days add column if not exists new_cards integer not null default 0 check (new_cards >= 0);`
 - `backend.ts` `OPTIONAL_COLUMNS`'a `new_cards`; `StudyDay` tipine `newCards?: number`; `recordStudyActivity` delta'sına `newCards`.
 - Uygulandığında burada "yayında" yaz; iOS sütunu okuyup yazmaya hazır.
+- **Durum (site):** sütun Supabase'de açık (kullanıcı onayıyla). Site aynı kuralları uyguluyor: yeni kartta okundu/test kapısı, bir kez cevaplanmış kart her zaman gelir; sıra sınav → bilinemeyen (`lapses > 0` ya da `reps 0 ve ease < 2.5`) → en gecikmiş → yeni (günde 5). Hedef = Ayarlar'daki günlük hedef (varsayılan 15; kayıtlı eski 20 de 15 sayılır). Mantık `src/lib/dailyReview.ts`.
 
-### 7. Cloudflare Turnstile: "Managed" → "Non-interactive" — kullanıcının panel işi (26 Kasım 2026)
-Uygulamada kutu hâlâ çıkıyor (kullanıcı, gerçek iPhone). Uygulama tarafında yapılabilecek her şey yapıldı (`appearance: 'interaction-only'`, açılışta arka planda başlatma). Cloudflare, uygulama içi web görünümünü sık sık "etkileşim gerekli" sayıyor. Çözüm Cloudflare panelinde: Turnstile → studymode.fun widget'ı → **Widget Mode: Non-interactive**. Aynı site anahtarı, aynı gizli anahtar; Supabase'de değişiklik yok. Etkisi: sitede de kutu tıklama istemez (kontrol arka planda sürer). Site Claude'u için: sitede ayrıca bir değişiklik gerekmez; istersen `appearance: 'interaction-only'`'yi sitede de kullanabilirsin.
+### 7. Cloudflare Turnstile — **Managed kalıyor** (kullanıcı kararı, 26 Kasım 2026)
+Kullanıcı Non-interactive'e geçmeyi reddetti ("asla tamamen o dediğin gibi yapmayalım"): Cloudflare'in sessizce doğrulayamadığı ziyaretçinin (sıkı gizlilik, VPN, betik engeli) Managed'da yedek olarak kutusu var, Non-interactive'de yok. Cloudflare panelinde değişiklik yok.
+- **Uygulama tarafı:** Turnstile web görünümü `baseURL https://studymode.fun` ile yükleniyor ve artık Safari'nin kullanıcı ajanı sonunu taşıyor (`applicationNameForUserAgent = "Version/<iOS>.0 Mobile/15E148 Safari/604.1"`), yani sıradan bir Safari sekmesi gibi görünüyor. Görünüm `interaction-only`, açılışta arka planda başlıyor; Cloudflare yine dokunuş isterse kutu kayıt kartında çıkıyor (kimse kilitli kalmıyor).
+- **Doğrulanmadı:** kutunun bundan sonra ne sıklıkla çıktığı gerçek iPhone'da gözlenmeli.
 
 ## Sitenin uygulamadan beklediği işler
 

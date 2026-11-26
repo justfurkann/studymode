@@ -41,6 +41,11 @@ final class CaptchaController {
 
     private func makeWebView() -> WKWebView {
         let config = WKWebViewConfiguration()
+        // A web view's user agent lacks Safari's "Version/… Safari/…" ending; with it the widget sees
+        // an ordinary Safari tab, which Cloudflare's Managed mode lets through more often. If it
+        // still wants a tap, the sign-in card shows the box (needsInteraction).
+        let major = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
+        config.applicationNameForUserAgent = "Version/\(major).0 Mobile/15E148 Safari/604.1"
         let handler = MessageHandler { [weak self] body in self?.receive(body) }
         self.handler = handler
         config.userContentController.add(handler, name: "turnstile")
