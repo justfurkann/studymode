@@ -18,6 +18,8 @@ struct MainTabs: View {
             ReviewTab()
                 .tabItem { Label("Tekrar", systemImage: "rectangle.stack") }
                 .badge(store.status == .ready ? min(store.goalLeft, store.todayQueue.count) : 0)
+            ExamsHubTab()
+                .tabItem { Label("Sınavlar", systemImage: "calendar.badge.clock") }
             AccountView()
                 .tabItem { Label("Hesap", systemImage: "person.crop.circle") }
         }

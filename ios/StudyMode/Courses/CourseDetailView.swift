@@ -6,6 +6,9 @@ struct CourseDetailView: View {
     @Environment(\.openNote) private var openNote
     let course: Course
     @State private var adding = false
+    @State private var addingExam = false
+    @State private var editingExam: CourseExam?
+    @State private var showMockExam = false
 
     var body: some View {
         let notes = store.notes(in: course)
@@ -16,10 +19,8 @@ struct CourseDetailView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     header(noteCount: notes.count)
                         .staggeredAppear(0)
-                    if !exams.isEmpty {
-                        examsSection(exams)
-                            .staggeredAppear(1)
-                    }
+                    examsSection(exams, hasNotes: !notes.isEmpty)
+                        .staggeredAppear(1)
                     notesSection(notes)
                         .staggeredAppear(2)
                 }
@@ -43,6 +44,15 @@ struct CourseDetailView: View {
         }
         .sheet(isPresented: $adding) {
             AddNoteView(course: course, onDone: openNote).environment(store)
+        }
+        .sheet(isPresented: $addingExam) {
+            CourseExamEditorSheet(course: course).environment(store)
+        }
+        .sheet(item: $editingExam) { exam in
+            CourseExamEditorSheet(course: course, editing: exam).environment(store)
+        }
+        .fullScreenCover(isPresented: $showMockExam) {
+            MockExamView(course: course, preselectedExam: store.nextExam(course)).environment(store)
         }
     }
 
@@ -75,17 +85,83 @@ struct CourseDetailView: View {
         .padding(.top, 8)
     }
 
-    private func examsSection(_ exams: [CourseExam]) -> some View {
+    private func examsSection(_ exams: [CourseExam], hasNotes: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionTitle("Sınavlar")
-            VStack(spacing: 0) {
-                ForEach(Array(exams.enumerated()), id: \.element.id) { index, exam in
-                    if index > 0 { Divider().overlay(Theme.border) }
-                    NavigationLink(value: exam) { ExamRow(exam: exam) }.buttonStyle(.plain)
+            HStack {
+                SectionTitle("Sınavlar")
+                Spacer()
+                Button {
+                    OnboardingHaptics.light()
+                    addingExam = true
+                } label: {
+                    Label("Sınav ekle", systemImage: "plus")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Theme.text)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Theme.surface, in: Capsule())
+                        .overlay(Capsule().stroke(Theme.border, lineWidth: 1))
                 }
+                .buttonStyle(.plain)
             }
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
+
+            if exams.isEmpty {
+                HStack(spacing: 10) {
+                    Image(systemName: "calendar.badge.plus")
+                        .foregroundStyle(Theme.text3)
+                    Text("Vize ya da final tarihini ekle, tekrar sırasını ona göre ayarlayalım.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.text2)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(exams.enumerated()), id: \.element.id) { index, exam in
+                        if index > 0 { Divider().overlay(Theme.border) }
+                        NavigationLink(value: exam) { ExamRow(exam: exam) }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button {
+                                    editingExam = exam
+                                } label: {
+                                    Label("Sınavı düzenle", systemImage: "pencil")
+                                }
+                                Button(role: .destructive) {
+                                    store.deleteCourseExam(exam)
+                                } label: {
+                                    Label("Sınavı sil", systemImage: "trash")
+                                }
+                            }
+                    }
+                }
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
+            }
+
+            if hasNotes {
+                Button {
+                    OnboardingHaptics.medium()
+                    showMockExam = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                        Text("Sınav provası oluştur")
+                        Spacer()
+                        if let last = store.lastMockExam(for: course) {
+                            Text("Son: %\(last.percent)")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Theme.text2)
+                        }
+                        Image(systemName: "arrow.right")
+                            .font(.caption.weight(.bold))
+                    }
+                    .padding(.horizontal, 14)
+                }
+                .buttonStyle(SecondaryButtonStyle())
+            }
         }
     }
 

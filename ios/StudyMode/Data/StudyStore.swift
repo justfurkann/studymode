@@ -9,11 +9,12 @@ final class StudyStore {
     enum Status: Equatable { case idle, loading, ready, failed(String) }
 
     private(set) var status: Status = .idle
-    private(set) var courses: [Course] = []
-    private(set) var exams: [CourseExam] = []
+    var courses: [Course] = []
+    var exams: [CourseExam] = []
     private(set) var notes: [NoteItem] = []
     private(set) var cards: [Card] = []
     var attempts: [QuizAttempt] = []
+    var examResults: [ExamResultSummary] = []
     /// Study days (day → reviews), newest first: today's goal and the streak.
     var days: [StudyDayCount] = []
     /// New cards started today, from study_days.new_cards; nil while that column does not exist yet.
@@ -61,9 +62,10 @@ final class StudyStore {
             async let notes: [NoteItem] = supabase.from("notes").select(NoteItem.columns).order("created_at", ascending: false).execute().value
             async let cards: [Card] = fetchCards()
             async let exams: [CourseExam] = fetchExams()
+            async let examResults: [ExamResultSummary] = fetchExamResults()
             async let attempts: [QuizAttempt] = supabase.from("quiz_attempts").select(QuizAttempt.columns).execute().value
             async let days = fetchDays()
-            (self.courses, self.notes, self.cards, self.exams, self.attempts) = try await (courses, notes, cards, exams, attempts)
+            (self.courses, self.notes, self.cards, self.exams, self.examResults, self.attempts) = try await (courses, notes, cards, exams, examResults, attempts)
             (self.days, self.serverNewToday) = try await days
             status = .ready
         } catch is CancellationError {
@@ -112,6 +114,20 @@ final class StudyStore {
         }
     }
 
+    private func fetchExamResults() async throws -> [ExamResultSummary] {
+        do {
+            return try await supabase
+                .from("exam_results")
+                .select(ExamResultSummary.columns)
+                .order("created_at", ascending: false)
+                .limit(100)
+                .execute()
+                .value
+        } catch let error as PostgrestError where ["PGRST205", "42P01"].contains(error.code ?? "") {
+            return []
+        }
+    }
+
     // MARK: - Derived
 
     func notes(in course: Course) -> [NoteItem] { notes.filter { $0.courseId == course.id } }
@@ -149,7 +165,7 @@ final class StudyStore {
     }
 
     func reset() {
-        courses = []; exams = []; notes = []; cards = []; attempts = []; days = []; serverNewToday = nil
+        courses = []; exams = []; notes = []; cards = []; attempts = []; examResults = []; days = []; serverNewToday = nil
         status = .idle
     }
 
