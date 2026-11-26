@@ -57,6 +57,28 @@ Uygulama Google'ın SDK'sı olmadan, Google'ın **iOS türünde** OAuth istemcis
 Site Claude'u için not: sitenin Google girişine etkisi olmamalı; bir değişiklik görürsen bana yaz.
 - **Durum (26 Kasım):** iOS Client ID oluşturuldu, sitenin projesinde (`189951485932-3f3jkvijibcnib8ov3opp4gn7h7ln2jl.apps.googleusercontent.com`, gizli değil) ve uygulamaya kondu. Bekleyen: Supabase → Google → Client IDs'e eklenmesi (kullanıcı) ve Google Auth Platform'da branding doldurulup uygulamanın yayınlanması (kullanıcı). Sitenin Google projesinin branding/yayın durumu belirsiz; site Claude'u bakabilirse iyi olur.
 
+## Ortak kural: yeni Tekrar (26 Kasım 2026, kalite kontrolden; önce iOS'ta denenir, sonra site)
+
+Kaynak: kalite kontrol Claude'unun önerisi, kullanıcı onayladı. "15 kart" ve "günde 5 yeni" veriye dayanmıyor, tahmin; uygulamada denenip ayarlanacak. Asıl amaç sınırın olması.
+
+**Değişmeyen:** tekrar zamanlaması (`src/lib/srs.ts` `schedule`, iOS'ta `SRS.swift`, birebir aynı) ve dört değerlendirme (Bilemedim / Zor / İyi / Kolay).
+
+**Kurallar**
+1. **Günde tek oturum.** Gün = cihazın yerel günü (`localDayKey`). Varsayılan hedef **15 kart** (~5 dk). Hedefin ilerlemesi `study_days.reviews` (bugünün satırı) üzerinden sayılır; böylece site ve uygulama aynı sayıyı görür.
+2. **Bitince "Bugün tamam" ekranı.** İsteğe bağlı **"Biraz daha"** aynı kurallarla **+10 kart** ekler (sınırsız tekrarlanabilir).
+3. **Kuyruğa kim girer:** yalnızca **özeti okunmuş ya da testi çözülmüş** notların kartları.
+   - Özeti okunmuş = `summary.completedSteps` içinde `tanis` veya `anla` var.
+   - Testi çözülmüş = `quiz_attempts` içinde o nota ait en az bir satır var.
+   - *Karar gerekli:* nota bağlı olmayan kartlar (`note_id` boş: elle eklenen) → **öneri: girsin**, öğrenci bilerek eklemiş.
+4. **Yeni kart** (`reps = 0` ve `lapses = 0`): günde en fazla **5** tanesi kuyruğa girer. Diğerleri (zamanı gelmiş tekrarlar) sınırsız aday, ama oturum 15'te durur.
+   - *Karar gerekli:* "bugün kaç yeni kart başladı" iki cihaz arasında ortak sayılmıyor (tabloda yer yok). iOS şimdilik **cihazda** sayar. Site de aynısını yaparsa iki cihazda en fazla 10 yeni olur; kesin olsun istenirse `study_days`'e `new_cards` sütunu gerekir (SQL, kullanıcı onayı).
+5. **Sıra:** (a) en yakın sınavı olan dersin kartları önce (sınavsız dersler en sona; sınav = o kartın notunu kapsayan en yakın gelecek sınav, `examDateForCard` ile aynı), (b) aynı ders içinde **daha önce bilinemeyenler** önce (`lapses > 0` ya da `reps = 0` iken tekrar edilmiş = son cevabı Bilemedim olan), (c) sonra en çok gecikmiş (`due` en eski), (d) yeni kartlar en sonda (5 sınırıyla).
+6. **Ekranda toplam kart sayısı gösterilmez** (ör. "70 kart bekliyor" yok). Görünenler: **bugünkü hedef** (ör. 4/15) ve **ders bazında hazırlık** (`examReadiness` ile aynı formül; sınavı olan derslerde sınavın notları, olmayanlarda dersin bütün notları).
+   - Sekme rozeti: bugünkü hedeften kalan (ör. 11), hedef bitince rozet yok.
+7. "Bilemedim" denen kart aynı oturumun sonuna döner (bugünkü gibi); hedef sayacı her cevapta 1 artar.
+
+**iOS durumu:** taslak gösterildi, onay bekleniyor; sonra kodlanacak. **Site:** iOS'ta denendikten sonra aynısı yapılacak; o zamana kadar sitedeki Tekrar değişmez.
+
 ## Sitenin uygulamadan beklediği işler
 
 (henüz yok)
