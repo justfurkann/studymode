@@ -2,6 +2,15 @@ import type { User } from '@supabase/supabase-js'
 
 export const MIN_PASSWORD = 8
 
+/**
+ * "Hide my email" with Sign in with Apple gives addresses like abc123@privaterelay.appleid.com.
+ * They work for e-mail (Apple forwards them) but mean nothing to a person reading them.
+ */
+export const isPrivateRelayEmail = (email: string | null | undefined) => !!email && /@privaterelay\.appleid\.com$/i.test(email.trim())
+
+/** The address to show people: Apple's hidden relay address reads as "Apple (gizli e-posta)". */
+export const emailLabel = (email: string | null | undefined) => (isPrivateRelayEmail(email) ? 'Apple (gizli e-posta)' : (email ?? ''))
+
 /** Name to show for the signed-in user; falls back to the email for accounts created without a name. */
 export function displayName(user: User | null | undefined): string {
   if (!user) return ''
@@ -10,7 +19,7 @@ export function displayName(user: User | null | undefined): string {
   const full = typeof meta.full_name === 'string' ? meta.full_name.trim() : typeof meta.name === 'string' ? meta.name.trim() : ''
   if (full) return full
   const parts = [meta.first_name, meta.last_name].filter((p): p is string => typeof p === 'string' && !!p.trim())
-  return parts.length ? parts.join(' ').trim() : (user.email ?? '')
+  return parts.length ? parts.join(' ').trim() : emailLabel(user.email)
 }
 
 export function firstName(user: User | null | undefined): string {
@@ -20,26 +29,30 @@ export function firstName(user: User | null | undefined): string {
   return full.trim().split(/\s+/)[0] ?? ''
 }
 
-let googleCheck: Promise<boolean> | null = null
+let settingsCheck: Promise<{ google: boolean; apple: boolean }> | null = null
+
+/** Which sign-in providers are switched on in Supabase (Authentication → Providers). Asked once. */
+export function authProviders(url: string, key: string, fetchImpl: typeof fetch = fetch): Promise<{ google: boolean; apple: boolean }> {
+  settingsCheck ??= fetchImpl(`${url}/auth/v1/settings`, { headers: { apikey: key } })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((body: { external?: { google?: boolean; apple?: boolean } } | null) => ({ google: body?.external?.google === true, apple: body?.external?.apple === true }))
+    .catch(() => ({ google: false, apple: false }))
+  return settingsCheck
+}
 
 /**
  * Whether "Google ile devam et" is switched on in Supabase (Authentication → Providers → Google).
  * Asked once; the button stays hidden until the provider is set up, so it never leads to an error.
  */
 export function isGoogleEnabled(url: string, key: string, fetchImpl: typeof fetch = fetch): Promise<boolean> {
-  googleCheck ??= fetchImpl(`${url}/auth/v1/settings`, { headers: { apikey: key } })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((body: { external?: { google?: boolean } } | null) => {
-      const on = body?.external?.google === true
-      try {
-        localStorage.setItem(GOOGLE_HINT_KEY, on ? '1' : '0')
-      } catch {
-        // Private mode: no hint next time, nothing else changes.
-      }
-      return on
-    })
-    .catch(() => false)
-  return googleCheck
+  return authProviders(url, key, fetchImpl).then(({ google }) => {
+    try {
+      localStorage.setItem(GOOGLE_HINT_KEY, google ? '1' : '0')
+    } catch {
+      // Private mode: no hint next time, nothing else changes.
+    }
+    return google
+  })
 }
 
 const GOOGLE_HINT_KEY = 'studymode.googleEnabled'

@@ -9,7 +9,7 @@ import { MakerCard } from '../components/MadeBy'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Alert, Spinner, useToast, useConfirm } from '../components/ui'
-import { authErrorMessage, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
+import { authErrorMessage, emailLabel, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
 import { hasLocalData, parseData } from '../lib/backend'
 import { PROVIDERS, updateSettings, useSettings, type AiProvider, type KeyProvider, type Theme } from '../lib/settings'
 import { migrateLocalToCloud, useStore } from '../lib/store'
@@ -20,6 +20,7 @@ import { supabase } from '../lib/supabase'
 import { emptyData } from '../lib/types'
 import { freshImport } from '../lib/version'
 import { DecorSettings } from '../components/DecorSettings'
+import { DeleteAccountSection } from '../components/DeleteAccount'
 import { localDayKey } from '../lib/streak'
 
 function AccountSection() {
@@ -66,7 +67,7 @@ function AccountSection() {
   return (
     <div className="form">
       <p>
-        <span className="muted">Giriş yapıldı:</span> <strong>{store.session.user.email}</strong>
+        <span className="muted">Giriş yapıldı:</span> <strong>{emailLabel(store.session.user.email)}</strong>
       </p>
       <ProfileForm />
       {localLeft && (
@@ -505,6 +506,13 @@ export function Settings() {
           <FeedbackLink className="btn" label="Geri bildirim gönder" />
         </div>
       </section>
+
+      {store.session && (
+        <section className="section" id="hesabi-sil" aria-label="Hesabı sil">
+          <h2>Hesabı sil</h2>
+          <DeleteAccountSection />
+        </section>
+      )}
 
       <section className="section" id="hakkinda" aria-label="Hakkında">
         <h2>Hakkında</h2>
