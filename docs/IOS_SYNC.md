@@ -55,6 +55,7 @@ Uygulama Google'ın SDK'sı olmadan, Google'ın **iOS türünde** OAuth istemcis
 - Google Cloud → Credentials → yeni OAuth istemcisi, tür **iOS**, bundle `fun.studymode.app`.
 - Supabase → Authentication → Providers → Google → **Client IDs** listesine bu iOS Client ID'si eklenir (sitenin web Client ID'si yerinde kalır, virgülle ayrılır). "Skip nonce check" kapalı kalır.
 Site Claude'u için not: sitenin Google girişine etkisi olmamalı; bir değişiklik görürsen bana yaz.
+- **Durum (26 Kasım):** iOS Client ID oluşturuldu, sitenin projesinde (`189951485932-3f3jkvijibcnib8ov3opp4gn7h7ln2jl.apps.googleusercontent.com`, gizli değil) ve uygulamaya kondu. Bekleyen: Supabase → Google → Client IDs'e eklenmesi (kullanıcı) ve Google Auth Platform'da branding doldurulup uygulamanın yayınlanması (kullanıcı). Sitenin Google projesinin branding/yayın durumu belirsiz; site Claude'u bakabilirse iyi olur.
 
 ## Sitenin uygulamadan beklediği işler
 

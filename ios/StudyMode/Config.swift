@@ -14,5 +14,5 @@ enum Config {
 
     /// Google OAuth client of type iOS (Google Cloud → Credentials), not the site's web client.
     /// Public by design; Supabase must list it under Google → Client IDs. Empty = button hidden.
-    static let googleIOSClientID = ""
+    static let googleIOSClientID = "189951485932-3f3jkvijibcnib8ov3opp4gn7h7ln2jl.apps.googleusercontent.com"
 }
