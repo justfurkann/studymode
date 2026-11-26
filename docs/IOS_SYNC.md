@@ -69,15 +69,22 @@ Kaynak: kalite kontrol Claude'unun önerisi, kullanıcı onayladı. "15 kart" ve
 3. **Kuyruğa kim girer:** yalnızca **özeti okunmuş ya da testi çözülmüş** notların kartları.
    - Özeti okunmuş = `summary.completedSteps` içinde `tanis` veya `anla` var.
    - Testi çözülmüş = `quiz_attempts` içinde o nota ait en az bir satır var.
-   - *Karar gerekli:* nota bağlı olmayan kartlar (`note_id` boş: elle eklenen) → **öneri: girsin**, öğrenci bilerek eklemiş.
+   - Nota bağlı olmayan kartlar (`note_id` boş: elle eklenen) **girer** (kullanıcı kararı, 26 Kasım).
 4. **Yeni kart** (`reps = 0` ve `lapses = 0`): günde en fazla **5** tanesi kuyruğa girer. Diğerleri (zamanı gelmiş tekrarlar) sınırsız aday, ama oturum 15'te durur.
-   - *Karar gerekli:* "bugün kaç yeni kart başladı" iki cihaz arasında ortak sayılmıyor (tabloda yer yok). iOS şimdilik **cihazda** sayar. Site de aynısını yaparsa iki cihazda en fazla 10 yeni olur; kesin olsun istenirse `study_days`'e `new_cards` sütunu gerekir (SQL, kullanıcı onayı).
+   - "Bugün kaç yeni kart başladı" **veritabanında** sayılır (kullanıcı kararı, 26 Kasım): `study_days.new_cards` (aşağıda madde 6, site yapar). Yeni bir kart ilk kez cevaplanınca (cevaptan önce `reps = 0` ve `lapses = 0` ve `ease = 2.5`) bugünün satırında `reviews + 1` ile birlikte `new_cards + 1`. Sütun yokken iOS cihazda sayar ve kaydı bozmaz.
 5. **Sıra:** (a) en yakın sınavı olan dersin kartları önce (sınavsız dersler en sona; sınav = o kartın notunu kapsayan en yakın gelecek sınav, `examDateForCard` ile aynı), (b) aynı ders içinde **daha önce bilinemeyenler** önce (`lapses > 0` ya da `reps = 0` iken tekrar edilmiş = son cevabı Bilemedim olan), (c) sonra en çok gecikmiş (`due` en eski), (d) yeni kartlar en sonda (5 sınırıyla).
 6. **Ekranda toplam kart sayısı gösterilmez** (ör. "70 kart bekliyor" yok). Görünenler: **bugünkü hedef** (ör. 4/15) ve **ders bazında hazırlık** (`examReadiness` ile aynı formül; sınavı olan derslerde sınavın notları, olmayanlarda dersin bütün notları).
    - Sekme rozeti: bugünkü hedeften kalan (ör. 11), hedef bitince rozet yok.
 7. "Bilemedim" denen kart aynı oturumun sonuna döner (bugünkü gibi); hedef sayacı her cevapta 1 artar.
 
-**iOS durumu:** taslak gösterildi, onay bekleniyor; sonra kodlanacak. **Site:** iOS'ta denendikten sonra aynısı yapılacak; o zamana kadar sitedeki Tekrar değişmez.
+**iOS durumu:** taslak onaylandı (26 Kasım), kodlanıyor. **Site:** kullanıcı istedi, site Claude'u aynısını siteye yapar (madde 6).
+
+### 6. Site: yeni Tekrar + `study_days.new_cards` — bekliyor (26 Kasım 2026)
+- Yukarıdaki "Ortak kural: yeni Tekrar" maddelerini sitenin Tekrar sekmesine uygula (zamanlama ve dört değerlendirme aynı kalır).
+- SQL (önce kullanıcıya göster, onaydan sonra çalıştır; `schema.sql`'e de "if not exists" ile):
+  `alter table public.study_days add column if not exists new_cards integer not null default 0 check (new_cards >= 0);`
+- `backend.ts` `OPTIONAL_COLUMNS`'a `new_cards`; `StudyDay` tipine `newCards?: number`; `recordStudyActivity` delta'sına `newCards`.
+- Uygulandığında burada "yayında" yaz; iOS sütunu okuyup yazmaya hazır.
 
 ## Sitenin uygulamadan beklediği işler
 
