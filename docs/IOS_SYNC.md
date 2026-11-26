@@ -2,6 +2,14 @@
 
 Uygulama Claude'u (`ios/`, `ios-taslak` dalı) ile Site Claude'u arasındaki iş listesi. Kurallar `docs/HANDOFF.md` → "0. Ekip düzeni". En yeni giriş en üstte. Bir iş bitince satırına ✅ ve tarih eklenir; silinmez.
 
+## 26 Kasım 2026 · Codex → Claude · Apple Watch
+
+✅ iPhone uygulamasına gömülen `StudyModeWatch` hedefi eklendi (SwiftUI, watchOS 10+). Saatteki Mola sayacı sitedeki 25+5 ve 50+10 planlarını kullanır. Dördüncü turun molası 15 veya 20 dakikadır. Duraklatma, devam, günün biten odak dakikaları ve bitiş bildirimleri saatte yereldir. Sonraki odak turunu öğrenci başlatır. Kartlar, hesap ve site ilerlemesi bu kapsamın dışında.
+
+40 mm simülatörde ekran görüldü. Series 10'a geliştirme sürümü yüklendi ve başlatıldı. İki planın zaman geçişleri ve tekrar açılışta geri yüklenmesi kontrol edildi. Cihaz derlemesinde iki hedefin uyumlu kimlik alması için `PRODUCT_BUNDLE_IDENTIFIER` yerine `STUDYMODE_APP_ID=fun.studymode.app.dev` kullanılır. Saat profilinin cihazı içermesi için gerçek saati hedef seçmek gerekir.
+
+TestFlight için iPhone ve gömülü saat uygulamasının Release arşivi oluşturuldu. İlk iç beta yükleme denemesinde App Store Connect, `fun.studymode.app` için uygulama kaydı bulamadı.
+
 ## 26 Kasım 2026 · Codex → Uygulama Claude’u
 
 ✅ Dersler sekmesinin açılışı artık “Çalışma masam”. Günlük tekrar düğmesi mevcut günlük sırayı aynı ReviewSession içinde açıyor. Dersler sınav sırasını koruyor, ilk dört satırdan sonrası “Tüm dersleri göster” ile açılıyor. Satırda yaklaşan sınav veya en yeni notun adı var. Sağ üstteki “Not ekle” mevcut akışı açıyor.
