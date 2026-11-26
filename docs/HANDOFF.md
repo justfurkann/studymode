@@ -1068,7 +1068,6 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - `src/components/MathText.tsx` ve `src/lib/mathText.ts`: metindeki LaTeX, KaTeX 0.16.11 ile gerçek kesir, üs ve kök olarak çizilir. KaTeX ayrı parça halinde, sadece formül görünen ilk ekranda yüklenir. Tek başına "5 $" metin kalır. JSON kaçışıyla bozulan `\frac` onarılır. Özet, tam özet, kavramlar, kartlar, tekrar, test, pratik, sınav, sınav incelemesi, "Anlamadım" açıklaması ve asistan cevaplarında kullanılır.
 - Sonraki adımlar (konuşuldu): ders türü sayısal/sözel/karışık, formül kâğıdı ve formül kartları, çözümlü örnek, "benzer soru çöz" ve cevap kontrolü (yapay zekâ hesap hatası riski).
 
-<<<<<<< HEAD
 ### Aşama 67 — Formül işinin canlı denemesi ve düzeltmeleri; soru kalitesi; iOS kararları (25-26 Kasım 2026, `dreamy-sagan`)
 
 **Canlı deneme (Modül 1 Matematik PDF'i, 67 sayfa, VIP test hesabı):** Okuma 100 sn, 64 sayfadan 63'ü düzgün LaTeX; 108 şekil "[Şekil: ...]" olarak tarif edildi; özet ve tam özette 205 formül KaTeX ile hatasız çizildi; okuma + özet toplam ~7,5 dk. Kontrol edilen ~15 test sorusunun cevabı doğruydu. Test hesabında "modul1" adlı not duruyor (deneme verisi).
