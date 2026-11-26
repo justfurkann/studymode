@@ -1097,6 +1097,26 @@ Kalan sorunlar (yapılmadı):
 - **Apple ile ödeme:** Uygulama içinde Premium satılırsa Apple ödemesi zorunlu (küçük geliştiriciye %15 pay). Uygulamada Shopier'e yönlendirmek ya da Premium kodu girdirmek yasak. Taslakta satış yok; karar mağaza aşamasında. Seçilirse Apple'ın satın alma bildirimini alıp `premium_until`'i açan bir sunucu kapısı gerekir.
 - **Doğrulama dosyası (şifre otomatik doldurma):** `public/.well-known/apple-app-site-association`, önce yalnızca `webcredentials` (`TEAMID.bundleid`). `vercel.json`'a bu yol için `Content-Type: application/json` başlığı. Sitenin yönlendirme kuralı noktalı yollara dokunmadığı için dosya doğrudan sunulur. Team ID ve bundle ID kullanıcıdan bekleniyor. `applinks` ileride sadece belirli yollar için; "bütün site" denirse uygulaması olan herkesin her studymode.fun bağlantısı uygulamaya düşer. E-posta bağlantıları Supabase üzerinden yönlendirildiği için uygulama tarafında özel adres (custom URL scheme) yolu önerildi.
 
+### Aşama 67 — Hesap silme ve Apple ile giriş (26 Kasım 2026, `apple-signin-account-delete`)
+
+Neden: iPhone uygulaması (`ios/`, ayrı oturum yapıyor) App Store'a çıkacak. Apple, hesap açılan her uygulamada uygulama içinden hesap silmeyi şart koşuyor; Apple ile giriş de isteniyor.
+
+- **Hesap silme: `POST /api/delete-account`** (`api/delete-account.ts` + testleri). Site ve iOS aynı ucu kullanır.
+  - Başlık `Authorization: Bearer <kullanıcının kendi Supabase access token'ı>`, gövde `{ "confirm": "DELETE", "premium_ok"?: true, "apple_authorization_code"?: "…" }`.
+  - Cevaplar: 200 `{ ok: true, apple_revoked }` · 400 `confirm_required` / `bad_request` · 401 `not_signed_in` · 403 `admin_account` (yönetici hesabı silinmez) · 405 · 409 `premium_active` + `premium_until` (süren Premium varsa; `premium_ok: true` ile tekrar gönderilir) · 500 `not_configured` · 502 `delete_failed`.
+  - Sunucu `SUPABASE_SERVICE_ROLE_KEY` (Vercel'de zaten var) ile önce `feedback` ve `client_errors` satırlarını siler (bunlar `on delete set null` idi), sonra `auth/v1/admin/users/<id>` ile kullanıcıyı. Diğer her tablo `auth.users`'tan **cascade** (canlıda 26 Kasım'da kontrol edildi: courses, notes, cards, quiz_attempts, exam_results, study_days, course_exams, course_shares, user_roles, ai_usage, premium_access, premium_redeem_failures). Storage kovası yok. Kullanılmış Premium kodları kalır (`redeemed_by` boşalır). **SQL gerekmedi.**
+  - Apple belirteci iptali (Apple'ın istediği): iOS taze bir `authorizationCode` gönderirse ve Vercel'de `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (Sign in with Apple .p8 anahtarı; isteğe bağlı `APPLE_CLIENT_ID`, varsayılan `fun.studymode.app`) varsa sunucu kodu Apple'da refresh token'a çevirip iptal eder. Değişkenler yoksa sessizce atlanır, hesap yine silinir. **Henüz girilmedi.**
+  - Site: Ayarlar'ın sonunda "Hesabı sil" (`src/components/DeleteAccount.tsx`, `src/lib/deleteAccount.ts`): neyin silineceği listesi, "SİL" yazma (SIL de olur), Premium süresi varsa onay kutusu, sonra yalnızca bu cihazda oturum kapatma ve ana sayfa.
+- **Apple ile giriş:**
+  - iOS: `signInWithIdToken(provider: .apple, idToken:, nonce:)` + `captchaToken`. Supabase'de Apple sağlayıcısı açılmalı, Client IDs: `fun.studymode.app` (ve site için Services ID). Secret key **gerekmez** (yalnızca kimlik belirteci yolu).
+  - Site: "Apple ile devam et" (`src/lib/appleSignIn.ts`, Login'de `AppleButton`): Apple'ın JS'i açılır pencerede, sonra `signInWithIdToken` (nonce'un SHA-256'sı Apple'a, kendisi Supabase'e; captcha jetonu). Görünmesi için `config.ts` → `APPLE_SERVICES_ID` dolu olmalı, adres `https://studymode.fun` olmalı ve Supabase'de Apple açık olmalı. Testte `studymode.apple.force`. **`APPLE_SERVICES_ID` şimdilik boş** (kullanıcı Apple Developer'da Services ID'yi oluşturunca doldurulacak, önerilen `fun.studymode.web`, Return URL `https://studymode.fun/giris`).
+  - Apple adı yalnızca ilk girişte verir: site ve iOS bunu hemen `updateUser({ data: { first_name, last_name, full_name } })` ile yazar (var olan adın üstüne yazmaz).
+  - Gizli e-posta (`…@privaterelay.appleid.com`): `emailLabel` / `isPrivateRelayEmail` (`auth.ts`) her yerde "Apple (gizli e-posta)" gösterir; paylaşımda sahip adı olarak çıkmaz; yönetimde başlıkta etiket, altında gerçek adres. Resend'den bu adreslere giden e-postaların ulaşması için Apple Developer → Sign in with Apple for Email Communication'a `studymode.fun` (ve `noreply@studymode.fun`) eklenmeli.
+  - Gizlilik sayfası (26 Kasım): Apple işleyen olarak, hesabı kendin silme, Premium uyarısı, kod kayıtları.
+- **Associated Domains (`/.well-known/apple-app-site-association`)**: kullanıcı istiyor, Team ID gelince eklenecek (henüz yok).
+- **Sonra (yapılmadı):** iOS'ta Premium Apple ile ödensin (uygulama içi satın alma / abonelik). App Store Server Notifications → sunucu → `premium_access` gerekecek. Shopier kodları sitede kalır.
+- Bu Mac'te e2e için Playwright Chromium'u `npx playwright install chromium` ile kuruldu; artık `npm run test:e2e` doğrudan çalışıyor.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

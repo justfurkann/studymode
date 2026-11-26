@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useShowMore } from '../components/ShowMore'
 import { Alert, Empty, Spinner, useToast } from '../components/ui'
 import { ROLE_LABEL, useQuota, type Role } from '../lib/account'
+import { emailLabel, isPrivateRelayEmail } from '../lib/auth'
 import { LEVELS } from '../lib/studentType'
 import { ageGroup, GENDERS } from '../lib/education'
 import { useStore } from '../lib/store'
@@ -115,7 +116,7 @@ export function Admin() {
   const shownUsers = useMemo(() => {
     const q = fold(query.trim())
     const list = (users ?? []).filter(
-      (u) => (roleFilter === 'all' || u.role === roleFilter) && (!q || fold([u.name, u.email, u.school, u.department].filter(Boolean).join(' ')).includes(q)),
+      (u) => (roleFilter === 'all' || u.role === roleFilter) && (!q || fold([u.name, u.email, emailLabel(u.email), u.school, u.department].filter(Boolean).join(' ')).includes(q)),
     )
     const time = (iso: string | null) => (iso ? new Date(iso).getTime() : 0)
     return [...list].sort((a, b) =>
@@ -172,7 +173,7 @@ export function Admin() {
       toast(e.message.includes('demote') ? 'Kendi yöneticiliğini kaldıramazsın.' : 'Rol değiştirilemedi.')
       return
     }
-    toast(`${user.name || user.email}: ${ROLE_LABEL[role]}`)
+    toast(`${user.name || emailLabel(user.email)}: ${ROLE_LABEL[role]}`)
     void load()
   }
 
@@ -366,10 +367,10 @@ export function Admin() {
                 <div key={u.id} className="list-item admin-user">
                   <div className="grow">
                     <div className="title">
-                      {u.name || u.email} {u.role !== 'normal' && <span className={`chip role-chip is-${u.role}`}>{ROLE_LABEL[u.role]}</span>}
+                      {u.name || emailLabel(u.email)} {u.role !== 'normal' && <span className={`chip role-chip is-${u.role}`}>{ROLE_LABEL[u.role]}</span>}
                     </div>
                     <div className="subtle">
-                      {u.name ? `${u.email} · ` : ''}Katıldı {day(u.created_at)} · Son giriş {date(u.last_sign_in_at)}
+                      {u.name || isPrivateRelayEmail(u.email) ? `${u.email} · ` : ''}Katıldı {day(u.created_at)} · Son giriş {date(u.last_sign_in_at)}
                     </div>
                     {(u.school || u.level) && (
                       <div className="subtle admin-school">
@@ -383,7 +384,7 @@ export function Admin() {
                     </div>
                   </div>
                   <label className="admin-role">
-                    <span className="sr-only">{u.name || u.email} rolü</span>
+                    <span className="sr-only">{u.name || emailLabel(u.email)} rolü</span>
                     <select className="select" value={u.role} disabled={busy === u.id || u.id === store.session!.user.id} onChange={(e) => void setRole(u, e.target.value as Role)}>
                       <option value="normal">Normal (40/gün)</option>
                       <option value="vip">VIP (150/gün)</option>

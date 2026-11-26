@@ -12,6 +12,16 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_un15T1jZ2JXF4Cygq-JSUQ_s
 export const GOOGLE_CLIENT_ID = '189951485932-ginghsotdhaj3amtm0fek00efbgsi7iu.apps.googleusercontent.com'
 
 /**
+ * Sign in with Apple on the website: the Services ID made in Apple Developer (Identifiers → Services
+ * IDs), with studymode.fun and APPLE_REDIRECT_URI registered on it. Public by design. Empty = the
+ * button stays hidden. It must also be in Supabase → Authentication → Providers → Apple → Client IDs,
+ * next to the iOS app's bundle ID (fun.studymode.app). No secret key is needed: the site and the app
+ * both hand Supabase Apple's signed ID token (signInWithIdToken).
+ */
+export const APPLE_SERVICES_ID = ''
+export const APPLE_REDIRECT_URI = 'https://studymode.fun/giris'
+
+/**
  * Bot check on sign-in / sign-up / password reset (Cloudflare Turnstile). The site key is public by
  * design; the secret key lives only in Supabase (Authentication → Attack Protection). Empty = off.
  * Order matters: ship the site key first, then switch captcha on in Supabase, or sign-in breaks.

@@ -44,3 +44,15 @@ describe('names from Google sign-in', () => {
     expect(displayName(user({ name: 'Ayşe Yılmaz' }))).toBe('Ayşe Yılmaz')
   })
 })
+
+describe('Apple hidden e-mail', () => {
+  it('shows the relay address as "Apple (gizli e-posta)" and keeps real addresses', async () => {
+    const { emailLabel, isPrivateRelayEmail } = await import('./auth')
+    expect(isPrivateRelayEmail('x1y2@privaterelay.appleid.com')).toBe(true)
+    expect(isPrivateRelayEmail('ali@icloud.com')).toBe(false)
+    expect(emailLabel('X1Y2@PrivateRelay.AppleID.com')).toBe('Apple (gizli e-posta)')
+    expect(emailLabel('ali@example.com')).toBe('ali@example.com')
+    expect(emailLabel(undefined)).toBe('')
+    expect(displayName({ id: '1', email: 'x@privaterelay.appleid.com', user_metadata: {} } as never)).toBe('Apple (gizli e-posta)')
+  })
+})

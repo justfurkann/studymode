@@ -2,7 +2,7 @@ import qrcode from 'qrcode-generator'
 import { Copy, Link2, RefreshCw, Share2, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { displayName } from '../lib/auth'
+import { displayName, emailLabel } from '../lib/auth'
 import { buildSnapshot, createShare, deleteShare, listShares, shareUrl, snapshotCounts, updateShare, ShareError, type ShareRow } from '../lib/share'
 import { useStore } from '../lib/store'
 import { Alert, Modal, Spinner, useToast } from './ui'
@@ -29,7 +29,7 @@ export function QrCode({ text, size = 200, label = 'Paylaşım bağlantısının
 /** The name a friend sees on the link: never the email address. */
 function ownerName(user: Parameters<typeof displayName>[0]): string | null {
   const name = displayName(user)
-  return name && name !== user?.email ? name : null
+  return name && name !== user?.email && name !== emailLabel(user?.email) ? name : null
 }
 
 const errorText = (e: unknown) => (e instanceof ShareError ? e.message : 'Bir sorun oluştu. Yeniden dene.')
