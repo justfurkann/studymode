@@ -1118,6 +1118,15 @@ Neden: iPhone uygulaması (`ios/`, ayrı oturum yapıyor) App Store'a çıkacak.
 - **Sonra (yapılmadı):** iOS'ta Premium Apple ile ödensin (uygulama içi satın alma / abonelik). App Store Server Notifications → sunucu → `premium_access` gerekecek. Shopier kodları sitede kalır.
 - Bu Mac'te e2e için Playwright Chromium'u `npx playwright install chromium` ile kuruldu; artık `npm run test:e2e` doğrudan çalışıyor.
 
+### Aşama 69 — Yeni Tekrar: günde tek oturum (26 Kasım 2026, `new-tekrar`)
+
+Kural metni `docs/IOS_SYNC.md` (ios-taslak) "Ortak kural: yeni Tekrar"; site ve iOS aynı kuralı uygular. Zamanlama (`srs.ts`) ve dört değerlendirme değişmedi.
+- **Mantık** `src/lib/dailyReview.ts`: günlük hedef = Ayarlar'daki "Günlük kart hedefi" (varsayılan artık **15**; kayıtlı eski varsayılan 20 de 15 sayılır). Bugünkü ilerleme `study_days.reviews` (bütün cihazların toplamı). "Biraz daha" +10 (bu tarayıcıda, yalnızca bugün için saklanır).
+- **Kuyruk:** zamanı gelmiş kartlar. Yeni kartlar yalnızca özeti okunmuş (`tanis`/`anla`) ya da testi çözülmüş notlardan ya da notsuzsa girer; bir kez cevaplanmış kart, notu ne durumda olursa olsun zamanı gelince gelir. Sıra: en yakın sınav (yoksa en sona) → önce bilinemeyenler (`lapses > 0` ya da `reps 0` ve `ease < 2.5`) → en çok gecikmiş → en sonda yeni kartlar (günde en fazla 5).
+- **Yeni kart** = `reps 0, lapses 0, ease 2.5`. İlk cevabında `study_days.new_cards` +1 (geri alınca −1). **SQL çalıştırıldı (kullanıcı onayıyla):** `alter table public.study_days add column if not exists new_cards integer not null default 0 check (new_cards >= 0);` (`schema.sql`'de de var; `OPTIONAL_COLUMNS`'ta).
+- **Ekran:** Tekrar sekmesinde toplam kart sayısı ve ders seçici yok; "Bugünkü hedef x/15", bitince "Bugün tamam" + "Biraz daha", altta "Derslere hazırlık" (`examReadiness`, sınavı olan derste en yakın sınavın notları). Sekme rozeti ve Bugün'deki kutu: bugünkü oturumdan kalan. Bugün'deki sınav listesinde "N kart bekliyor" yerine hazırlık yüzdesi.
+- Bir nottan ya da ders sayfasından açılan tekrar (`?not=`, `?ders=`) eskisi gibi o kapsamdaki kartları gösterir; bunlar da bugünün sayacına sayılır.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

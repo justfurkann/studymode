@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { clampDailyGoal, DEFAULT_DAILY_GOAL } from './streak'
+import { clampDailyGoal, DEFAULT_DAILY_GOAL, OLD_DEFAULT_DAILY_GOAL } from './streak'
 
 export type Theme = 'system' | 'light' | 'dark'
 
@@ -93,7 +93,8 @@ function read(): Settings {
       keys: { anthropic: str(keys.anthropic, ''), openai: str(keys.openai, ''), google: str(keys.google, '') },
       models: { anthropic: str(models.anthropic, defaults.models.anthropic), openai: str(models.openai, defaults.models.openai), google: str(models.google, defaults.models.google) },
       theme: parsed.theme === 'light' || parsed.theme === 'dark' ? parsed.theme : 'system',
-      dailyGoal: clampDailyGoal(parsed.dailyGoal, defaults.dailyGoal),
+      // A 20 saved before the new Tekrar was the old default, not a choice: today's session is 15.
+      dailyGoal: parsed.dailyGoal === OLD_DEFAULT_DAILY_GOAL ? DEFAULT_DAILY_GOAL : clampDailyGoal(parsed.dailyGoal, defaults.dailyGoal),
       sounds: parsed.sounds === true,
     }
   } catch {

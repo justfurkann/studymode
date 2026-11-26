@@ -9,10 +9,11 @@ import { FeedbackLink } from './Feedback'
 import { FocusEngine } from './mola/FocusEngine'
 import { AmbientPlayer, Atmosphere } from './Atmosphere'
 import { MadeBy } from './MadeBy'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { authErrorMessage, displayName } from '../lib/auth'
-import { dueCards } from '../lib/format'
+import { dailyReview, readExtra } from '../lib/dailyReview'
+import { useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import { authLinkError, openedFromConfirmationEmail, openedFromRecoveryEmail, supabase } from '../lib/supabase'
 import { Landing } from '../pages/Landing'
@@ -39,7 +40,9 @@ let recoveryHandled = false
 
 export function Layout() {
   const { data, mode, session, saveError, clearSaveError } = useStore()
-  const due = dueCards(data.cards).length
+  const { dailyGoal } = useSettings()
+  // The tab badge: cards left in today's session (none once the goal is met), never the whole backlog.
+  const due = useMemo(() => dailyReview(data, dailyGoal, readExtra()).left, [data, dailyGoal])
   const navigate = useNavigate()
   const { pathname, search } = useLocation()
   // Exam words follow the student: "1. Yazılı" for ortaokul and lise, "Vize" otherwise. Set before the pages draw.

@@ -1,6 +1,9 @@
 import type { StudyDay } from './types'
 
-export const DEFAULT_DAILY_GOAL = 20
+/** Today's Tekrar session: 15 cards (~5 minutes), the same on the website and the iOS app. */
+export const DEFAULT_DAILY_GOAL = 15
+/** The default before the new Tekrar; a saved 20 is read as the new default. */
+export const OLD_DEFAULT_DAILY_GOAL = 20
 export const MIN_DAILY_GOAL = 1
 export const MAX_DAILY_GOAL = 500
 
@@ -50,6 +53,7 @@ export function mergeStudyDays(days: StudyDay[]): StudyDay[] {
         reviews: existing.reviews + item.reviews,
         quizzes: existing.quizzes + item.quizzes,
         actions: (existing.actions ?? 0) + (item.actions ?? 0),
+        newCards: (existing.newCards ?? 0) + (item.newCards ?? 0),
         updatedAt: existing.updatedAt >= item.updatedAt ? existing.updatedAt : item.updatedAt,
       })
     }
@@ -63,7 +67,7 @@ export function mergeStudyDays(days: StudyDay[]): StudyDay[] {
  */
 export function recordStudyActivity(
   studyDays: StudyDay[],
-  delta: { reviews?: number; quizzes?: number; actions?: number },
+  delta: { reviews?: number; quizzes?: number; actions?: number; newCards?: number },
   now: Date = new Date(),
   makeId: () => string = () => crypto.randomUUID(),
 ): { studyDays: StudyDay[]; updated: StudyDay } {
@@ -76,6 +80,7 @@ export function recordStudyActivity(
         reviews: Math.max(0, existing.reviews + (delta.reviews ?? 0)),
         quizzes: Math.max(0, existing.quizzes + (delta.quizzes ?? 0)),
         actions: Math.max(0, (existing.actions ?? 0) + (delta.actions ?? 0)),
+        newCards: Math.max(0, (existing.newCards ?? 0) + (delta.newCards ?? 0)),
         updatedAt: iso,
       }
     : {
@@ -84,6 +89,7 @@ export function recordStudyActivity(
         reviews: Math.max(0, delta.reviews ?? 0),
         quizzes: Math.max(0, delta.quizzes ?? 0),
         actions: Math.max(0, delta.actions ?? 0),
+        newCards: Math.max(0, delta.newCards ?? 0),
         createdAt: iso,
         updatedAt: iso,
       }

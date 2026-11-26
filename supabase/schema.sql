@@ -108,6 +108,8 @@ alter table public.quiz_attempts add column if not exists answers jsonb;
 
 -- Other study work (written answers, explanations) that keeps the streak alive.
 alter table public.study_days add column if not exists actions integer not null default 0;
+-- New Tekrar (26 Kasım 2026): never-seen cards started that day, for the limit of 5 new cards a day.
+alter table public.study_days add column if not exists new_cards integer not null default 0 check (new_cards >= 0);
 
 create index if not exists notes_user_idx on public.notes (user_id);
 create index if not exists cards_user_due_idx on public.cards (user_id, due);

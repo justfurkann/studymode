@@ -8,11 +8,12 @@ import { ExamFocusCard } from '../components/ExamFocusCard'
 import { FinishedExamsNotice } from '../components/FinishedExams'
 import { ReceiptButton } from '../components/ReceiptButton'
 import { Welcome } from '../components/Welcome'
-import { pickExamFocus } from '../lib/examFocus'
+import { examReadiness, pickExamFocus } from '../lib/examFocus'
+import { dailyReview, readExtra } from '../lib/dailyReview'
 import { firstName } from '../lib/auth'
 import { useLoadDemo } from '../lib/useDemo'
 import { examCountdown, examName, upcomingExams } from '../lib/courseExams'
-import { courseStats, dueCards, relativeDate } from '../lib/format'
+import { courseStats, relativeDate } from '../lib/format'
 import { computeNoteProgress } from '../lib/learningPath'
 import { useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
@@ -28,13 +29,15 @@ function stepUrl(note: Note, stepId: LearningStepId): string {
   return `/not/${note.id}?sekme=uygula`
 }
 
+const readinessText = (readiness: number | null) => (readiness === null ? 'hazırlık henüz ölçülmedi' : `hazırlık %${readiness}`)
+
 export function Today() {
   const store = useStore()
   const settings = useSettings()
   const found = Object.keys(useAchievements().unlocked).length
   const { data } = store
   const now = new Date()
-  const due = dueCards(data.cards, now)
+  const daily = dailyReview(data, settings.dailyGoal, readExtra(now), now)
   const dateText = now.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' })
 
   const loadDemo = useLoadDemo()
@@ -116,23 +119,27 @@ export function Today() {
 
       <BigExamCountdown />
 
-      {due.length > 0 ? (
+      {daily.left > 0 ? (
         <section className="hero" aria-label="Tekrar">
           <div>
-            <div className="count">{due.length}</div>
-            <p>kart bugün tekrar bekliyor · yaklaşık {Math.max(1, Math.round(due.length * 0.25))} dk</p>
+            <div className="count">{daily.left}</div>
+            <p>
+              kart bugünkü tekrarında kaldı · hedef {Math.min(daily.done, daily.goal)}/{daily.goal} · yaklaşık {Math.max(1, Math.round(daily.left / 3))} dk
+            </p>
           </div>
           <Link to="/tekrar" className="btn btn-primary btn-lg">
-            <Brain size={18} /> Tekrara başla
+            <Brain size={18} /> {daily.done > 0 ? 'Tekrara devam et' : 'Tekrara başla'}
           </Link>
         </section>
       ) : (
         <section className="hero done" aria-label="Tekrar">
           <div>
-            <h2>{data.cards.length ? 'Bugünlük tekrarların bitti' : 'Henüz tekrar kartın yok'}</h2>
+            <h2>{!data.cards.length ? 'Henüz tekrar kartın yok' : daily.done >= daily.goal ? 'Bugünkü tekrar tamam' : 'Bugünlük tekrarların bitti'}</h2>
             <p>
               {data.cards.length
-                ? nextDue
+                ? daily.done >= daily.goal
+                  ? 'Yarın yeni hedefin hazır olur. İstersen Tekrar sekmesinden “Biraz daha” çalışabilirsin.'
+                  : nextDue
                   ? `Sıradaki kart ${new Date(nextDue.due).toLocaleString('tr-TR', { weekday: 'long', hour: '2-digit', minute: '2-digit' })} zamanında gelecek.`
                   : 'Yeni not ekleyerek devam edebilirsin.'
                 : 'Bir not ekleyip çalışma seti oluşturduğunda kartlar burada görünür.'}
@@ -277,7 +284,7 @@ export function Today() {
                     <div className="subtle">
                       {exam.weight != null ? `Ağırlık %${exam.weight} · ` : ''}
                       {exam.noteIds.length ? `${exam.noteIds.length} not` : `${stats.notes} not`} ·{' '}
-                      {stats.due ? `${stats.due} kart tekrar bekliyor` : 'tekrarlar güncel'}
+                      {readinessText(examReadiness(data, exam))}
                     </div>
                   </div>
                   <span className={`chip ${label.tone === 'neutral' ? '' : `chip-${label.tone}`}`}>{label.text}</span>
