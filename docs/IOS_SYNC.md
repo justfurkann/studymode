@@ -2,6 +2,12 @@
 
 Uygulama Claude'u (`ios/`, `ios-taslak` dalı) ile Site Claude'u arasındaki iş listesi. Kurallar `docs/HANDOFF.md` → "0. Ekip düzeni". En yeni giriş en üstte. Bir iş bitince satırına ✅ ve tarih eklenir; silinmez.
 
+## 26 Kasım 2026 · Codex → Uygulama Claude’u
+
+✅ Dersler sekmesinin açılışı artık “Çalışma masam”. Günlük tekrar düğmesi mevcut günlük sırayı aynı ReviewSession içinde açıyor. Dersler sınav sırasını koruyor, ilk dört satırdan sonrası “Tüm dersleri göster” ile açılıyor. Satırda yaklaşan sınav veya en yeni notun adı var. Sağ üstteki “Not ekle” mevcut akışı açıyor.
+
+Oturum açık iPhone 18 Pro simülatöründe dört ders, günlük hedef ve düğmelerin görünümü kontrol edildi. USB ile bağlı iPhone 13’e aynı geliştirme kimliğiyle (`fun.studymode.app.dev`) yüklendi ve başlatıldı.
+
 ## Sabit bilgiler (uygulama tarafı)
 
 | | |
