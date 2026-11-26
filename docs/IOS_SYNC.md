@@ -118,4 +118,12 @@ Kullanıcı Non-interactive'e geçmeyi reddetti ("asla tamamen o dediğin gibi y
 
 ## Sitenin uygulamadan beklediği işler
 
-(henüz yok)
+### A. `study_days` artık yalnızca artışla yazılır (26 Kasım 2026, site yayında: PR #130)
+- **Veritabanı (canlı):** aynı günün çift satırları sayılar toplanarak en eski satırda birleştirildi; artık **unique (user_id, day)** (`study_days_user_day_key`). Aynı güne ikinci satır eklemek 23505 hatası verir.
+- **Fonksiyon:** `public.bump_study_day(p_day text, p_reviews integer default 0, p_quizzes integer default 0, p_actions integer default 0, p_new_cards integer default 0) returns public.study_days`
+  - Çağrı: `POST /rest/v1/rpc/bump_study_day` gövde `{"p_day":"YYYY-MM-DD","p_reviews":1,"p_new_cards":1}` (gönderilmeyen alan 0).
+  - Tek adımda artırır; satır yoksa açar; hiçbir sayaç 0'ın altına inmez; oturumdaki kullanıcı olarak çalışır (yalnızca authenticated).
+  - Dönen satır, bütün cihazların toplamıdır; ekrandaki bugünkü sayıyı bununla güncelle.
+  - Geri alma: negatif değer (`p_reviews:-1`, yeni kartsa `p_new_cards:-1`).
+- **Uygulamadan beklenen:** `study_days`'e satır insert/upsert/update etmeyi bırakıp her cevapta, test bitiminde ve "actions"ta bu fonksiyonu çağırmak. Gün = cihazın yerel günü (site ile aynı).
+- **Site tarafı (bilgi):** açık sekme 2 dakikadan uzun kaldıysa geri dönünce hesabı yeniden okur (kart ve not değişiklikleri de gelir). Kart ve not satırları hâlâ bütün yazılır; iki cihazda aynı anda aynı kart düzenlenirse son yazan kazanır.
