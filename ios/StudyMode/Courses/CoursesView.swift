@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// "Dersler": every course with its next exam and readiness, and "Not ekle".
-
 /// Opens a note after it is added, from wherever "Not ekle" was used.
 private struct OpenNoteKey: EnvironmentKey {
     static let defaultValue: (Course, UUID) -> Void = { _, _ in }
@@ -16,7 +14,8 @@ extension EnvironmentValues {
 
 struct CoursesView: View {
     @Environment(StudyStore.self) private var store
-    @Environment(AuthModel.self) private var auth
+    @State private var session: SessionBox?
+    @State private var showAll = false
     @State private var path = NavigationPath()
     @State private var adding = false
 
@@ -26,16 +25,24 @@ struct CoursesView: View {
                 GridPaper()
                 content
             }
-            .navigationTitle("Dersler")
+            .navigationTitle("Çalışma masam")
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { adding = true } label: { Label("Not ekle", systemImage: "plus") }
-                        .disabled(store.status != .ready)
+                    Button { adding = true } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "plus")
+                            Text("Not ekle")
+                        }
+                    }
+                    .disabled(store.status != .ready)
                 }
             }
             .navigationDestination(for: Course.self) { CourseDetailView(course: $0) }
             .navigationDestination(for: NoteItem.self) { NoteDetailView(note: $0) }
+        }
+        .fullScreenCover(item: $session) { box in
+            ReviewSession(title: "Tekrar", cards: box.cards, mode: .daily).environment(store)
         }
         .environment(\.openNote, openNote)
         .sheet(isPresented: $adding) {
@@ -66,16 +73,19 @@ struct CoursesView: View {
         case .ready:
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    greeting
                     if store.courses.isEmpty {
-                        EmptyCourses()
-                    } else {
-                        LazyVStack(spacing: 12) {
-                            ForEach(store.sortedCourses) { course in
-                                NavigationLink(value: course) { CourseRow(course: course) }
-                                    .buttonStyle(.plain)
-                            }
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("İlk notunla başla")
+                                .font(Theme.display(.title2))
+                            Text("Defterinden bir sayfa çek, PDF seç veya notunu yapıştır.")
+                                .foregroundStyle(Theme.text2)
+                            Button("Not ekle") { adding = true }
+                                .buttonStyle(PrimaryButtonStyle())
                         }
+                        .focusCard()
+                    } else {
+                        dailyReview
+                        library
                     }
                 }
                 .padding(.horizontal, 16)
@@ -85,74 +95,101 @@ struct CoursesView: View {
         }
     }
 
-    private var greeting: some View {
-        let left = min(store.goalLeft, store.todayQueue.count)
+    private var dailyReview: some View {
+        let queue = store.todayQueue
         let done = min(ReviewRules.dailyGoal, store.reviewsToday)
-        return VStack(alignment: .leading, spacing: 10) {
-            if !auth.firstName.isEmpty {
-                Text("Selam, \(auth.firstName)")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Theme.text2)
-            }
-            if left > 0 || done > 0 {
-                HStack(spacing: 8) {
-                    Image(systemName: left == 0 ? "checkmark.circle.fill" : "rectangle.stack.fill")
-                    Text(left == 0 ? "Bugünkü tekrar tamam" : "Bugünkü hedef: \(done)/\(ReviewRules.dailyGoal)")
-                }
+        return VStack(alignment: .leading, spacing: 12) {
+            Label("Bugünkü tekrar", systemImage: "rectangle.stack")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.onHi)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Theme.hi, in: Capsule())
+            Text(queue.isEmpty
+                 ? (store.goalLeft == 0 ? "Hedef tamamlandı" : "Bekleyen kart yok")
+                 : "\(queue.count) kart hazır")
+                .font(Theme.display(.largeTitle))
+            Text("Günlük hedef · \(done) / \(ReviewRules.dailyGoal) kart")
+                .font(.subheadline)
+            if !queue.isEmpty {
+                Button {
+                    session = SessionBox(cards: queue)
+                } label: {
+                    HStack {
+                        Text(done > 0 ? "Tekrara devam et" : "Tekrara başla")
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                    }
+                    .font(.headline)
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 46)
+                    .foregroundStyle(Theme.onHi)
+                    .background(Theme.hi, in: RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
             }
         }
-        .padding(.top, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .foregroundStyle(.white)
+        .background(Color(light: 0x20274E, dark: 0x252B51), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var library: some View {
+        let courses = store.sortedCourses
+        let visible = showAll ? courses[...] : courses.prefix(4)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Derslerim").font(Theme.display(.title2))
+                Spacer()
+                Text("\(courses.count) ders").font(.subheadline).foregroundStyle(Theme.text2)
+            }
+            LazyVStack(spacing: 0) {
+                ForEach(visible) { course in
+                    NavigationLink(value: course) { CourseRow(course: course) }
+                        .buttonStyle(.plain)
+                    if course.id != visible.last?.id { Divider().padding(.horizontal, 16) }
+                }
+                if courses.count > 4 {
+                    Divider()
+                    Button(showAll ? "Daha az göster" : "Tüm dersleri göster") { showAll.toggle() }
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                }
+            }
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.border))
+        }
+        .foregroundStyle(Theme.text)
     }
 }
 
-struct CourseRow: View {
+private struct CourseRow: View {
     @Environment(StudyStore.self) private var store
     let course: Course
 
     var body: some View {
-        let notes = store.notes(in: course).count
-        let cards = store.cardCount(course: course)
-        let readiness = store.readiness(of: course)
-        HStack(spacing: 14) {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(course.tint)
-                .frame(width: 6)
-                .padding(.vertical, 2)
-            VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 12) {
+            Circle().fill(course.tint).frame(width: 8, height: 8)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
                 Text(course.name)
                     .font(Theme.display(.headline, weight: .bold))
                     .foregroundStyle(Theme.text)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                HStack(spacing: 6) {
-                    Text(notes == 0 ? "Not yok" : "\(notes) not")
-                    Text("·")
-                    Text("\(cards) kart")
-                    if let readiness {
-                        Text("·")
-                        Text("Hazırlık %\(readiness)").fontWeight(.semibold).foregroundStyle(Theme.text)
-                    }
-                }
-                .font(.footnote)
-                .foregroundStyle(Theme.text2)
                 if let exam = store.nextExam(course), let countdown = Exams.countdown(exam, store.audience) {
                     CountdownChip(text: countdown.text, tone: countdown.tone)
+                } else {
+                    Text(store.notes(in: course).first?.title ?? "Henüz not yok")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.text2)
+                        .lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.text3)
         }
-        .padding(14)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
-        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .multilineTextAlignment(.leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 }
@@ -179,21 +216,5 @@ struct CountdownChip: View {
         case .warning: Theme.hiSoft
         case .neutral: Theme.surface2
         }
-    }
-}
-
-private struct EmptyCourses: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Henüz dersin yok")
-                .font(Theme.display(.title3))
-                .foregroundStyle(Theme.text)
-            Text("Sağ üstteki + ile ilk notunu ekle: ders adını orada yazabilirsin. Notunu yapıştır, fotoğrafını çek ya da PDF'ini seç.")
-                .font(.subheadline)
-                .foregroundStyle(Theme.text2)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .focusCard()
-        .padding(.top, 8)
     }
 }
