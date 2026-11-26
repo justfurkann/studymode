@@ -1,13 +1,14 @@
 import { ArrowLeft } from 'lucide-react'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { BrandIcon } from '../components/BrandIcon'
 import { Captcha } from '../components/Captcha'
 import { Alert, Spinner } from '../components/ui'
-import { authErrorMessage, googleEnabledHint, isGoogleEnabled, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
+import { authErrorMessage, authProviders, googleEnabledHint, isGoogleEnabled, MIN_PASSWORD, nameMetadata, passwordProblem } from '../lib/auth'
 import { GOOGLE_CLIENT_ID, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../lib/config'
 import { captchaSiteKey } from '../lib/captcha'
 import { renderGoogleButton } from '../lib/googleSignIn'
+import { appleWebAvailable, prepareApple, signInWithApple } from '../lib/appleSignIn'
 import { warmUpSignIn } from '../lib/signInWarmup'
 import { useStore } from '../lib/store'
 import { supabase } from '../lib/supabase'
@@ -111,7 +112,10 @@ export function Login() {
             : 'Hesapla notların, kartların ve ilerlemen tüm cihazlarında senkronize olur.'}
         </p>
         {mode !== 'forgot' && (
-          <GoogleButton captcha={captchaOn ? { token: () => tokenRef.current, used: () => setCaptchaReset((n) => n + 1) } : undefined} />
+          <GoogleButton
+            captcha={captchaOn ? { token: () => tokenRef.current, used: () => setCaptchaReset((n) => n + 1) } : undefined}
+            apple={<AppleButton captcha={captchaOn ? { token: () => tokenRef.current, used: () => setCaptchaReset((n) => n + 1) } : undefined} />}
+          />
         )}
         <form className="form" onSubmit={submit}>
           {mode === 'up' && (
@@ -211,7 +215,7 @@ export function Login() {
  * studymode.fun. If Google's script is blocked, falls back to the redirect flow (which names the
  * Supabase address but still works). Hidden until Google is switched on in Supabase.
  */
-function GoogleButton({ captcha }: { captcha?: { token: () => string; used: () => void } }) {
+function GoogleButton({ captcha, apple }: { captcha?: { token: () => string; used: () => void }; apple: ReactNode }) {
   const navigate = useNavigate()
   // Shown right away (last known answer, or on when a Google client is set up) instead of waiting
   // for Supabase to answer first; hidden again if the check says Google is off.
@@ -246,10 +250,12 @@ function GoogleButton({ captcha }: { captcha?: { token: () => string; used: () =
     }).catch(() => setMode('redirect'))
   }, [enabled, mode, navigate])
 
-  if (!enabled) return null
+  const appleOn = useAppleEnabled()
+  if (!enabled && !appleOn) return null
   return (
     <div className="google-auth">
-      {mode === 'gsi' ? (
+      {appleOn && apple}
+      {!enabled ? null : mode === 'gsi' ? (
         <div className="google-slot-wrap">
           {/* Same size as Google's button, under it: the place looks ready at once, and Google's
               button covers it the moment it is drawn. */}
@@ -281,5 +287,66 @@ function GoogleButton({ captcha }: { captcha?: { token: () => string; used: () =
         <span>ya da e-postayla</span>
       </div>
     </div>
+  )
+}
+
+/** "Apple ile devam et" shows when Apple is switched on in Supabase and the site's Services ID is set. */
+function useAppleEnabled(): boolean {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    if (!supabase || !appleWebAvailable()) return
+    let alive = true
+    void authProviders(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY).then(({ apple }) => alive && setOn(apple))
+    return () => {
+      alive = false
+    }
+  }, [])
+  return on
+}
+
+/**
+ * "Apple ile devam et": Apple's sign-in window, then the same ID-token sign-in as Google and the iOS
+ * app. Drawn by us in Apple's style (black, Apple logo; white on dark) since Apple's window must open
+ * straight from the tap.
+ */
+function AppleButton({ captcha }: { captcha?: { token: () => string; used: () => void } }) {
+  const navigate = useNavigate()
+  const [prepared, setPrepared] = useState<Awaited<ReturnType<typeof prepareApple>> | null>(null)
+  const [round, setRound] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    prepareApple()
+      .then((next) => alive && setPrepared(next))
+      .catch(() => alive && setError('Apple girişi şu an yüklenemedi. E-postanla ya da Google ile devam edebilirsin.'))
+    return () => {
+      alive = false
+    }
+  }, [round])
+
+  return (
+    <>
+      <button
+        type="button"
+        className="btn btn-lg apple-btn"
+        disabled={!prepared || busy}
+        onClick={async () => {
+          if (!prepared) return
+          setBusy(true)
+          setError('')
+          const result = await signInWithApple(prepared, captcha)
+          if (!result.error && !result.cancelled) return navigate('/', { replace: true })
+          if (result.error) setError(result.error)
+          setBusy(false)
+          setPrepared(null)
+          setRound((n) => n + 1)
+        }}
+      >
+        {busy || !prepared ? <Spinner size={16} /> : <BrandIcon brand="apple" size={18} />} Apple ile devam et
+      </button>
+      {error && <Alert tone="danger">{error}</Alert>}
+    </>
   )
 }

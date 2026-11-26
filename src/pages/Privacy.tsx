@@ -7,7 +7,7 @@ import { useStore } from '../lib/store'
 import { PAYMENT_PROVIDER } from '../lib/config'
 import { unlock } from '../lib/achievements'
 
-export const PRIVACY_UPDATED = '3 Kasım 2026'
+export const PRIVACY_UPDATED = '26 Kasım 2026'
 
 /** /gizlilik: what StudyMode keeps, why, who processes it, and how to delete it. Plain Turkish. */
 export function Privacy() {
@@ -59,7 +59,7 @@ export function Privacy() {
           <h2>Hangi bilgileri tutuyoruz?</h2>
           <ul>
             <li>
-              <strong>Hesap bilgileri:</strong> ad, soyad ve e-posta adresi. Google ile giriş yaparsan Google'ın bize verdiği ad, e-posta ve profil fotoğrafı bağlantısı. Okuduğun seviye; üniversitedeysen okul, bölüm ve sınıf. İsteğe bağlı olarak doğum yılın, cinsiyetin ve StudyMode'u nereden duyduğun. Bunlar profilinde durur, Ayarlar'dan değiştirebilirsin; doğum yılı ve cinsiyet uygulamayı kimlerin kullandığını anlamak için yalnızca toplu sayılar olarak (ör. yaş grupları) değerlendirilir. Şifren Supabase
+              <strong>Hesap bilgileri:</strong> ad, soyad ve e-posta adresi. Google ile giriş yaparsan Google'ın bize verdiği ad, e-posta ve profil fotoğrafı bağlantısı. Apple ile giriş yaparsan Apple'ın verdiği e-posta ("E-postamı gizle"yi seçersen Apple'ın sana özel ürettiği, gerçek adresine yönlendirilen bir adres) ve yalnızca ilk girişte paylaşmayı seçtiğin ad. Okuduğun seviye; üniversitedeysen okul, bölüm ve sınıf. İsteğe bağlı olarak doğum yılın, cinsiyetin ve StudyMode'u nereden duyduğun. Bunlar profilinde durur, Ayarlar'dan değiştirebilirsin; doğum yılı ve cinsiyet uygulamayı kimlerin kullandığını anlamak için yalnızca toplu sayılar olarak (ör. yaş grupları) değerlendirilir. Şifren Supabase
               tarafından şifrelenmiş (hash) olarak saklanır; biz göremeyiz.
             </li>
             <li>
@@ -116,6 +116,10 @@ export function Privacy() {
               metin, çizilecek kavram ya da aranan cümle bu modellere gider.
             </li>
             <li>
+              <strong>Apple (Apple ile giriş):</strong> "Apple ile devam et"i seçersen girişini Apple doğrular; Apple bize yalnızca hesabını tanıyan bir kimlik, e-posta adresin
+              (ya da gizli yönlendirme adresi) ve ilk girişte paylaştığın adı verir. Şifren Apple'da kalır. Bu izni istediğin zaman iPhone'da Ayarlar → adın → "Apple ile giriş" bölümünden kaldırabilirsin.
+            </li>
+            <li>
               <strong>Cloudflare (Turnstile):</strong> giriş, kayıt ve şifre sıfırlama ekranındaki bot doğrulaması. Doğrulama için tarayıcın ve bağlantın hakkında teknik
               bilgiler Cloudflare'e gider; reklam için kullanılmaz.
             </li>
@@ -149,7 +153,16 @@ export function Privacy() {
             <li>
               Tüm derslerini ve notlarını <Link to="/ayarlar">Ayarlar → Verilerin → Her şeyi sil</Link> ile kendin silebilirsin.
             </li>
-            <li>Hesabının tamamen silinmesini istersen bize yaz; en geç 30 gün içinde hesabın ve ona bağlı tüm veriler silinir.</li>
+            <li>
+              Hesabını kendin silebilirsin: <Link to="/ayarlar#hesabi-sil">Ayarlar → Hesabı sil</Link> (iPhone uygulamasında da Ayarlar'da). Silme hemen yapılır; hesabın, dersler, notlar,
+              kartlar, test ve sınav sonuçları, seri, okul bilgisi, paylaşım bağlantıları, gönderdiğin geri bildirimler ve hata kayıtları, rolün, yapay zekâ kullanım sayıların ve Premium
+              süren kalıcı olarak silinir, geri getirilemez. Süresi bitmemiş Premium varsa önce uyarırız; kalan süre iade edilmez.
+            </li>
+            <li>
+              Kullanılmış Premium kodlarının kaydı (kodun ne zaman kullanıldığı) satış ve iade kayıtları için saklanır, ama silinen hesapla bağı kopar. Sunucu ve yedek kayıtlarındaki
+              izler en geç 30 gün içinde kendiliğinden silinir.
+            </li>
+            <li>Uygulamaya erişemiyorsan bize yaz; en geç 30 gün içinde hesabın ve ona bağlı tüm veriler silinir.</li>
             <li>Hata kayıtları ve istatistikler yalnızca toplu olarak, uygulamayı iyileştirmek için kullanılır.</li>
           </ul>
         </section>

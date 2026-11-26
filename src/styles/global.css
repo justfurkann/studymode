@@ -6109,3 +6109,42 @@ a.prem-hit:hover {
   padding-left: 18px;
   padding-right: 18px;
 }
+
+/* Settings → "Hesabı sil": set apart from the other settings, the final button is solid red. */
+.danger-zone {
+  border-color: var(--danger);
+}
+
+.btn-danger-solid {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--surface);
+}
+
+.btn-danger-solid:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* "Apple ile devam et": Apple's own look (black with the white logo; white on the dark theme). */
+.apple-btn {
+  width: 100%;
+  background: #000;
+  border-color: #000;
+  color: #fff;
+}
+.apple-btn:hover:not(:disabled) {
+  opacity: 0.86;
+}
+:root[data-theme='dark'] .apple-btn {
+  background: #fff;
+  border-color: #fff;
+  color: #000;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .apple-btn {
+    background: #fff;
+    border-color: #fff;
+    color: #000;
+  }
+}

@@ -1097,6 +1097,36 @@ Kalan sorunlar (yapılmadı):
 - **Apple ile ödeme:** Uygulama içinde Premium satılırsa Apple ödemesi zorunlu (küçük geliştiriciye %15 pay). Uygulamada Shopier'e yönlendirmek ya da Premium kodu girdirmek yasak. Taslakta satış yok; karar mağaza aşamasında. Seçilirse Apple'ın satın alma bildirimini alıp `premium_until`'i açan bir sunucu kapısı gerekir.
 - **Doğrulama dosyası (şifre otomatik doldurma):** `public/.well-known/apple-app-site-association`, önce yalnızca `webcredentials` (`TEAMID.bundleid`). `vercel.json`'a bu yol için `Content-Type: application/json` başlığı. Sitenin yönlendirme kuralı noktalı yollara dokunmadığı için dosya doğrudan sunulur. Team ID ve bundle ID kullanıcıdan bekleniyor. `applinks` ileride sadece belirli yollar için; "bütün site" denirse uygulaması olan herkesin her studymode.fun bağlantısı uygulamaya düşer. E-posta bağlantıları Supabase üzerinden yönlendirildiği için uygulama tarafında özel adres (custom URL scheme) yolu önerildi.
 
+### Aşama 68 — Hesap silme ve Apple ile giriş (26 Kasım 2026, `apple-signin-account-delete`)
+
+Neden: iPhone uygulaması (`ios/`, ayrı oturum yapıyor) App Store'a çıkacak. Apple, hesap açılan her uygulamada uygulama içinden hesap silmeyi şart koşuyor; Apple ile giriş de isteniyor.
+
+- **Hesap silme: `POST /api/delete-account`** (`api/delete-account.ts` + testleri). Site ve iOS aynı ucu kullanır.
+  - Başlık `Authorization: Bearer <kullanıcının kendi Supabase access token'ı>`, gövde `{ "confirm": "DELETE", "premium_ok"?: true, "apple_authorization_code"?: "…" }`.
+  - Cevaplar: 200 `{ ok: true, apple_revoked }` · 400 `confirm_required` / `bad_request` · 401 `not_signed_in` · 403 `admin_account` (yönetici hesabı silinmez) · 405 · 409 `premium_active` + `premium_until` (süren Premium varsa; `premium_ok: true` ile tekrar gönderilir) · 500 `not_configured` · 502 `delete_failed`.
+  - Sunucu `SUPABASE_SERVICE_ROLE_KEY` (Vercel'de zaten var) ile önce `feedback` ve `client_errors` satırlarını siler (bunlar `on delete set null` idi), sonra `auth/v1/admin/users/<id>` ile kullanıcıyı. Diğer her tablo `auth.users`'tan **cascade** (canlıda 26 Kasım'da kontrol edildi: courses, notes, cards, quiz_attempts, exam_results, study_days, course_exams, course_shares, user_roles, ai_usage, premium_access, premium_redeem_failures). Storage kovası yok. Kullanılmış Premium kodları kalır (`redeemed_by` boşalır). **SQL gerekmedi.**
+  - Apple belirteci iptali (Apple'ın istediği): iOS taze bir `authorizationCode` gönderirse ve Vercel'de `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (Sign in with Apple .p8 anahtarı; isteğe bağlı `APPLE_CLIENT_ID`, varsayılan `fun.studymode.app`) varsa sunucu kodu Apple'da refresh token'a çevirip iptal eder. Değişkenler yoksa sessizce atlanır, hesap yine silinir. **Henüz girilmedi.**
+  - Site: Ayarlar'ın sonunda "Hesabı sil" (`src/components/DeleteAccount.tsx`, `src/lib/deleteAccount.ts`): neyin silineceği listesi, "SİL" yazma (SIL de olur), Premium süresi varsa onay kutusu, sonra yalnızca bu cihazda oturum kapatma ve ana sayfa.
+- **Apple ile giriş:**
+  - iOS: `signInWithIdToken(provider: .apple, idToken:, nonce:)` + `captchaToken`. Supabase'de Apple sağlayıcısı açılmalı, Client IDs: `fun.studymode.app` (ve site için Services ID). Secret key **gerekmez** (yalnızca kimlik belirteci yolu).
+  - Site: "Apple ile devam et" (`src/lib/appleSignIn.ts`, Login'de `AppleButton`): Apple'ın JS'i açılır pencerede, sonra `signInWithIdToken` (nonce'un SHA-256'sı Apple'a, kendisi Supabase'e; captcha jetonu). Görünmesi için `config.ts` → `APPLE_SERVICES_ID` dolu olmalı, adres `https://studymode.fun` olmalı ve Supabase'de Apple açık olmalı. Testte `studymode.apple.force`. **`APPLE_SERVICES_ID` şimdilik boş** (kullanıcı Apple Developer'da Services ID'yi oluşturunca doldurulacak, önerilen `fun.studymode.web`, Return URL `https://studymode.fun/giris`).
+  - Apple adı yalnızca ilk girişte verir: site ve iOS bunu hemen `updateUser({ data: { first_name, last_name, full_name } })` ile yazar (var olan adın üstüne yazmaz).
+  - Gizli e-posta (`…@privaterelay.appleid.com`): `emailLabel` / `isPrivateRelayEmail` (`auth.ts`) her yerde "Apple (gizli e-posta)" gösterir; paylaşımda sahip adı olarak çıkmaz; yönetimde başlıkta etiket, altında gerçek adres. Resend'den bu adreslere giden e-postaların ulaşması için Apple Developer → Sign in with Apple for Email Communication'a `studymode.fun` (ve `noreply@studymode.fun`) eklenmeli.
+  - Gizlilik sayfası (26 Kasım): Apple işleyen olarak, hesabı kendin silme, Premium uyarısı, kod kayıtları.
+- **Doğrulama dosyası:** `public/.well-known/apple-app-site-association`, yalnızca `{"webcredentials":{"apps":["Q2VWX7322K.fun.studymode.app"]}}` (Team ID `Q2VWX7322K`, gizli değil). `vercel.json` bu yola `Content-Type: application/json` verir; SPA yönlendirmesi noktalı yollara dokunmaz. `applinks` yok (bilinçli).
+- iOS oturumu ile haberleşme: `docs/IOS_SYNC.md` (bkz. 0. bölüm).
+- **Sonra (yapılmadı):** iOS'ta Premium Apple ile ödensin (uygulama içi satın alma / abonelik). App Store Server Notifications → sunucu → `premium_access` gerekecek. Shopier kodları sitede kalır.
+- Bu Mac'te e2e için Playwright Chromium'u `npx playwright install chromium` ile kuruldu; artık `npm run test:e2e` doğrudan çalışıyor.
+
+### Aşama 69 — Yeni Tekrar: günde tek oturum (26 Kasım 2026, `new-tekrar`)
+
+Kural metni `docs/IOS_SYNC.md` (ios-taslak) "Ortak kural: yeni Tekrar"; site ve iOS aynı kuralı uygular. Zamanlama (`srs.ts`) ve dört değerlendirme değişmedi.
+- **Mantık** `src/lib/dailyReview.ts`: günlük hedef = Ayarlar'daki "Günlük kart hedefi" (varsayılan artık **15**; kayıtlı eski varsayılan 20 de 15 sayılır). Bugünkü ilerleme `study_days.reviews` (bütün cihazların toplamı). "Biraz daha" +10 (bu tarayıcıda, yalnızca bugün için saklanır).
+- **Kuyruk:** zamanı gelmiş kartlar. Yeni kartlar yalnızca özeti okunmuş (`tanis`/`anla`) ya da testi çözülmüş notlardan ya da notsuzsa girer; bir kez cevaplanmış kart, notu ne durumda olursa olsun zamanı gelince gelir. Sıra: en yakın sınav (yoksa en sona) → önce bilinemeyenler (`lapses > 0` ya da `reps 0` ve `ease < 2.5`) → en çok gecikmiş → en sonda yeni kartlar (günde en fazla 5).
+- **Yeni kart** = `reps 0, lapses 0, ease 2.5`. İlk cevabında `study_days.new_cards` +1 (geri alınca −1). **SQL çalıştırıldı (kullanıcı onayıyla):** `alter table public.study_days add column if not exists new_cards integer not null default 0 check (new_cards >= 0);` (`schema.sql`'de de var; `OPTIONAL_COLUMNS`'ta).
+- **Ekran:** Tekrar sekmesinde toplam kart sayısı ve ders seçici yok; "Bugünkü hedef x/15", bitince "Bugün tamam" + "Biraz daha", altta "Derslere hazırlık" (`examReadiness`, sınavı olan derste en yakın sınavın notları). Sekme rozeti ve Bugün'deki kutu: bugünkü oturumdan kalan. Bugün'deki sınav listesinde "N kart bekliyor" yerine hazırlık yüzdesi.
+- Bir nottan ya da ders sayfasından açılan tekrar (`?not=`, `?ders=`) eskisi gibi o kapsamdaki kartları gösterir; bunlar da bugünün sayacına sayılır.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
