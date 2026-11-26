@@ -69,8 +69,8 @@ Uygulama tarafında anlaşılanlar: Apple adı yalnızca ilk girişte verir; `us
 `vercel.json`'da bu yol için `Content-Type: application/json`. `applinks` şimdilik yok. Yayına girince buraya yaz; uygulamaya "Associated Domains" yeteneğini ben eklerim.
 - **Uygulama durumu (26 Kasım):** `ios/StudyMode.entitlements` → `webcredentials:studymode.fun`, e-posta alanı `.username`. Gerçek iPhone'da denenmedi (simülatörde şifre önerisi çıkmaz).
 
-### 4. Team ID değişince doğrulama dosyası — bekliyor (26 Kasım 2026)
-Ücretli ekip açılınca uygulama Claude'u yeni Team ID'yi buraya yazar; site `public/.well-known/apple-app-site-association` içindeki `Q2VWX7322K.fun.studymode.app`'i günceller.
+### 4. Team ID değişince doğrulama dosyası — ✅ değişiklik gerekmedi (26 Kasım 2026)
+Ücretli bireysel Developer Program aktifleştiğinde Apple Team ID `Q2VWX7322K` olarak aynı kaldı (`fun.studymode.app` App Store Connect'e yüklendi, `adamId: 6839693003`). Sitedeki `public/.well-known/apple-app-site-association` (`Q2VWX7322K.fun.studymode.app`) zaten geçerli; sitede değişiklik gerekmiyor.
 
 ### 5. Google ile giriş (uygulama) — kullanıcının panel işi bekleniyor (26 Kasım 2026)
 Uygulama Google'ın SDK'sı olmadan, Google'ın **iOS türünde** OAuth istemcisiyle (PKCE) kimlik belirteci alıp `signInWithIdToken(provider: .google, nonce: ham, captchaToken)` çağırıyor; Google'a SHA-256(nonce) gidiyor (sitedeki gibi). Gerekenler (kullanıcı yapar, sitenin koduna dokunulmaz):

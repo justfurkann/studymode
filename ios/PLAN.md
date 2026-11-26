@@ -21,7 +21,7 @@ Uygulama Claude'unun çalışma planı. Site ile ortak işler `docs/IOS_SYNC.md`
 
 ## Bekleyenler (dış engel)
 
-- **Ücretli Apple ekibi** (ödeme 26 Kasım, hesaba yansıması 48 saate kadar): yeni Team ID → site doğrulama dosyasını günceller (IOS_SYNC madde 4); Xcode'da ekip değişir; telefona `fun.studymode.app` kimliğiyle, Apple ile giriş ve `webcredentials` açık yüklenir. O güne kadar telefona yükleme `fun.studymode.app.dev` kimliği ve boş yetki dosyasıyla, komut satırından yapılıyor (proje ayarı değişmiyor).
+- **Ücretli Apple ekibi** ✅ **Açıldı (26 Kasım):** Team ID değişmedi (`Q2VWX7322K` ücretli bireysel ekip olarak devam ediyor; sitedeki `apple-app-site-association` dosyası zaten doğru). `StudyMode-Info.plist` ve `StudyModeWatch` hedefine `ITSAppUsesNonExemptEncryption = false` eklendi; `0.1 (2)` sürümü `testFlightInternalTestingOnly = false` (TestFlight & App Store) ile App Store Connect'e yüklendi (`adamId: 6839693003`).
 - **Google marka doğrulaması:** Google Auth Platform'da logo yüklü olduğu için marka doğrulaması istiyor; `studymode.fun` Search Console'da doğrulanmalı (Hostinger DNS TXT kaydı, 24 saat bekleme). Girişi engellemiyor (uygulama "In production"). Site/alan adı işi.
 
 ## Fikirler (kullanıcıyla konuşuldu, 26 Kasım)

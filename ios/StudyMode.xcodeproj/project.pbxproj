@@ -393,6 +393,7 @@
 			    DEVELOPMENT_TEAM = Q2VWX7322K;
 			    GENERATE_INFOPLIST_FILE = YES;
 			    INFOPLIST_KEY_CFBundleDisplayName = StudyMode;
+			    INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 			    INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "$(STUDYMODE_APP_ID)";
 			    MARKETING_VERSION = 0.1;
 			    PRODUCT_BUNDLE_IDENTIFIER = "$(STUDYMODE_APP_ID).watchkitapp";
@@ -438,6 +439,7 @@
 			    DEVELOPMENT_TEAM = Q2VWX7322K;
 			    GENERATE_INFOPLIST_FILE = YES;
 			    INFOPLIST_KEY_CFBundleDisplayName = StudyMode;
+			    INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 			    INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "$(STUDYMODE_APP_ID)";
 			    MARKETING_VERSION = 0.1;
 			    PRODUCT_BUNDLE_IDENTIFIER = "$(STUDYMODE_APP_ID).watchkitapp";
