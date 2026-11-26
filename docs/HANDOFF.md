@@ -1127,6 +1127,14 @@ Kural metni `docs/IOS_SYNC.md` (ios-taslak) "Ortak kural: yeni Tekrar"; site ve 
 - **Ekran:** Tekrar sekmesinde toplam kart sayısı ve ders seçici yok; "Bugünkü hedef x/15", bitince "Bugün tamam" + "Biraz daha", altta "Derslere hazırlık" (`examReadiness`, sınavı olan derste en yakın sınavın notları). Sekme rozeti ve Bugün'deki kutu: bugünkü oturumdan kalan. Bugün'deki sınav listesinde "N kart bekliyor" yerine hazırlık yüzdesi.
 - Bir nottan ya da ders sayfasından açılan tekrar (`?not=`, `?ders=`) eskisi gibi o kapsamdaki kartları gösterir; bunlar da bugünün sayacına sayılır.
 
+### Aşama 70 — Site ile telefon birbirinin verisini ezmesin (26 Kasım 2026, `sync-fresh`)
+
+Kalite kontrol buldu: site veriyi sayfa açılışında bir kez okuyor, açık sekmeyi hiç yenilemiyor ve satırları bellekteki eski kopyadan bütün olarak geri yazıyordu. Telefon kullanılınca günün sayaçları, kartların zamanı ve notun `completedSteps`'i eziliyordu; aynı güne ikinci `study_days` satırı açılabiliyordu.
+- **SQL (kullanıcı onayıyla çalıştırıldı, `schema.sql` sonunda):** aynı günün çift satırları sayılar toplanarak en eski satırda birleştirildi; `study_days_user_day_key` unique (user_id, day); yeni fonksiyon `bump_study_day(p_day, p_reviews, p_quizzes, p_actions, p_new_cards)`: tek adımda artırır, satır yoksa açar, 0'ın altına inmez, oturumdaki kullanıcı olarak çalışır.
+- **Site:** günün sayaçları artık `Change` tipi `bump` ile yalnızca artış olarak gider (`backend.ts`); sunucunun döndürdüğü satır (telefonun sayılarıyla) bu sekmede başka kayıt beklemiyorsa alınır. Fonksiyon yoksa (eski veritabanı) eski yol: satırı yazar. Yedek/misafir taşıma (`replaceAll`) aynı günün satırlarını toplayıp `onConflict: user_id,day` ile yazar.
+- **Sekmeye dönünce yenileme** (`store.tsx`): sekme 2 dakikadan uzun açık kaldıysa görünür olunca ya da odaklanınca hesap sessizce yeniden okunur. Önce bekleyen kayıtlar biter; okuma sırasında bu sekmede bir şey değişirse yeni kopya atılır (sonraki dönüşte tekrar denenir). Sayfa yeniden yüklenmez, açık kart turu ve test sürer.
+- Kalan risk: iki cihazda aynı anda aynı kart ya da not düzenlenirse son yazan kazanır (satır bütün yazılıyor); dönüşte yenileme bunu çok azaltır ama sıfırlamaz.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

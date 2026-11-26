@@ -1399,12 +1399,18 @@ test('Tekrar: günlük oturum — yakın sınavlı ders önce, günde en fazla 5
     card(20, fiz, 'Kalp kaç odalıdır?', true),
     card(21, fiz, 'Nabız nedir?', true),
   ]
-  const saved: Array<Record<string, unknown>> = []
-  page.on('request', (r) => {
-    if (r.url().includes('/rest/v1/study_days') && r.method() === 'POST') saved.push(...([] as Array<Record<string, unknown>>).concat(r.postDataJSON()))
-  })
+  // The server's day row: the site sends only deltas (bump_study_day), never its whole row.
+  const day = { id: 'dddddddd-0000-0000-0000-000000000001', user_id: uid, day: '', reviews: 0, quizzes: 0, actions: 0, new_cards: 0, created_at: T, updated_at: T }
+  const bumps: Array<Record<string, number | string>> = []
+  const bump = (body: Record<string, unknown>) => {
+    bumps.push(body as Record<string, number | string>)
+    day.day = String(body.p_day)
+    day.reviews += Number(body.p_reviews ?? 0)
+    day.new_cards += Number(body.p_new_cards ?? 0)
+    return { ...day }
+  }
   await page.addInitScript(() => localStorage.setItem('studymode.settings.v1', JSON.stringify({ dailyGoal: 3 })))
-  await signedInAs(page, 'normal', {}, { courses: [fiz, kim], cards })
+  await signedInAs(page, 'normal', {}, { courses: [fiz, kim], cards }, { bump_study_day: bump })
   await page.goto('/tekrar')
   // No total backlog on screen: today's goal, and the tab badge says what is left of it.
   await expect(page.getByRole('progressbar', { name: 'Bugünkü hedef' })).toHaveAttribute('aria-valuemax', '3')
@@ -1430,7 +1436,8 @@ test('Tekrar: günlük oturum — yakın sınavlı ders önce, günde en fazla 5
   await expect(page.locator('a[href="/tekrar"] :is(.nav-badge, .dot)')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Derslere hazırlık' })).toBeVisible()
   // The first answer to a never-seen card is counted for the daily limit of new cards.
-  await expect.poll(() => saved.at(-1)).toMatchObject({ reviews: 3, new_cards: 1 })
+  await expect.poll(() => ({ reviews: day.reviews, new_cards: day.new_cards })).toEqual({ reviews: 3, new_cards: 1 })
+  expect(bumps[0]).toMatchObject({ p_reviews: 1, p_new_cards: 0 })
 
   // "Biraz daha": the same rules, but only 4 more new cards today (5 a day).
   await page.getByRole('button', { name: /Biraz daha/ }).click()
@@ -1438,7 +1445,48 @@ test('Tekrar: günlük oturum — yakın sınavlı ders önce, günde en fazla 5
   for (let i = 0; i < 4; i += 1) await answer(/^İyi/)
   await expect(page.getByRole('heading', { name: 'Şu an tekrar edilecek kart yok' })).toBeVisible()
   await expect(page.getByText('7/13')).toBeVisible()
-  await expect.poll(() => saved.at(-1)).toMatchObject({ reviews: 7, new_cards: 5 })
+  await expect.poll(() => ({ reviews: day.reviews, new_cards: day.new_cards })).toEqual({ reviews: 7, new_cards: 5 })
+})
+
+test('Senkron: telefonda çalışılınca açık kalan sekme geri dönünce hesabı yeniden okur; günün sayacı telefonunkini ezmez', async ({ page }) => {
+  await page.clock.install({ time: new Date() })
+  const T = '2026-10-01T00:00:00Z'
+  const uid = 'aaaaaaaa-0000-0000-0000-000000000011'
+  const kim = { id: 'cccccccc-0000-0000-0000-0000000000b1', user_id: uid, name: 'Kimya', color: '#3ccf91', exam_date: null, created_at: T, updated_at: T }
+  const card = { id: 'eeeeeeee-0000-0000-0000-0000000000b1', user_id: uid, course_id: kim.id, note_id: null, front: 'Mol nedir?', back: 'Madde miktarı', source: null, due: T, interval: 3, ease: 2.5, reps: 2, lapses: 0, created_at: T, updated_at: T }
+  const today = new Date().toLocaleDateString('sv-SE')
+  // The phone already reviewed 6 cards today.
+  const day = { id: 'dddddddd-0000-0000-0000-0000000000b1', user_id: uid, day: today, reviews: 6, quizzes: 0, actions: 0, new_cards: 0, created_at: T, updated_at: T }
+  const tables: Record<string, unknown[]> = { courses: [kim], cards: [card], study_days: [day] }
+  const upserts: string[] = []
+  page.on('request', (r) => {
+    if (r.url().includes('/rest/v1/study_days') && r.method() === 'POST') upserts.push(r.url())
+  })
+  await signedInAs(page, 'normal', {}, tables, {
+    bump_study_day: (body) => {
+      day.reviews += Number(body.p_reviews ?? 0)
+      return { ...day }
+    },
+  })
+  await page.goto('/tekrar')
+  await expect(page.getByText('6/15')).toBeVisible()
+
+  // Meanwhile the phone reviews this card (due next week) and 3 more cards.
+  tables.cards = [{ ...card, due: new Date(Date.now() + 7 * 86_400_000).toISOString(), reps: 3, interval: 7 }]
+  day.reviews = 10
+  // Back to the tab after a while: the site reads the account again, without a page reload, and the
+  // open card round goes on.
+  await page.clock.fastForward('03:00')
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await expect(page.getByText('10/15')).toBeVisible()
+  await expect(page.locator('.flashcard .front')).toHaveText('Mol nedir?')
+
+  // A review here adds 1 to the day on the server; it does not write its own copy over the phone's.
+  await page.getByRole('button', { name: /Cevabı göster/ }).click()
+  await page.getByRole('button', { name: /^İyi/ }).click()
+  await expect.poll(() => day.reviews).toBe(11)
+  await expect(page.getByText('11/15')).toBeVisible()
+  expect(upserts).toEqual([])
 })
 
 test('Google içeriği filtreye takarsa kullanıcı “Sunucu hata verdi” değil, ne olduğunu ve ne yapacağını görür', async ({ page }) => {

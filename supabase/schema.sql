@@ -655,3 +655,54 @@ revoke all on function public.ai_quota(), public.plus_quota(), public.consume_pl
   public.admin_create_codes(integer, integer, text), public.admin_codes(), public.admin_revoke_code(uuid), public.admin_premium() from public, anon;
 grant execute on function public.ai_quota(), public.plus_quota(), public.consume_plus(), public.redeem_code(text),
   public.admin_create_codes(integer, integer, text), public.admin_codes(), public.admin_revoke_code(uuid), public.admin_premium() to authenticated;
+
+-- study_days: one row per account per day, and an atomic counter (26 Kasım 2026).
+-- Before: each device wrote its whole row back from memory, so a stale tab could overwrite the
+-- phone's counts, and a day could get two rows. After: devices only send "+1 review" style deltas.
+
+-- 1) Merge any duplicate rows of the same day into the oldest one (counts are added up).
+with sums as (
+  select user_id, day, sum(reviews) as reviews, sum(quizzes) as quizzes, sum(actions) as actions,
+         sum(new_cards) as new_cards, max(updated_at) as updated_at
+  from public.study_days group by user_id, day having count(*) > 1
+), keep as (
+  select distinct on (user_id, day) id, user_id, day from public.study_days order by user_id, day, created_at, id
+)
+update public.study_days s
+set reviews = sums.reviews, quizzes = sums.quizzes, actions = sums.actions, new_cards = sums.new_cards, updated_at = sums.updated_at
+from sums join keep using (user_id, day)
+where s.id = keep.id;
+
+delete from public.study_days s
+using (select id, row_number() over (partition by user_id, day order by created_at, id) as n from public.study_days) r
+where s.id = r.id and r.n > 1;
+
+-- 2) From now on a day has a single row per account.
+create unique index if not exists study_days_user_day_key on public.study_days (user_id, day);
+
+-- 3) Add to today's (or any day's) counters in one step; creates the row if it is missing.
+--    Runs as the signed-in user (row level security applies); counters never go below zero.
+create or replace function public.bump_study_day(
+  p_day text,
+  p_reviews integer default 0,
+  p_quizzes integer default 0,
+  p_actions integer default 0,
+  p_new_cards integer default 0
+) returns public.study_days
+language sql
+security invoker
+set search_path = ''
+as $$
+  insert into public.study_days as s (id, user_id, day, reviews, quizzes, actions, new_cards)
+  values (gen_random_uuid(), auth.uid(), p_day, greatest(0, p_reviews), greatest(0, p_quizzes), greatest(0, p_actions), greatest(0, p_new_cards))
+  on conflict (user_id, day) do update set
+    reviews = greatest(0, s.reviews + p_reviews),
+    quizzes = greatest(0, s.quizzes + p_quizzes),
+    actions = greatest(0, s.actions + p_actions),
+    new_cards = greatest(0, s.new_cards + p_new_cards),
+    updated_at = now()
+  returning *;
+$$;
+
+revoke all on function public.bump_study_day(text, integer, integer, integer, integer) from public, anon;
+grant execute on function public.bump_study_day(text, integer, integer, integer, integer) to authenticated;
