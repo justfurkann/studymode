@@ -13,44 +13,6 @@ private struct CardReviewUpdate: Encodable {
     let updated_at: String
 }
 
-private struct StudyDayRow: Decodable {
-    let id: UUID
-    let reviews: Int
-    let new_cards: Int?
-}
-
-private struct StudyDayReviewsUpdate: Encodable {
-    let reviews: Int
-    let updated_at: String
-}
-
-private struct StudyDayReviewsAndNewUpdate: Encodable {
-    let reviews: Int
-    let new_cards: Int
-    let updated_at: String
-}
-
-private struct NewStudyDay: Encodable {
-    let id: UUID
-    let day: String
-    let reviews: Int
-    let quizzes: Int
-    let actions: Int
-    let created_at: String
-    let updated_at: String
-}
-
-private struct NewStudyDayWithNew: Encodable {
-    let id: UUID
-    let day: String
-    let reviews: Int
-    let quizzes: Int
-    let actions: Int
-    let new_cards: Int
-    let created_at: String
-    let updated_at: String
-}
-
 enum ISO {
     /// Same shape as JavaScript's toISOString(): "2026-11-26T10:00:00.000Z".
     private static let formatter: ISO8601DateFormatter = {
@@ -96,32 +58,13 @@ extension StudyStore {
         enqueueWrite { [weak self] in
             do {
                 try await supabase.from("cards").update(update).eq("id", value: card.id).execute()
-                try await Self.addReview(day: day, now: now, newCard: wasNew && trackNew)
+                try await StudyDays.bump(day: day, reviews: 1, newCards: wasNew && trackNew ? 1 : 0)
             } catch {
                 await MainActor.run {
                     self?.replace(card)
                     self?.saveError = "Son tekrarın kaydedilemedi. İnternet bağlantını kontrol et; kart yeniden karşına gelecek."
                 }
             }
-        }
-    }
-
-    /// Today's row, read fresh right before writing so counts made on the site are not lost.
-    /// `newCard` is only true once study_days.new_cards exists (the load found it).
-    private static func addReview(day: String, now: Date, newCard: Bool) async throws {
-        let columns = newCard ? "id,reviews,new_cards" : "id,reviews"
-        let rows: [StudyDayRow] = try await supabase.from("study_days").select(columns).eq("day", value: day).order("created_at").limit(1).execute().value
-        let stamp = ISO.string(now)
-        if let row = rows.first {
-            if newCard {
-                try await supabase.from("study_days").update(StudyDayReviewsAndNewUpdate(reviews: row.reviews + 1, new_cards: (row.new_cards ?? 0) + 1, updated_at: stamp)).eq("id", value: row.id).execute()
-            } else {
-                try await supabase.from("study_days").update(StudyDayReviewsUpdate(reviews: row.reviews + 1, updated_at: stamp)).eq("id", value: row.id).execute()
-            }
-        } else if newCard {
-            try await supabase.from("study_days").insert(NewStudyDayWithNew(id: UUID(), day: day, reviews: 1, quizzes: 0, actions: 0, new_cards: 1, created_at: stamp, updated_at: stamp)).execute()
-        } else {
-            try await supabase.from("study_days").insert(NewStudyDay(id: UUID(), day: day, reviews: 1, quizzes: 0, actions: 0, created_at: stamp, updated_at: stamp)).execute()
         }
     }
 }

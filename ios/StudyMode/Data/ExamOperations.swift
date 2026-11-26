@@ -63,26 +63,6 @@ private struct NewExamResultRow: Encodable {
     let created_at: String
 }
 
-private struct ExamDayQuizzes: Decodable {
-    let id: UUID
-    let quizzes: Int
-}
-
-private struct ExamQuizzesPatch: Encodable {
-    let quizzes: Int
-    let updated_at: String
-}
-
-private struct NewExamStudyDay: Encodable {
-    let id: UUID
-    let day: String
-    let reviews: Int
-    let quizzes: Int
-    let actions: Int
-    let created_at: String
-    let updated_at: String
-}
-
 private struct ExamMistakeCardRow: Encodable {
     let id: UUID
     let course_id: UUID
@@ -339,26 +319,7 @@ extension StudyStore {
         enqueueWrite { [weak self] in
             do {
                 try await supabase.from("exam_results").insert(row).execute()
-                let rows: [ExamDayQuizzes] = try await supabase
-                    .from("study_days")
-                    .select("id,quizzes")
-                    .eq("day", value: day)
-                    .order("created_at")
-                    .limit(1)
-                    .execute()
-                    .value
-                if let today = rows.first {
-                    try await supabase
-                        .from("study_days")
-                        .update(ExamQuizzesPatch(quizzes: today.quizzes + 1, updated_at: stamp))
-                        .eq("id", value: today.id)
-                        .execute()
-                } else {
-                    try await supabase
-                        .from("study_days")
-                        .insert(NewExamStudyDay(id: UUID(), day: day, reviews: 0, quizzes: 1, actions: 0, created_at: stamp, updated_at: stamp))
-                        .execute()
-                }
+                try await StudyDays.bump(day: day, quizzes: 1)
             } catch {
                 await MainActor.run {
                     self?.saveError = "Sınav provası sonucu kaydedilemedi. İnternet bağlantını kontrol et."
