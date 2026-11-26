@@ -1,8 +1,25 @@
-# StudyMode — Devir Notu (Claude Code oturumları, son güncelleme 10 Kasım 2026)
+# StudyMode — Devir Notu (Claude Code oturumları, son güncelleme 26 Kasım 2026)
 
 Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yeni bir oturuma (Claude Code veya Google AI Studio) bağlam vermek için yazıldı.
 
 ---
+
+## 0. Ekip düzeni (26 Kasım 2026'dan itibaren) — ÖNCE BUNU OKU
+
+Kullanıcının kararı: işi üç Claude oturumu bölüşür.
+
+| Oturum | Nerede | Görevi | Dokunduğu yer |
+|---|---|---|---|
+| **Site Claude'u** | Kullanıcının Mac'i (Claude Code, `studymode` klasörü) | Sitede yeni özellik ve düzeltme | `src/`, `api/`, `tests/`, `supabase/`, `public/`, kök ayarlar |
+| **Uygulama Claude'u** | Kullanıcının Mac'i (Claude Code, aynı proje) | iOS uygulaması (Swift / SwiftUI, native) | Sadece `ios/` klasörü, `ios-taslak` dalı |
+| **Kalite kontrol Claude'u** | Bulut (claude.ai/code, `dreamy-sagan` oturumu) | İş yapmaz; incelemeler, canlı testler, analiz. Supabase, Vercel ve GitHub'a doğrudan bağlı, canlı test hesabının anahtarı bu ortamda kayıtlı. | Yalnızca belge, gerektiğinde |
+
+Kurallar:
+- **Aynı dosyaya iki oturum aynı anda dokunmaz.** Site Claude'u `ios/`'a, uygulama Claude'u sitenin koduna dokunmaz. Uygulama sitede bir şeye ihtiyaç duyarsa (ör. hesap silme kapısı, doğrulama dosyası) bunu site Claude'u yapar.
+- İki Mac oturumu birbiriyle `docs/IOS_SYNC.md` üzerinden haberleşir: "şunu yaptım, senden şunu bekliyorum". Kullanıcı aradaki postacıdır ("dosyaya bak").
+- Her büyük iş bitince kullanıcı kalite kontrol oturumuna "kontrol et" der. O oturum değişikliği okur, canlıda dener (test hesabı `scripts/live-login.cjs`), sunucu kayıtlarına bakar ve dürüst bir analiz yazar.
+- Siteye dokunan her değişiklikte 4 kontrol çalışır (bkz. iş akışı): `npm test`, `npm run build`, `npx tsc -p tsconfig.api.json`, `npm run test:e2e`. Mac'te ilk sefer `npm install` ve `npx playwright install chromium` gerekir.
+- Yapay zekâ talimatları (`src/lib/ai/tasks.ts`) testlerle korunmuyor; testler sahte yapay zekâ cevabı kullanır. Talimat değişikliği her zaman canlıda gerçek bir notla denenmeli, önemli değişiklikler önce yöneticilere açılmalı.
 
 ## 1. Ürün
 
@@ -1050,6 +1067,35 @@ Ayrıntılar ve her özelliğin dosyaları: **`docs/ATMOSFER.md`**. Yeni kod ço
 - Özet, test, kart, sınav ve açıklama talimatlarına `MATH_RULE` eklendi: formüller LaTeX'le yazılır, sayı, işaret ve üs değiştirilmez, `$` paraya kullanılmaz. Fosfor da formülleri LaTeX'le yazar.
 - `src/components/MathText.tsx` ve `src/lib/mathText.ts`: metindeki LaTeX, KaTeX 0.16.11 ile gerçek kesir, üs ve kök olarak çizilir. KaTeX ayrı parça halinde, sadece formül görünen ilk ekranda yüklenir. Tek başına "5 $" metin kalır. JSON kaçışıyla bozulan `\frac` onarılır. Özet, tam özet, kavramlar, kartlar, tekrar, test, pratik, sınav, sınav incelemesi, "Anlamadım" açıklaması ve asistan cevaplarında kullanılır.
 - Sonraki adımlar (konuşuldu): ders türü sayısal/sözel/karışık, formül kâğıdı ve formül kartları, çözümlü örnek, "benzer soru çöz" ve cevap kontrolü (yapay zekâ hesap hatası riski).
+
+### Aşama 67 — Formül işinin canlı denemesi ve düzeltmeleri; soru kalitesi; iOS kararları (25-26 Kasım 2026, `dreamy-sagan`)
+
+**Canlı deneme (Modül 1 Matematik PDF'i, 67 sayfa, VIP test hesabı):** Okuma 100 sn, 64 sayfadan 63'ü düzgün LaTeX; 108 şekil "[Şekil: ...]" olarak tarif edildi; özet ve tam özette 205 formül KaTeX ile hatasız çizildi; okuma + özet toplam ~7,5 dk. Kontrol edilen ~15 test sorusunun cevabı doğruydu. Test hesabında "modul1" adlı not duruyor (deneme verisi).
+
+Canlıda bulunup düzeltilenler:
+- **#120:** ¥¢¤¡ glifleri artık `fixSymbolFont` ile formülde `\mathbb{N,Z,Q,R}`, düz metinde ℕℤℚℝ oluyor (sadece matematik ağırlıklı belgede). KaTeX'te olmayan `\cline` → `\hline`. TRANSCRIBE_PROMPT'taki LaTeX örnekleri şablon metninde ters eğik çizgi kaybediyordu (`\f` form feed oluyordu); düzeltildi.
+- **#121:** Başarısız iki sayfalık okuma bir kez, bu sefer sayfa sayfa yeniden deneniyor (içerik filtresi reddi hariç).
+- **#122 (önemli):** Modeller JSON cevabın içine `\sqrt`, `\in` gibi tek ters eğik çizgili LaTeX yazıyor; geçersiz JSON kaçışı olduğu için cevap tamamen atılıyor ve 502 `bad_output` dönüyordu (kayıtlarda hata görünmez). `repairLatexEscapes` (tasks.ts) `parseTaskOutput`'tan önce çalışıyor. Sonuç: okunamayan sayfa 10/64 → 1/64, okuma 335 sn → 100 sn.
+  - **Bilinen risk:** Bu onarım bütün yapay zekâ cevaplarına uygulanıyor. Doğru JSON'a dokunmadığı test edildi; ama teoride "\n" ile başlayan ve tek başına "e", "nu", "to" gibi kelimeyle başlayan bir satır bozulabilir. Önerilen daraltma: sadece formül beklenen görevlere / formül içeren cevaplara uygulamak. Yapılmadı.
+
+Kalan sorunlar (yapılmadı):
+- Trigonometri formüllü bir sayfa iki denemede de okunamadı (1/64).
+- **Uzun notlarda genel özet** (summary.overview) parça parça üretilip yapıştırıldığı için "Bu ders notu…", "Bu bölüm…" diye başlayan dev bir paragraf oluyor. Eski bir sorun; uzun sayısal PDF'te göze batıyor. Önce bu düzeltilmeli.
+
+**Soru kalitesi (kullanıcının arkadaşı: "sorular sınavda böyle çıkmaz"):** Sorular doğru ama sınav gibi değil. 29 sorunun ~15'i formül ezberi ("hangi formülle hesaplanır"), bazıları "Notlara göre…" diye başlıyor, bazıları YKS tipi zorlama. Sebep STUDY_PROMPT: "notlardan dışarı sayı ekleme" kuralı sayısalda yeni sayılı hesap sorusunu engelliyor; her soru 4 şık; uzun notta her parçadan eşit soru. Konuşulan plan (kullanıcı henüz onaylamadı, korkusu "bir şeyi yaparken başka şey bozuluyor"):
+1. Sözel talimata dokunulmaz; sayısal notlara ayrı ek talimat. Sözel talimatın değişmediğini kanıtlayan bir test eklenir.
+2. Önce yalnızca yöneticilere açılır; aynı notta eski ve yeni sorular yan yana karşılaştırılır.
+3. Küçük adımlar: önce "Notlara göre" yasağı, sonra hesap/uygulama soruları ve adım adım çözüm açıklaması, en son cevap kontrolü (yapay zekâ soruyu cevabı görmeden ikinci kez çözer, tutmazsa soru atılır).
+4. İleride: derse "gerçek sınavdan örnek soru" ekleme; yapay zekâ o kalıpta soru yazar.
+
+**iOS uygulaması kararları:**
+- Kullanıcı ve bilgisayar mühendisi arkadaşı **Swift / SwiftUI ile native** istiyor (Capacitor değil). Yeni backend yok: aynı Supabase (`supabase-swift`) ve `/api/generate`.
+- İlk sürüm kapsamı: giriş/kayıt, dersler ve not listesi, not ekleme (fotoğraf, PDF, metin), özet, kartlar, test, tekrar. Mini oyunlar, Premium araçları, yönetici, fiş yok. Formüller SwiftUI'de kendiliğinden çizilmez (KaTeX için web görünümü ya da bir kütüphane gerekir).
+- Apple Developer hesabı alındı (26 Kasım).
+- **Hesap silme (Apple şartı):** Sitede hiç yok (KVKK açısından da eksik). Yapılacak: site Claude'u `api/delete-account.ts` yazar (kullanıcının token'ını doğrular, `SUPABASE_SERVICE_ROLE_KEY` ile auth kullanıcısını siler; tablolar `on delete cascade`) ve Ayarlar'a iki onaylı "Hesabımı sil" düğmesi ekler. Uygulama Claude'u sadece düğme ve çağrıyı yapar. Geri dönüşsüz: yalnızca test hesabında denenir. Apple ile giriş eklenirse silmede Apple token'ı da iptal edilmeli.
+- **Apple ile giriş:** Sitede Google ile giriş olduğu için uygulamada eşdeğer bir giriş gerekir. Taslakta sadece e-posta/şifre (o zaman şart değil); mağaza aşamasında Apple ile giriş eklenir (Supabase panelinde Apple sağlayıcısı ayarı kullanıcıda).
+- **Apple ile ödeme:** Uygulama içinde Premium satılırsa Apple ödemesi zorunlu (küçük geliştiriciye %15 pay). Uygulamada Shopier'e yönlendirmek ya da Premium kodu girdirmek yasak. Taslakta satış yok; karar mağaza aşamasında. Seçilirse Apple'ın satın alma bildirimini alıp `premium_until`'i açan bir sunucu kapısı gerekir.
+- **Doğrulama dosyası (şifre otomatik doldurma):** `public/.well-known/apple-app-site-association`, önce yalnızca `webcredentials` (`TEAMID.bundleid`). `vercel.json`'a bu yol için `Content-Type: application/json` başlığı. Sitenin yönlendirme kuralı noktalı yollara dokunmadığı için dosya doğrudan sunulur. Team ID ve bundle ID kullanıcıdan bekleniyor. `applinks` ileride sadece belirli yollar için; "bütün site" denirse uygulaması olan herkesin her studymode.fun bağlantısı uygulamaya düşer. E-posta bağlantıları Supabase üzerinden yönlendirildiği için uygulama tarafında özel adres (custom URL scheme) yolu önerildi.
 
 ## Tasarım dili ("Fosforlu")
 
