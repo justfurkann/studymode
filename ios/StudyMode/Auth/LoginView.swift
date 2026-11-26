@@ -89,6 +89,18 @@ struct LoginView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            if mode != .forgot {
+                AppleSignInButton(captcha: captcha, error: $error, busy: $busy)
+                HStack(spacing: 10) {
+                    Rectangle().fill(Theme.border).frame(height: 1)
+                    Text("ya da e-postayla")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.text3)
+                        .fixedSize()
+                    Rectangle().fill(Theme.border).frame(height: 1)
+                }
+            }
+
             if mode == .signUp {
                 HStack(spacing: 10) {
                     TextField("Ad", text: $firstName)
@@ -107,7 +119,8 @@ struct LoginView: View {
             }
 
             TextField("E-posta", text: $email)
-                .textContentType(.emailAddress)
+                // .username lets iOS offer the password saved for studymode.fun (Associated Domains).
+                .textContentType(.username)
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()

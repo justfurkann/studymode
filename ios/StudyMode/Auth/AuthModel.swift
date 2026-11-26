@@ -28,6 +28,11 @@ final class AuthModel {
 
     var email: String { session?.user.email ?? "" }
 
+    /// Apple's private relay addresses read as noise; say what they are.
+    var displayEmail: String {
+        email.lowercased().hasSuffix("@privaterelay.appleid.com") ? "Apple (gizli e-posta)" : email
+    }
+
     /// user_metadata.education.level ("ortaokul", "lise", "universite"…), set by the site's "Seni biraz tanıyalım".
     var educationLevel: String? {
         guard case let .object(education)? = session?.user.userMetadata["education"],
@@ -79,6 +84,11 @@ final class AuthModel {
 
     func signOut() async {
         try? await supabase.auth.signOut()
+    }
+
+    /// After the account is deleted on the server, only the session on this phone is left to clear.
+    func signOutLocally() async {
+        try? await supabase.auth.signOut(scope: .local)
     }
 }
 

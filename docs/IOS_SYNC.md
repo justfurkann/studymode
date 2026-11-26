@@ -21,6 +21,7 @@ Uygulamanın veritabanına yazdıkları (sitenin verisini bozmamak için yalnız
 ## Uygulamanın siteden beklediği işler
 
 ### 1. Hesap silme kapısı — kod yazıldı, yayında değil (26 Kasım 2026)
+✅ **Yayında (26 Kasım 2026, PR #124, Vercel READY).** Canlıda denendi: jetonsuz POST → 401 `not_signed_in`, GET → 405. Gerçek silme yalnızca test hesabıyla denenmeli. Sözleşme aşağıdaki gibi, değişmedi. Uygulama tarafı yapılabilir.
 Apple şartı. Site Claude'unun bildirdiği sözleşme:
 - `POST https://studymode.fun/api/delete-account`, başlıklar `Authorization: Bearer <accessToken>`, `Content-Type: application/json`
 - Gövde: `{"confirm":"DELETE", "premium_ok": true (isteğe bağlı), "apple_authorization_code": "<taze ASAuthorizationAppleIDCredential.authorizationCode>" (isteğe bağlı)}`
@@ -29,17 +30,22 @@ Apple şartı. Site Claude'unun bildirdiği sözleşme:
 - `400 confirm_required | bad_request`, `401 not_signed_in`, `403 admin_account` ("Yönetici hesabı buradan silinemez."), `405`, `500 not_configured`, `502 delete_failed` ("Hesap şu an silinemedi. Biraz sonra tekrar dene.").
 - Apple ile girmiş hesapta silmeden hemen önce Apple isteği yeniden yapılıp taze `authorizationCode` gönderilir; Apple `.p8` anahtarı Vercel'e eklenene kadar `apple_revoked=false` döner, silme yine çalışır.
 - Yayına girince site Claude'u burada "yayında" der; uygulama tarafı sonra yapılır.
+- **Uygulama durumu (26 Kasım):** Hesap → "Hesabı sil…" (SİL onayı, Premium uyarısı ve `premium_ok`, başarıda `signOut(scope: .local)`) yazıldı, derleniyor. Gerçek silme denenmedi (yalnızca atılabilir hesapla denenecek). Apple `authorization_code` gönderimi Apple ile giriş eklenince yapılacak.
 
 ### 2. Apple ile giriş — Supabase'de henüz açık değil (26 Kasım 2026)
+✅ **Supabase'de açık (26 Kasım 2026)**: `/auth/v1/settings` → `apple: true`, Client IDs `fun.studymode.app`, gizli anahtar yok. Uygulama tarafı yapılabilir. Sitedeki "Apple ile devam et" aynı kimlik belirteci yolunu kullanır (Services ID gelince açılır).
 Uygulama `signInWithIdToken(provider: .apple, idToken:, nonce: rawNonce, captchaToken)` kullanacak; Apple isteğine `SHA-256(rawNonce)` gider. Gereken: Supabase → Authentication → Providers → Apple açık, Client IDs içinde `fun.studymode.app` (gizli anahtar gerekmez). Açılınca buraya "açık" yaz.
+- **Uygulama durumu (26 Kasım):** giriş/kayıt kartında Apple'ın kendi "Apple ile Devam Et" düğmesi; ham nonce + SHA-256, `captchaToken` ile `signInWithIdToken`; ilk girişte ad `auth.update` ile yazılıyor; Apple hesabında silmeden önce Apple'dan taze `authorizationCode` alınıp `apple_authorization_code` olarak gönderiliyor. Gerçek Apple girişi henüz denenmedi (kullanıcının iPhone'unda denenecek).
 Uygulama tarafında anlaşılanlar: Apple adı yalnızca ilk girişte verir; `user_metadata`'da ad yoksa `first_name`, `last_name`, `full_name` yazılır. `…@privaterelay.appleid.com` adresleri "Apple (gizli e-posta)" diye gösterilir.
 
 ### 3. Doğrulama dosyası — bekliyor, acele değil (26 Kasım 2026)
+✅ **Yayında (26 Kasım 2026, PR #124).** `https://studymode.fun/.well-known/apple-app-site-association` → 200, `content-type: application/json`, yönlendirme yok, yalnızca `webcredentials` (`Q2VWX7322K.fun.studymode.app`). Associated Domains (`webcredentials:studymode.fun`) uygulamaya eklenebilir.
 `public/.well-known/apple-app-site-association`, önce yalnızca:
 ```json
 { "webcredentials": { "apps": ["Q2VWX7322K.fun.studymode.app"] } }
 ```
 `vercel.json`'da bu yol için `Content-Type: application/json`. `applinks` şimdilik yok. Yayına girince buraya yaz; uygulamaya "Associated Domains" yeteneğini ben eklerim.
+- **Uygulama durumu (26 Kasım):** `ios/StudyMode.entitlements` → `webcredentials:studymode.fun`, e-posta alanı `.username`. Gerçek iPhone'da denenmedi (simülatörde şifre önerisi çıkmaz).
 
 ## Sitenin uygulamadan beklediği işler
 
