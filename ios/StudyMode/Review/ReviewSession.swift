@@ -2,13 +2,14 @@ import SwiftUI
 
 /// One study round over a fixed queue of cards, like the site's ReviewSession and note card round.
 /// `.grades` (Tekrar tab): Bilemedim / Zor / İyi / Kolay with when each brings the card back.
-/// `.simple` (a note's Kartlar): Tekrar / Bildim. Cards answered "again" go to the back of the queue.
+/// `.simple` (a note's Kartlar): Tekrar / Bildim (also supports left/right swipe!).
 struct ReviewSession: View {
     /// `.daily`: the Tekrar tab's daily session (grades, card context, "Bugün tamam" and "Biraz daha").
     enum Mode { case grades, simple, daily }
 
     @Environment(StudyStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let title: String
     let mode: Mode
@@ -27,6 +28,13 @@ struct ReviewSession: View {
     @State private var readinessBefore: (course: Course, value: Int)?
     @State private var startIds: [UUID]
 
+    // Motion & gesture state
+    @State private var dragOffset: CGSize = .zero
+    @State private var flyAwayOffset: CGSize = .zero
+    @State private var isTransitioningCard = false
+    @State private var shuffleTrigger = 0
+    @State private var easySparkTrigger = 0
+
     init(title: String, cards: [Card], mode: Mode, onFinish: (() -> Void)? = nil) {
         self.title = title
         self.mode = mode
@@ -43,33 +51,171 @@ struct ReviewSession: View {
         NavigationStack {
             ZStack {
                 GridPaper()
-                VStack(spacing: 18) {
+                VStack(spacing: 16) {
                     if let card, !finished {
                         progress
                         if mode == .daily { context(for: card) }
-                        CardFace(card: card, revealed: revealed, hint: showHint ? CardHint.make(card.back) : nil)
-                            .onTapGesture { if !revealed { withAnimation(.snappy) { revealed = true } } }
+                        deckStage(currentCard: card)
                         controls(for: card)
                     } else if mode == .daily {
                         dailyDone
+                            .transition(.scale(scale: 0.94).combined(with: .opacity))
                     } else {
                         done
+                            .transition(.scale(scale: 0.94).combined(with: .opacity))
                     }
                 }
                 .padding(16)
+
+                HighlighterSparkBurst(trigger: easySparkTrigger)
+                    .offset(y: 120)
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel("Kapat")
+                    Button {
+                        OnboardingHaptics.light()
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel("Kapat")
+                }
+                if !finished && queue.count > 1 {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            shuffleRemaining()
+                        } label: {
+                            Label("Karıştır", systemImage: "shuffle")
+                        }
+                        .accessibilityLabel("Kalan kartları karıştır")
+                    }
                 }
             }
             .overlay(alignment: .top) { SaveErrorBanner() }
         }
-        .sensoryFeedback(.selection, trigger: revealed)
         .onAppear { captureReadiness() }
+    }
+
+    // MARK: - 3D Stacked Deck Stage
+
+    private func deckStage(currentCard: Card) -> some View {
+        let upcomingCount = min(2, max(0, queue.count - 1))
+        let activeX = dragOffset.width + flyAwayOffset.width
+        let activeY = dragOffset.height * 0.25 + flyAwayOffset.height
+
+        return ZStack {
+            // Background depth cards that rise forward as queue advances
+            ForEach((0..<upcomingCount).reversed(), id: \.self) { depthIndex in
+                let level = CGFloat(depthIndex + 1)
+                let liftProgress = min(1.0, abs(activeX) / 140.0)
+                let effectiveLevel = max(0, level - liftProgress)
+
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Theme.surface)
+                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.cardLine.opacity(0.65), lineWidth: 1.5))
+                    .scaleEffect(1.0 - effectiveLevel * 0.045)
+                    .offset(y: effectiveLevel * 10)
+                    .opacity(1.0 - Double(effectiveLevel) * 0.18)
+            }
+
+            // Active interactive 3D card
+            FlippableStudyCard(
+                card: currentCard,
+                revealed: revealed,
+                hint: showHint ? CardHint.make(currentCard.back) : nil,
+                swipeDelta: mode == .simple && revealed ? dragOffset.width : 0,
+                onFlipTap: {
+                    guard !revealed, !isTransitioningCard else { return }
+                    OnboardingHaptics.medium()
+                    withAnimation(.spring(response: 0.50, dampingFraction: 0.78)) {
+                        revealed = true
+                    }
+                }
+            )
+            .id(currentCard.id)
+            .offset(x: activeX, y: activeY)
+            .rotationEffect(.degrees(Double(activeX) / 22.0))
+            .keyframeAnimator(initialValue: ShuffleShake(), trigger: shuffleTrigger) { view, val in
+                view
+                    .offset(x: val.x)
+                    .rotationEffect(.degrees(val.tilt))
+                    .scaleEffect(val.scale)
+            } keyframes: { _ in
+                KeyframeTrack(\.x) {
+                    SpringKeyframe(-18, duration: 0.09, spring: .bouncy)
+                    SpringKeyframe(16, duration: 0.10, spring: .bouncy)
+                    SpringKeyframe(0, duration: 0.22, spring: .bouncy)
+                }
+                KeyframeTrack(\.tilt) {
+                    CubicKeyframe(-4, duration: 0.09)
+                    CubicKeyframe(4, duration: 0.10)
+                    SpringKeyframe(0, duration: 0.22, spring: .bouncy)
+                }
+                KeyframeTrack(\.scale) {
+                    CubicKeyframe(0.96, duration: 0.09)
+                    SpringKeyframe(1.0, duration: 0.30, spring: .bouncy)
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 14)
+                    .onChanged { value in
+                        guard !isTransitioningCard else { return }
+                        if mode == .simple && revealed {
+                            dragOffset = value.translation
+                        } else {
+                            // Subtle elastic feel even before reveal / in daily mode
+                            dragOffset = CGSize(
+                                width: value.translation.width * 0.28,
+                                height: value.translation.height * 0.12
+                            )
+                        }
+                    }
+                    .onEnded { value in
+                        guard !isTransitioningCard else { return }
+                        if mode == .simple && revealed {
+                            if value.translation.width > 95 {
+                                commitAnswerWithFlyAway(currentCard, .good, direction: 1)
+                                return
+                            } else if value.translation.width < -95 {
+                                commitAnswerWithFlyAway(currentCard, .again, direction: -1)
+                                return
+                            }
+                        } else if !revealed && abs(value.translation.width) < 40 && value.translation.height < -45 {
+                            OnboardingHaptics.medium()
+                            withAnimation(.spring(response: 0.50, dampingFraction: 0.78)) {
+                                revealed = true
+                            }
+                        }
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.74)) {
+                            dragOffset = .zero
+                        }
+                    }
+            )
+        }
+        .padding(.bottom, 6)
+    }
+
+    private struct ShuffleShake {
+        var x: CGFloat = 0
+        var tilt: Double = 0
+        var scale: CGFloat = 1
+    }
+
+    private func shuffleRemaining() {
+        guard queue.count > 1, !isTransitioningCard else { return }
+        OnboardingHaptics.medium()
+        revealed = false
+        showHint = false
+        shuffleTrigger += 1
+        var shuffled = queue.shuffled()
+        if shuffled.first == queue.first, shuffled.count > 1 {
+            shuffled.swapAt(0, 1)
+        }
+        withAnimation(.spring(response: 0.40, dampingFraction: 0.78)) {
+            queue = shuffled
+        }
     }
 
     /// The course of the session's first card, and its readiness now, to show the change at the end.
@@ -94,8 +240,8 @@ struct ReviewSession: View {
                     }
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Theme.text)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
                     .background(Theme.surface, in: Capsule())
                     .overlay(Capsule().stroke(Theme.border, lineWidth: 1))
                 }
@@ -103,16 +249,17 @@ struct ReviewSession: View {
                     Label("Geçen sefer bilemedin", systemImage: "arrow.counterclockwise")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.danger)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
                         .background(Theme.dangerSoft, in: Capsule())
                 } else if card.isNew {
                     Label("Yeni kart", systemImage: "sparkle")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(Theme.text)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Theme.hiSoft, in: Capsule())
+                        .foregroundStyle(Theme.onHi)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(Theme.hi, in: Capsule())
+                        .overlay(Capsule().stroke(Theme.cardLine, lineWidth: 1))
                 }
             }
         }
@@ -125,11 +272,8 @@ struct ReviewSession: View {
         let more = store.hasMore()
         return VStack(spacing: 18) {
             Spacer()
-            Image(systemName: "checkmark")
-                .font(.system(size: 34, weight: .heavy))
-                .foregroundStyle(Theme.onHi)
-                .frame(width: 76, height: 76)
-                .background(Theme.hi, in: Circle())
+            CelebrationBadgeView()
+
             VStack(spacing: 6) {
                 HStack(spacing: 6) {
                     Text("Bugün")
@@ -137,36 +281,57 @@ struct ReviewSession: View {
                         .foregroundStyle(Theme.text)
                     Highlighted(text: "tamam", font: Theme.display(.title))
                 }
-                Text(total == 0 ? "Şu an tekrar edilecek kart yok." : "\(total) kart · \(minutes) dk · \(knownFirstTry) tanesini ilk denemede bildin")
+                Text(total == 0
+                     ? "Şu an tekrar edilecek kart yok."
+                     : "\(total) kart · \(minutes) dk · İlk denemede bilinen: \(knownFirstTry)")
                     .font(.subheadline)
                     .foregroundStyle(Theme.text2)
                     .multilineTextAlignment(.center)
             }
-            VStack(spacing: 8) {
+
+            VStack(spacing: 10) {
                 if let before = readinessBefore, let after {
                     HStack {
-                        Text("\(before.course.name) hazırlık").lineLimit(1)
+                        HStack(spacing: 6) {
+                            Circle().fill(before.course.tint).frame(width: 8, height: 8)
+                            Text("\(before.course.name) hazırlık").lineLimit(1)
+                        }
                         Spacer()
-                        Text(after == before.value ? "%\(after)" : "%\(before.value) → %\(after)").fontWeight(.semibold)
+                        Text(after == before.value ? "Hazırlık: %\(after)" : "%\(before.value) → %\(after)")
+                            .font(.subheadline.weight(.bold).monospacedDigit())
+                            .foregroundStyle(after > before.value ? Theme.onHi : Theme.text)
+                            .padding(.horizontal, after > before.value ? 8 : 0)
+                            .padding(.vertical, after > before.value ? 3 : 0)
+                            .background(after > before.value ? Theme.hi : .clear, in: Capsule())
                     }
                 }
                 if store.streak > 0 {
                     HStack {
-                        Text("Seri")
+                        Label("Çalışma serisi", systemImage: "flame.fill")
+                            .foregroundStyle(Theme.text)
                         Spacer()
-                        Text("\(store.streak) gün").fontWeight(.semibold)
+                        Text("\(store.streak) gün")
+                            .font(.subheadline.weight(.bold).monospacedDigit())
+                            .foregroundStyle(Theme.onHi)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 3)
+                            .background(Theme.hi, in: Capsule())
+                            .overlay(Capsule().stroke(Theme.cardLine, lineWidth: 1))
                     }
                 }
             }
             .font(.subheadline)
             .foregroundStyle(Theme.text)
-            .padding(14)
-            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
+            .padding(16)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.cardLine, lineWidth: 1.5))
+
             Text("Yarın yaklaşık \(store.tomorrowEstimate) kart seni bekliyor.")
                 .font(.footnote)
                 .foregroundStyle(Theme.text3)
+
             Spacer()
+
             VStack(spacing: 10) {
                 Button("Bitir") { dismiss() }
                     .buttonStyle(PrimaryButtonStyle())
@@ -183,6 +348,7 @@ struct ReviewSession: View {
     private func more10() {
         let next = store.reviewQueue(size: ReviewRules.moreSize, newAllowed: store.newLeftToday).map(\.id)
         guard !next.isEmpty else { return }
+        OnboardingHaptics.medium()
         startIds = next
         queue = next
         total = next.count
@@ -191,23 +357,25 @@ struct ReviewSession: View {
         missed = []
         startedAt = .now
         readinessBefore = nil
-        withAnimation(.snappy) { finished = false }
+        withAnimation(.spring(response: 0.44, dampingFraction: 0.80)) { finished = false }
         captureReadiness()
     }
 
     private var progress: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let completed = Double(max(0, total - queue.count))
+        return VStack(alignment: .leading, spacing: 7) {
             HStack {
                 Text("\(answered) / \(total)")
-                    .font(.subheadline.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(Theme.text2)
+                    .font(.subheadline.weight(.bold).monospacedDigit())
+                    .foregroundStyle(Theme.text)
+                    .contentTransition(.numericText(value: Double(answered)))
                 Spacer()
-                Text("\(queue.count) kart kaldı")
-                    .font(.footnote)
+                Text("Kalan: \(queue.count) kart")
+                    .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.text3)
+                    .contentTransition(.numericText(value: Double(queue.count)))
             }
-            ProgressView(value: Double(max(0, total - queue.count)), total: Double(max(total, 1)))
-                .tint(Theme.accent)
+            FosforProgressBar(value: completed, total: Double(max(total, 1)), height: 10)
         }
     }
 
@@ -215,36 +383,72 @@ struct ReviewSession: View {
     private func controls(for card: Card) -> some View {
         if !revealed {
             VStack(spacing: 10) {
-                Button { withAnimation(.snappy) { revealed = true } } label: { Text("Cevabı göster") }
-                    .buttonStyle(PrimaryButtonStyle())
+                Button {
+                    OnboardingHaptics.medium()
+                    withAnimation(.spring(response: 0.50, dampingFraction: 0.78)) { revealed = true }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Cevabı göster")
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                    }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+
                 if !showHint, !CardHint.make(card.back).isEmpty {
-                    Button { withAnimation { showHint = true } } label: { Label("İpucu", systemImage: "lightbulb") }
-                        .buttonStyle(SecondaryButtonStyle())
+                    Button {
+                        OnboardingHaptics.light()
+                        withAnimation(.spring(response: 0.36, dampingFraction: 0.80)) { showHint = true }
+                    } label: {
+                        Label("İpucu göster", systemImage: "lightbulb.fill")
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
                 }
             }
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
         } else {
             switch mode {
             case .simple:
-                HStack(spacing: 10) {
-                    Button { answer(card, .again) } label: { Label("Tekrar", systemImage: "arrow.counterclockwise") }
+                VStack(spacing: 8) {
+                    Text("Sağa kaydır: Bildim · Sola kaydır: Tekrar")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(Theme.text3)
+                    HStack(spacing: 10) {
+                        Button {
+                            commitAnswerWithFlyAway(card, .again, direction: -1)
+                        } label: {
+                            Label("Tekrar", systemImage: "arrow.counterclockwise")
+                        }
                         .buttonStyle(SecondaryButtonStyle())
-                    Button { answer(card, .good) } label: { Label("Bildim", systemImage: "checkmark") }
+
+                        Button {
+                            commitAnswerWithFlyAway(card, .good, direction: 1)
+                        } label: {
+                            Label("Bildim", systemImage: "checkmark")
+                        }
                         .buttonStyle(PrimaryButtonStyle())
+                    }
                 }
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+
             case .grades, .daily:
                 HStack(spacing: 8) {
                     ForEach(Grade.allCases, id: \.self) { grade in
-                        Button { answer(card, grade) } label: {
-                            VStack(spacing: 2) {
-                                Text(grade.label).font(.subheadline.weight(.semibold))
+                        Button {
+                            let dir: CGFloat = grade == .again ? -1 : 1
+                            commitAnswerWithFlyAway(card, grade, direction: dir)
+                        } label: {
+                            VStack(spacing: 3) {
+                                Text(grade.label)
+                                    .font(.subheadline.weight(.bold))
                                 Text(SRS.intervalLabel(store.preview(card, grade)))
                                     .font(.caption2.monospacedDigit())
-                                    .opacity(0.75)
+                                    .opacity(0.78)
                             }
                         }
-                        .buttonStyle(GradeButtonStyle(primary: grade == .good))
+                        .buttonStyle(GradeButtonStyle(grade: grade))
                     }
                 }
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
     }
@@ -252,11 +456,8 @@ struct ReviewSession: View {
     private var done: some View {
         VStack(spacing: 18) {
             Spacer()
-            Image(systemName: "checkmark")
-                .font(.system(size: 34, weight: .heavy))
-                .foregroundStyle(Theme.onHi)
-                .frame(width: 76, height: 76)
-                .background(Theme.hi, in: Circle())
+            CelebrationBadgeView()
+
             VStack(spacing: 6) {
                 HStack(spacing: 6) {
                     Text("Tur")
@@ -284,11 +485,42 @@ struct ReviewSession: View {
 
     private var summaryLine: String {
         if total == 0 { return "Şu an çalışılacak kart yok." }
-        if mode == .simple { return "\(total) kartın \(knownFirstTry) tanesini ilk denemede bildin." }
+        if mode == .simple { return "\(total) kart tamamlandı · İlk denemede bilinen: \(knownFirstTry)" }
         return "\(total) kartı tekrar ettin. Sıradaki tekrarları zamanı gelince burada bulacaksın."
     }
 
-    private func answer(_ card: Card, _ grade: Grade) {
+    private func commitAnswerWithFlyAway(_ card: Card, _ grade: Grade, direction: CGFloat) {
+        guard !isTransitioningCard else { return }
+        switch grade {
+        case .again: OnboardingHaptics.light()
+        case .hard: OnboardingHaptics.selection()
+        case .good: OnboardingHaptics.medium()
+        case .easy:
+            OnboardingHaptics.success()
+            easySparkTrigger += 1
+        }
+
+        if reduceMotion {
+            dragOffset = .zero
+            flyAwayOffset = .zero
+            applyAnswer(card, grade)
+            return
+        }
+
+        isTransitioningCard = true
+        withAnimation(.easeIn(duration: 0.18)) {
+            flyAwayOffset = CGSize(width: direction * 380, height: direction > 0 ? -28 : 24)
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(175))
+            dragOffset = .zero
+            flyAwayOffset = .zero
+            applyAnswer(card, grade)
+            isTransitioningCard = false
+        }
+    }
+
+    private func applyAnswer(_ card: Card, _ grade: Grade) {
         store.review(card, grade)
         answered += 1
         if grade == .again {
@@ -298,7 +530,7 @@ struct ReviewSession: View {
         }
         revealed = false
         showHint = false
-        withAnimation(.snappy) {
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
             var next = Array(queue.dropFirst())
             if grade == .again { next.append(card.id) }
             queue = next
@@ -310,83 +542,199 @@ struct ReviewSession: View {
     }
 
     private func restart() {
+        OnboardingHaptics.medium()
         queue = startIds
         total = startIds.count
         answered = 0
         knownFirstTry = 0
         missed = []
-        finished = false
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.80)) {
+            finished = false
+        }
     }
 }
 
-/// Front, then the answer below it once turned. Formulas are drawn with MathText.
-private struct CardFace: View {
+// MARK: - True 3D Flippable Study Card
+
+private struct FlippableStudyCard: View {
     let card: Card
     let revealed: Bool
     let hint: String?
+    let swipeDelta: CGFloat
+    let onFlipTap: () -> Void
 
     var body: some View {
+        let angle: Double = revealed ? 180 : 0
+        ZStack {
+            // Front Face (Question)
+            frontFace
+                .opacity(revealed ? 0 : 1)
+
+            // Back Face (Question recap + Answer, pre-rotated 180° for crisp readability)
+            backFace
+                .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                .opacity(revealed ? 1 : 0)
+        }
+        .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.55)
+        .overlay(alignment: .topLeading) {
+            if swipeDelta > 30 {
+                swipeStamp(text: "BİLDİM", isPositive: true)
+                    .opacity(min(1, Double(swipeDelta - 20) / 65.0))
+                    .padding(18)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if swipeDelta < -30 {
+                swipeStamp(text: "TEKRAR", isPositive: false)
+                    .opacity(min(1, Double(-swipeDelta - 20) / 65.0))
+                    .padding(18)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onFlipTap)
+    }
+
+    private var frontFace: some View {
         VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("SORU")
+                    .font(.caption2.weight(.heavy))
+                    .tracking(0.8)
+                    .foregroundStyle(Theme.onHi)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Theme.hi, in: Capsule())
+                    .overlay(Capsule().stroke(Theme.cardLine, lineWidth: 1))
+                Spacer()
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(Theme.text3)
+            }
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Soru")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Theme.text3)
                     MathText(card.front)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(Theme.text)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let hint {
+                        Label(hint, systemImage: "lightbulb.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.text)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.hiSoft, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.cardLine.opacity(0.4), lineWidth: 1))
+                            .transition(.scale(scale: 0.94).combined(with: .opacity))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+
+            HStack(spacing: 6) {
+                Image(systemName: "hand.tap.fill")
+                    .font(.caption2)
+                Text("Kartı çevirmek için dokun")
+                    .font(.caption.weight(.medium))
+            }
+            .foregroundStyle(Theme.text3)
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .focusCard()
+    }
+
+    private var backFace: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("CEVAP")
+                    .font(.caption2.weight(.heavy))
+                    .tracking(0.8)
+                    .foregroundStyle(Theme.onHi)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Theme.hi, in: Capsule())
+                    .overlay(Capsule().stroke(Theme.cardLine, lineWidth: 1))
+                Spacer()
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    MathText(card.front)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Divider().overlay(Theme.border)
+
+                    MathText(card.back)
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(Theme.text)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let hint, !revealed {
-                        Label(hint, systemImage: "lightbulb")
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.text2)
-                            .padding(10)
-                            .background(Theme.hiSoft, in: RoundedRectangle(cornerRadius: 10))
-                    }
-                    if revealed {
-                        Divider().overlay(Theme.border)
-                        Text("Cevap")
-                            .font(.caption.weight(.bold))
+
+                    if let source = card.source, !source.isEmpty {
+                        Text("“\(source)”")
+                            .font(.footnote.italic())
                             .foregroundStyle(Theme.text3)
-                        MathText(card.back)
-                            .font(.body)
-                            .foregroundStyle(Theme.text)
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.surface2, in: RoundedRectangle(cornerRadius: 10))
                             .fixedSize(horizontal: false, vertical: true)
-                            .transition(.opacity.combined(with: .move(edge: .bottom)))
-                        if let source = card.source, !source.isEmpty {
-                            Text("“\(source)”")
-                                .font(.footnote.italic())
-                                .foregroundStyle(Theme.text3)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollBounceBehavior(.basedOnSize)
-            if !revealed {
-                Text("Dokun ya da “Cevabı göster”e bas")
-                    .font(.caption)
-                    .foregroundStyle(Theme.text3)
-                    .frame(maxWidth: .infinity)
-            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .focusCard()
-        .contentShape(Rectangle())
+        .padding(20)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Theme.cardLine, lineWidth: 2.5))
+        .background(RoundedRectangle(cornerRadius: 20).fill(Theme.cardDrop).offset(y: 5))
+    }
+
+    private func swipeStamp(text: String, isPositive: Bool) -> some View {
+        Text(text)
+            .font(Theme.display(.subheadline))
+            .foregroundStyle(isPositive ? Theme.onHi : .white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(isPositive ? Theme.hi : Theme.danger, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.cardLine, lineWidth: 2))
+            .rotationEffect(.degrees(isPositive ? -10 : 10))
     }
 }
 
+// MARK: - Tactile Grade Button Style
+
 private struct GradeButtonStyle: ButtonStyle {
-    let primary: Bool
+    let grade: Grade
 
     func makeBody(configuration: Configuration) -> some View {
+        let primary = grade == .good
+        let pressed = configuration.isPressed
         configuration.label
-            .foregroundStyle(primary ? Theme.onHi : Theme.text)
+            .foregroundStyle(primary ? Theme.onHi : (grade == .again ? Theme.danger : Theme.text))
             .frame(maxWidth: .infinity, minHeight: 58)
-            .background(primary ? Theme.hi : Theme.surface, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(primary ? Theme.cardLine : Theme.border, lineWidth: primary ? 2 : 1.5))
-            .opacity(configuration.isPressed ? 0.7 : 1)
+            .background(
+                primary ? Theme.hi : (grade == .again ? Theme.dangerSoft.opacity(0.6) : Theme.surface),
+                in: RoundedRectangle(cornerRadius: 14)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(primary ? Theme.cardLine : Theme.border, lineWidth: primary ? 2 : 1.5)
+            )
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(primary ? Theme.cardDrop : .clear)
+                    .offset(y: pressed ? 1 : 3)
+            )
+            .offset(y: pressed ? 2 : 0)
+            .scaleEffect(pressed ? 0.97 : 1.0)
+            .animation(.easeOut(duration: 0.08), value: pressed)
     }
 }
 
@@ -419,6 +767,7 @@ struct SaveErrorBanner: View {
         if let error = store.saveError {
             Message(text: error, kind: .error)
                 .padding(.horizontal, 16)
+                .transition(.move(edge: .top).combined(with: .opacity))
                 .onTapGesture { store.saveError = nil }
                 .task {
                     try? await Task.sleep(for: .seconds(5))

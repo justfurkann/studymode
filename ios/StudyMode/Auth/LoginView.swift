@@ -319,14 +319,15 @@ private struct CheckboxStyle: ToggleStyle {
 }
 
 struct Message: View {
-    enum Kind { case error, info }
+    /// `warning`: something to keep in mind (not an error, not a success).
+    enum Kind { case error, info, warning }
     let text: String
     let kind: Kind
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            Image(systemName: kind == .error ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                .foregroundStyle(kind == .error ? Theme.danger : Theme.success)
+            Image(systemName: kind == .error ? "exclamationmark.circle.fill" : kind == .warning ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                .foregroundStyle(kind == .error ? Theme.danger : kind == .warning ? Theme.text : Theme.success)
             Text(text)
                 .font(.footnote)
                 .foregroundStyle(Theme.text)

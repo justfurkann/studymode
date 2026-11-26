@@ -48,6 +48,8 @@ struct NoteSummary: Decodable {
     let completedSteps: [String]
     let checkedTerms: [String]
     let detailed: Detailed?
+    /// The note's text changed after the study set was made (the site's "Kaynak metin değişti").
+    let sourceChanged: Bool
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -58,9 +60,10 @@ struct NoteSummary: Decodable {
         completedSteps = (try? c.decode([String].self, forKey: .completedSteps)) ?? []
         checkedTerms = (try? c.decode([String].self, forKey: .checkedTerms)) ?? []
         detailed = (try? c.decode(Detailed.self, forKey: .detailed)).flatMap { $0.isEmpty ? nil : $0 }
+        sourceChanged = (try? c.decode(Bool.self, forKey: .sourceChanged)) ?? false
     }
 
-    enum CodingKeys: String, CodingKey { case overview, points, keyTerms, tags, completedSteps, checkedTerms, detailed }
+    enum CodingKeys: String, CodingKey { case overview, points, keyTerms, tags, completedSteps, checkedTerms, detailed, sourceChanged }
 }
 
 private struct SummaryRow: Decodable {

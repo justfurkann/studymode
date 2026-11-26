@@ -6,9 +6,9 @@ import Foundation
 
 struct Course: Identifiable, Decodable, Hashable {
     let id: UUID
-    let name: String
-    let color: String
-    let examDate: String?
+    var name: String
+    var color: String
+    var examDate: String?
     let createdAt: String
 
     enum CodingKeys: String, CodingKey {
@@ -18,22 +18,47 @@ struct Course: Identifiable, Decodable, Hashable {
     }
 }
 
-enum ExamKind: String, Decodable {
+enum ExamKind: String, Codable, CaseIterable, Identifiable {
     case vize, final, butunleme, quiz, diger
+    var id: String { rawValue }
 }
 
 struct CourseExam: Identifiable, Decodable, Hashable {
     let id: String
     let courseId: UUID
-    let kind: ExamKind
-    let title: String?
+    var kind: ExamKind
+    var title: String?
     /// YYYY-MM-DD, local calendar day.
-    let date: String
-    let time: String?
-    let weight: Double?
-    let grade: Double?
+    var date: String
+    var time: String?
+    var weight: Double?
+    var grade: Double?
     /// Notes the exam covers; empty means the whole course.
-    let noteIds: [String]
+    var noteIds: [String]
+
+    var isLegacy: Bool { id.hasPrefix("legacy-") }
+
+    init(
+        id: String,
+        courseId: UUID,
+        kind: ExamKind,
+        title: String?,
+        date: String,
+        time: String?,
+        weight: Double?,
+        grade: Double?,
+        noteIds: [String]
+    ) {
+        self.id = id
+        self.courseId = courseId
+        self.kind = kind
+        self.title = title
+        self.date = date
+        self.time = time
+        self.weight = weight
+        self.grade = grade
+        self.noteIds = noteIds
+    }
 
     enum CodingKeys: String, CodingKey {
         case id, kind, title, date, time, weight, grade
@@ -79,6 +104,7 @@ struct NoteItem: Identifiable, Decodable, Hashable {
     let title: String
     let generator: String?
     let createdAt: String
+    var updatedAt: String?
     /// summary->>overview; nil when the note has not been prepared yet.
     let overview: String?
     /// summary->completedSteps
@@ -96,12 +122,13 @@ struct NoteItem: Identifiable, Decodable, Hashable {
         case id, title, generator, overview
         case courseId = "course_id"
         case createdAt = "created_at"
+        case updatedAt = "updated_at"
         case completedSteps = "steps"
         case checkedTerms = "checked"
         case keyTerms = "terms"
     }
 
-    static let columns = "id,course_id,title,generator,created_at,overview:summary->>overview,steps:summary->completedSteps,checked:summary->checkedTerms,terms:summary->keyTerms"
+    static let columns = "id,course_id,title,generator,created_at,updated_at,overview:summary->>overview,steps:summary->completedSteps,checked:summary->checkedTerms,terms:summary->keyTerms"
 }
 
 /// One study_days row, only the counts the app needs.
@@ -139,6 +166,32 @@ struct QuizAttempt: Decodable, Hashable {
     }
 
     static let columns = "note_id,score,total,created_at,wrong_ids,answers"
+}
+
+/// Summary row of a finished mock exam (`public.exam_results`).
+struct ExamResultSummary: Identifiable, Decodable, Hashable {
+    let id: UUID
+    let courseId: UUID
+    let format: String
+    let difficulty: String?
+    let source: String
+    let score: Double
+    let total: Int
+    let durationSeconds: Int?
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, format, difficulty, source, score, total
+        case courseId = "course_id"
+        case durationSeconds = "duration_seconds"
+        case createdAt = "created_at"
+    }
+
+    static let columns = "id,course_id,format,difficulty,source,score,total,duration_seconds,created_at"
+
+    var percent: Int {
+        Int(((score / Double(max(1, total))) * 100.0).rounded())
+    }
 }
 
 /// One multiple-choice question of a note (notes.questions, the site's Question type).

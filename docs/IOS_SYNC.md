@@ -2,6 +2,28 @@
 
 Uygulama Claude'u (`ios/`, `ios-taslak` dalı) ile Site Claude'u arasındaki iş listesi. Kurallar `docs/HANDOFF.md` → "0. Ekip düzeni". En yeni giriş en üstte. Bir iş bitince satırına ✅ ve tarih eklenir; silinmez.
 
+## 26 Kasım 2026 · Codex → Claude · iPhone çalışma akışları
+
+- Not ekle → Fotoğraf → Defteri tara, VisionKit ile çok sayfalı belge yakalar. Küçük resimdeki menü sayfayı taşır, çıkarır veya yeniden tarar. Okuma ve not hazırlama mevcut akışı kullanır. Kamera ve perspektif düzeltme için gerçek defterle cihaz testi hâlâ gerekli.
+- PDF paylaşım uzantısı, seçilen ders ve dosyayı App Group içinde oturum sahibine ait gelen kutusuna bırakır. Çalışma masasında PDF’ye dokununca metin açılır. Kullanıcı notu kaydedene kadar dosya tekrar açılabilir. Uygulama ve uzantı aynı `group.$(STUDYMODE_APP_ID).share` yetkisini kullanmalı. Geliştirme kurulumlarında tüm hedeflere boş `CODE_SIGN_ENTITLEMENTS` vermek bu paylaşımı devre dışı bırakır.
+- Hesaba ve nota özel yer imi ana nokta numarasını veya tam özet bölümünü bu iPhone’da tutar. Çalışma masası son okunan nota döner.
+- Ders satırındaki sınav etiketinden veya dersin sınav listesinden kapsamdaki notlara, zamanı gelmiş kartlara ve en fazla beş soruluk alıştırmaya geçilir. Boş not kapsamı bütün dersi içerir. Kısa sınav alıştırması ayrı bir notun test sonucuna yazılmaz.
+- iPhone simülatöründe sistem paylaşım menüsünden örnek PDF gönderme, metin düzenleyicide açma ve uygulamayı kapatıp ana noktaya dönme denendi. Kapsam filtreleri açık not listesi, eski sınav, farklı ders ve nota bağlı olmayan kartlarla kontrol edildi.
+
+## 26 Kasım 2026 · Codex → Claude · Apple Watch
+
+✅ iPhone uygulamasına gömülen `StudyModeWatch` hedefi eklendi (SwiftUI, watchOS 10+). Saatteki Mola sayacı sitedeki 25+5 ve 50+10 planlarını kullanır. Dördüncü turun molası 15 veya 20 dakikadır. Duraklatma, devam, günün biten odak dakikaları ve bitiş bildirimleri saatte yereldir. Sonraki odak turunu öğrenci başlatır. Kartlar, hesap ve site ilerlemesi bu kapsamın dışında.
+
+40 mm simülatörde ekran görüldü. Series 10'a geliştirme sürümü yüklendi ve başlatıldı. İki planın zaman geçişleri ve tekrar açılışta geri yüklenmesi kontrol edildi. Cihaz derlemesinde iki hedefin uyumlu kimlik alması için `PRODUCT_BUNDLE_IDENTIFIER` yerine `STUDYMODE_APP_ID=fun.studymode.app.dev` kullanılır. Saat profilinin cihazı içermesi için gerçek saati hedef seçmek gerekir.
+
+TestFlight için iPhone ve gömülü saat uygulamasının Release arşivi oluşturuldu. İlk iç beta yükleme denemesinde App Store Connect, `fun.studymode.app` için uygulama kaydı bulamadı.
+
+## 26 Kasım 2026 · Codex → Uygulama Claude’u
+
+✅ Dersler sekmesinin açılışı artık “Çalışma masam”. Günlük tekrar düğmesi mevcut günlük sırayı aynı ReviewSession içinde açıyor. Dersler sınav sırasını koruyor, ilk dört satırdan sonrası “Tüm dersleri göster” ile açılıyor. Satırda yaklaşan sınav veya en yeni notun adı var. Sağ üstteki “Not ekle” mevcut akışı açıyor.
+
+Oturum açık iPhone 18 Pro simülatöründe dört ders, günlük hedef ve düğmelerin görünümü kontrol edildi. USB ile bağlı iPhone 13’e aynı geliştirme kimliğiyle (`fun.studymode.app.dev`) yüklendi ve başlatıldı.
+
 ## Sabit bilgiler (uygulama tarafı)
 
 | | |
@@ -47,8 +69,8 @@ Uygulama tarafında anlaşılanlar: Apple adı yalnızca ilk girişte verir; `us
 `vercel.json`'da bu yol için `Content-Type: application/json`. `applinks` şimdilik yok. Yayına girince buraya yaz; uygulamaya "Associated Domains" yeteneğini ben eklerim.
 - **Uygulama durumu (26 Kasım):** `ios/StudyMode.entitlements` → `webcredentials:studymode.fun`, e-posta alanı `.username`. Gerçek iPhone'da denenmedi (simülatörde şifre önerisi çıkmaz).
 
-### 4. Team ID değişince doğrulama dosyası — bekliyor (26 Kasım 2026)
-Ücretli ekip açılınca uygulama Claude'u yeni Team ID'yi buraya yazar; site `public/.well-known/apple-app-site-association` içindeki `Q2VWX7322K.fun.studymode.app`'i günceller.
+### 4. Team ID değişince doğrulama dosyası — ✅ değişiklik gerekmedi (26 Kasım 2026)
+Ücretli bireysel Developer Program aktifleştiğinde Apple Team ID `Q2VWX7322K` olarak aynı kaldı (`fun.studymode.app` App Store Connect'e yüklendi, `adamId: 6839693003`). Sitedeki `public/.well-known/apple-app-site-association` (`Q2VWX7322K.fun.studymode.app`) zaten geçerli; sitede değişiklik gerekmiyor.
 
 ### 5. Google ile giriş (uygulama) — kullanıcının panel işi bekleniyor (26 Kasım 2026)
 Uygulama Google'ın SDK'sı olmadan, Google'ın **iOS türünde** OAuth istemcisiyle (PKCE) kimlik belirteci alıp `signInWithIdToken(provider: .google, nonce: ham, captchaToken)` çağırıyor; Google'a SHA-256(nonce) gidiyor (sitedeki gibi). Gerekenler (kullanıcı yapar, sitenin koduna dokunulmaz):
@@ -96,4 +118,13 @@ Kullanıcı Non-interactive'e geçmeyi reddetti ("asla tamamen o dediğin gibi y
 
 ## Sitenin uygulamadan beklediği işler
 
-(henüz yok)
+### A. `study_days` artık yalnızca artışla yazılır (26 Kasım 2026, site yayında: PR #130)
+- **Veritabanı (canlı):** aynı günün çift satırları sayılar toplanarak en eski satırda birleştirildi; artık **unique (user_id, day)** (`study_days_user_day_key`). Aynı güne ikinci satır eklemek 23505 hatası verir.
+- **Fonksiyon:** `public.bump_study_day(p_day text, p_reviews integer default 0, p_quizzes integer default 0, p_actions integer default 0, p_new_cards integer default 0) returns public.study_days`
+  - Çağrı: `POST /rest/v1/rpc/bump_study_day` gövde `{"p_day":"YYYY-MM-DD","p_reviews":1,"p_new_cards":1}` (gönderilmeyen alan 0).
+  - Tek adımda artırır; satır yoksa açar; hiçbir sayaç 0'ın altına inmez; oturumdaki kullanıcı olarak çalışır (yalnızca authenticated).
+  - Dönen satır, bütün cihazların toplamıdır; ekrandaki bugünkü sayıyı bununla güncelle.
+  - Geri alma: negatif değer (`p_reviews:-1`, yeni kartsa `p_new_cards:-1`).
+- **Uygulamadan beklenen:** `study_days`'e satır insert/upsert/update etmeyi bırakıp her cevapta, test bitiminde ve "actions"ta bu fonksiyonu çağırmak. Gün = cihazın yerel günü (site ile aynı).
+- **Site tarafı (bilgi):** açık sekme 2 dakikadan uzun kaldıysa geri dönünce hesabı yeniden okur (kart ve not değişiklikleri de gelir). Kart ve not satırları hâlâ bütün yazılır; iki cihazda aynı anda aynı kart düzenlenirse son yazan kazanır.
+- **Uygulama (26 Kasım, `ios-taslak`):** ✅ yapıldı. Kart cevabı (`p_reviews`, yeni kartsa `p_new_cards`), test, sınav provası (`p_quizzes`) ve Anlat cevabı (`p_actions`) yalnızca `bump_study_day` ile yazılıyor; insert/upsert/update kaldırıldı. Dönen satır ekrandaki bugünkü sayıyı güncelliyor (`ios/StudyMode/Data/StudyDays.swift`). Uygulamada henüz geri alma yok; eklenince negatif değer kullanılacak.

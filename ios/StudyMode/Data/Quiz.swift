@@ -34,26 +34,6 @@ private struct NewCard: Encodable {
     let updated_at: String
 }
 
-private struct DayQuizzes: Decodable {
-    let id: UUID
-    let quizzes: Int
-}
-
-private struct QuizzesUpdate: Encodable {
-    let quizzes: Int
-    let updated_at: String
-}
-
-private struct NewQuizDay: Encodable {
-    let id: UUID
-    let day: String
-    let reviews: Int
-    let quizzes: Int
-    let actions: Int
-    let created_at: String
-    let updated_at: String
-}
-
 extension StudyStore {
     func questions(for note: NoteItem) async throws -> [Question] {
         let row: QuestionsRow = try await supabase.from("notes").select("questions").eq("id", value: note.id).single().execute().value
@@ -84,12 +64,7 @@ extension StudyStore {
         enqueueWrite { [weak self] in
             do {
                 try await supabase.from("quiz_attempts").insert(row).execute()
-                let rows: [DayQuizzes] = try await supabase.from("study_days").select("id,quizzes").eq("day", value: day).order("created_at").limit(1).execute().value
-                if let today = rows.first {
-                    try await supabase.from("study_days").update(QuizzesUpdate(quizzes: today.quizzes + 1, updated_at: stamp)).eq("id", value: today.id).execute()
-                } else {
-                    try await supabase.from("study_days").insert(NewQuizDay(id: UUID(), day: day, reviews: 0, quizzes: 1, actions: 0, created_at: stamp, updated_at: stamp)).execute()
-                }
+                try await StudyDays.bump(day: day, quizzes: 1, into: self)
             } catch {
                 await MainActor.run { self?.saveError = "Test sonucun kaydedilemedi. İnternet bağlantını kontrol et." }
             }
