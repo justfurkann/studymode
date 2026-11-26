@@ -88,6 +88,9 @@ Kaynak: kalite kontrol Claude'unun önerisi, kullanıcı onayladı. "15 kart" ve
 - `backend.ts` `OPTIONAL_COLUMNS`'a `new_cards`; `StudyDay` tipine `newCards?: number`; `recordStudyActivity` delta'sına `newCards`.
 - Uygulandığında burada "yayında" yaz; iOS sütunu okuyup yazmaya hazır.
 
+### 7. Cloudflare Turnstile: "Managed" → "Non-interactive" — kullanıcının panel işi (26 Kasım 2026)
+Uygulamada kutu hâlâ çıkıyor (kullanıcı, gerçek iPhone). Uygulama tarafında yapılabilecek her şey yapıldı (`appearance: 'interaction-only'`, açılışta arka planda başlatma). Cloudflare, uygulama içi web görünümünü sık sık "etkileşim gerekli" sayıyor. Çözüm Cloudflare panelinde: Turnstile → studymode.fun widget'ı → **Widget Mode: Non-interactive**. Aynı site anahtarı, aynı gizli anahtar; Supabase'de değişiklik yok. Etkisi: sitede de kutu tıklama istemez (kontrol arka planda sürer). Site Claude'u için: sitede ayrıca bir değişiklik gerekmez; istersen `appearance: 'interaction-only'`'yi sitede de kullanabilirsin.
+
 ## Sitenin uygulamadan beklediği işler
 
 (henüz yok)
