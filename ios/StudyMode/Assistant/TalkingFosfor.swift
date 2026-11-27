@@ -115,19 +115,6 @@ struct FosforHero: View {
     }
 }
 
-/// The mascot and its visible action form a single tap target.
-struct FosforChatLabel: View {
-    let size: CGFloat
-    let mood: FosforMascotView.Mood
-    let onDark: Bool
-
-    var body: some View {
-        // Just Fosfor: a tap is obvious, no caption needed.
-        FosforMascotView(size: size, mood: mood, onDark: onDark, tappable: false)
-            .contentShape(Rectangle())
-    }
-}
-
 /// Crisp Fosforlu speech bubble with a downward tail pointing at Fosfor's cap.
 struct SpeechBubble: View {
     let text: String

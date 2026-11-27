@@ -64,7 +64,7 @@ struct AddNoteView: View {
                             segments: [
                                 .init(value: Source.text, title: "Metin", icon: "doc.plaintext"),
                                 .init(value: Source.photo, title: "Fotoğraf", icon: "camera"),
-                                .init(value: Source.pdf, title: "PDF", icon: "doc.richtext")
+                                .init(value: Source.pdf, title: "Dosya", icon: "doc.richtext")
                             ],
                             selection: $source
                         )
@@ -116,8 +116,8 @@ struct AddNoteView: View {
                     CameraPicker { image in photos.append(image) }.ignoresSafeArea()
                 }
             }
-            .fileImporter(isPresented: $showPDF, allowedContentTypes: [.pdf]) { result in
-                if case let .success(url) = result { readPDF(url) }
+            .fileImporter(isPresented: $showPDF, allowedContentTypes: Self.fileTypes) { result in
+                if case let .success(url) = result { readFile(url) }
             }
             .onChange(of: photoItems) { _, items in loadPhotos(items) }
         }
@@ -246,11 +246,11 @@ struct AddNoteView: View {
 
     private var pdfSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("PDF'in yazısı telefonda okunur. Taranmış (resim) sayfalar yapay zekâyla okunur.")
+            Text("PDF, PowerPoint (.pptx), Word (.docx) ya da Excel (.xlsx) seç. Yazılar telefonda okunur; PDF'teki taranmış (resim) sayfalar yapay zekâyla okunur.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.text2)
                 .fixedSize(horizontal: false, vertical: true)
-            Button { showPDF = true } label: { Label(text.isEmpty ? "PDF seç" : "Başka PDF seç", systemImage: "doc.richtext") }
+            Button { showPDF = true } label: { Label(text.isEmpty ? "Dosya seç" : "Başka dosya seç", systemImage: "doc.richtext") }
                 .buttonStyle(SecondaryButtonStyle())
                 .disabled(busy)
             if let url = incoming?.file, case .failed = phase, text.isEmpty {
@@ -355,6 +355,51 @@ struct AddNoteView: View {
             } catch {
                 phase = .failed(error.localizedDescription)
             }
+        }
+    }
+
+    /// PDF, the Office files the site reads (.docx, .pptx), Excel, and plain text.
+    static let fileTypes: [UTType] = [.pdf, .plainText] + ["pptx", "docx", "xlsx", "md"].compactMap { UTType(filenameExtension: $0) }
+
+    private func readFile(_ url: URL) {
+        let ext = url.pathExtension.lowercased()
+        guard ext != "pdf" else { return readPDF(url) }
+        OnboardingHaptics.medium()
+        info = nil
+        do {
+            let raw: String
+            if ["docx", "pptx", "xlsx"].contains(ext) {
+                raw = try OfficeText.read(url)
+            } else {
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                raw = try String(contentsOf: url, encoding: .utf8)
+            }
+            // The site's clean-up (importNote.ts): no BOM, no NULs, unix newlines, at most one empty line.
+            let cleaned = raw
+                .replacingOccurrences(of: "\u{FEFF}", with: "")
+                .replacingOccurrences(of: "\u{0}", with: "")
+                .replacingOccurrences(of: "\r\n?", with: "\n", options: .regularExpression)
+                .replacingOccurrences(of: "[\t ]+\n", with: "\n", options: .regularExpression)
+                .replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !cleaned.isEmpty else {
+                throw OfficeText.Failure(["docx", "pptx", "xlsx"].contains(ext)
+                    ? "Bu dosyada metin bulunamadı. İçerik resim olarak eklenmiş olabilir; dosyayı PDF veya fotoğraf olarak yükle."
+                    : "Bu dosyada okunabilir metin yok. İçinde ders notları olan bir dosya seç.")
+            }
+            guard cleaned.count <= 400_000 else {
+                throw OfficeText.Failure("Not çok uzun. Tek seferde en fazla 400.000 karakter yükleyebilirsin; notunu bölümlere ayır.")
+            }
+            text = cleaned
+            if title.isEmpty { title = url.deletingPathExtension().lastPathComponent }
+            phase = .editing
+            OnboardingHaptics.success()
+            let kind = ["pptx": "Sunum", "docx": "Belge", "xlsx": "Tablo"][ext] ?? "Dosya"
+            let slides = ext == "pptx" ? cleaned.components(separatedBy: "\n").filter { $0.hasPrefix("Slayt ") }.count : 0
+            info = (slides > 0 ? "\(kind) okundu (\(slides) slayt)." : "\(kind) okundu.") + " Metni kontrol et, sonra \"Notu hazırla\"ya bas."
+        } catch {
+            phase = .failed(error.localizedDescription)
         }
     }
 

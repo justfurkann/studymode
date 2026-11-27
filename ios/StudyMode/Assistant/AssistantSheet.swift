@@ -516,8 +516,9 @@ private struct TypingRow: View {
     }
 }
 
-/// The contextual chat launcher above the tab bar on course and note screens.
-struct AssistantButton: View {
+/// Fosfor in the top bar of course and note screens: talks about what is open. It sits next to the
+/// menu instead of floating over the content, so it never covers a button in the note.
+struct FosforToolbarButton: View {
     @Environment(AssistantPlace.self) private var place
 
     var body: some View {
@@ -525,10 +526,9 @@ struct AssistantButton: View {
             OnboardingHaptics.light()
             place.show(course: place.courseId, note: place.noteId)
         } label: {
-            FosforChatLabel(size: 50, mood: .curious, onDark: true)
-                .shadow(color: Theme.cardDrop.opacity(0.28), radius: 8, y: 4)
+            FosforMascotView(size: 26, mood: .curious, animated: false, tappable: false)
+                .frame(width: 30, height: 30)
         }
-        .buttonStyle(TactileCardButtonStyle(scale: 0.9))
         .accessibilityLabel("Fosfor'a sor")
     }
 }

@@ -6,7 +6,6 @@ struct MainTabs: View {
     @State private var store = StudyStore()
     @State private var place = AssistantPlace()
     @State private var premium = PremiumStore()
-    @State private var keyboardUp = false
 
     private var shareCatalog: PDFInbox.Catalog? {
         guard store.status == .ready, let user = auth.session?.user.id else { return nil }
@@ -28,18 +27,6 @@ struct MainTabs: View {
             AccountView()
                 .tabItem { Label("Hesap", systemImage: "person.crop.circle") }
         }
-        .overlay(alignment: .bottomTrailing) {
-            if store.status == .ready && !place.open && !keyboardUp && place.courseId != nil {
-                AssistantButton()
-                    .padding(.trailing, 12)
-                    .padding(.bottom, 86)
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
-            }
-        }
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: place.open)
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: place.courseId)
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardUp = false }
         .sheet(isPresented: Binding(get: { place.open }, set: { place.open = $0 })) {
             AssistantSheet()
                 .environment(store)

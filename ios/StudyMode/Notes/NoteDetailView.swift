@@ -72,7 +72,10 @@ struct NoteDetailView: View {
         .onChange(of: step) { bookmark() }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { noteMenu } }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { FosforToolbarButton() }
+            ToolbarItem(placement: .topBarTrailing) { noteMenu }
+        }
         .sheet(isPresented: $editing, onDismiss: { Task { await load() } }) { NoteEditSheet(note: currentNote).environment(store) }
         .sheet(isPresented: $showSource) { SourceTextSheet(note: currentNote).environment(store).environment(place) }
         .confirmationDialog("“\(currentNote.title)” notu ve kartları silinsin mi?", isPresented: $askDelete, titleVisibility: .visible) {

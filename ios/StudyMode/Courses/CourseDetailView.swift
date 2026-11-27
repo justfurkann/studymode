@@ -42,6 +42,7 @@ struct CourseDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { FosforToolbarButton() }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     OnboardingHaptics.light()
