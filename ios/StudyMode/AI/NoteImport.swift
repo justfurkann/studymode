@@ -32,7 +32,8 @@ enum NoteImport {
         let resized = UIGraphicsImageRenderer(size: target, format: format).image { _ in
             image.draw(in: CGRect(origin: .zero, size: target))
         }
-        return resized.jpegData(compressionQuality: 0.72)?.base64EncodedString()
+        // 0.8 like the site (importNote.ts JPEG_QUALITY): small formula signs stay sharp.
+        return resized.jpegData(compressionQuality: 0.8)?.base64EncodedString()
     }
 
     /// Reads pages with the AI, two per request, three requests at a time; text comes back in page
@@ -145,11 +146,14 @@ enum NoteImport {
             let images = pictures.map { i -> UIImage in
                 guard let page = document.page(at: i) else { return UIImage() }
                 let bounds = page.bounds(for: .mediaBox)
-                let scale = 1600 / max(bounds.width, bounds.height, 1)
+                // The site's renderPdfPageToImage: longest side 1600 px, but never more than twice the page size.
+                let scale = min(2, 1600 / max(bounds.width, bounds.height, 1))
                 return page.thumbnail(of: CGSize(width: bounds.width * scale, height: bounds.height * scale), for: .mediaBox)
             }
-            // Two pages share a request only when they follow each other, so the text stays in page order.
-            let read = try await transcribePages(images, pairs: { pictures[$0] + 1 == pictures[$0 + 1] }, progress: progress)
+            // Two pages share a request only when they follow each other, so the text stays in page order;
+            // up to 4 pages each page goes alone (the site's maxPerBatch: dense formula pages read better one by one).
+            let single = pictures.count <= 4
+            let read = try await transcribePages(images, pairs: { !single && pictures[$0] + 1 == pictures[$0 + 1] }, progress: progress)
             var anyRead = false
             for (k, index) in pictures.enumerated() {
                 let text = read[k].trimmingCharacters(in: .whitespacesAndNewlines)

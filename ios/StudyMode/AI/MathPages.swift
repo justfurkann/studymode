@@ -27,7 +27,7 @@ enum MathPages {
     private static let lostExponent = try! NSRegularExpression(pattern: #"(?:\b[a-zA-Z]|\))\s[2-9](?=\s*[-–+=)]|\s+[a-z]\b)"#)
 
     static func signals(_ text: String) -> Signals {
-        let lines = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        let lines = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         var s = Signals()
         s.garbled = text.filter { garbled.contains($0) }.count
         s.symbols = text.filter { mathSymbols.contains($0) }.count

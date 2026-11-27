@@ -134,8 +134,8 @@ struct AccountView: View {
                                         }
                                     }
                                     Text(premium.isPremium
-                                         ? "Sesli not, akıllı arama, görseller ve Free+ aktif."
-                                         : "Sesli not, akıllı arama, görseller ve günde 150 istek")
+                                         ? "Free+ ve günde 150 yapay zekâ hakkı açık"
+                                         : "Daha güçlü yapay zekâ ve günde 150 hak")
                                         .font(.caption)
                                         .foregroundStyle(.white.opacity(0.86))
                                         .lineLimit(1)

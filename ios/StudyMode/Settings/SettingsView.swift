@@ -106,7 +106,7 @@ struct SettingsView: View {
                 LabeledContent("Sürüm", value: Self.version)
                 Link(destination: Config.siteURL.appending(path: "gizlilik")) { Label("Gizlilik", systemImage: "hand.raised") }
                 Link(destination: Config.siteURL.appending(path: "kullanim-kosullari")) { Label("Kullanım koşulları", systemImage: "doc.text") }
-                Link(destination: Config.siteURL.appending(path: "ayarlar")) { Label("Diğer ayarlar sitede", systemImage: "safari") }
+                // No link to the site's /ayarlar: its Premium section takes Premium codes (App Review 3.1.1).
             }
           }
           .listRowBackground(Theme.surface)

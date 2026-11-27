@@ -20,36 +20,24 @@ struct PremiumView: View {
         let accent: Color
     }
 
-    /// Only what Premium really changes in this app (api/generate.ts: Premium counts as VIP for the
-    /// limits, gets Free+ by default, and page pictures are read without using the allowance).
-    /// Site-only tools are named as such, never as app features.
+    /// Only what Premium really changes in this app, checked against the server (api/generate.ts and
+    /// supabase/schema.sql): Premium counts as VIP for the limits (ai_limit_for: 150 a day instead of 40)
+    /// and gets Free+ (plus_limit_for: 30 answers a day on the stronger model, then the normal model).
+    /// Reading page pictures is not counted for anyone, so it is not a Premium feature and not listed.
+    /// Site-only tools (podcast, semantic search, images) are not sold here; one small line names them.
     private let features: [Feature] = [
         .init(
             id: "freeplus",
             icon: "sparkles",
             title: "Free+ yapay zekâ",
-            detail: "Özet, Fosfor ve puanlamada daha güçlü model",
+            detail: "Özet, kart, test, Fosfor ve puanlamada daha güçlü model (günde 30 cevaba kadar)",
             accent: Theme.prem3
         ),
         .init(
             id: "hak",
             icon: "bolt.fill",
             title: "Günde 150 hak",
-            detail: "Ücretsiz hesapta 40",
-            accent: Theme.prem1
-        ),
-        .init(
-            id: "sayfa",
-            icon: "doc.viewfinder",
-            title: "Sayfa okuma",
-            detail: "Fotoğraf ve PDF sayfaları hakkından düşmez",
-            accent: Theme.prem2
-        ),
-        .init(
-            id: "site",
-            icon: "globe",
-            title: "Sitede ayrıca",
-            detail: "Sesli not, akıllı arama ve görseller studymode.fun'da",
+            detail: "Ücretsiz hesapta günde 40 yapay zekâ isteği",
             accent: Theme.prem1
         ),
     ]
@@ -73,8 +61,15 @@ struct PremiumView: View {
                     )
                 }
 
-                featuresBento
-                    .staggeredAppear(1)
+                VStack(alignment: .leading, spacing: 8) {
+                    featuresBento
+                    // Not a reason to buy: a plain note that the site has more tools.
+                    Text("Sitede ayrıca: sesli not, akıllı arama ve görseller (uygulamada yok).")
+                        .font(.caption2)
+                        .foregroundStyle(Theme.text3)
+                        .padding(.horizontal, 4)
+                }
+                .staggeredAppear(1)
 
                 plansSection
                     .staggeredAppear(2)
@@ -268,7 +263,7 @@ struct PremiumView: View {
                             .shadow(color: Color(uiColor: UIColor(hex: 0xF59E0B)).opacity(0.35), radius: 12, y: 4)
                     }
 
-                    Text("Uygulamada daha güçlü yapay zekâ ve günde daha çok hak. Sesli not, akıllı arama ve görseller şimdilik yalnızca sitede. Premium aynı hesapla ikisinde de açık.")
+                    Text("Notlarını daha güçlü bir yapay zekâ hazırlar ve günde daha çok istek hakkın olur. Premium hesabına bağlıdır; aynı hesapla girdiğin her yerde açıktır.")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.86))
                         .fixedSize(horizontal: false, vertical: true)
@@ -300,6 +295,29 @@ struct PremiumView: View {
         }
     }
 
+    private func day(_ date: Date) -> String {
+        date.formatted(Date.FormatStyle(locale: Dates.turkish).day().month(.wide).year())
+    }
+
+    /// "Premium'un açık · bitiş …" for every source of Premium.
+    private var statusLine: String {
+        switch premium.source {
+        case .role:
+            return "Hesabında Premium süresiz açık; satın alman gerekmiyor."
+        case .subscription:
+            guard let until = premium.until else { return "App Store aboneliğinle açık." }
+            return premium.willRenew
+                ? "App Store aboneliğinle açık · \(day(until)) tarihinde yenilenecek."
+                : "App Store aboneliğinle açık · bitiş \(day(until)). Yenileme kapalı."
+        case .pass:
+            guard let until = premium.until else { return "2 haftalık paketinle açık." }
+            return "2 haftalık paketinle açık · bitiş \(day(until))."
+        case .account, .none:
+            guard let until = premium.until else { return "Premium'un açık." }
+            return "Premium'un açık · bitiş \(day(until))."
+        }
+    }
+
     @ViewBuilder
     private var statusBadge: some View {
         if premium.isPremium {
@@ -327,35 +345,10 @@ struct PremiumView: View {
                     }
                 }
 
-                if premium.role == "vip" || premium.role == "admin" {
-                    Text("Hesabın tüm Premium özelliklere sınırsız erişebiliyor.")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.84))
-                } else if let until = premium.until {
-                    Text(
-                        premium.willRenew
-                            ? "Abonelik \(until.formatted(Date.FormatStyle(locale: Dates.turkish).day().month(.wide).year())) tarihinde yenilenecek."
-                            : "\(until.formatted(Date.FormatStyle(locale: Dates.turkish).day().month(.wide).year().hour().minute())) tarihine kadar geçerli."
-                    )
+                Text(statusLine)
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.86))
-                }
-
-                if premium.activeSubscription != nil {
-                    Button {
-                        OnboardingHaptics.light()
-                        manage = true
-                    } label: {
-                        Label("Aboneliği yönet", systemImage: "slider.horizontal.3")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(.white.opacity(0.18), in: Capsule())
-                            .overlay(Capsule().stroke(.white.opacity(0.32), lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
-                }
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(13)
@@ -366,7 +359,7 @@ struct PremiumView: View {
                 Image(systemName: "sparkles")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Color(uiColor: UIColor(hex: 0xFDE047)))
-                Text("Tek hesap · Web + iPhone + iPad senkron")
+                Text("Tek hesap · site ve iPhone'da aynı Premium")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.92))
             }
@@ -418,7 +411,7 @@ struct PremiumView: View {
                     Spacer(minLength: 0)
                 }
                 .padding(13)
-                .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+                .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
                 .background(
                     LinearGradient(
                         colors: [
@@ -481,7 +474,7 @@ struct PremiumView: View {
     private var plansSection: some View {
         VStack(alignment: .leading, spacing: 11) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Paketini seç")
+                Text(premium.source == .none || premium.source == .pass ? "Paketini seç" : "Premium durumun")
                     .font(Theme.display(.headline))
                     .foregroundStyle(Theme.text)
                 Spacer()
@@ -491,13 +484,14 @@ struct PremiumView: View {
             }
             .padding(.horizontal, 2)
 
-            if premium.isPremiumFromElsewhere {
-                Message(
-                    text: premium.role == "vip" || premium.role == "admin"
-                        ? "Hesabında Premium zaten sınırsız açık; satın alman gerekmiyor."
-                        : "Premium'un hesabında zaten açık. Süre bitince buradan App Store ile devam edebilirsin.",
-                    kind: .info
-                )
+            // Premium already on: no purchase button. VIP / admin and Premium from a site code get the
+            // status only (+ restore below); an App Store subscriber gets the status + "Aboneliği yönet"
+            // (changing the plan or cancelling happens there). A two-week pass holder may add another
+            // pass, which stacks on the time left (PremiumStore.refresh and the server both add 14 days).
+            if premium.source == .role || premium.source == .account || premium.source == .subscription {
+                activeCard
+            } else if premium.source == .pass {
+                passExtension
             } else if showPreview {
                 VStack(spacing: 10) {
                     ForEach(previewPlans) { plan in
@@ -557,9 +551,7 @@ struct PremiumView: View {
 
                 if let target = selectedProduct, premium.activeSubscription != target.id {
                     purchaseCTA(
-                        label: premium.isPremium
-                            ? "Paketi seç · \(target.displayPrice)"
-                            : "Premium'a geç · \(target.displayPrice)",
+                        label: "Premium'a geç · \(target.displayPrice)",
                         busy: premium.purchasing != nil,
                         disabled: premium.purchasing != nil
                     ) {
@@ -567,6 +559,71 @@ struct PremiumView: View {
                         Task { await premium.buy(target) }
                     }
                 }
+            }
+        }
+    }
+
+    /// Shown instead of the plans when Premium is already on (VIP / admin, a site code, a subscription).
+    private var activeCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundStyle(Theme.prem1)
+                Text(statusLine)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            switch premium.source {
+            case .subscription:
+                Text("Paketini değiştirmek ya da iptal etmek için aboneliğini yönet.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.text2)
+                Button {
+                    OnboardingHaptics.light()
+                    manage = true
+                } label: {
+                    Label("Aboneliği yönet", systemImage: "slider.horizontal.3")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 46)
+                        .background(
+                            LinearGradient(colors: [Theme.prem1, Theme.prem2], startPoint: .leading, endPoint: .trailing),
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        )
+                }
+                .buttonStyle(TactileCardButtonStyle(scale: 0.985))
+            case .account:
+                Text("Premium'un hesabında açık; şu an satın alman gerekmiyor.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.text2)
+            default:
+                EmptyView()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Theme.premSoft, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.prem1.opacity(0.32), lineWidth: 1))
+    }
+
+    /// A two-week pass is running (bought with this Apple account): another 14 days can be added on top.
+    /// Subscriptions are not offered meanwhile; they would only overlap the time already paid for.
+    @ViewBuilder
+    private var passExtension: some View {
+        activeCard
+        if let pass = premium.products.first(where: { $0.id == PremiumStore.ID.twoWeeks }) {
+            Text("İstersen 14 gün daha ekleyebilirsin; yeni süre kalan sürenin üstüne eklenir.")
+                .font(.caption)
+                .foregroundStyle(Theme.text2)
+                .padding(.horizontal, 2)
+            purchaseCTA(
+                label: "14 gün ekle · \(pass.displayPrice)",
+                busy: premium.purchasing != nil,
+                disabled: premium.purchasing != nil
+            ) {
+                OnboardingHaptics.medium()
+                Task { await premium.buy(pass) }
             }
         }
     }

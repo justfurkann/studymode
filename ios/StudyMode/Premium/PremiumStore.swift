@@ -50,13 +50,31 @@ final class PremiumStore {
     var until: Date? { [storeUntil, serverUntil].compactMap { $0 }.max() }
     var isPremium: Bool { role == "vip" || role == "admin" || (until.map { $0 > .now } ?? false) }
 
+    /// Where the running Premium comes from; decides what the Premium screen offers.
+    enum Source {
+        /// No Premium: the plans and the purchase button are shown.
+        case none
+        /// VIP / admin role: Premium with no end; nothing to buy.
+        case role
+        /// An auto-renewing App Store subscription of this Apple account: status + "Aboneliği yönet".
+        case subscription
+        /// Only two-week passes of this Apple account: another pass may be bought, it is added on top.
+        case pass
+        /// Premium on the account from elsewhere (a site code, another Apple account): status only.
+        case account
+    }
+
+    var source: Source {
+        if role == "vip" || role == "admin" { return .role }
+        guard isPremium else { return .none }
+        if activeSubscription != nil { return .subscription }
+        if (storeUntil ?? .distantPast) > .now { return .pass }
+        return .account
+    }
+
     /// Premium that did not come from this Apple account's purchases (VIP / admin, a site code). Buying
     /// here would not add anything for them, so the app does not offer it.
-    var isPremiumFromElsewhere: Bool {
-        guard isPremium else { return false }
-        if role == "vip" || role == "admin" { return true }
-        return !((storeUntil ?? .distantPast) > .now)
-    }
+    var isPremiumFromElsewhere: Bool { source == .role || source == .account }
 
     // MARK: Start
 
