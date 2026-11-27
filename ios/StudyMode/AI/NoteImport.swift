@@ -38,8 +38,25 @@ enum NoteImport {
     /// Reads pages with the AI, two per request, three requests at a time; text comes back in page
     /// order. A request that fails is tried again page by page; a page that still fails is marked.
     static func transcribe(_ pages: [UIImage], progress: @escaping @MainActor (Progress) -> Void) async throws -> String {
+        let results = try await transcribePages(pages, progress: progress)
+        let text = results.joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        let unreadable = results.allSatisfy { $0.hasPrefix("[Sayfa ") || $0.isEmpty }
+        if unreadable {
+            throw AIClient.Failure(message: "Sayfalar okunamadı. Daha net bir fotoğrafla ya da metni yapıştırarak dene.", code: nil)
+        }
+        return text
+    }
+
+    /// One text per page. Two pages go in one request only when `pairs(i)` says page i and i+1 sit
+    /// next to each other; then the first carries both and the second is empty. A page that could not
+    /// be read is "[Sayfa N okunamadı]".
+    static func transcribePages(_ pages: [UIImage], pairs: (Int) -> Bool = { _ in true }, progress: @escaping @MainActor (Progress) -> Void) async throws -> [String] {
         let encoded = pages.map { jpegBase64($0) }
-        let batches = stride(from: 0, to: encoded.count, by: 2).map { Array($0..<min($0 + 2, encoded.count)) }
+        var batches: [[Int]] = []
+        var i = 0
+        while i < encoded.count {
+            if i + 1 < encoded.count && pairs(i) { batches.append([i, i + 1]); i += 2 } else { batches.append([i]); i += 1 }
+        }
         var results = [String](repeating: "", count: pages.count)
         let counter = Counter(total: pages.count)
         await progress(Progress(done: 0, total: pages.count))
@@ -60,12 +77,7 @@ enum NoteImport {
                 add()
             }
         }
-        let text = results.joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
-        let unreadable = results.allSatisfy { $0.hasPrefix("[Sayfa ") || $0.isEmpty }
-        if unreadable {
-            throw AIClient.Failure(message: "Sayfalar okunamadı. Daha net bir fotoğrafla ya da metni yapıştırarak dene.", code: nil)
-        }
-        return text
+        return results
     }
 
     /// One request for 1-2 pages; on failure, each page alone once.
@@ -102,7 +114,9 @@ enum NoteImport {
         let scannedPages: Int
     }
 
-    /// The PDF's own text, page by page; pages without text are drawn as images and read by the AI.
+    /// The PDF's own text, page by page. Pages read as pictures by the AI instead (the site's rule,
+    /// MathPages): pages without text (scanned), pages whose text breaks the math, and in a
+    /// math-heavy document pages with figures.
     static func readPDF(_ url: URL, progress: @escaping @MainActor (Progress) -> Void) async throws -> PDFResult {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
@@ -112,31 +126,52 @@ enum NoteImport {
         if document.isLocked {
             throw AIClient.Failure(message: "Bu PDF şifreli. Şifresiz bir kopyasını ekle.", code: nil)
         }
-        var texts = [String](repeating: "", count: document.pageCount)
-        var scanned: [(index: Int, image: UIImage)] = []
-        for i in 0..<document.pageCount {
-            guard let page = document.page(at: i) else { continue }
-            let text = (page.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            if text.count >= scannedBelow {
-                texts[i] = text
-            } else {
+        // Each page's own text; almost-empty pages count as scanned.
+        var texts = (0..<document.pageCount).map { i -> String in
+            let text = (document.page(at: i)?.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.count >= scannedBelow ? text : ""
+        }
+        // The formula check needs the page's visual lines (pdf.js gives them on the site); PDFKit's
+        // `string` sometimes runs a whole page into one line.
+        let lines = texts.indices.map { i -> String in
+            guard !texts[i].isEmpty, let page = document.page(at: i) else { return texts[i] }
+            return MathPages.lines(of: page) ?? texts[i]
+        }
+        let heavy = MathPages.mathHeavy(lines)
+        let figures: [Int?] = heavy ? (0..<document.pageCount).map { i in document.page(at: i)?.pageRef.flatMap(MathPages.figureCount) } : []
+        let pictures = MathPages.pagesToReadAsPictures(lines, figures: figures)
+
+        if !pictures.isEmpty {
+            let images = pictures.map { i -> UIImage in
+                guard let page = document.page(at: i) else { return UIImage() }
                 let bounds = page.bounds(for: .mediaBox)
                 let scale = 1600 / max(bounds.width, bounds.height, 1)
-                scanned.append((i, page.thumbnail(of: CGSize(width: bounds.width * scale, height: bounds.height * scale), for: .mediaBox)))
+                return page.thumbnail(of: CGSize(width: bounds.width * scale, height: bounds.height * scale), for: .mediaBox)
+            }
+            // Two pages share a request only when they follow each other, so the text stays in page order.
+            let read = try await transcribePages(images, pairs: { pictures[$0] + 1 == pictures[$0 + 1] }, progress: progress)
+            var anyRead = false
+            for (k, index) in pictures.enumerated() {
+                let text = read[k].trimmingCharacters(in: .whitespacesAndNewlines)
+                if text.hasPrefix("[Sayfa ") {
+                    // Not read: a page with its own text keeps it (formulas imperfect, but not lost).
+                    if texts[index].isEmpty { texts[index] = "[Sayfa \(index + 1) okunamadı]" }
+                } else if !text.isEmpty {
+                    texts[index] = text
+                    anyRead = true
+                } else if k > 0, pictures[k - 1] + 1 == index, !read[k - 1].hasPrefix("[Sayfa ") {
+                    // Read together with the page before it: that page's text already holds this one.
+                    texts[index] = ""
+                }
+            }
+            let ownText = texts.contains { !$0.isEmpty && !$0.hasPrefix("[Sayfa ") }
+            if !anyRead && !ownText {
+                throw AIClient.Failure(message: "Sayfalar okunamadı. Daha net bir dosyayla ya da metni yapıştırarak dene.", code: nil)
             }
         }
-        if !scanned.isEmpty {
-            // Scanned pages are read in their own order, then put back in place.
-            let read = try await transcribe(scanned.map(\.image), progress: progress)
-            let parts = read.components(separatedBy: "\n\n")
-            if parts.count == scanned.count {
-                for (k, item) in scanned.enumerated() { texts[item.index] = parts[k] }
-            } else {
-                texts[scanned[0].index] = read
-            }
-        }
-        let text = texts.filter { !$0.isEmpty }.joined(separator: "\n\n")
+        let joined = texts.filter { !$0.isEmpty }.joined(separator: "\n\n")
+        let text = heavy ? MathPages.fixSymbolFont(joined) : joined
         guard !text.isEmpty else { throw AIClient.Failure(message: "Bu PDF'ten metin çıkarılamadı.", code: nil) }
-        return PDFResult(text: text, pageCount: document.pageCount, scannedPages: scanned.count)
+        return PDFResult(text: text, pageCount: document.pageCount, scannedPages: pictures.count)
     }
 }

@@ -246,7 +246,7 @@ struct AddNoteView: View {
 
     private var pdfSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("PDF, PowerPoint (.pptx), Word (.docx) ya da Excel (.xlsx) seç. Yazılar telefonda okunur; PDF'teki taranmış (resim) sayfalar yapay zekâyla okunur.")
+            Text("PDF, PowerPoint (.pptx), Word (.docx) ya da Excel (.xlsx) seç. Yazılar telefonda okunur; PDF'teki taranmış ya da formüllü sayfalar yapay zekâyla okunur, formüller düzgün çıkar.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.text2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -417,7 +417,7 @@ struct AddNoteView: View {
                 phase = .editing
                 OnboardingHaptics.success()
                 info = result.scannedPages > 0
-                    ? "\(result.pageCount) sayfa okundu (\(result.scannedPages) taranmış sayfa yapay zekâyla). Metni kontrol et, sonra \"Notu hazırla\"ya bas."
+                    ? "\(result.pageCount) sayfa okundu (\(result.scannedPages) sayfa taranmış ya da formüllü olduğu için yapay zekâyla). Metni kontrol et, sonra \"Notu hazırla\"ya bas."
                     : "\(result.pageCount) sayfa okundu. Metni kontrol et, sonra \"Notu hazırla\"ya bas."
             } catch is CancellationError {
                 phase = .editing
