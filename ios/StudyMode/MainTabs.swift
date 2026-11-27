@@ -69,6 +69,7 @@ struct MainTabs: View {
 struct AccountView: View {
     @Environment(AuthModel.self) private var auth
     @Environment(StudyStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @Environment(CaptchaController.self) private var captcha
     @State private var showDelete = false
     @State private var replayIntro = false
@@ -121,9 +122,58 @@ struct AccountView: View {
                         NavigationLink {
                             PremiumView()
                         } label: {
-                            Label("Premium", systemImage: "sparkles")
+                            HStack(spacing: 13) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(.white.opacity(0.18))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: premium.isPremium ? "checkmark.seal.fill" : "crown.fill")
+                                        .font(.body.weight(.bold))
+                                        .foregroundStyle(Theme.hi)
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text("StudyMode Premium")
+                                            .font(Theme.display(.headline, weight: .heavy))
+                                            .foregroundStyle(.white)
+                                        if premium.isPremium {
+                                            Text("AÇIK")
+                                                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                                                .foregroundStyle(Theme.onHi)
+                                                .padding(.horizontal, 7)
+                                                .padding(.vertical, 2)
+                                                .background(Theme.hi, in: Capsule())
+                                        }
+                                    }
+                                    Text(premium.isPremium
+                                         ? "Sesli not, akıllı arama, görseller ve Free+ aktif."
+                                         : "Sesli not, akıllı arama, görseller ve günde 150 istek")
+                                        .font(.caption)
+                                        .foregroundStyle(.white.opacity(0.86))
+                                        .lineLimit(1)
+                                }
+                                Spacer(minLength: 4)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.white.opacity(0.75))
+                            }
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                LinearGradient(
+                                    colors: [Theme.premDeep, Theme.prem1, Theme.prem2],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(.white.opacity(0.22), lineWidth: 1)
+                            )
+                            .shadow(color: Theme.prem1.opacity(0.32), radius: 12, y: 6)
                         }
-                        .buttonStyle(SecondaryButtonStyle())
+                        .buttonStyle(TactileCardButtonStyle(scale: 0.98))
                         .staggeredAppear(1)
 
                         NavigationLink {

@@ -25,6 +25,14 @@ enum Theme {
     static let danger = Color(light: 0xD1343C, dark: 0xF87171)
     static let dangerSoft = Color(light: 0xFDE5E7, dark: 0x3A1A22)
 
+    /// Premium palette — mirrors `--prem-1/2/3/deep/soft/text` in src/styles/global.css.
+    static let prem1 = Color(light: 0x6D28D9, dark: 0x7C3AED)
+    static let prem2 = Color(light: 0xC026D3, dark: 0xD946EF)
+    static let prem3 = Color(light: 0xF59E0B, dark: 0xFBBF24)
+    static let premDeep = Color(light: 0x1E0B3A, dark: 0x12062A)
+    static let premSoft = Color(light: 0xF5EFFF, dark: 0x241640)
+    static let premText = Color(light: 0x5B21B6, dark: 0xD8C8FF)
+
     /// Bricolage Grotesque / Figtree are web fonts; on iPhone the rounded system face carries the
     /// same friendly, heavy headline feel and keeps Dynamic Type.
     static func display(_ style: Font.TextStyle, weight: Font.Weight = .heavy) -> Font {
