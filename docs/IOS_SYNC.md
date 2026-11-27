@@ -157,3 +157,16 @@ Uygulama tarafı yazıldı (`ios/StudyMode/Premium/`): her satın almada `appAcc
    - Cevap `200 {"ok": true, "premium_until": "<ISO>"}`. Hata olursa 4xx/5xx; uygulama sonra yeniden dener.
 2. **`POST /api/apple-notifications`**: App Store Server Notifications V2. `DID_RENEW` → süreyi uzat; `REFUND` / `REVOKE` → o işlemi `revoked_at` ile işaretle ve süreyi geri çek; `EXPIRED` için bir şey gerekmez. URL'yi kullanıcı App Store Connect → App Information → App Store Server Notifications'a girecek (Production ve Sandbox).
 3. Site Premium sayfası: Apple'dan abone olana "Aboneliğin App Store üzerinden; yönetmek için iPhone Ayarlar → Abonelikler" yazsın; sitede ikinci kez satış önermesin.
+
+**Site durumu (27 Kasım 2026): 1 ve 2 yazıldı, PR #134 açık — birleştirmeyi Furkan yapacak. 3 henüz yapılmadı.**
+- **Veritabanı (canlı, kullanıcı onayıyla):** `apple_transactions` (transaction_id pk, original_transaction_id, user_id, product_id, environment, purchase_date, expires_date, granted, revoked_at), `apple_grant(...)`, `apple_revoke(transaction_id)`. Yalnızca sunucu (service_role) çalıştırır.
+- **Sözleşme `POST /api/apple-purchase`:** `Authorization: Bearer <oturum>`, gövde `{"transaction":"<JWS>"}`. İmza Apple'ın resmi kütüphanesiyle Apple Root CA - G3'e kadar kontrol edilir; bundle `fun.studymode.app`; ürün yukarıdaki üçü; `appAccountToken` = çağıranın kullanıcı id'si (büyük/küçük harf fark etmez). Aynı `transactionId` ikinci kez süre eklemez, yine 200 döner.
+  - `200 {"ok":true,"premium_until":"<ISO>"}` → finish.
+  - Kalıcı ret (finish): `400 bad_request / invalid_transaction / wrong_app / unknown_product`, `403 wrong_account` (token yok ya da başka hesap), `409 revoked`.
+  - Sonra yeniden dene: `401 not_signed_in`, `503 not_configured` (Production işlemi ama `APPLE_APP_APPLE_ID` henüz yok), `502 grant_failed`.
+- **`POST /api/apple-notifications`** (V2): `DID_RENEW / SUBSCRIBED / ONE_TIME_CHARGE` süreyi uzatır (kullanıcı `appAccountToken`'dan, yoksa ilk satın almanın hesabından); `REFUND / REVOKE` o işlemin eklediği süreyi geri alır; diğerleri 200; veritabanı hatasında 500 (Apple yeniden gönderir).
+- **Furkan'ın adımları:**
+  1. PR #134'ü birleştir.
+  2. App Store Connect → uygulama → App Information → App Store Server Notifications: Production ve Sandbox URL `https://studymode.fun/api/apple-notifications`, **Version 2**.
+  3. Uygulama mağazaya çıkınca Vercel → Environment Variables: `APPLE_APP_APPLE_ID` = App Store Connect'teki sayısal Apple ID (gizli değil). O zamana kadar yalnızca Sandbox satın almaları kabul edilir.
+- Not: koddan gelen Premium süresi aboneliğin bitişinden uzunsa abonelik ona bir şey eklemez (`greatest`).
