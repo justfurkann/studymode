@@ -32,8 +32,10 @@ final class PremiumStore {
     private(set) var loading = false
     var message: String?
     private(set) var purchasing: String?
-    /// Premium end from this device's StoreKit entitlements.
+    /// Premium end from this device's StoreKit entitlements that belong to the signed-in account.
     private(set) var storeUntil: Date?
+    /// End of the running auto-renewing subscription of this account (its renewal date).
+    private(set) var subscriptionUntil: Date?
     /// Premium end on the account (any source: App Store, site codes).
     private(set) var serverUntil: Date?
     /// VIP / admin accounts have everything anyway.
@@ -43,6 +45,9 @@ final class PremiumStore {
     /// The auto-renewing plan currently active, if any (for "Aboneliği yönet").
     private(set) var activeSubscription: String?
     private(set) var willRenew = false
+    /// This Apple account has a running StudyMode subscription that was bought for another StudyMode
+    /// account (its appAccountToken is someone else's id). It gives this account nothing.
+    private(set) var otherAccountSubscription = false
 
     private var updates: Task<Void, Never>?
     private var userId: UUID?
@@ -100,9 +105,13 @@ final class PremiumStore {
         updates = nil
         userId = nil
         storeUntil = nil
+        subscriptionUntil = nil
         serverUntil = nil
         role = nil
         unsynced = 0
+        activeSubscription = nil
+        willRenew = false
+        otherAccountSubscription = false
     }
 
     func loadProducts() async {
@@ -167,6 +176,10 @@ final class PremiumStore {
             await transaction.finish()
             return
         }
+        // Bought for another StudyMode account on this Apple account: not ours to send or finish.
+        // It stays unfinished, so it reaches the server when that account signs in here again
+        // (the server also hears about it from Apple's notifications).
+        if let token = transaction.appAccountToken, token != userId { return }
         await refresh()
         if transaction.revocationDate != nil {
             // Refunded: the server hears it from Apple's notifications; nothing to send.
@@ -220,19 +233,32 @@ final class PremiumStore {
     // MARK: Status
 
     /// Recomputes Premium from StoreKit (auto-renewing end dates, two-week passes stacked) and the account.
+    ///
+    /// Only purchases made for the signed-in account count (appAccountToken == its user id): an Apple
+    /// account is per device, a StudyMode account is not, so a sister's subscription on the family iPad
+    /// must not show Premium on her brother's StudyMode account. Purchases without a token are not
+    /// counted either: the server refuses them (403 wrong_account), so the device would show Premium
+    /// that the AI limits and the site do not give. Every purchase made in this app carries the token.
     func refresh() async {
         var renewEnd: Date?
         var active: String?
         var passes: [Date] = []
+        var foreignSubscription = false
+        let me = userId
         for await result in Transaction.currentEntitlements {
             guard case let .verified(t) = result, t.revocationDate == nil else { continue }
+            guard let me, t.appAccountToken == me else {
+                if t.productType == .autoRenewable, (t.expirationDate ?? .distantPast) > .now { foreignSubscription = true }
+                continue
+            }
             if t.productType == .autoRenewable, let end = t.expirationDate {
                 if end > (renewEnd ?? .distantPast) { renewEnd = end; active = t.productID }
             }
         }
         // Non-renewing passes stay in the history; each one adds 14 days.
         for await result in Transaction.all {
-            guard case let .verified(t) = result, t.revocationDate == nil, t.productID == ID.twoWeeks else { continue }
+            guard case let .verified(t) = result, t.revocationDate == nil, t.productID == ID.twoWeeks,
+                  let me, t.appAccountToken == me else { continue }
             passes.append(t.purchaseDate)
         }
         var passEnd: Date?
@@ -242,6 +268,8 @@ final class PremiumStore {
         }
         storeUntil = [renewEnd, passEnd].compactMap { $0 }.max()
         activeSubscription = (renewEnd ?? .distantPast) > .now ? active : nil
+        subscriptionUntil = activeSubscription == nil ? nil : renewEnd
+        otherAccountSubscription = foreignSubscription && activeSubscription == nil
         willRenew = false
         if let active, let product = products.first(where: { $0.id == active }),
            let status = try? await product.subscription?.status.first(where: { (try? $0.transaction.payloadValue.productID) == active }),

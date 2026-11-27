@@ -104,8 +104,8 @@ struct SettingsView: View {
 
             Section("Hakkında") {
                 LabeledContent("Sürüm", value: Self.version)
-                Link(destination: Config.siteURL.appending(path: "gizlilik")) { Label("Gizlilik", systemImage: "hand.raised") }
-                Link(destination: Config.siteURL.appending(path: "kullanim-kosullari")) { Label("Kullanım koşulları", systemImage: "doc.text") }
+                Link(destination: Config.sitePage("gizlilik")) { Label("Gizlilik", systemImage: "hand.raised") }
+                Link(destination: Config.sitePage("kullanim-kosullari")) { Label("Kullanım koşulları", systemImage: "doc.text") }
                 // No link to the site's /ayarlar: its Premium section takes Premium codes (App Review 3.1.1).
             }
           }

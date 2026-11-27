@@ -74,6 +74,13 @@ struct PremiumView: View {
                 plansSection
                     .staggeredAppear(2)
 
+                if premium.source == .none, premium.otherAccountSubscription, !showPreview {
+                    Message(
+                        text: "Bu Apple hesabındaki StudyMode aboneliği başka bir StudyMode hesabına bağlı; bu hesapta Premium açmaz. O hesaba giriş yaparak kullanabilir ya da Ayarlar → Abonelikler'den yönetebilirsin.",
+                        kind: .warning
+                    )
+                }
+
                 if let message = premium.message, !showPreview {
                     Message(text: message, kind: .warning)
                 }
@@ -305,7 +312,9 @@ struct PremiumView: View {
         case .role:
             return "Hesabında Premium süresiz açık; satın alman gerekmiyor."
         case .subscription:
-            guard let until = premium.until else { return "App Store aboneliğinle açık." }
+            // The subscription's own renewal date from StoreKit, not the latest of all sources (a site
+            // code running longer would otherwise show as the renewal date).
+            guard let until = premium.subscriptionUntil ?? premium.storeUntil else { return "App Store aboneliğinle açık." }
             return premium.willRenew
                 ? "App Store aboneliğinle açık · \(day(until)) tarihinde yenilenecek."
                 : "App Store aboneliğinle açık · bitiş \(day(until)). Yenileme kapalı."
@@ -829,7 +838,7 @@ struct PremiumView: View {
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 16) {
                 Link("Kullanım koşulları (EULA)", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
-                Link("Gizlilik", destination: Config.siteURL.appending(path: "gizlilik"))
+                Link("Gizlilik", destination: Config.sitePage("gizlilik"))
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(Theme.premText)

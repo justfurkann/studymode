@@ -65,7 +65,7 @@ struct MolaView: View {
                 tile(icon: "timer", title: "Odak sayacı",
                      text: "Pomodoro: 25 dakika odak, 5 dakika mola. Bitince bildirimle haber verir.",
                      meta: "Son 7 gün: \(records.focusLastWeek) dk", locked: nil) { game = .focus }
-                Link(destination: Config.siteURL.appending(path: "ogrenci-tipi")) {
+                Link(destination: Config.sitePage("ogrenci-tipi")) {
                     tileLabel(icon: "sparkles", title: "Hangi öğrenci tipisin?",
                               text: "10 soruluk test: karakterin, güçlü yanların ve sana özel çalışma taktiği.",
                               meta: "2 dakika · sitede açılır", locked: nil)

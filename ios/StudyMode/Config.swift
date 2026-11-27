@@ -9,6 +9,13 @@ enum Config {
     /// The site; the app calls its /api/generate and sends e-mail links back to it.
     static let siteURL = URL(string: "https://studymode.fun")!
 
+    /// A site page opened from the app (privacy, terms, the student-type quiz). `?app=ios` tells the
+    /// site to hide its prices, Premium and Shopier links there (App Review 3.1.1: no way to buy
+    /// outside the App Store from inside the app).
+    static func sitePage(_ path: String) -> URL {
+        siteURL.appending(path: path).appending(queryItems: [URLQueryItem(name: "app", value: "ios")])
+    }
+
     /// Cloudflare Turnstile site key. Supabase checks a captcha on sign-in, sign-up and password reset.
     static let turnstileSiteKey = "0x4AAAAAAFvRcaGnlKR5xm3q"
 

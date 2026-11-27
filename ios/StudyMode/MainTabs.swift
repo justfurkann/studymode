@@ -189,12 +189,6 @@ struct AccountView: View {
                         .buttonStyle(SecondaryButtonStyle())
                         .staggeredAppear(1)
 
-                        Link(destination: Config.siteURL) {
-                            Label("studymode.fun'u aç", systemImage: "safari")
-                        }
-                        .buttonStyle(SecondaryButtonStyle())
-                        .staggeredAppear(2)
-
                         Button(role: .destructive) {
                             Task {
                                 await auth.signOut()

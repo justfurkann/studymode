@@ -220,9 +220,9 @@ struct LoginView: View {
 
     private var legal: some View {
         (Text("Devam ederek ")
-         + Text("[kullanım koşullarını](https://studymode.fun/kullanim-kosullari)").underline()
+         + Text("[kullanım koşullarını](https://studymode.fun/kullanim-kosullari?app=ios)").underline()
          + Text(" kabul etmiş ve ")
-         + Text("[gizlilik politikasını](https://studymode.fun/gizlilik)").underline()
+         + Text("[gizlilik politikasını](https://studymode.fun/gizlilik?app=ios)").underline()
          + Text(" okumuş olursun."))
             .font(.footnote)
             .foregroundStyle(Theme.text3)

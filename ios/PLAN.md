@@ -25,7 +25,7 @@ Uygulama Claude'unun çalışma planı. Site ile ortak işler `docs/IOS_SYNC.md`
 | — | Başarımlar ve seviye (Hesap → Başarımlar ve seviye; sitenin achievements.ts + xp.ts birebir): 20 başarım (gizliler ipucuyla), seviye halkası ve unvan, "XP nereden geldi?" (tüm `study_days` + testler + provalar + hazırlanan notlar + başarımlar), hedef ilerleme çubukları. Başarımlar hesapta (`user_metadata.achievements`, site ile ortak; `achievements_held` geri alınanlar geri gelmez). Uygulama yüklenince, tekrar/test sonrası ve uygulamaya dönünce hedefleri ve saat başarımlarını (03.00, 04-06, 00.00) kontrol eder, yenisini kaydeder ve üstte kısa bir bildirim gösterir; koleksiyon boşken eskiden kazanılanlar sessizce eklenir | ✅ 27 Kasım; simülatörde görüldü |
 | — | Mola (Tekrar → Kısa bir mola; sitenin mola.ts + MatchGame + QuickGame birebir): ders seçimi, **Eşleştir** (6 çift, solda kavram sağda cevap, yanlış +2 sn, rekor), **Hızlı tur** (60 sn, 3 hak, 3 doğrudan sonra 2 puan, kaydırma ya da düğme, rekor), **Odak sayacı** (saat uygulamasının FocusClock modeli: 25+5 / 50+10, 4. turda uzun mola, bildirimler, günlük dakika ve tur; "Odak Ustası" başarımı buna bağlı), öğrenci tipi testi sitede açılır. Rekorlar ve odak dakikaları cihazda (`studymode.mola.v1`, sitedekiyle aynı şekil). Oyunlar serini korur (`actions`), tekrar planına dokunmaz. VIP mini oyunları yok | ✅ 27 Kasım; Eşleştir ve Hızlı tur simülatörde denendi |
 | — | Çalışma fişi (`Receipt/ReceiptModel.swift`, `ReceiptPaperView.swift`, `ReceiptStudioSheet.swift`; sitenin `receipt.ts` + `ReceiptCard.tsx` veri/gizlilik kurallarıyla uyumlu + iOS'a özel interaktif stüdyo): Bugün selamlama çubuğu ("Çalışma fişi"), günlük tekrar sonu ("Çalışma fişini kes") ve Hesap sekmesinden açılır; termal kasa ağzından haptik adımlarla çıkan fiş ve kauçuk mürekkep damga animasyonu (`S+ / A+ / B+ / C+`), parmakla 3B eğme + diyagonal parlama ve aşağı çekip kopararak paylaşma ("Koparıp paylaş"), 5 kağıt/mürekkep teması (`Fosforlu`, `Gece`, `Espresso`, `Pembe`, `Kobalt`), `studymode.receiptPrefs.v1` ile isim/bölüm/alt not özelleştirme, ilk açılışta `"fis"` ("Kasadan Geçti") başarımını açma ve `ImageRenderer` ile `1080×1920` Story PNG paylaşma / Fotoğraflar'a kaydetme | ✅ 27 Kasım |
-| — | Premium (Apple ile satın alma, StoreKit 2; Hesap → Premium): 3 ürün (`premium.twoweeks` yenilenmeyen 14 gün, `premium.monthly`, `premium.sixmonths` otomatik yenilenen; grup 22628551). Satın almada `appAccountToken` = kullanıcı kimliği; imzalı işlem `POST /api/apple-purchase`'e gider, sunucu kabul edene kadar `finish()` yok (açılışta yeniden denenir). Premium durumu = max(StoreKit kaydı, `ai_quota().premium_until`); 2 haftalıklar üst üste eklenir; iade edilen sayılmaz. Satın alımları geri yükle, Aboneliği yönet, Apple'ın istediği yenileme metni + EULA/gizlilik bağlantıları. Ekran yalnızca uygulamada gerçekten çalışan ve Premium'la değişen şeyleri satar: **Free+** (günde 30 cevaba kadar daha güçlü model) ve **günde 150 hak** (ücretsiz hesapta 40); site araçları tek küçük "Sitede ayrıca" satırında. Premium zaten açıksa satın alma düğmesi yok (`PremiumStore.source`): VIP/yönetici ve site kodu → yalnızca durum + Geri yükle; App Store aboneliği → durum + Aboneliği yönet; 2 haftalık paket → durum + "14 gün ekle" (üst üste eklenir). Uygulamada siteye satın alma ya da Premium kodu bağlantısı yok (Ayarlar'daki "Diğer ayarlar sitede" kaldırıldı). **Bekleyen:** PR #134'ün birleşmesi (IOS_SYNC madde 8); App Store Connect'teki satın alma inceleme görüntüsü ve ürün açıklamaları | ✅ kodlandı ve metni düzeltildi 27 Kasım; gerçek satın alma TestFlight sandbox'ta denenecek |
+| — | Premium (Apple ile satın alma, StoreKit 2; Hesap → Premium): 3 ürün (`premium.twoweeks` yenilenmeyen 14 gün, `premium.monthly`, `premium.sixmonths` otomatik yenilenen; grup 22628551). Satın almada `appAccountToken` = kullanıcı kimliği; imzalı işlem `POST /api/apple-purchase`'e gider, sunucu kabul edene kadar `finish()` yok (açılışta yeniden denenir). Premium durumu = max(StoreKit kaydı, `ai_quota().premium_until`); 2 haftalıklar üst üste eklenir; iade edilen sayılmaz. Satın alımları geri yükle, Aboneliği yönet, Apple'ın istediği yenileme metni + EULA/gizlilik bağlantıları. Ekran yalnızca uygulamada gerçekten çalışan ve Premium'la değişen şeyleri satar: **Free+** (günde 30 cevaba kadar daha güçlü model) ve **günde 150 hak** (ücretsiz hesapta 40); site araçları tek küçük "Sitede ayrıca" satırında. Premium zaten açıksa satın alma düğmesi yok (`PremiumStore.source`): VIP/yönetici ve site kodu → yalnızca durum + Geri yükle; App Store aboneliği → durum + Aboneliği yönet; 2 haftalık paket → durum + "14 gün ekle" (üst üste eklenir). Uygulamada siteye satın alma ya da Premium kodu bağlantısı yok (Ayarlar'daki "Diğer ayarlar sitede" ve Hesap'taki "studymode.fun'u aç" kaldırıldı; gizlilik, koşullar ve öğrenci tipi `?app=ios` ile açılır). StoreKit kaydı yalnızca `appAccountToken` = oturumdaki kullanıcı ise sayılır (28 Kasım). PR #134 birleşti (28 Kasım): `api/apple-purchase.ts`, `api/apple-status.ts`, `api/apple-notifications.ts` main'de. **Bekleyen:** App Store Connect'te Server Notifications URL'si (V2) ve `APPLE_APP_APPLE_ID` (kullanıcının panel işi, IOS_SYNC madde 8); satın alma inceleme görüntüsü ve ürün açıklamaları | ✅ kodlandı ve metni düzeltildi 27 Kasım; gerçek satın alma TestFlight sandbox'ta denenecek |
 | 7 | Toparlama: hata mesajları, boş ekranlar, erişilebilirlik, birim testleri | boş ekranlar ve yükleme durumları yenilendi; birim testleri sırada |
 
 ## Bekleyenler (dış engel)
@@ -112,3 +112,127 @@ Kullanıcının isteğiyle yalnızca arayüz, etkileşim ve animasyon katmanı (
 **Sıradaki**
 - Ücretsiz bir test hesabıyla (`-premiumPreview` ya da TestFlight) planların göründüğü yeni inceleme görüntüsü alıp `ios/AppStore/`'daki ve App Store Connect'teki eski görüntünün yerine koymak.
 - App Store Connect'teki 3 ürünün ve uygulamanın açıklamaları aynı vaatleri yapıyorsa elle düzeltilmeli (repoda bu metinler yok).
+
+## Premium araçları: site ile eşitlik analizi (28 Kasım)
+
+Kaynak: `origin/main` (c2e04eb), salt okuma. Kural: Premium metni uygulamada çalışmayan bir şeyi vaat etmez; her araç uygulamada çalıştıkça metne (ve "Sitede ayrıca" satırından çıkarak özellik kartına) geri eklenir.
+
+### Üçü için ortak sözleşme (`POST /api/generate`)
+- İstek: `{"task": "podcast" | "tts" | "image" | "embed", "input": {...}}`, `Authorization: Bearer <oturum>`. Gövde en fazla 1.500.000 karakter (`api/generate.ts:9`, aşılırsa `413 too_large`). `engine` gerekmez: Premium görevi sunucuda kendiliğinden Free+ yoluna gider (`generate.ts:168`). iOS'un `AIClient.run` katmanı (`ios/StudyMode/AI/AIClient.swift:29`) olduğu gibi kullanılabilir; yalnızca `premium_only` dışında yeni hata kodu yok.
+- Premium kapısı: `PREMIUM_TASKS = podcast, tts, image, embed` (`generate.ts:12`); `plus_quota().eligible` değilse `403 premium_only` (`generate.ts:142-146`). `eligible` = `plus_limit_for(limit_role(uid)) > 0` (`schema.sql:477-495`): VIP, yönetici ve `premium_access.until` süren herkes (site kodu ya da Apple satın alması). Sitenin istemci kapısı `usePremium()` (`src/lib/premium.ts`): rol VIP/admin, `premium_until` ya da kendi Gemini anahtarı (iOS'ta kendi anahtar yok).
+- Sayım: başarılı podcast / tts / image cevabı `consume_plus` ile Free+ hakkından 1 düşer (günde 30); **embed düşmez** (`generate.ts:210-211`). Free+ hakkı bitmişse (`allowed=false`) ya da Vertex hata verirse istek ücretsiz anahtara düşer ve `consume_ai` ile günlük haktan (150) sayılır; günlük hak da bitmişse `429 daily_limit` (`generate.ts:220-223`).
+- Süre: `tts` ve `image` "yavaş" görev: deneme 45 sn, toplam 57 sn (`generate.ts:148-154`); iOS'un 65 sn beklemesi yeterli.
+- Cevap: `200 {"result": {...}, "engine": "plus", "model": "...", "plus": {...}}`. Hatalar: `401 unauthorized`, `403 premium_only`, `413 too_large`, `422 blocked`, `429 daily_limit | quota`, `502 bad_output | upstream`, `503 busy | not_configured`, `504 too_slow`, `500 internal` (`generate.ts:117-257`).
+- Modeller: `api/vertex.ts:27-31` (tts: `gemini-3.8-flash-tts`, `-lite-tts`; image: `gemini-3.1-flash-lite-image`, `gemini-nano-banana-2.1`; embed: yalnızca `gemini-embedding-001`, çünkü iki modelin vektörü karşılaştırılamaz). Görevin özel çağrısı `src/lib/ai/gemini.ts:68-201`.
+- **Saklama:** üçünün de ürettiği hiçbir şey Supabase'e yazılmıyor. Şemada vektör/ses/görsel tablosu, sütunu ya da pgvector yok; Supabase Storage kullanılmıyor. Hepsi tarayıcının `localStorage`'ında. Yani sitede bile cihazlar arası paylaşım yok; iOS'ta cihazda tutmak siteyle **eşit** davranış. Veritabanına giden tek yazma: `store.recordActivity()` (iOS'ta `bump_study_day p_actions`) ve "karta çevir" (`cards` insert). Sitenin verisini bozma riski bu yüzden çok düşük.
+
+### 1. Akıllı arama (embed)
+**Sitede nasıl çalışıyor**
+- Görev: `input = {texts: string[]}`, sunucu ilk 25 metni ve her metnin ilk 3.500 karakterini alır (`src/lib/ai/tasks.ts:612-614`). Cevap `{embeddings: number[][]}` (`tasks.ts:383-385`). Vertex'te her metin ayrı `:predict` isteği, `task_type: RETRIEVAL_DOCUMENT` (`gemini.ts:68-97`); 3072 sayı döner.
+- İstemci: `embedTexts` 25'erli gruplar, her vektörü `compactVector` ile 768 sayıya ve 5 basamağa indirir (`src/lib/ai/index.ts:832-841`, `src/lib/semanticSearch.ts:302-305`). Not metni `buildNoteEmbeddingText` (başlık + genel bakış + kavramlar + ana noktalar + metnin ilk 3.000'i, en fazla 4.000; `semanticSearch.ts:337-346`).
+- Saklama: tarayıcıda `localStorage["studymode.embeddings.v1.<courseId>"] = {noteId: [768 sayı]}` (`semanticSearch.ts:296, 317-334`); not başına ~6 KB. Not değişince vektör yenilenmiyor (yalnızca uzunluğu 768 değilse "eksik" sayılır; `src/pages/Premium.tsx:352`).
+- Arama: dersin sayfasında "Akıllı aramayı aç" bütün notları gömer (`src/pages/CourseDetail.tsx:89-105`), sorgu en az 3 harfse beklemeli olarak sorgu vektörü alınır (`CourseDetail.tsx:50-65`). Puan = max(yerel kavram kümeleri + Türkçe kök eşleşmesi, vektör puanı); kosinüs 0,74 altı eşleşme değil (`semanticSearch.ts:312-315, 351-419`). Premium sayfasındaki "tüm notlarda" araması `SmartSearch` + `rankNotesByMeaning` (`Premium.tsx:337-400`, `semanticSearch.ts:472`).
+
+**iOS'ta gereken parçalar**
+- `AIClient.run("embed", ...)`, 25'erli gruplar; `[Float]` 768, kosinüs (Accelerate `vDSP` ya da düz döngü).
+- Hesap ve ders başına cihazda JSON: `Application Support/<userId>/embeddings/<courseId>.json` (çıkışta silinir, Fosfor sohbeti gibi).
+- Sitenin `searchNotesSemantic` mantığının Swift'e birebir taşınması (kavram kümeleri, durdurma kelimeleri, kök alma, parça seçimi). Bu aynı zamanda iOS'ta olmayan **sıradan ders içi aramayı** da getirir (Premium dışı açık, aşağıda).
+- `CourseDetailView`'da `.searchable`, Premium hesapta "Akıllı aramayı aç" + "x/y not hazır"; Premium sekmesinde tüm notlarda arama.
+
+**Zor noktalar**
+- Vektörler sitede yalnızca tarayıcıda: iOS kendi vektörlerini üretip cihazda tutmak zorunda (site ile paylaşılamaz, sunucu tarafı tablo olmadan). Aynı model ve aynı kısaltma kullanıldığı için sonuçlar aynı olur.
+- Maliyet: Free+ hakkından düşmez, ama Free+ hakkı bitmişse her sorgu günlük haktan 1 düşer (sunucu davranışı). 25 notluk ders = 1 istek, 25 Vertex çağrısı, ~2-3 sn. Sorgu başına 1 istek: yazarken 600 ms bekleme şart.
+- Eski vektör: not düzenlenince site de yenilemiyor; iOS'ta notun `updated_at`'i vektörle birlikte saklanıp değişen not yeniden gömülebilir (siteden iyi, ama farklı olmaz).
+
+**Büyüklük:** Orta (yaklaşık 1-1,5 oturum; sıradan arama dahil).
+
+### 2. Yapay zekâ görselleri (image)
+**Sitede nasıl çalışıyor**
+- Görev: `input = {title, topic, context, aspectRatio?: "1:1" | "16:9" | "4:3"}` (`tasks.ts:366-379, 595-606`); bağlamdan konu çevresindeki 600 karakter istemde. Cevap `{imageBase64, mimeType: "image/png", caption}` (`gemini.ts:160-201`, `responseModalities: TEXT+IMAGE`).
+- İstemci: `generateConceptImage` (`index.ts:819-829`) → `finishAiImage` (`src/lib/imageStore.ts:91`): uzun kenar 1280 px, JPEG 0,86, sağ alta **filigran** (koyu yarı saydam hap, sarı "S" + beyaz "studymode.fun", boyut görsele göre; `imageStore.ts:37-62`).
+- İki yer: (a) not → Araçlar → "Görsel & Şema" sekmesi (`src/components/note/VisualAndPodcastTabs.tsx:135-169`), konu + oran seçimi, listede tam ekran, indir, sil, "karta çevir" (`visualToCard`); (b) "Hafıza kodlaması"ndaki akrostişe görsel (`src/components/note/MemoryTabs.tsx:198-225`), Premium değilse ya da hata olursa Fosforlu SVG poster.
+- Saklama: `localStorage["studymode.visuals.v1.<noteId>"]` en yeni 8 (`src/lib/visualTools.ts:196-215`), hafıza görselleri `studymode.mnemonicVisuals.v1.<noteId>` (`MemoryTabs.tsx:24`); alan dolarsa eskiler silinir ve söylenir.
+
+**iOS'ta gereken parçalar**
+- `AIClient.run("image", ...)`, base64 → `UIImage`, `UIGraphicsImageRenderer` ile 1280 px'e küçültme + filigran (S simgesi asset olarak eklenmeli), JPEG 0,86.
+- Not başına cihazda dosya: `Application Support/<userId>/visuals/<noteId>/<id>.jpg` + küçük JSON liste (en yeni 8).
+- Notta "Görsel" bölümü: konu alanı, oran, üret, ızgara, tam ekran (yakınlaştırma), Paylaş / Fotoğraflar'a kaydet, sil, karta çevir.
+
+**Zor noktalar**
+- Boyut sorun değil: PNG 1-2 MB → base64 ≤ ~2,7 MB, 4,5 MB sınırının altında; canlıda 4,5 sn (HANDOFF Aşama 20).
+- İki cihaz arasında görünmez: sitede de yalnızca o tarayıcıda. Paylaşım istenirse Supabase Storage + tablo gerekir (site işi, bugün yok).
+- Asıl iş görselin yanındaki **ücretsiz** kısım: sitede aynı sekmede kavram haritası, "kör mod" ve Fosforlu poster var (Premium dışı açık). Eşitlik için o sekme bütün olarak taşınmalı; yalnızca AI görsel taşınırsa sekme yarım kalır.
+- Hafıza kodlamasındaki görsel, iOS'ta olmayan "Hafıza kodlaması" sekmesine bağlı.
+
+**Büyüklük:** yalnızca AI görsel Orta (~1 oturum); ücretsiz "Görsel & Şema" sekmesiyle birlikte Büyük (~2 oturum).
+
+### 3. Sesli not (podcast + tts)
+**Sitede nasıl çalışıyor**
+- Senaryo: `podcast` görevi, `input = {title, text}` (metin 16.000 karaktere kırpılır, `tasks.ts:579`); cevap `{title, summary, lines: [{speaker: Deniz | Mert, role, text, highlight}]}`, 8-12 replik (`tasks.ts:317-349`). İstemci boş replikleri atar, süre tahmini dakikada 135 kelime (`index.ts:758-778`).
+- Ses: `tts` görevi, `input = {lines: [{speaker, text}]}`; sunucu en fazla 16 replik ve replik başına 600 karakter alır (`tasks.ts:584-589`). İki konuşmacılı ses (Deniz = Kore, Mert = Puck; lite modelde tek ses; `gemini.ts:99-158`). Cevap `{audioBase64, mimeType: "audio/wav"}`.
+- Parçalama: istemci senaryoyu **600 karakterlik parçalara** böler (~40 sn konuşma, ~2 MB WAV; `index.ts:784-816`, `src/lib/podcastTools.ts:147-165`), parçaları sırayla ister; ilk parça gelince çalmaya başlar (`src/lib/partPlayer.ts`, `PartPlayer`), sonunda WAV'ları 44 baytlık başlıkları atıp birleştirir (`podcastTools.ts:194-223`). Canlı ölçüm: 10 replik, 3 parça, toplam ~53 sn; parça başına ~12 sn, 1,5 MB (HANDOFF Aşama 20-22).
+- Ekran (`VisualAndPodcastTabs.tsx:440-859`): sohbet gibi balonlar (Deniz solda, Mert sağda), "Stüdyo sesiyle dinle" (senaryo yerel ise önce AI senaryo, sonra ses), hız 1 / 1,25 / 1,5, "Replik 3/17" ilerleme (`lineAtFraction`, `partStartLines`), WAV indir, repliği karta çevir (`podcastLineToCard`). Premium olmayanda (ve "Hızlı önizleme") yerel senaryo (`buildLocalPodcastScript`, ağsız) + tarayıcının konuşma sesi (`speechSynthesis`, tr-TR).
+- Saklama: yalnızca senaryo `localStorage["studymode.podcast.v1.<noteId>"]` (`VisualAndPodcastTabs.tsx:50-68`). **Ses hiç saklanmıyor**: `studioAudioUrl` yalnızca bellekte (`:450`); sayfa yenilenince her dinleyişte yeniden üretiliyor (yeniden Free+ harcıyor).
+
+**iOS'ta gereken parçalar**
+- `podcast` ve `tts` çağrıları; Swift'te 600 karakter bölme, WAV birleştirme (ya da parçaları `AVQueuePlayer` ile art arda çalma), ilk parçada çalmaya başlama.
+- `AVAudioSession(.playback, .spokenAudio)`, `UIBackgroundModes: audio` (Info.plist / proje ayarı), Kilit ekranı: `MPNowPlayingInfoCenter` + `MPRemoteCommandCenter` (oynat/duraklat/15 sn), hız (`AVPlayer.rate`), kesinti (arama) ve kulaklık çıkarma.
+- Önbellek: birleşik sesi AAC'ye çevirip (`AVAssetExportSession`, m4a) `Caches/<userId>/podcast/<noteId>.m4a` olarak tutmak: 2,5 dk WAV ~6-7 MB → m4a ~1-1,5 MB. Senaryo değişince ya da not metni değişince silinir. Bu siteden iyi (yeniden üretmez, Free+ harcamaz); siteyle çelişmez çünkü site hiçbir şey saklamıyor.
+- Ücretsiz kısım: `buildLocalPodcastScript` Swift'e + `AVSpeechSynthesizer` (tr-TR, iki ses perdesi), replik vurgusu.
+- Sohbet arayüzü, replik ilerlemesi, karta çevir, paylaş (m4a).
+
+**Zor noktalar**
+- **Boyut:** 24 kHz 16 bit tek kanal WAV ≈ 48 KB/sn ≈ 2,9 MB/dk; base64 %33 büyütür. Tek istekte 2,5 dakikalık podcast ~9 MB base64 olurdu, Vercel'in 4,5 MB cevap sınırını aşar. Bu yüzden 600 karakter (~40 sn, ~2-2,7 MB base64) parçalama zorunlu; parça sınırı sitedekiyle aynı kalmalı (aynı `partStartLines` hesabı).
+- **Biçim:** site cevabı WAV sayıyor (`mimeType` varsayılanı `audio/wav`). Gemini TTS bazen ham PCM (`audio/L16;codec=pcm;rate=24000`) döndürür; iOS ilk 4 baytta `RIFF` yoksa 44 baytlık WAV başlığını kendisi eklemeli (oran mimeType'tan). Canlı yanıtla denenmeli.
+- **Süre ve kesilme:** ~50 sn boyunca 4 istek; kullanıcı uygulamayı arka plana atarsa URLSession isteği kesilebilir. Üretim sırasında `beginBackgroundTask` ile kısa süre tanınmalı; ses hazırken arka planda çalma ayrı (audio modu).
+- **Kota:** bir podcast = 1 (senaryo) + parça sayısı (~3) = ~4 Free+ hakkı (günde 30). Önbellek bunu her dinleyişte tekrar harcamayı önler.
+- Site ile paylaşılmıyor (site de saklamıyor). Senaryo bile cihazlar arası değil.
+
+**Büyüklük:** Büyük (yaklaşık 2-3 oturum: 1 oturum ses hattı ve oynatıcı, 1 oturum sohbet ekranı + ücretsiz cihaz sesi + önbellek, gerekirse 1 oturum cihazda deneme ve kilit ekranı).
+
+### Önerilen sıra
+1. **Akıllı arama.** En küçük ve risksiz: medya yok, 4,5 MB derdi yok, Free+ hakkı harcamaz, saklaması basit. Aynı işle Premium dışı "ders içi arama" açığı da kapanır. Bitince Premium metnine "Akıllı arama" geri girer.
+2. **Görseller.** Tek istek, tek dosya; filigran ve cihazda saklama net. Önce ücretsiz "Görsel & Şema" sekmesinin iskeleti (kavram haritası + poster), sonra AI görsel aynı sekmeye; böylece Premium kilidi sitedeki gibi sekmenin içinde durur.
+3. **Sesli not.** En büyük iş (parçalama, WAV/PCM, arka plan sesi, kilit ekranı, önbellek) ve gerçek cihazda dinleyerek denenmesi gerekiyor. Önce ücretsiz cihaz sesi + yerel senaryo (Premium dışı eşitlik), sonra stüdyo sesi.
+Gerekçe: her adım kendi başına App Store'a çıkabilir ve metne eklenebilir; küçükten büyüğe gitmek, metni en kısa sürede siteyle eşitler. Kullanıcı "en çok satan" özelliği öne almak isterse sesli not 1. sıraya alınabilir; maliyeti değişmez, yalnızca ilk görünür sonuç 2-3 oturum gecikir.
+
+### Premium dışı eşitlik açıkları (sitede var, iOS'ta yok; yalnızca liste)
+| Özellik (site) | Büyüklük |
+|---|---|
+| Ders içi sıradan arama + etiket süzgeci (`CourseDetail.tsx`, `searchNotesSemantic`) | Küçük (akıllı aramayla birlikte yapılırsa ek iş yok) |
+| Not → Araçlar → **Hafıza kodlaması** (`memory` görevi, akrostiş/tekerleme/hikâye; `MemoryTabs.tsx`, `memoryTools.ts`) | Orta |
+| Not → Araçlar → **Karşılaştırma** (aynı `memory` görevi, `mode: comparison`) | Küçük (hafıza kodlamasıyla birlikte) |
+| Not → Araçlar → **Görsel & Şema**'nın ücretsiz kısmı (kavram haritası, kör mod, Fosforlu poster; `visualTools.ts`) | Orta |
+| Not → Araçlar → **Podcast**'in ücretsiz kısmı (yerel senaryo + cihaz sesi; `podcastTools.ts`) | Orta (sesli notun parçası) |
+| Kart turu: "Son cevabı geri al" (`bump_study_day` negatif), "Yalnızca zorlandıklarım", "Sesli oku" (`Review.tsx:78, 197`) | Küçük |
+| Geçmiş prova sonucunu açma ve soru-not eşleşmesi (`ExamHistory.tsx`, `ExamReview.tsx`) | Orta |
+| Öğrenci tipi testi (`StudentQuiz.tsx`, `studentType.ts`; şu an sitede açılıyor) | Orta |
+| **Mini oyunlar** (Günün Kavramı, Çekmece, Kâğıt top; `MiniGames.tsx`, `wordGame.ts`, `miniGames.ts`). Not: sitede VIP/Premium'a özel (`Mola.tsx:50`), yani bu da bir Premium aracı; çalışınca Premium metnine girebilir | Büyük (3 oyun) |
+| Rehber (`Guide.tsx`; satın alma/kod bölümleri uygulamada çıkarılmalı) | Küçük-Orta |
+| Not birleştirme (`mergeNotes.ts`) | Küçük-Orta |
+| Dönem planlayıcı (`SemesterEditor.tsx`, `planSemester`) | Orta (iOS'taki sınav düzenleyiciyle örtüşmesi kontrol edilmeli) |
+| Çalışma sesleri ve kırtasiye seti (`ambience.ts`, `DecorSettings.tsx`, `sound.ts`) | Orta (isteğe bağlı, görsel/dokunsal) |
+Bilerek yok (karar): kendi yapay zekâ anahtarı, Premium kodu (`/kod`, RedeemLink), Fiyatlar, Yönetim.
+
+## Devir notu (Claude, iPhone rolü — 28 Kasım): Tur 2
+**Yapılan**
+- Görev 1: yukarıdaki "Premium araçları: site ile eşitlik analizi" (kod yok).
+- `MainTabs.swift` (Hesap, eski 192-196): "studymode.fun'u aç" bağlantısı kaldırıldı (kullanıcı onayı).
+- `Config.swift:12-17`: `Config.sitePage(_:)` → `https://studymode.fun/<yol>?app=ios`. Kullananlar: `Settings/SettingsView.swift:107-108` (Gizlilik, Kullanım koşulları), `Premium/PremiumView.swift:841` (Gizlilik), `Mola/MolaView.swift:68` (öğrenci tipi), `Auth/LoginView.swift:223, 225` (Markdown bağlantılarına elle `?app=ios`). Siteye giden başka bağlantı yok (kalanlar API çağrısı, e-posta yönlendirmesi, Turnstile tabanı ve paylaşım bağlantısı).
+- `Premium/PremiumStore.swift` `refresh()`: StoreKit kayıtları yalnızca `appAccountToken == oturumdaki kullanıcı` ise sayılıyor (abonelikler ve 2 haftalık paketler). Başka hesaba ait etkin abonelik `otherAccountSubscription` ile işaretleniyor; bu hesaba Premium göstermiyor (`.none` ya da sunucuda Premium varsa `.account`). `handle()`: başka hesabın işlemi gönderilmiyor ve bitirilmiyor (o hesap girince gider). Yeni `subscriptionUntil` (aboneliğin kendi yenileme tarihi).
+- `PremiumView.swift` statusLine (`:315-317`): `.subscription` durumunda tarih `subscriptionUntil ?? storeUntil` (max değil). `:77-83`: plan listesinin altında "Bu Apple hesabındaki abonelik başka bir StudyMode hesabına bağlı" uyarısı (yalnızca `.none` + yabancı abonelik).
+- `PremiumStore.stop()`: `activeSubscription`, `willRenew`, `subscriptionUntil`, `otherAccountSubscription` da sıfırlanıyor.
+- "14 gün ekle" yerinde (kullanıcı kararı). Premium metnine bir şey eklenmedi. Adım tablosundaki Premium satırı güncellendi (#134 birleşti; `api/apple-notifications.ts` main'de).
+
+**Kararlar**
+- `appAccountToken`'ı olmayan eski işlem **sayılmaz**: sunucu onu `403 wrong_account` ile reddediyor, cihazda sayılsa site ve yapay zekâ hakları vermediği hâlde uygulama Premium gösterirdi. Bu uygulamadaki her satın alma ilk günden token taşıyor; tokensız işlem ancak uygulama dışından (App Store'da teklif kodu, öne çıkarılan satın alma) gelebilir. Böyle bir işlem `handle()`'da yine sunucuya gönderiliyor (sunucu karar verir, ret gelirse bitirilir).
+- Başka hesabın işlemi bitirilmiyor: bitirilirse o hesap bu cihazdan bir daha gönderemezdi (sunucu Apple bildirimlerinden de alıyor, ama çift yol daha güvenli).
+- Yenileme tarihi için `storeUntil` yerine `subscriptionUntil`: `storeUntil` 2 haftalık paketlerle birleşik maksimum, aboneliğin yenileme günü değil.
+
+**İşe yaramayan**
+- Yok. Gerçek iki hesaplı StoreKit denemesi yapılmadı (sandbox ve iki StudyMode hesabı gerekiyor).
+
+**Sıradaki**
+- Kullanıcı sırayı onaylarsa: 1) akıllı arama + ders içi arama, 2) Görsel & Şema sekmesi + AI görsel, 3) sesli not. Her biri çalışınca Premium metnine geri eklenir.
+- Site: `?app=ios` ile Fiyatlar/Premium/Shopier bağlantılarının gizlenmesi (bu tur site rolünde). Yayına girince Gizlilik/Koşullar/öğrenci tipi sayfası uygulamadan açılıp denenmeli.
+- Sandbox: aynı Apple hesabında iki StudyMode hesabıyla abonelik → ikinci hesapta Premium görünmemeli, uyarı çıkmalı.
