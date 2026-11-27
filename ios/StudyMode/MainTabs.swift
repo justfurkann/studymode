@@ -80,7 +80,7 @@ struct AccountView: View {
                 GridPaper()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        HStack(alignment: .top, spacing: 12) {
+                        TalkingFosfor(screen: .account, size: 52, mood: .proud) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(auth.displayName.isEmpty ? "Hesabın" : auth.displayName)
                                     .font(Theme.display(.title2))
@@ -103,8 +103,6 @@ struct AccountView: View {
                                     .foregroundStyle(Theme.text3)
                                     .padding(.top, 6)
                             }
-                            Spacer(minLength: 4)
-                            TalkingFosfor(size: 52, mood: .proud)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .focusCard()

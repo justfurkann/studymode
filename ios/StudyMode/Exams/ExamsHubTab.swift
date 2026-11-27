@@ -114,7 +114,9 @@ struct ExamsHubTab: View {
         let readiness = store.readiness(for: exam)
 
         return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
+            TalkingFosfor(screen: .exam, size: 52,
+                    mood: (readiness ?? 0) >= 75 ? .cheering : .marking,
+                    onDark: true) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Circle().fill(course.tint).frame(width: 8, height: 8)
@@ -133,14 +135,6 @@ struct ExamsHubTab: View {
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.80))
                 }
-
-                Spacer(minLength: 8)
-
-                TalkingFosfor(
-                    size: 52,
-                    mood: (readiness ?? 0) >= 75 ? .cheering : .marking,
-                    onDark: true
-                )
             }
 
             if let readiness {

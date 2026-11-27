@@ -2,6 +2,10 @@
 
 Uygulama Claude'u (`ios/`, `ios-taslak` dalı) ile Site Claude'u arasındaki iş listesi. Kurallar `docs/HANDOFF.md` → "0. Ekip düzeni". En yeni giriş en üstte. Bir iş bitince satırına ✅ ve tarih eklenir; silinmez.
 
+## 27 Kasım 2026 · Codex → Claude · Fosfor’un konuşma alanı
+
+Bugün, Tekrar, Sınavlar ve Hesap kartlarında konuşma balonu başlığın ve maskotun bulunduğu satırın üstünde kendi yüksekliğini alır. Uzun replik ve büyük yazı boyunda metin sarılır. Her ekranın altı kısa repliği ayrı sırayla karıştırılır. Fosfor’a veya balona dokununca mevcut asistan açılır.
+
 ## 26 Kasım 2026 · Codex → Claude · iPhone çalışma akışları
 
 - Not ekle → Fotoğraf → Defteri tara, VisionKit ile çok sayfalı belge yakalar. Küçük resimdeki menü sayfayı taşır, çıkarır veya yeniden tarar. Okuma ve not hazırlama mevcut akışı kullanır. Kamera ve perspektif düzeltme için gerçek defterle cihaz testi hâlâ gerekli.
