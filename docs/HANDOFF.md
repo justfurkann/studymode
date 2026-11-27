@@ -1135,6 +1135,14 @@ Kalite kontrol buldu: site veriyi sayfa açılışında bir kez okuyor, açık s
 - **Sekmeye dönünce yenileme** (`store.tsx`): sekme 2 dakikadan uzun açık kaldıysa görünür olunca ya da odaklanınca hesap sessizce yeniden okunur. Önce bekleyen kayıtlar biter; okuma sırasında bu sekmede bir şey değişirse yeni kopya atılır (sonraki dönüşte tekrar denenir). Sayfa yeniden yüklenmez, açık kart turu ve test sürer.
 - Kalan risk: iki cihazda aynı anda aynı kart ya da not düzenlenirse son yazan kazanır (satır bütün yazılıyor); dönüşte yenileme bunu çok azaltır ama sıfırlamaz.
 
+### Aşama 71 — iPhone'da Premium: App Store satın alma sunucusu (27 Kasım 2026, `apple-iap`)
+
+- **SQL (kullanıcı onayıyla çalıştırıldı, `schema.sql` sonunda):** `apple_transactions` (her Apple işlemi bir kez; eklediği süre `granted`), `apple_grant(...)` (abonelik: Premium = max(şimdiki bitiş, aboneliğin bitişi); `premium.twoweeks`: +14 gün), `apple_revoke(transaction_id)` (iadede o işlemin eklediği süreyi geri alır, şimdiden geriye gitmez). Yalnızca service_role çalıştırır; kullanıcılar tabloyu göremez.
+- **`POST /api/apple-purchase`** (`Bearer` oturum, gövde `{"transaction": "<StoreKit 2 JWS>"}`): Apple'ın resmi kütüphanesi (`@apple/app-store-server-library`) ile imza zinciri Apple Root CA - G3'e kadar kontrol edilir (sertifika `api/appleStore.ts` içinde gömülü, SHA-256 parmak izi yorumda). Bundle `fun.studymode.app`, ürün `premium.monthly / .sixmonths / .twoweeks`, `appAccountToken` = çağıranın kullanıcı id'si olmalı. Cevaplar: 200 `{ok, premium_until}`; 400 `bad_request / invalid_transaction / wrong_app / unknown_product`; 403 `wrong_account`; 409 `revoked` (uygulama bunlarda işlemi kapatır); 401, 503 `not_configured`, 502 `grant_failed` (uygulama sonra yeniden dener). **Bu kodlar uygulamayla sözleşme, değiştirmeden önce iOS oturumuna yaz.**
+- **`POST /api/apple-notifications`** (App Store Server Notifications V2): `DID_RENEW / SUBSCRIBED / ONE_TIME_CHARGE` süreyi uzatır (kullanıcı `appAccountToken`'dan, yoksa ilk satın almadan); `REFUND / REVOKE` geri alır; diğerleri 200. Veritabanı hatasında 500 (Apple yeniden gönderir).
+- **Kullanıcının adımları:** App Store Connect → uygulama → App Information → App Store Server Notifications: Production ve Sandbox URL'si `https://studymode.fun/api/apple-notifications`, sürüm 2. Uygulama mağazaya çıkınca Vercel'e `APPLE_APP_APPLE_ID` (App Store Connect'teki sayısal Apple ID; gizli değil). Bu yokken yalnızca Sandbox işlemleri kabul edilir, Production işlemleri 503 alır ve uygulama bekletir.
+- Not: kodla verilmiş Premium süresi aboneliğin bitişinden uzunsa abonelik o süreye bir şey eklemez (max).
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

@@ -53,8 +53,8 @@ export interface AppleChecks {
 }
 
 export const appleChecks = (env: Env): AppleChecks => ({
-  transaction: (jws) => verifierFor(jws, env).verifyAndDecodeTransaction(jws),
-  notification: (jws) => verifierFor(jws, env).verifyAndDecodeNotification(jws),
+  transaction: async (jws) => verifierFor(jws, env).verifyAndDecodeTransaction(jws),
+  notification: async (jws) => verifierFor(jws, env).verifyAndDecodeNotification(jws),
 })
 
 export function adminHeaders(key: string): Record<string, string> {
