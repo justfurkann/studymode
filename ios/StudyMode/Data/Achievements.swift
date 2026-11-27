@@ -147,6 +147,7 @@ extension StudyStore {
             "seri-7": (min(7, streak), 7),
             "yuz-tekrar": (min(100, reviews), 100),
             "kusursuz": (perfect ? 1 : 0, 1),
+            "odak-ustasi": (min(4, MolaRecords.read().roundsToday), 4),
         ]
     }
 }

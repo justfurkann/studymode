@@ -17,6 +17,30 @@ struct ReviewTab: View {
                         } else {
                             goalCard
                                 .staggeredAppear(0)
+                            NavigationLink {
+                                MolaView()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "gamecontroller.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(Theme.onHi)
+                                        .frame(width: 42, height: 42)
+                                        .background(Theme.hi, in: RoundedRectangle(cornerRadius: 12))
+                                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.cardLine, lineWidth: 1.2))
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Kısa bir mola").font(.headline).foregroundStyle(Theme.text)
+                                        Text("Eşleştir, Hızlı tur ve odak sayacı").font(.caption).foregroundStyle(Theme.text2)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(Theme.text3)
+                                }
+                                .padding(14)
+                                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+                                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
+                                .contentShape(RoundedRectangle(cornerRadius: 16))
+                            }
+                            .buttonStyle(TactileCardButtonStyle())
+                            .staggeredAppear(1)
                             readinessList
                         }
                     }
