@@ -122,16 +122,9 @@ struct FosforChatLabel: View {
     let onDark: Bool
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            FosforMascotView(size: size, mood: mood, onDark: onDark, tappable: false)
-            Label("Fosfor’a sor", systemImage: "bubble.left")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(Theme.onHi)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 4)
-                .background(Theme.hi, in: Capsule())
-        }
-        .contentShape(Rectangle())
+        // Just Fosfor: a tap is obvious, no caption needed.
+        FosforMascotView(size: size, mood: mood, onDark: onDark, tappable: false)
+            .contentShape(Rectangle())
     }
 }
 

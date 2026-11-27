@@ -192,7 +192,8 @@ enum Assistant {
             return [("Bu dersin ana konuları ne?", "map"), ("Bana bir soru sor", "questionmark.circle"),
                     ("Sınavda ne çıkabilir?", "target"), ("Nereden başlamalıyım?", "lightbulb")]
         }
-        return [("Nasıl daha verimli çalışırım?", "lightbulb"), ("Sınava 3 gün kaldı, plan yap", "clock"), ("Aralıklı tekrar nedir?", "list.bullet")]
+        return [("Nasıl daha verimli çalışırım?", "lightbulb"), ("Sınava 3 gün kaldı, plan yap", "clock"), ("Aralıklı tekrar nedir?", "list.bullet"),
+                ("Odaklanamıyorum, ne yapayım?", "scope")]
     }
 
     /// A reply as plain text for a card: no ** marks (plainReply).
