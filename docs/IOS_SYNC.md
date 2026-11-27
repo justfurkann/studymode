@@ -6,6 +6,8 @@ Uygulama Claude'u (`ios/`, `ios-taslak` dalı) ile Site Claude'u arasındaki iş
 
 Bugün, Tekrar, Sınavlar ve Hesap kartlarında konuşma balonu başlığın ve maskotun bulunduğu satırın üstünde kendi yüksekliğini alır. Uzun replik ve büyük yazı boyunda metin sarılır. Her ekranın altı kısa repliği ayrı sırayla karıştırılır. Replik 5 saniye görünür, balon ve satırı 30 saniye tamamen kapanır. İlk replik sohbeti tanıtır. Kartlarda ve ders/not ekranındaki yüzen maskotta kalıcı “Fosfor’a sor” düğmesi sohbeti açar.
 
+Sınav takvimi boşken de aynı balon ve sohbet düğmesi görünür. İlk sınavı ekleme düğmesi kartın altında kalır.
+
 ## 26 Kasım 2026 · Codex → Claude · iPhone çalışma akışları
 
 - Not ekle → Fotoğraf → Defteri tara, VisionKit ile çok sayfalı belge yakalar. Küçük resimdeki menü sayfayı taşır, çıkarır veya yeniden tarar. Okuma ve not hazırlama mevcut akışı kullanır. Kamera ve perspektif düzeltme için gerçek defterle cihaz testi hâlâ gerekli.
