@@ -503,8 +503,7 @@ private struct TypingRow: View {
     }
 }
 
-/// The floating Fosfor button above the tab bar (the site's corner assistant). Just the character,
-/// cut out like a sticker with a soft shadow: no box behind it.
+/// The contextual chat launcher above the tab bar on course and note screens.
 struct AssistantButton: View {
     @Environment(AssistantPlace.self) private var place
 
@@ -513,9 +512,8 @@ struct AssistantButton: View {
             OnboardingHaptics.light()
             place.show(course: place.courseId, note: place.noteId)
         } label: {
-            FosforMascotView(size: 50, mood: .curious, onDark: true, tappable: false)
+            FosforChatLabel(size: 50, mood: .curious, onDark: true)
                 .shadow(color: Theme.cardDrop.opacity(0.28), radius: 8, y: 4)
-                .contentShape(Circle())
         }
         .buttonStyle(TactileCardButtonStyle(scale: 0.9))
         .accessibilityLabel("Fosfor'a sor")

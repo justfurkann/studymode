@@ -58,38 +58,81 @@ enum FosforScreen: String {
 /// The bubble takes a real row above the mascot. The card title and actions keep their own space.
 struct TalkingFosfor<Content: View>: View {
     @Environment(AssistantPlace.self) private var place
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("fosfor.didShowChatHint") private var didShowHint = false
     let screen: FosforScreen
     var size: CGFloat = 54
     var mood: FosforMascotView.Mood = .curious
     var onDark = false
     @ViewBuilder let content: () -> Content
-    @State private var line = ""
+    @State private var line: String?
+
+    private var canSpeak: Bool { scenePhase == .active && !place.open }
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 2) {
-            Button(action: ask) {
-                SpeechBubble(text: line, tailTrailingOffset: size / 2 - 6)
+            if let line {
+                Button(action: ask) {
+                    SpeechBubble(text: line, tailTrailingOffset: size / 2 - 6)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHidden(true)
+                .transition(.opacity)
             }
-            .buttonStyle(.plain)
-            .accessibilityHidden(true)
 
             HStack(alignment: .top, spacing: 8) {
                 content()
                 Spacer(minLength: 0)
                 Button(action: ask) {
-                    FosforMascotView(size: size, mood: mood, onDark: onDark, tappable: false)
+                    FosforChatLabel(size: size, mood: mood, onDark: onDark)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Fosfor’a sor")
-                .accessibilityHint(Text(line))
+                .accessibilityHint("Sohbeti açar")
             }
         }
-        .onAppear { line = screen.drawLine() }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: line)
+        .task(id: canSpeak) {
+            line = nil
+            guard canSpeak else { return }
+            do {
+                try await Task.sleep(for: .seconds(1))
+                while !Task.isCancelled {
+                    line = didShowHint ? screen.drawLine() : "Takıldığın yeri bana sorabilirsin."
+                    didShowHint = true
+                    try await Task.sleep(for: .seconds(5))
+                    line = nil
+                    try await Task.sleep(for: .seconds(30))
+                }
+            } catch { /* SwiftUI cancels the timer when this screen leaves or the chat opens. */ }
+        }
+        .onDisappear { line = nil }
     }
 
     private func ask() {
         OnboardingHaptics.light()
         place.show(course: nil, note: nil)
+    }
+}
+
+/// The mascot and its visible action form a single tap target.
+struct FosforChatLabel: View {
+    let size: CGFloat
+    let mood: FosforMascotView.Mood
+    let onDark: Bool
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            FosforMascotView(size: size, mood: mood, onDark: onDark, tappable: false)
+            Label("Fosfor’a sor", systemImage: "bubble.left")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.onHi)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(Theme.hi, in: Capsule())
+        }
+        .contentShape(Rectangle())
     }
 }
 
