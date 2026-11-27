@@ -4,6 +4,8 @@ Android Claude'unun çalışma planı ve defteri. Rol tarifi: `docs/ROLES.md` �
 
 Bu dosya şimdilik **yalnızca plan**: henüz kod yok. Kod adım adım, aşağıdaki tabloya göre yazılacak.
 
+> **Temel kural: site ile uygulama eşittir.** Sitede olan her şey uygulamada da olacak. Hiçbir sorun bir özelliği **silerek** çözülmez; Premium dışı özellikler de buna dahil. İlk sürüme yetişmeyen bir özellik plandan çıkarılmaz, "sonraki sürüm" diye işaretlenip "eşitlik sırası"na (bölüm 3'ün sonu) girer. Mağaza kuralının yasakladığı satış yönlendirmeleri de silinmez: site onları `?app=android` modunda gizler (bölüm 8).
+
 ---
 
 ## 1. Amaç ve kapsam
@@ -85,11 +87,19 @@ Sıra iPhone'daki sırayla aynı. Her adımın "bitti" tanımı: **emülatörde 
 | 10 | **Fosfor asistanı** (iOS "Fosfor"): kendi sekmesi, `chat` görevi, sitenin `assistant.ts` bağlam kuralları (açık not 9.000, diğerleri 2.500, toplam 16.000), "Karta çevir"; ekranda tek Fosfor kuralı | Nottan soru sorulup cevap alınıyor; "Karta çevir" kartı sitede görünüyor |
 | 11 | **Hesap ve ayarlar** (iOS "Ayarlar", "Başarımlar"): günlük kart hedefi (1-500, varsayılan 15), okul seviyesi, tema, geri bildirim (`public.feedback`), hakkında (gizlilik, koşullar); başarımlar ve seviye (`achievements.ts`, `xp.ts`) | Ayar değişince Tekrar yeni hedefi kullanıyor; geri bildirim tabloya düşüyor |
 | 12 | **Hesap silme** (iOS "Hesap silme"; Google Play şartı): "SİL" onayı, Premium uyarısı (`409 premium_active` → `premium_ok:true`), başarıda yerel çıkış | Yalnızca **atılabilir test hesabıyla** denenir; hesap ve verisi gidiyor |
-| 13 | **Mola + Çalışma fişi** (iOS'taki ✅ adımlar; ilk sürümde istenirse): Eşleştir, Hızlı tur, odak sayacı (`mola.ts`); fiş (`receipt.ts` gizlilik kuralları) | iOS'takiyle aynı kurallar; mağaza için şart değil, sona bırakılabilir |
+| 12b | **"Cevabı bildir"** (Google Play üretken yapay zekâ kuralı, bölüm 9): not hazırlama sonucu, özet / ayrıntılı özet, "Bu konuyu anlamadım" açıklaması, Anlat ve Sınav Provası değerlendirmeleri ve Fosfor cevaplarının yanında küçük bir "Cevabı bildir" düğmesi. Kısa bir form açılır (neden + isteğe bağlı açıklama) ve `public.feedback`'e bir satır yazılır (bölüm 5.1) | Her ilgili ekranda düğme var; gönderilen bildirim `feedback` tablosunda görünüyor ve kısıtlara uyuyor (`message` 3-2000, `page` ≤ 200, `device` ≤ 300). **İlk sürüm için şart** (kapalı testten önce) |
+| 13 | **Mola + Çalışma fişi**: **sonraki sürüm** (kullanıcı kararı, ilk sürüme girmeyecek). Eşleştir, Hızlı tur, odak sayacı (`mola.ts`); fiş (`receipt.ts` gizlilik kuralları) | iOS'takiyle aynı kurallar. İlk sürümden sonra, eşitlik sırasının başında |
 | 14 | **Toparlama:** hata mesajları, boş ekranlar, karanlık tema, büyük yazı, TalkBack (ekran okuyucu), uygulama simgesi, çevrimdışı uyarısı | Kalite kontrolün listesi temiz |
 | 15 | **Mağaza hazırlığı:** imzalı yayın paketi (AAB), Data safety formu, gizlilik ve hesap silme bağlantıları, kapalı test (bölüm 9) | Kapalı test yayında, testçiler indirebiliyor |
 
-Bilerek **yok** (iOS'ta da yok ya da Android'de yasak): Premium satışı, Premium kodu girme, Shopier bağlantısı, kendi yapay zekâ anahtarı, yönetici ekranları, VIP mini oyunları.
+Uygulamada **olmayacaklar** (Android'de yasak ya da yalnızca yöneticiye ait): Premium satışı, Premium kodu girme, Shopier bağlantısı (Play Billing kuralı, bölüm 8) ve yönetici ekranları. Bunlar sitede kalır. Uygulamanın açtığı site sayfaları `?app=android` ile açılır, site bu modda satış bağlantılarını gizler (bölüm 8).
+
+**İlk sürümden sonra eşitlik sırası** (temel kural gereği sitede olan her şey uygulamaya gelir; sıra yaklaşık):
+1. Mola + Çalışma fişi (adım 13).
+2. Premium araçları: sesli not, akıllı arama, görseller. Satış olmadan gelir: sitede Premium almış hesapta açılır (bölüm 8).
+3. Mini oyunlar (sitedeki VIP mini oyunları dahil).
+4. Sınav provasının ilk sürüme girmeyen parçaları (varsa, adım 7 yapılırken listelenir).
+5. Sitede olup uygulamada henüz olmayan her şey (ör. kendi yapay zekâ anahtarı). Liste her sürümde site ile karşılaştırılıp güncellenir.
 
 ## 4. Kütüphaneler
 
@@ -102,7 +112,7 @@ Sürümler: **Android Studio'nun önerdiği güncel kararlı sürüm** (proje a�
 | **Lifecycle ViewModel Compose** | ViewModel'ler |
 | **supabase-kt** (`auth-kt`, `postgrest-kt`; gerekirse `functions-kt`) | Giriş, oturum, tablolar, `bump_study_day` / `ai_quota` RPC. Sitenin "Edge Function"ı yok; `functions-kt` muhtemelen gerekmez |
 | **Ktor client** (OkHttp ya da Android motoru) | supabase-kt'nin kendisi kullanıyor; `/api/generate` ve `/api/delete-account` çağrıları da bununla |
-| **kotlinx.serialization** | JSON. Ayrıca `summary` / `practice` gibi alanlar ham `JsonObject` olarak tutulur (bkz. 5.3) |
+| **kotlinx.serialization** | JSON. Ayrıca `summary` ham `JsonObject`, `practice` ve `questions` ham `JsonArray` olarak tutulur (bkz. 5.3) |
 | **Coil** | Fotoğraf önizlemeleri, küçük resimler |
 | **ML Kit Document Scanner** (Google Play services) | "Defteri tara": çok sayfalı belge yakalama, kenar düzeltme. Kamera izni bile istemez |
 | **CameraX** | Yalnızca belge tarayıcı yetmezse (ör. Google Play services olmayan cihaz) tek fotoğraf çekmek için; büyük ihtimalle gerekmez, sistemin kamera uygulaması (`TakePicture`) yeter |
@@ -127,23 +137,31 @@ Bütün tablolarda satır güvenliği açık: herkes yalnızca kendi satırını
 | Tablo | Sütunlar (veritabanı adıyla) | Not |
 |---|---|---|
 | `courses` | `id, name (1-120), color, exam_date (date), created_at, updated_at` | `exam_date` en yakın gelecek `course_exams` tarihini takip eder (sitedeki `store.tsx` gibi eşitlenir) |
-| `notes` | `id, course_id, title (1-200), content (≤ 400.000), summary (jsonb), questions (jsonb), practice (jsonb), generator ('ai'/'local'), created_at, updated_at` | `summary`, `practice` ham JSON olarak korunur (5.3) |
+| `notes` | `id, course_id, title (1-200), content (≤ 400.000), summary (jsonb nesne), questions (jsonb dizi, varsayılan '[]'), practice (jsonb dizi, varsayılan '[]'), generator ('ai'/'local'), created_at, updated_at` | `summary` ham `JsonObject`, `questions` ve `practice` ham `JsonArray` olarak korunur (5.3) |
 | `cards` | `id, course_id, note_id (boş olabilir), front, back, source, due, "interval", ease, reps, lapses, created_at, updated_at` | `interval` tırnaklı sütun adı (SQL'de ayrılmış kelime) |
 | `quiz_attempts` | `id, course_id, note_id, score (≥0), total (>0, score ≤ total), wrong_ids (jsonb), answers (jsonb, isteğe bağlı), created_at` | |
 | `exam_results` | `id, course_id, format, difficulty, source, note_ids, questions, answers, scores, feedback, score, total, duration_seconds, created_at` | Sınav Provası |
 | `study_days` | `id, day ('YYYY-MM-DD'), reviews, quizzes, actions, new_cards, …` | **Asla doğrudan yazılmaz**, yalnızca RPC (5.4). `(user_id, day)` tekil |
 | `course_exams` | `id, course_id, kind (vize/final/butunleme/quiz/diger), title, "date", "time" (isteğe bağlı, HH:MM), weight, grade (isteğe bağlı), note_ids, …` | `time`/`grade` eski veritabanında olmayabilir; iOS'taki gibi güvenli yazılır |
-| `course_shares` | sitenin `share.ts` kurallarıyla | Ders paylaşımı (adım 9) |
-| `feedback` | sitenin `feedback.ts` kurallarıyla | Geri bildirim |
+| `course_shares` | `id (varsayılan gen_random_uuid()), user_id, course_id, token (16-64 harf/rakam, tekil), title (1-120), owner_name (≤ 80), snapshot (jsonb, ≤ 3 MB), created_at, updated_at` | Ders paylaşımı (adım 9), sitenin `share.ts` kurallarıyla |
+| `feedback` | `id (varsayılan gen_random_uuid()), user_id (varsayılan auth.uid()), kind ('fikir' / 'hata' / 'diger'), message (3-2000), contact (≤ 120, isteğe bağlı), page (≤ 200), device (≤ 300), created_at` | Geri bildirim (adım 11) ve "Cevabı bildir" (adım 12b). Uygulama bu tabloya yalnızca `insert` yapar |
 
-- **Kimlikler uygulamada üretilir** (`UUID.randomUUID()`), tablolarda varsayılan yok.
+- **Kimlikler:** `courses`, `notes`, `cards`, `quiz_attempts`, `exam_results` ve `course_exams` satırlarının kimliğini uygulama üretir (`UUID.randomUUID()`, site de istemcide üretiyor). `course_shares` ve `feedback` tablolarında (`client_errors`'ta da) `id default gen_random_uuid()` var: bunlarda kimlik gönderilmez, veritabanı üretir. `supabase/schema.sql` ile doğrulandı.
+- **"Cevabı bildir" satırı** (`feedback`, adım 12b):
+  - `kind = 'hata'`.
+  - `message` = `[YZ cevabı] <neden>: <kullanıcının açıklaması>`, ardından `--` satırı ve cevabın ilk ~1.500 karakteri. Toplam 2.000 karaktere kırpılır, en az 3 karakter olur.
+  - `page` = `android:<ekran>/<not ya da ders kimliği>` (ör. `android:summary/<noteId>`, `android:fosfor`), 200 karaktere kırpılır.
+  - `device` = `Android <sürüm> · <marka model> · uygulama <sürüm>`, 300 karaktere kırpılır.
+  - `contact` boş kalır.
+  - Ayrı bir `kind` değeri (ör. `'yz'`) şema değişikliği demek, yani site işi. O gelene kadar `'hata'` + `[YZ cevabı]` öneki kullanılır.
 - Tarihler ISO 8601, UTC, milisaniyeli (`2026-11-27T10:15:00.000Z`), JavaScript'in `toISOString()` biçimi.
 - RPC'ler: `bump_study_day`, `ai_quota()` (kota ve `premium_until` okumak için, salt okuma).
 - Hesap bilgisi: `user_metadata.education` (`{ level, school, department, classYear, …, v: 2, at }`), `user_metadata.achievements`. Yazarken var olan diğer alanlar korunur (yalnızca değişen anahtar güncellenir).
 
 ### 5.2 Tekrar zamanlaması: `srs.ts` birebir
 
-- `schedule(card, grade, now, examDate)`: Bilemedim → 10 dk sonra, `interval 0`, `ease − 0.2` (en az 1.3), `reps 0`, `reps > 0` ise `lapses + 1`. Zor / İyi / Kolay formülleri, sınav varken aralığın `floor(kalan gün / 2)` ile sınırlanması, `interval`'ın 0,1'e, `ease`'in 0,01'e yuvarlanması, `due = now + round(interval) gün`.
+- `schedule(card, grade, now, examDate)`, **Bilemedim** dalı: 10 dk sonra, `interval 0`, `ease = max(1.3, ease − 0.2)` **yuvarlanmadan**, `reps 0`, `reps > 0` ise `lapses + 1`. Bu dal `srs.ts` 35-43. satırlarda erken döner: aşağıdaki 0,01 yuvarlamasından ve sınav sınırından geçmez. Bu yüzden kayan nokta artığı olduğu gibi yazılır (ör. 2.3 − 0.2 = 2.0999999999999996). Kotlin'de de bu dalda yuvarlama yapılmaz.
+- **Zor / İyi / Kolay** dalları: formüller, sınav varken aralığın `max(1, floor(kalan gün / 2))` ile sınırlanması, ardından yalnızca bu üç dalda `interval`'ın 0,1'e, `ease`'in 0,01'e yuvarlanması, `due = now + round(interval) gün`.
 - **Yuvarlama tuzağı:** JavaScript'in `Math.round` ve Java'nın `Math.round` yarımı yukarı yuvarlar (2.5 → 3). Kotlin'in `kotlin.math.round` ise yarımı çifte yuvarlar (2.5 → 2). Kotlin'de **`kotlin.math.round` kullanılmaz**; `Math.round` (Java) kullanılır. Testle korunur.
 - `daysUntil`: cihazın **yerel** günleriyle (`LocalDate`), site gibi.
 - Yalnızca değişen sütunlar yazılır: tekrar sonrası kartta **yalnızca** `due, interval, ease, reps, lapses, updated_at` (iOS ile aynı). `front`/`back` gibi alanlar geri yazılmaz.
@@ -153,7 +171,8 @@ Bütün tablolarda satır güvenliği açık: herkes yalnızca kendi satırını
 
 - `notes.summary` ham JSON (`JsonObject`) olarak okunur. Uygulama yalnızca dokunduğu anahtarı değiştirir (`completedSteps`'e adım ekleme, `detailed`, `sourceChanged`), **diğer bütün alanları aynen geri yazar**.
   - **Kritik:** `summary`'yi bir Kotlin `data class`'ına çevirip geri yazmak, uygulamanın bilmediği alanları (`mnemonics`, `comparisons`, `checkedTerms`, `tags`, ileride eklenecekler) **siler**. Okumak için sınıf kullanılabilir; yazmak için hep ham JSON.
-- `notes.practice`: yalnızca `draft` ve `evaluation` alanları değişir, gerisi ham JSON.
+- `notes.practice` bir **dizidir** (`jsonb not null default '[]'`, `types.ts`'te `PracticeItem[]`) ve ham `JsonArray` olarak okunur. Anlat'ta bir cevap yazılınca **yalnızca o öğenin** (`id` ile bulunur) `draft` ve `evaluation` alanları değişir. O öğenin diğer alanları (`id`, `question`, `answer`, `hint` ve bilinmeyenler) ile dizideki diğer bütün öğeler **ham hâliyle, sırası bozulmadan** geri yazılır. Sitenin `store.tsx`'i de böyle yapıyor (`{ ...p, ...patch }`). Dizi bir Kotlin listesine çevrilip yeniden kurulmaz.
+- `notes.questions` da bir **dizidir** (`jsonb not null default '[]'`, `Question[]`) ve ham `JsonArray` olarak okunur. Uygulama bu alanı **yalnızca not hazırlanırken** yazar (`study` görevinin sonucu, "yeniden hazırla" dahil). Site de yalnızca burada ve paylaşılan dersi eklerken oluşan yeni notta yazıyor. Test çözmek ya da yanlışları karta çevirmek `questions`'a dokunmaz; sonuçlar `quiz_attempts`'e gider.
 - `completedSteps` değerleri: `tanis`, `anla`, `pekistir`, `sina`, `anlat`. Ekleme, var olanı silmeden ve tekrar etmeden.
 - **LaTeX kaçışı:** Modeller JSON içine `\sqrt`, `\in` gibi tek ters eğik çizgiyle LaTeX yazıyor. Sunucu bunu `repairLatexEscapes` (`src/lib/ai/tasks.ts`) ile onarıp geçerli JSON döndürüyor; yani uygulamaya gelen `/api/generate` cevabı zaten geçerli JSON. Uygulamanın kuralı: **JSON'u asla elle metin birleştirerek kurmamak**, her zaman kotlinx.serialization ile kodlamak (ters eğik çizgi doğru kaçar). Kotlin testlerinde de `"\\frac"` gibi yazmaya dikkat. Yapay zekânın ham metnini uygulama kendisi ayrıştırırsa (şu an yok) aynı onarım uygulanmalı.
 
@@ -172,6 +191,7 @@ Bütün tablolarda satır güvenliği açık: herkes yalnızca kendi satırını
 - Hedef = Ayarlar'daki günlük kart hedefi (varsayılan **15**; kayıtlı eski 20 de 15 sayılır). "Biraz daha" **+10** (cihazda, yalnızca bugün için).
 - Bugünkü ilerleme = `study_days.reviews` (bugünün satırı). Günde en fazla **5 yeni** kart (`MAX_NEW_PER_DAY`), sayaç `study_days.new_cards`.
 - Yeni kart = `reps 0 && lapses 0 && ease 2.5`. Bilinemeyen = `lapses > 0` ya da (`reps 0` ve yeni değil).
+- **Kuyruğa yalnızca zamanı gelmiş kartlar aday olur** (`isDue`: `due <= şimdi`). `dailyReview.ts` 68. satır önce `isDue` ile süzer, sonra sıralar. Zamanı gelmemiş bir kart, yeni olsa bile, "Biraz daha" ile de kuyruğa girmez.
 - Yeni kart yalnızca notu "hazır" ise girer: notun `completedSteps`'inde `tanis` ya da `anla` var, **ya da** o nota ait en az bir `quiz_attempts` satırı var, **ya da** kartın notu yok / notu silinmiş. Bir kez cevaplanmış kart, notu ne durumda olursa olsun zamanı gelince gelir.
 - Sıra: (a) en yakın sınavı olan dersin kartları (sınavsız en sona; `examDateForCard`), (b) bilinemeyenler önce, (c) en çok gecikmiş (`due` en eski), (d) en sonda yeni kartlar (5 sınırıyla). Oturum hedefte durur.
 - Ekranda **toplam kart sayısı yok**; "Bugünkü hedef x/15" ve ders bazında hazırlık (`examReadiness`). "Bilemedim" denen kart oturumun sonuna döner.
@@ -194,7 +214,7 @@ Bütün tablolarda satır güvenliği açık: herkes yalnızca kendi satırını
 
 - [ ] Yazılan her sütun `schema.sql`'de var ve kısıtlarına uyuyor (uzunluk, aralık, `score ≤ total`).
 - [ ] Yalnızca değişen sütunlar yazılıyor (özellikle `cards`).
-- [ ] `summary` / `practice` ham JSON olarak okunup geri yazılıyor; bilinmeyen alanlar duruyor.
+- [ ] `summary` (`JsonObject`) ve `practice` (`JsonArray`) ham JSON olarak okunup geri yazılıyor ve bilinmeyen alanlar duruyor. `practice`'te yalnızca değişen öğenin `draft`/`evaluation`'ı değişiyor. `questions`'a yalnızca not hazırlanırken yazılıyor.
 - [ ] `study_days`'e doğrudan yazma yok; yalnızca `bump_study_day`.
 - [ ] Gün hesabı cihazın yerel günü; tarih biçimi `toISOString()` ile aynı.
 - [ ] SRS ve günlük kuyruk sitenin test örneklerini birebir geçiyor (yuvarlama dahil).
@@ -256,6 +276,7 @@ Not: Google'ın "her girişte e-posta" sorunu (iOS'ta görüldü) Credential Man
 
 - **Şimdilik Android'de satış yok.** Uygulamada Premium satın alma düğmesi, fiyat, "Premium al" yönlendirmesi yok.
 - Google'ın kuralı: uygulama içinde dijital bir özellik satılacaksa **Google Play Billing zorunlu**. Uygulamada **Shopier'e, siteye satın almaya ya da Premium koduna yönlendirme yok**: bağlantı, düğme, "sitede daha ucuz" gibi metin de yok. "Premium kodu gir" ekranı da konmaz.
+- **Uygulamanın açtığı site sayfaları** (gizlilik, koşullar, hesap silme, şifre yenileme, yardım vb.) her zaman adresin sonuna **`?app=android`** eklenerek açılır; adreste zaten `?` varsa `&app=android`. Site bu modda satış bağlantılarını (Premium al, Shopier, Premium kodu) gizler (bu turda site rolü yapıyor). Kural tek yerde durur, `Config.siteUrl(path)` yardımcısında; adres elle yazılmaz.
 - Sitede Premium almış biri uygulamada giriş yaptığında Premium'u sunucu tanır (`/api/generate` kotası hesaba göre); uygulama `ai_quota().premium_until`'i yalnızca "Premium açık" diye gösterebilir. Bunun Google'ın "başka yerde alınmış içeriğe erişim" kuralına uyduğu **Play Console'daki Payments politikasında kontrol edilmeli.**
 - İleride satış istenirse gerekenler:
   - Uygulamada Play Billing Library ile abonelik / tek seferlik ürün, satın almada `obfuscatedAccountId` = Supabase kullanıcı kimliği.
@@ -277,16 +298,25 @@ Pratik ipucu: 12 kişi az değil. Arkadaş/sınıf listesi (Gmail adresleri) ba�
 |---|---|---|
 | Hafta 0 (gün 0-3) | Play Console hesabını aç, 25 USD öde, kimlik doğrulamasını başlat; Android Studio'yu kur (bölüm 10) | Kullanıcı |
 | Hafta 0 | Google Cloud'da debug Android istemcisi (bölüm 7) | Kullanıcı |
-| Hafta 1-2 (gün 1-14) | Adım 0-6 ve 12 (iskelet, giriş, dersler, özet, Tekrar, test, not ekleme, hesap silme) | Android Claude'u |
-| Gün ~10 | Play Console'da uygulama kaydı (`fun.studymode.app`), mağaza bilgileri taslağı, gizlilik politikası adresi, Data safety, hesap silme adresi, içerik derecelendirme, hedef kitle (yaş), "uygulama erişimi" (inceleme için test hesabı bilgisi Play Console'a girilir, sohbete değil) | Kullanıcı |
+| Hafta 1-2 (gün 1-14) | Adım 0-6, 12 ve 12b (iskelet, giriş, dersler, özet, Tekrar, test, not ekleme, hesap silme, "Cevabı bildir") | Android Claude'u |
+| Gün ~10 | Play Console'da uygulama kaydı (`fun.studymode.app`), mağaza bilgileri taslağı, gizlilik politikası adresi, Data safety, hesap silme adresi (`https://studymode.fun/hesap-sil`), içerik derecelendirme, hedef kitle (yaş; öneri "13 yaş ve üstü"), "uygulama erişimi" (inceleme için test hesabı bilgisi Play Console'a girilir, sohbete değil) | Kullanıcı |
 | Gün ~14 | İlk imzalı paket (AAB) → **Closed testing** kanalı; test listesine 15-20 Gmail adresi; katılım bağlantısını paylaş | Kullanıcı (Claude adımları yazar) |
 | Gün 14-28 | **14 günlük kapalı test.** Bu sürede adım 7-11 eklenir, testçilere güncellemeler gider (güncelleme göndermek iyi bir işaret sayılıyor) | Claude + testçiler |
 | Gün ~29 | Üretime erişim başvurusu (Play Console → Dashboard → "Apply for production") | Kullanıcı |
 | Gün ~30-37 | Google incelemesi; onaylanınca üretim sürümü gönderilir, o da incelenir | Google |
 
 **Mağaza için gerekenler:**
-- **Data safety formu:** toplanan veriler (e-posta, ad, kullanıcının notları/fotoğrafları/PDF'leri — yapay zekâya gönderiliyor —, çalışma istatistikleri, uygulama içi geri bildirim), şifreli aktarım (evet, HTTPS), hesap ve veri silinebilir (evet). Yapay zekâ işleyicisi (Google Gemini, Vercel üzerinden) gizlilik politikasında yazmalı.
-- **Hesap silme:** Uygulamada hesap açılabildiği için (1) uygulama içinden silme (adım 12) ve (2) Data safety formunda **web'den silme isteği bağlantısı** şart. Bu bağlantı **studymode.fun üzerinde**, giriş yapmadan da ne yapılacağını anlatan bir sayfa olmalı (ör. "giriş yap → Ayarlar → Hesabı sil" ya da e-postayla istek). Sitede böyle herkese açık bir sayfa var mı, yoksa site Claude'u mu ekleyecek — yöneticiye soruldu (bölüm 11). *(Bağlantının giriş istemeden açılması gerektiğini **Play Console'da kontrol et**.)*
+- **Data safety formu.** Toplanan veriler:
+  - e-posta ve ad;
+  - **eğitim bilgisi** (`user_metadata.education`: seviye, **okul ve bölüm**, sınıf), "Seni tanıyalım" ekranında girilir;
+  - kullanıcının notları, fotoğrafları, PDF'leri ve Office dosyaları (yapay zekâya gönderilir);
+  - çalışma istatistikleri ve başarımlar;
+  - uygulama içi geri bildirim ve "Cevabı bildir" (cihaz modeli ve Android sürümü dahil, `feedback.device`);
+  - **Cloudflare Turnstile'ın topladığı cihaz bilgisi**: bot doğrulaması için tarayıcı ve cihaz sinyalleri ile IP. Amacı güvenlik ve dolandırıcılığı önlemek; veriyi Cloudflare hizmet sağlayıcı olarak işler.
+  - Aktarım şifreli mi: evet (HTTPS). Hesap ve veri silinebilir mi: evet. Gizlilik politikasında yapay zekâ işleyicisi (Google Gemini, Vercel üzerinden) ve Cloudflare yazmalı.
+- **Üretken yapay zekâ kuralı** (Google Play "AI-Generated Content" politikası): yapay zekâyla içerik üreten uygulamada kullanıcı rahatsız edici ya da zararlı bir cevabı **uygulamadan çıkmadan, içeriden** bildirebilmeli. Karşılığı adım 12b ("Cevabı bildir" → `feedback`). Bildirimler düzenli okunmalı; bu kullanıcının işi: Supabase'de `feedback` tablosunda `message`'ı "[YZ cevabı]" ile başlayan satırlar. *(Politikanın güncel metnini **Play Console'da kontrol et**.)*
+- **Hedef kitle ve yaş (karar bekliyor):** LGS öğrencileri 13-14 yaşında. Play Console → **App content → Target audience and content** formunda 13 yaş altı bir grup seçilirse **Aileler (Families) politikası** devreye girer: reklam ve SDK kısıtları, ek inceleme, girişte ek şartlar gibi. **Öneri: "13 yaş ve üstü"** (13-15, 16-17, 18+) seçmek; uygulama ve mağaza metni 13 yaş altını hedeflememeli. Karar kullanıcıda (bölüm 11, soru 6).
+- **Hesap silme:** Uygulamada hesap açılabildiği için iki yol şart: (1) uygulama içinden silme (adım 12), (2) Data safety formunda **web'den silme isteği bağlantısı**. Bağlantı **`https://studymode.fun/hesap-sil`**: giriş istemeden açılan, nasıl silineceğini anlatan sayfa (bu turda site rolü ekliyor). Uygulamada Ayarlar → Hakkında'da da bu adres gösterilir (`?app=android` ile, bölüm 8). *(Bağlantının giriş istemeden açılması gerektiğini **Play Console'da kontrol et**.)*
 - **Gizlilik politikası:** `https://studymode.fun` üzerindeki gizlilik sayfası; Android uygulaması ve Google ile giriş anılmalı (site işi).
 - **Hedef API seviyesi:** Yeni uygulamalar ve güncellemeler, en son Android sürümünden en fazla bir yıl geride bir API seviyesini hedeflemeli (her yıl ağustos sonunda yükselir). Proje Android Studio'nun önerdiği en yeni `targetSdk` ile açılır. *(Bugünkü zorunlu sayıyı **Play Console'da kontrol et**.)*
 - Uygulama paketi biçimi AAB; **Play App Signing** açık (Google imza anahtarını tutar, kullanıcı yalnızca "upload key"i saklar; bu dosya ve şifresi **repoya ve sohbete girmez**).
@@ -324,12 +354,15 @@ Pratik ipucu: 12 kişi az değil. Arkadaş/sınıf listesi (Gmail adresleri) ba�
 1. Android telefonun var mı (marka/model)? Yoksa ilk denemeler yalnızca emülatörde olur; kapalı test öncesi gerçek cihaz şart değil ama iyi olur.
 2. Play Console hesabı kişisel mi açılacak (önerilen), yoksa ileride şirket kurmayı düşünüyor musun? (Kuruluş hesabında 12 kişi/14 gün şartı yok ama D-U-N-S numarası gerekiyor.)
 3. Kapalı test için 12+ kişilik bir liste (Gmail adresleri) toplayabilir misin?
-4. İlk sürüme Mola ve Çalışma fişi girsin mi, yoksa mağazadan sonraya mı kalsın (adım 13)?
+4. ~~İlk sürüme Mola ve Çalışma fişi girsin mi?~~ **Cevaplandı:** girmeyecek, sonraki sürüm (adım 13).
 5. Uygulamada Premium durumu ("Premium açık") hiç gösterilmesin mi, yalnızca gösterilsin mi? (Satış yok, bu kesin.)
+6. **Hedef kitle:** Play Console'daki hedef kitle formunda "13 yaş ve üstü" seçilsin mi (öneri)? 13 yaş altı seçilirse Aileler politikası devreye girer (bölüm 9).
+7. "Cevabı bildir" için `feedback.kind`'a ayrı bir değer (ör. `'yz'`) eklensin mi (şema değişikliği, site işi), yoksa `'hata'` + `[YZ cevabı]` öneki yeterli mi (bölüm 5.1)?
 
 **Yöneticiye / site tarafına (docs/ANDROID_SYNC.md'ye yazılması için)**
 - `docs/ANDROID_SYNC.md` dosyası henüz yok; site tarafında açılması gerekiyor (rol tarifi böyle diyor).
-- Google Play için **giriş istemeyen bir hesap silme sayfası** (ör. `https://studymode.fun/hesap-sil`): nasıl silineceğini anlatsın, giriş yapınca Ayarlar → Hesabı sil'e götürsün.
+- Google Play için **giriş istemeyen hesap silme sayfası** `https://studymode.fun/hesap-sil`: bu turda site rolü yapıyor.
+- Sitenin `?app=android` modu (satış bağlantılarını gizler): bu turda site rolü yapıyor.
 - Gizlilik sayfasına Android uygulaması ve Google Play'in eklenmesi.
 - İleride: `/.well-known/assetlinks.json` (`/paylas/*` bağlantıları için, Play imza SHA-256'sı gelince).
 
@@ -362,3 +395,34 @@ Pratik ipucu: 12 kişi az değil. Arkadaş/sınıf listesi (Gmail adresleri) ba�
 ### Sıradaki
 - Kullanıcı: Android Studio'yu kur (bölüm 10), Play Console hesabını aç ve kimlik doğrulamasını başlat (bölüm 9), Google Cloud'da debug Android istemcisini oluştur (bölüm 7; SHA-1 için önce Studio kurulmalı), kapalı test listesini toplamaya başla.
 - Android Claude'u: adım 0 (proje iskeleti) → adım 1 (giriş + Turnstile).
+
+---
+
+### Tur 2 (28 Kasım 2026)
+
+#### Yapılan
+- Plan, kalite kontrolün ve kullanıcının notlarıyla düzeltildi (kod yok):
+  - `notes.practice` ve `notes.questions` dizi (`JsonArray`) olarak düzeltildi (bölüm 4, 5.1, 5.3, 5.8). `practice`'te yalnızca değişen öğenin `draft`/`evaluation`'ı değişir, gerisi ham yazılır. `questions` yalnızca not hazırlanırken yazılır.
+  - SRS "Bilemedim" dalında `ease` yuvarlanmıyor, sınav sınırı da yok (bölüm 5.2, `srs.ts` 35-43).
+  - "Tablolarda varsayılan id yok" düzeltildi: `course_shares` ve `feedback`'te `default gen_random_uuid()` var. İki tablonun sütunları `schema.sql`'den yazıldı (5.1).
+  - Günlük kuyruğa yalnızca `isDue` kartların aday olduğu yazıldı (5.5, `dailyReview.ts` 68).
+  - Google Play üretken yapay zekâ kuralı eklendi: adım 12b "Cevabı bildir" → `feedback` (`kind 'hata'` + `[YZ cevabı]` öneki), satır biçimi 5.1'de, kural bölüm 9'da.
+  - Hedef kitle ve yaş bölümü eklendi (öneri "13 yaş ve üstü", soru 6).
+  - Data safety'ye `user_metadata.education` (okul, bölüm) ve Turnstile'ın cihaz bilgisi eklendi.
+  - Mola + Çalışma fişi "sonraki sürüm" oldu (adım 13, soru 4 cevaplandı).
+  - Planın başına "site ile uygulama eşit, hiçbir şey silinerek çözülmez" kuralı, bölüm 3'ün sonuna "ilk sürümden sonra eşitlik sırası" eklendi. Eski "bilerek yok" listesinden VIP mini oyunları ve kendi yapay zekâ anahtarı çıkarılıp sıraya alındı.
+  - `?app=android` kuralı (bölüm 8, `Config.siteUrl`) ve hesap silme adresi `https://studymode.fun/hesap-sil` (bölüm 9, 11).
+- Adım 0 **yapılmadı**: bu makinede JDK yok (`java -version` → "Unable to locate a Java Runtime"), `~/Library/Android/sdk` yok, `/Applications/Android Studio.app` yok. **Android Studio kurulmadan Adım 0 doğrulanamaz**; derlenemeyen iskelet commit'lenmedi.
+
+#### Kararlar
+- "Cevabı bildir" mevcut `feedback` tablosuna şema değişikliği olmadan yazılır (`kind = 'hata'`); ayrı bir `kind` istenirse site işi.
+- "Cevabı bildir" ilk sürüme girer (mağaza şartı); Mola ve fiş girmez.
+- Site sayfaları yalnızca `Config.siteUrl()` ile, `?app=android` ekli açılır.
+
+#### İşe yaramayan
+- Adım 0 için derleme ortamı yok (JDK, Android SDK ve Android Studio eksik). Kod yazılmadı.
+
+#### Sıradaki
+- Kullanıcı: Android Studio'yu kur (bölüm 10). Kurulunca `java` için Studio'nun JDK'sı (`/Applications/Android Studio.app/Contents/jbr`) ve `~/Library/Android/sdk` hazır olur; Android Claude'u Adım 0'ı o zaman yapar ve `./gradlew assembleDebug` ile doğrular.
+- Kullanıcı: soru 6 (hedef kitle) ve soru 7 (`feedback.kind`) cevapları.
+- Android Claude'u: Adım 0 → Adım 1.
