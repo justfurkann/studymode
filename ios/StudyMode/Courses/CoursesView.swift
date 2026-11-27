@@ -188,9 +188,9 @@ struct CoursesView: View {
 
     private var dailyReview: some View {
         let queue = store.todayQueue
-        let done = min(ReviewRules.dailyGoal, store.reviewsToday)
+        let done = min(store.dailyGoal, store.reviewsToday)
         let reached = store.goalLeft == 0
-        let fraction = CGFloat(done) / CGFloat(max(ReviewRules.dailyGoal, 1))
+        let fraction = CGFloat(done) / CGFloat(max(store.dailyGoal, 1))
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
@@ -216,7 +216,7 @@ struct CoursesView: View {
                         .foregroundStyle(.white)
                         .contentTransition(.numericText(value: Double(queue.count)))
 
-                    Text("Günlük hedef · \(done) / \(ReviewRules.dailyGoal) kart")
+                    Text("Günlük hedef · \(done) / \(store.dailyGoal) kart")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.78))
                 }

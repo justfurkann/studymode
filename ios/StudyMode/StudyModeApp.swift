@@ -6,6 +6,8 @@ struct StudyModeApp: App {
     /// One bot check for the whole app, started at launch so a token is ready by sign-up.
     @State private var captcha = CaptchaController()
     @Environment(\.colorScheme) private var scheme
+    /// Ayarlar → Görünüm: "system", "light" or "dark" (the site's theme setting).
+    @AppStorage(AppTheme.key) private var theme = AppTheme.system.rawValue
 
     var body: some Scene {
         WindowGroup {
@@ -13,6 +15,7 @@ struct StudyModeApp: App {
                 .environment(auth)
                 .environment(captcha)
                 .tint(Theme.accent)
+                .preferredColorScheme(AppTheme(rawValue: theme)?.scheme)
                 .onAppear { captcha.start(dark: scheme == .dark) }
         }
     }

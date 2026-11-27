@@ -37,7 +37,7 @@ struct ReviewTab: View {
     // MARK: Today's goal
 
     private var goalCard: some View {
-        let goal = ReviewRules.dailyGoal
+        let goal = store.dailyGoal
         let done = min(goal, store.reviewsToday)
         let queue = store.todayQueue
         let reached = store.goalLeft == 0

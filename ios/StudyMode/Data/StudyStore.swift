@@ -20,6 +20,10 @@ final class StudyStore {
     /// New cards started today, from study_days.new_cards; nil while that column does not exist yet.
     var serverNewToday: Int?
     var audience: ExamAudience = .uni
+    /// Cards in the daily session (Ayarlar → Günlük kart hedefi), kept on this device.
+    var dailyGoal: Int = ReviewRules.dailyGoal {
+        didSet { UserDefaults.standard.set(ReviewRules.clampGoal(dailyGoal), forKey: ReviewRules.goalKey) }
+    }
     /// Shown as a banner when a save fails; the screen clears it.
     var saveError: String?
     private var writes: Task<Void, Never>?

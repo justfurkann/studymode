@@ -3,8 +3,18 @@ import Foundation
 /// The new Tekrar (docs/IOS_SYNC.md, "Ortak kural: yeni Tekrar"): one daily session with a goal,
 /// a cap on new cards, and only cards the student has met. The schedule itself (SRS) is unchanged.
 enum ReviewRules {
-    /// Cards in the daily session (~5 minutes). A guess, to be tuned after real use.
-    static let dailyGoal = 15
+    /// Default cards in the daily session (~5 minutes), DEFAULT_DAILY_GOAL on the site. The student
+    /// can change it in Ayarlar (StudyStore.dailyGoal), kept on this device like the site's setting.
+    static let defaultDailyGoal = 15
+    static let goalKey = "studymode.dailyGoal"
+
+    /// clampDailyGoal: 1...500.
+    static func clampGoal(_ value: Int) -> Int { min(500, max(1, value)) }
+
+    static var dailyGoal: Int {
+        let saved = UserDefaults.standard.integer(forKey: goalKey)
+        return saved > 0 ? clampGoal(saved) : defaultDailyGoal
+    }
     /// New cards that may start per day. Also a guess.
     static let newPerDay = 5
     /// "Biraz daha" adds this many.
@@ -33,7 +43,7 @@ extension StudyStore {
 
     var newLeftToday: Int { max(0, ReviewRules.newPerDay - newToday) }
 
-    var goalLeft: Int { max(0, ReviewRules.dailyGoal - reviewsToday) }
+    var goalLeft: Int { max(0, dailyGoal - reviewsToday) }
 
     /// Days in a row with any study, ending today or yesterday (the site's streak idea).
     var streak: Int {
@@ -128,7 +138,7 @@ extension StudyStore {
         let eligible = cards.filter { isEligible($0) }
         let due = eligible.filter { !$0.isNew && $0.dueDate < end }.count
         let fresh = min(ReviewRules.newPerDay, eligible.filter(\.isNew).count)
-        return min(ReviewRules.dailyGoal, due + fresh)
+        return min(dailyGoal, due + fresh)
     }
 
     /// Courses with notes, nearest exam first, for "Derslere göre hazırlık".

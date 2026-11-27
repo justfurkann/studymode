@@ -88,6 +88,18 @@ final class AuthModel {
         }
     }
 
+    /// Ayarlar → Okulun: changes only education.level, keeping the other answers the site stored.
+    func setEducationLevel(_ level: StudentLevel) async throws {
+        var education: [String: AnyJSON] = [:]
+        if case let .object(existing)? = session?.user.userMetadata["education"] { education = existing }
+        education["level"] = .string(level.rawValue)
+        education["v"] = .integer(2)
+        education["at"] = .string(ISO.string(.now))
+        for key in ["school", "department", "classYear"] where education[key] == nil { education[key] = .string("") }
+        let user = try await supabase.auth.update(user: UserAttributes(data: ["education": .object(education)]))
+        session?.user = user
+    }
+
     func signIn(email: String, password: String, captcha: String?) async throws {
         try await supabase.auth.signIn(email: email, password: password, captchaToken: captcha)
     }

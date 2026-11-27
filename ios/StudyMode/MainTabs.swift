@@ -111,6 +111,14 @@ struct AccountView: View {
                         .buttonStyle(SecondaryButtonStyle())
                         .staggeredAppear(1)
 
+                        NavigationLink {
+                            SettingsView()
+                        } label: {
+                            Label("Ayarlar", systemImage: "gearshape")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .staggeredAppear(1)
+
                         Link(destination: Config.siteURL) {
                             Label("studymode.fun'u aç", systemImage: "safari")
                         }
