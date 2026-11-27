@@ -1,87 +1,95 @@
 import SwiftUI
 
-/// The Fosfor on the main screens (Bugün, Tekrar, Sınavlar, Hesap): tap it to open the assistant.
-/// Floats a witty speech bubble *above* Fosfor's head so it never covers card text to the left.
-struct TalkingFosfor: View {
+enum FosforScreen: String {
+    case desk, review, exam, account
+
+    var lines: [String] {
+        switch self {
+        case .desk: [
+            "Ben fosforluyum. Sen daha parlaksın.",
+            "Defteri aç, dramatik müzik benden.",
+            "Bugün hangi satırın altını çiziyoruz?",
+            "Kalem kutusunda mesai başladı.",
+            "Boş sayfayla bakıştık. İlk o kırptı.",
+            "Kapağımı buldum. Başlayabiliriz."
+        ]
+        case .review: [
+            "Cevap dilinin ucunda mı? Kartı çevir.",
+            "Bu kartı bir yerden gözüm ısırıyor.",
+            "Beynin «tanışıyoruz» dedi. Bakalım.",
+            "Kartı çevir. Ben gözlerimi kapattım.",
+            "Unuttuysan iyi ki bugün karşılaştık.",
+            "Hafıza yoklaması. Ben: burada!"
+        ]
+        case .exam: [
+            "«Kesin çıkar» diyen kalem ben değilim.",
+            "Sınav kâğıdını görünce beni tanımazdan gel.",
+            "Optik formda beni kullanma, yeter.",
+            "Silgi de geldi. Moral desteğiymiş.",
+            "Formülle aranız nasıl? Arayı yaparım.",
+            "Bu masada panik en arka sırada."
+        ]
+        case .account: [
+            "Profil fotoğrafımda kapağım yamuk mu?",
+            "Buraya imza atardım. Fosforlu olurdu.",
+            "Adımı kaydederken soyadım Kalem olsun.",
+            "Hesap sende. Kalem kutusu bende.",
+            "Vesikalıkta da böyle sarı çıktım.",
+            "Benim ayarım fabrikadan fosforlu."
+        ]
+        }
+    }
+
+    func drawLine() -> String {
+        let key = "fosfor.remaining." + rawValue
+        let previous = UserDefaults.standard.string(forKey: key + ".last")
+        var bag = (UserDefaults.standard.stringArray(forKey: key) ?? []).filter(lines.contains)
+        if bag.isEmpty {
+            bag = lines.shuffled()
+            if bag.count > 1 && bag.last == previous { bag.swapAt(0, bag.count - 1) }
+        }
+        let line = bag.removeLast()
+        UserDefaults.standard.set(bag, forKey: key)
+        UserDefaults.standard.set(line, forKey: key + ".last")
+        return line
+    }
+}
+
+/// The bubble takes a real row above the mascot. The card title and actions keep their own space.
+struct TalkingFosfor<Content: View>: View {
     @Environment(AssistantPlace.self) private var place
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let screen: FosforScreen
     var size: CGFloat = 54
     var mood: FosforMascotView.Mood = .curious
     var onDark = false
-
-    @State private var line: String?
-
-    private static let lines = [
-        "Bana dokun, soru sor!",
-        "Notlar birikmiş sanki... bir el atayım mı?",
-        "Vizeye son gece çalışmıyoruz dimi? Dimi?!",
-        "Kahveni aldıysan başlayalım, ben hazırım.",
-        "Hoca kesin sorar dediğin yeri bana sor.",
-        "Ezberlemekten beynin yandıysa basitçe anlatayım.",
-        "Ben uyumuyorum, gece 3'te de sorabilirsin.",
-        "Kopya yok ama benden ipucu almak serbest.",
-        "Bu konuyu 5 yaşındaki çocuğa anlatır gibi anlatayım mı?",
-        "Sınavda ne çıkabilir, tahmin edelim mi?",
-        "Şu formül gözünü korkutmasın, dokun halledelim.",
-        "Kafan karıştıysa tıkla, düğümü çözelim.",
-        "Sıkıldıysan beni dürt, sana bir soru sorayım.",
-        "Not uzun diye erteleme, beraber bölelim.",
-        "Unutma eğrisi peşimizde, kaçmadan tekrar yapalım!",
-        "İki dakikada özet geçeyim, kafa rahat etsin.",
-        "Takıldığın tek bir cümle bile olsa bana at.",
-        "Bugün hedefi eritirsek kralsın.",
-    ]
-
-    private static let lastLineKey = "studymode.fosforLastLine"
+    @ViewBuilder let content: () -> Content
+    @State private var line = ""
 
     var body: some View {
-        FosforMascotView(size: size, mood: mood, onDark: onDark, tappable: false)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                OnboardingHaptics.light()
-                withAnimation { line = nil }
-                place.show(course: nil, note: nil)
+        VStack(alignment: .trailing, spacing: 2) {
+            Button(action: ask) {
+                SpeechBubble(text: line, tailTrailingOffset: size / 2 - 6)
             }
-            .overlay(alignment: .topTrailing) {
-                if let line {
-                    SpeechBubble(text: line, tailTrailingOffset: max(12, size * 0.42))
-                        .frame(maxWidth: 210, alignment: .trailing)
-                        .fixedSize(horizontal: false, vertical: true)
-                        // Floats right above Fosfor's cap so it never overlaps text on the left.
-                        .alignmentGuide(.top) { d in d[.bottom] + 6 }
-                        .transition(.scale(scale: 0.65, anchor: .bottomTrailing).combined(with: .opacity))
-                        .onTapGesture {
-                            OnboardingHaptics.light()
-                            withAnimation { self.line = nil }
-                            place.show(course: nil, note: nil)
-                        }
-                        .accessibilityHidden(true)
+            .buttonStyle(.plain)
+            .accessibilityHidden(true)
+
+            HStack(alignment: .top, spacing: 8) {
+                content()
+                Spacer(minLength: 0)
+                Button(action: ask) {
+                    FosforMascotView(size: size, mood: mood, onDark: onDark, tappable: false)
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Fosfor’a sor")
+                .accessibilityHint(Text(line))
             }
-            .zIndex(20)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Fosfor'a sor")
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { place.show(course: nil, note: nil) }
-            .task {
-                try? await Task.sleep(for: .milliseconds(850))
-                guard !Task.isCancelled else { return }
-                let picked = Self.nextLine()
-                withAnimation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.72)) {
-                    line = picked
-                }
-                try? await Task.sleep(for: .seconds(4.6))
-                guard !Task.isCancelled else { return }
-                withAnimation(.easeOut(duration: 0.25)) { line = nil }
-            }
+        }
+        .onAppear { line = screen.drawLine() }
     }
 
-    private static func nextLine() -> String {
-        let last = UserDefaults.standard.integer(forKey: lastLineKey)
-        var idx = Int.random(in: 0..<lines.count)
-        if idx == last { idx = (idx + 1) % lines.count }
-        UserDefaults.standard.set(idx, forKey: lastLineKey)
-        return lines[idx]
+    private func ask() {
+        OnboardingHaptics.light()
+        place.show(course: nil, note: nil)
     }
 }
 
@@ -96,7 +104,7 @@ private struct SpeechBubble: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.text)
                 .multilineTextAlignment(.leading)
-                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 11)
                 .padding(.vertical, 8)
                 .background(Theme.surface, in: RoundedRectangle(cornerRadius: 13, style: .continuous))

@@ -193,7 +193,9 @@ struct CoursesView: View {
         let fraction = CGFloat(done) / CGFloat(max(store.dailyGoal, 1))
 
         return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
+            TalkingFosfor(screen: .desk, size: 54,
+                    mood: reached ? .cheering : (queue.isEmpty ? .proud : .marking),
+                    onDark: true) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Label("Bugünkü tekrar", systemImage: "rectangle.stack.fill")
@@ -220,14 +222,6 @@ struct CoursesView: View {
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.78))
                 }
-
-                Spacer(minLength: 8)
-
-                TalkingFosfor(
-                    size: 54,
-                    mood: reached ? .cheering : (queue.isEmpty ? .proud : .marking),
-                    onDark: true
-                )
             }
 
             // Crisp neon progress bar on dark navy hero surface
