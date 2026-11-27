@@ -114,9 +114,7 @@ struct ExamsHubTab: View {
         let readiness = store.readiness(for: exam)
 
         return VStack(alignment: .leading, spacing: 14) {
-            TalkingFosfor(screen: .exam, size: 52,
-                    mood: (readiness ?? 0) >= 75 ? .cheering : .marking,
-                    onDark: true) {
+            HeaderRow {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Circle().fill(course.tint).frame(width: 8, height: 8)
@@ -187,7 +185,7 @@ struct ExamsHubTab: View {
 
     private var emptyCalendarHero: some View {
         VStack(alignment: .leading, spacing: 14) {
-            TalkingFosfor(screen: .exam, size: 52, mood: .curious) {
+            HeaderRow {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Text("Sınav")

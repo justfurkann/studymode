@@ -69,18 +69,10 @@ struct StudyLoadingStage: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Group {
-                if let fosforScreen {
-                    TalkingFosfor(screen: fosforScreen, size: 46, mood: .marking) {
-                        loadingLabel
-                    }
-                } else {
-                    HStack(spacing: 12) {
-                        FosforMascotView(size: 46, mood: .marking)
-                        loadingLabel
-                        Spacer()
-                    }
-                }
+            HStack(spacing: 12) {
+                FosforMascotView(size: 46, mood: .marking)
+                loadingLabel
+                Spacer()
             }
             .padding(.horizontal, 4)
 

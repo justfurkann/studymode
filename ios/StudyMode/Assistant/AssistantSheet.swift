@@ -7,7 +7,9 @@ struct AssistantSheet: View {
     @Environment(StudyStore.self) private var store
     @Environment(AssistantPlace.self) private var place
     @Environment(\.dismiss) private var dismiss
-
+    /// Fosfor's own tab: a general chat that starts with no course, a big Fosfor on top, no close
+    /// button, and it never takes the questions sent from a note (the sheet over the note does).
+    var inTab = false
     @State private var courseId: UUID?
     @State private var noteId: UUID?
     @State private var messages: [ChatMessage] = []
@@ -54,19 +56,27 @@ struct AssistantSheet: View {
         }
         .background(Theme.bg)
         .onAppear {
+            if inTab {
+                // Keep the course picked here; reload in case the sheet over a note added messages.
+                messages = Assistant.load(course: courseId)
+                return
+            }
             courseId = place.courseId
             noteId = place.noteId
             messages = Assistant.load(course: courseId)
             takePending()
         }
-        .onChange(of: place.pending) { takePending() }
+        .onChange(of: place.pending) { if !inTab { takePending() } }
     }
 
     // MARK: Header
 
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
-            FosforMascotView(size: 40, mood: busy ? .thinking : .curious, tappable: false)
+            // In the tab the big Fosfor below is enough; one Fosfor per screen.
+            if !inTab {
+                FosforMascotView(size: 40, mood: busy ? .thinking : .curious, tappable: false)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Fosfor")
                     .font(Theme.display(.title3))
@@ -82,7 +92,9 @@ struct AssistantSheet: View {
                 }
                 .disabled(busy)
             }
-            iconButton("xmark", label: "Kapat") { dismiss() }
+            if !inTab {
+                iconButton("xmark", label: "Kapat") { dismiss() }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 18)
@@ -133,6 +145,7 @@ struct AssistantSheet: View {
 
     private var welcome: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if inTab { FosforHero() }
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Text("Takıldığın yeri")

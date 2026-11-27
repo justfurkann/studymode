@@ -21,6 +21,8 @@ struct MainTabs: View {
             ReviewTab()
                 .tabItem { Label("Tekrar", systemImage: "rectangle.stack") }
                 .badge(store.status == .ready ? min(store.goalLeft, store.todayQueue.count) : 0)
+            AssistantSheet(inTab: true)
+                .tabItem { Label("Fosfor", systemImage: "highlighter") }
             ExamsHubTab()
                 .tabItem { Label("Sınavlar", systemImage: "calendar.badge.clock") }
             AccountView()
@@ -80,7 +82,7 @@ struct AccountView: View {
                 GridPaper()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        TalkingFosfor(screen: .account, size: 52, mood: .proud) {
+                        HeaderRow {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(auth.displayName.isEmpty ? "Hesabın" : auth.displayName)
                                     .font(Theme.display(.title2))

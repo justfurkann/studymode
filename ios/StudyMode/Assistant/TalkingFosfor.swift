@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum FosforScreen: String {
+enum FosforScreen: String, CaseIterable {
     case desk, review, exam, account
 
     var lines: [String] {
@@ -55,64 +55,63 @@ enum FosforScreen: String {
     }
 }
 
-/// The bubble takes a real row above the mascot. The card title and actions keep their own space.
-struct TalkingFosfor<Content: View>: View {
-    @Environment(AssistantPlace.self) private var place
+/// A screen header row. The main screens used to carry a talking Fosfor here; Fosfor now has its own
+/// tab, so the header keeps only its content.
+struct HeaderRow<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            content()
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+/// The big Fosfor at the top of its tab: says a line now and then, a new one on every tap.
+struct FosforHero: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("fosfor.didShowChatHint") private var didShowHint = false
-    let screen: FosforScreen
-    var size: CGFloat = 54
     var mood: FosforMascotView.Mood = .curious
-    var onDark = false
-    @ViewBuilder let content: () -> Content
     @State private var line: String?
 
-    private var canSpeak: Bool { scenePhase == .active && !place.open }
-
     var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            if let line {
-                Button(action: ask) {
-                    SpeechBubble(text: line, tailTrailingOffset: size / 2 - 6)
+        VStack(spacing: 4) {
+            ZStack {
+                if let line {
+                    SpeechBubble(text: line, tailTrailingOffset: nil)
+                        .frame(maxWidth: 250)
+                        .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .bottom)))
+                        .accessibilityHidden(true)
                 }
-                .buttonStyle(.plain)
-                .accessibilityHidden(true)
-                .transition(.opacity)
             }
+            .frame(minHeight: 52, alignment: .bottom)
 
-            HStack(alignment: .top, spacing: 8) {
-                content()
-                Spacer(minLength: 0)
-                Button(action: ask) {
-                    FosforChatLabel(size: size, mood: mood, onDark: onDark)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Fosfor’a sor")
-                .accessibilityHint("Sohbeti açar")
-            }
+            FosforMascotView(size: 112, mood: mood)
+                .simultaneousGesture(TapGesture().onEnded { say() })
+                .accessibilityLabel("Fosfor")
+                .accessibilityHint("Dokununca bir şey söyler")
         }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: line)
-        .task(id: canSpeak) {
-            line = nil
-            guard canSpeak else { return }
+        .frame(maxWidth: .infinity)
+        .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.8), value: line)
+        .task(id: scenePhase == .active) {
+            guard scenePhase == .active else { return }
             do {
-                try await Task.sleep(for: .seconds(1))
+                try await Task.sleep(for: .seconds(0.6))
                 while !Task.isCancelled {
-                    line = didShowHint ? screen.drawLine() : "Takıldığın yeri bana sorabilirsin."
-                    didShowHint = true
-                    try await Task.sleep(for: .seconds(5))
+                    if didShowHint { say() } else { line = "Bana dokun, ya da aşağıdan bir şey sor."; didShowHint = true }
+                    try await Task.sleep(for: .seconds(6))
                     line = nil
-                    try await Task.sleep(for: .seconds(30))
+                    try await Task.sleep(for: .seconds(20))
                 }
-            } catch { /* SwiftUI cancels the timer when this screen leaves or the chat opens. */ }
+            } catch { /* The tab left or the app went to the background. */ }
         }
-        .onDisappear { line = nil }
     }
 
-    private func ask() {
-        OnboardingHaptics.light()
-        place.show(course: nil, note: nil)
+    private func say() {
+        let screen = FosforScreen.allCases.randomElement() ?? .desk
+        line = screen.drawLine()
     }
 }
 
@@ -137,12 +136,13 @@ struct FosforChatLabel: View {
 }
 
 /// Crisp Fosforlu speech bubble with a downward tail pointing at Fosfor's cap.
-private struct SpeechBubble: View {
+struct SpeechBubble: View {
     let text: String
-    let tailTrailingOffset: CGFloat
+    /// Space from the bubble's right edge to the tail; nil centres the tail.
+    let tailTrailingOffset: CGFloat?
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 0) {
+        VStack(alignment: tailTrailingOffset == nil ? .center : .trailing, spacing: 0) {
             Text(text)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.text)
@@ -166,7 +166,7 @@ private struct SpeechBubble: View {
             }
             .frame(width: 12, height: 6)
             .offset(y: -1)
-            .padding(.trailing, tailTrailingOffset)
+            .padding(.trailing, tailTrailingOffset ?? 0)
         }
     }
 }

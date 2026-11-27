@@ -68,8 +68,7 @@ struct ReviewTab: View {
         let nothing = !reached && queue.isEmpty
 
         return VStack(alignment: .leading, spacing: 14) {
-            TalkingFosfor(screen: .review, size: 46,
-                    mood: reached ? .cheering : (nothing ? .proud : .curious)) {
+            HeaderRow {
                 GoalRing(done: done, goal: goal)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
