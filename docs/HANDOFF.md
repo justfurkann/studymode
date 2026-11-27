@@ -1142,6 +1142,7 @@ Kalite kontrol buldu: site veriyi sayfa açılışında bir kez okuyor, açık s
 - **`POST /api/apple-notifications`** (App Store Server Notifications V2): `DID_RENEW / SUBSCRIBED / ONE_TIME_CHARGE` süreyi uzatır (kullanıcı `appAccountToken`'dan, yoksa ilk satın almadan); `REFUND / REVOKE` geri alır; diğerleri 200. Veritabanı hatasında 500 (Apple yeniden gönderir).
 - **Kullanıcının adımları:** App Store Connect → uygulama → App Information → App Store Server Notifications: Production ve Sandbox URL'si `https://studymode.fun/api/apple-notifications`, sürüm 2. Uygulama mağazaya çıkınca Vercel'e `APPLE_APP_APPLE_ID` (App Store Connect'teki sayısal Apple ID; gizli değil). Bu yokken yalnızca Sandbox işlemleri kabul edilir, Production işlemleri 503 alır ve uygulama bekletir.
 - Not: kodla verilmiş Premium süresi aboneliğin bitişinden uzunsa abonelik o süreye bir şey eklemez (max).
+- **`GET /api/apple-status`** (Bearer): hesabın süren App Store aboneliği var mı (`src/lib/appStore.ts`, `useAppStoreSubscription`). Varsa: hesap silme penceresi "abonelik hesap silinince durmaz, iPhone Ayarlar → Abonelikler'den iptal et" uyarısı verir (sunucu cevap veremezse de verir); Premium sayfasında "App Store aboneliğinle açık" yazar; `BuyPremium` ve Fiyatlar sayfası ikinci kez satış önermez.
 
 ## Tasarım dili ("Fosforlu")
 
