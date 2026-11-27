@@ -127,7 +127,7 @@ struct AddNoteView: View {
                 openedIncoming = true
                 title = incoming.title
                 source = .pdf
-                readPDF(url)
+                readFile(url)
             }
         }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
@@ -254,7 +254,7 @@ struct AddNoteView: View {
                 .buttonStyle(SecondaryButtonStyle())
                 .disabled(busy)
             if let url = incoming?.file, case .failed = phase, text.isEmpty {
-                Button("Paylaşılan PDF’yi tekrar oku") { readPDF(url) }
+                Button("Paylaşılan dosyayı tekrar oku") { readFile(url) }
             }
             if !text.isEmpty { textEditor(placeholder: "") }
         }

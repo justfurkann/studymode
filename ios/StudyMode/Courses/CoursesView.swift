@@ -63,7 +63,7 @@ struct CoursesView: View {
             let course = store.courses.first(where: { $0.id == item.course })
             AddNoteView(course: course, incoming: item, onDone: openNote).environment(store)
         }
-        .alert("PDF kaldırılamadı", isPresented: $inboxError) { Button("Tamam") {} }
+        .alert("Dosya kaldırılamadı", isPresented: $inboxError) { Button("Tamam") {} }
         .onAppear { reloadInbox(); place = ReadingPlace.latest(for: auth.session?.user.id) }
         .onChange(of: path.count) { place = ReadingPlace.latest(for: auth.session?.user.id) }
         .environment(\.openNote, openNote)
@@ -102,14 +102,14 @@ struct CoursesView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     if !inbox.isEmpty {
                         VStack(alignment: .leading) {
-                            SectionTitle("Paylaşılan PDF’ler")
+                            SectionTitle("Paylaşılan dosyalar")
                             ForEach(inbox) { item in
                                 HStack {
                                     Button { importing = item } label: {
-                                        Label(item.title, systemImage: "doc.richtext").frame(maxWidth: .infinity, alignment: .leading)
+                                        Label(item.title, systemImage: ["pptx": "rectangle.on.rectangle", "docx": "doc.text", "xlsx": "tablecells"][item.ext ?? ""] ?? "doc.richtext").frame(maxWidth: .infinity, alignment: .leading)
                                     }
                                     Menu {
-                                        Button("Paylaşılan PDF’yi kaldır", role: .destructive) {
+                                        Button("Paylaşılan dosyayı kaldır", role: .destructive) {
                                             do { try item.remove(); reloadInbox() } catch { inboxError = true }
                                         }
                                     } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }
