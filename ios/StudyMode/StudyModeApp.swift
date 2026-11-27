@@ -17,6 +17,8 @@ struct StudyModeApp: App {
                 .tint(Theme.accent)
                 .preferredColorScheme(AppTheme(rawValue: theme)?.scheme)
                 .onAppear { captcha.start(dark: scheme == .dark) }
+                // studymode.fun/paylas/<token>: a friend's shared course opens in the app.
+                .onOpenURL { SharedLinks.shared.open($0) }
         }
     }
 }

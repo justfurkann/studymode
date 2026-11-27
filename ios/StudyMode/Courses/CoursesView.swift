@@ -24,6 +24,11 @@ struct CoursesView: View {
     @State private var showAll = false
     @State private var path = NavigationPath()
     @State private var adding = false
+    @State private var addingShared = false
+    @State private var sharedToken: SharedToken?
+    private var links = SharedLinks.shared
+
+    private struct SharedToken: Identifiable { let id: String }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -69,6 +74,30 @@ struct CoursesView: View {
         .environment(\.openNote, openNote)
         .sheet(isPresented: $adding) {
             AddNoteView(onDone: openNote).environment(store)
+        }
+        .sheet(isPresented: $addingShared) {
+            AddSharedCourseSheet { token in
+                addingShared = false
+                // Let this sheet close before the course sheet opens.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { sharedToken = SharedToken(id: token) }
+            }
+        }
+        .sheet(item: $sharedToken) { item in
+            SharedCourseView(token: item.id) { course in
+                var next = NavigationPath()
+                next.append(course)
+                path = next
+            }
+            .environment(store)
+        }
+        // A studymode.fun/paylas/… link opened on this phone.
+        .onChange(of: links.pending, initial: true) { _, token in
+            guard let token, store.status == .ready else { return }
+            links.pending = nil
+            sharedToken = SharedToken(id: token)
+        }
+        .onChange(of: store.status == .ready) { _, ready in
+            if ready, let token = links.pending { links.pending = nil; sharedToken = SharedToken(id: token) }
         }
     }
 
@@ -182,6 +211,14 @@ struct CoursesView: View {
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
+
+            Button {
+                OnboardingHaptics.light()
+                addingShared = true
+            } label: {
+                Label("Arkadaşının dersini ekle", systemImage: "person.2")
+            }
+            .buttonStyle(SecondaryButtonStyle())
         }
         .focusCard()
     }
@@ -287,6 +324,17 @@ struct CoursesView: View {
                     }
                     .staggeredAppear(idx + 1)
                 }
+
+                Button {
+                    OnboardingHaptics.light()
+                    addingShared = true
+                } label: {
+                    Label("Arkadaşının dersini ekle", systemImage: "person.2")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.text2)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.plain)
 
                 if courses.count > 4 {
                     Button {
