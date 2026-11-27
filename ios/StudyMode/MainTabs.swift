@@ -62,6 +62,7 @@ struct AccountView: View {
     @Environment(CaptchaController.self) private var captcha
     @State private var showDelete = false
     @State private var replayIntro = false
+    @State private var showReceipt = false
 
     var body: some View {
         NavigationStack {
@@ -171,6 +172,15 @@ struct AccountView: View {
                         .buttonStyle(SecondaryButtonStyle())
                         .staggeredAppear(1)
 
+                        Button {
+                            OnboardingHaptics.medium()
+                            showReceipt = true
+                        } label: {
+                            Label("Çalışma fişi", systemImage: "receipt")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .staggeredAppear(1)
+
                         NavigationLink {
                             SettingsView()
                         } label: {
@@ -230,6 +240,11 @@ struct AccountView: View {
                     replayIntro = false
                 }
                 .environment(captcha)
+            }
+            .sheet(isPresented: $showReceipt) {
+                ReceiptStudioSheet()
+                    .environment(store)
+                    .environment(auth)
             }
         }
     }

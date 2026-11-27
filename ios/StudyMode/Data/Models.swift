@@ -229,14 +229,16 @@ struct Card: Identifiable, Decodable, Hashable {
     var ease: Double
     var reps: Int
     var lapses: Int
+    var updatedAt: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, front, back, source, due, interval, ease, reps, lapses
         case courseId = "course_id"
         case noteId = "note_id"
+        case updatedAt = "updated_at"
     }
 
-    static let columns = "id,course_id,note_id,front,back,source,due,interval,ease,reps,lapses"
+    static let columns = "id,course_id,note_id,front,back,source,due,interval,ease,reps,lapses,updated_at"
 
     var dueDate: Date { Dates.parse(due) ?? .distantPast }
     func isDue(_ now: Date = .now) -> Bool { dueDate <= now }

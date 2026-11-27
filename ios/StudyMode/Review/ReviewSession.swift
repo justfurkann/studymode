@@ -8,6 +8,7 @@ struct ReviewSession: View {
     enum Mode { case grades, simple, daily }
 
     @Environment(StudyStore.self) private var store
+    @Environment(AuthModel.self) private var auth
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -34,6 +35,7 @@ struct ReviewSession: View {
     @State private var isTransitioningCard = false
     @State private var shuffleTrigger = 0
     @State private var easySparkTrigger = 0
+    @State private var showReceipt = false
 
     init(title: String, cards: [Card], mode: Mode, onFinish: (() -> Void)? = nil) {
         self.title = title
@@ -335,10 +337,22 @@ struct ReviewSession: View {
             VStack(spacing: 10) {
                 Button("Bitir") { dismiss() }
                     .buttonStyle(PrimaryButtonStyle())
+                Button {
+                    OnboardingHaptics.medium()
+                    showReceipt = true
+                } label: {
+                    Label("Çalışma fişini kes", systemImage: "receipt")
+                }
+                .buttonStyle(SecondaryButtonStyle())
                 if more {
                     Button("Biraz daha (+\(ReviewRules.moreSize))") { more10() }
                         .buttonStyle(SecondaryButtonStyle())
                 }
+            }
+            .sheet(isPresented: $showReceipt) {
+                ReceiptStudioSheet()
+                    .environment(store)
+                    .environment(auth)
             }
         }
         .frame(maxWidth: .infinity)

@@ -48,6 +48,7 @@ extension StudyStore {
         updated.ease = result.ease
         updated.reps = result.reps
         updated.lapses = result.lapses
+        updated.updatedAt = ISO.string(now)
         replace(updated)
         countLocally(review: card)
         let wasNew = card.isNew

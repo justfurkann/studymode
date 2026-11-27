@@ -40,6 +40,22 @@ final class AuthModel {
         return level
     }
 
+    /// School / department / level line for Çalışma Fişi, mirroring educationSubtitle on the site.
+    var educationSubtitle: String {
+        guard case let .object(education)? = session?.user.userMetadata["education"] else { return "" }
+        func str(_ key: String) -> String {
+            if case let .string(v)? = education[key] { return v.trimmingCharacters(in: .whitespaces) }
+            return ""
+        }
+        let school = str("school")
+        let dept = str("department")
+        let year = str("classYear")
+        let parts = [school, dept, year].filter { !$0.isEmpty }
+        if !parts.isEmpty { return parts.joined(separator: " · ") }
+        let level = str("level")
+        return StudentLevel(rawValue: level)?.label ?? ""
+    }
+
     init() {
         Task { await listen() }
     }
