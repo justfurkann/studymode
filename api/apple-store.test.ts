@@ -2,6 +2,7 @@ import type { JWSTransactionDecodedPayload, ResponseBodyV2DecodedPayload } from 
 import { describe, expect, it, vi } from 'vitest'
 import { handleAppleNotification } from './apple-notifications'
 import { handleApplePurchase } from './apple-purchase'
+import { handleAppleStatus } from './apple-status'
 import { appleChecks, claimedEnvironment, NotConfigured, type AppleChecks } from './appleStore'
 
 const ID = '11111111-2222-3333-4444-555555555555'
@@ -167,5 +168,41 @@ describe('the real verifier', () => {
     await expect(appleChecks({}).transaction(jws({ environment: 'Production' }))).rejects.toBeInstanceOf(NotConfigured)
     await expect(appleChecks({}).transaction(jws({ environment: 'Xcode' }))).rejects.toThrow()
     await expect(appleChecks({}).transaction(jws({ environment: 'Sandbox', bundleId: 'fun.studymode.app' }))).rejects.not.toBeInstanceOf(NotConfigured)
+  })
+})
+
+describe('GET /api/apple-status', () => {
+  const ask = (token: string | null = 'user-token', method = 'GET') =>
+    new Request('https://studymode.fun/api/apple-status', { method, headers: token ? { authorization: `Bearer ${token}` } : {} })
+  const NOW = Date.parse('2026-11-27T12:00:00Z')
+
+  function db(rows: unknown[], status = 200) {
+    const urls: string[] = []
+    const fetchImpl = vi.fn(async (url: string | URL | Request) => {
+      const href = String(url)
+      urls.push(href)
+      if (href.endsWith('/auth/v1/user')) return new Response(JSON.stringify({ id: ID }))
+      return new Response(JSON.stringify(rows), { status })
+    }) as unknown as typeof fetch
+    return { fetchImpl, urls }
+  }
+
+  it('reports a running, not refunded subscription of the caller', async () => {
+    const { fetchImpl, urls } = db([{ product_id: 'fun.studymode.app.premium.monthly', expires_date: '2026-12-27T10:00:00Z' }])
+    const res = await handleAppleStatus(ask(), env, fetchImpl, NOW)
+    expect(await res.json()).toEqual({ subscription: true, product: 'fun.studymode.app.premium.monthly', expires: '2026-12-27T10:00:00Z' })
+    const query = decodeURIComponent(urls[1])
+    expect(query).toContain(`user_id=eq.${ID}`)
+    expect(query).toContain('revoked_at=is.null')
+    expect(query).toContain('product_id=in.(fun.studymode.app.premium.monthly,fun.studymode.app.premium.sixmonths)')
+    expect(query).toContain('expires_date=gt.2026-11-27T12:00:00.000Z')
+  })
+
+  it('no subscription, no session, no setup, database down', async () => {
+    expect(await (await handleAppleStatus(ask(), env, db([]).fetchImpl, NOW)).json()).toEqual({ subscription: false })
+    expect((await handleAppleStatus(ask(null), env, db([]).fetchImpl, NOW)).status).toBe(401)
+    expect((await handleAppleStatus(ask(), {}, db([]).fetchImpl, NOW)).status).toBe(503)
+    expect((await handleAppleStatus(ask(), env, db([], 500).fetchImpl, NOW)).status).toBe(502)
+    expect((await handleAppleStatus(ask('user-token', 'POST'), env, db([]).fetchImpl, NOW)).status).toBe(405)
   })
 })
