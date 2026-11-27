@@ -1,23 +1,23 @@
 import StoreKit
 import SwiftUI
 
-/// "Premium": mirrors the website's violet/magenta/gold Premium experience (`src/pages/Premium.tsx`
-/// and `.prem-*` in `global.css`) while keeping Apple's StoreKit 2 purchase flow, restore, manage
-/// subscriptions, and required subscription disclosures.
+/// "Premium": luxury violet/magenta/gold VIP experience matching `src/pages/Premium.tsx` and
+/// `.prem-*` in `global.css`, built natively with live specular sheen, iridescent borders,
+/// floating starlight, and StoreKit 2 purchase / restore / manage flows.
 struct PremiumView: View {
     @Environment(PremiumStore.self) private var premium
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var scheme
 
     @State private var manage = false
     @State private var selectedID: String = PremiumStore.ID.sixMonths
-    @State private var glowPulse = false
-    @State private var sheenOffset: CGFloat = -1.4
 
     private struct Feature: Identifiable {
         let id: String
         let icon: String
         let title: String
         let detail: String
+        let accent: Color
     }
 
     private let features: [Feature] = [
@@ -25,25 +25,29 @@ struct PremiumView: View {
             id: "ses",
             icon: "headphones",
             title: "Sesli not",
-            detail: "Notun iki kişilik gerçek insan sesli sohbete dönüşür; yolda, otobüste dinle."
+            detail: "İki kişilik gerçek insan sesli sohbet",
+            accent: Theme.prem1
         ),
         .init(
             id: "ara",
             icon: "magnifyingglass",
             title: "Akıllı arama",
-            detail: "Kelimesi geçmese de notlarında anlamla arama yap, ilgili konuyu anında bul."
+            detail: "Kelime geçmese de anlamla bul",
+            accent: Theme.prem2
         ),
         .init(
             id: "gorsel",
             icon: "photo.on.rectangle.angled",
-            title: "Yapay zekâ görselleri",
-            detail: "Karmaşık kavramları şema ve görsele dönüştür, tek dokunuşla karta ekle."
+            title: "AI görseller",
+            detail: "Kavramı şemaya çizdir, karta ekle",
+            accent: Theme.prem1
         ),
         .init(
             id: "freeplus",
             icon: "sparkles",
-            title: "Free+ ve yüksek limit",
-            detail: "Daha güçlü yapay zekâ modeli ve günde 150 istek hakkı."
+            title: "Free+ · 150 hak",
+            detail: "Daha güçlü yapay zekâ modeli",
+            accent: Theme.prem3
         ),
     ]
 
@@ -55,7 +59,7 @@ struct PremiumView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 18) {
                 heroCard
                     .staggeredAppear(0)
 
@@ -66,7 +70,7 @@ struct PremiumView: View {
                     )
                 }
 
-                featuresSection
+                featuresBento
                     .staggeredAppear(1)
 
                 plansSection
@@ -83,27 +87,36 @@ struct PremiumView: View {
                     .padding(.top, 2)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 32)
+            .padding(.top, 8)
+            .padding(.bottom, 36)
         }
-        .background(GridPaper())
+        .background(premiumBackdrop)
         .navigationTitle("Premium")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .manageSubscriptionsSheet(isPresented: $manage, subscriptionGroupID: PremiumStore.ID.groupID)
         .task {
             await premium.loadProducts()
             await premium.refresh()
             pickDefaultPlan()
         }
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 3.4).repeatForever(autoreverses: true)) {
-                glowPulse = true
-            }
-            withAnimation(.easeInOut(duration: 4.6).repeatForever(autoreverses: false)) {
-                sheenOffset = 2.2
-            }
+    }
+
+    /// Subtle violet ambient wash over the grid paper so the whole screen feels unmistakably VIP.
+    private var premiumBackdrop: some View {
+        ZStack {
+            GridPaper()
+            LinearGradient(
+                colors: [
+                    Theme.prem1.opacity(scheme == .dark ? 0.22 : 0.09),
+                    Theme.prem2.opacity(scheme == .dark ? 0.10 : 0.04),
+                    .clear,
+                ],
+                startPoint: .top,
+                endPoint: .center
+            )
+            .ignoresSafeArea()
         }
     }
 
@@ -121,113 +134,167 @@ struct PremiumView: View {
         }
     }
 
-    // MARK: - Cosmic Hero Card (.prem-hero)
+    // MARK: - Living VIP Hero Card (.prem-hero)
 
     private var heroCard: some View {
-        ZStack(alignment: .topLeading) {
-            // Layered cosmic violet -> magenta -> warm amber glow
-            GeometryReader { geo in
-                ZStack {
-                    LinearGradient(
-                        colors: [Theme.premDeep, Theme.prem1, Theme.prem2],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { timeline in
+            let t = reduceMotion ? 0.0 : timeline.date.timeIntervalSinceReferenceDate
+            let sweepCycle = (t.truncatingRemainder(dividingBy: 4.2)) / 4.2
+            let sweepX = -0.65 + sweepCycle * 2.3
+            let glowBreath = 0.5 + 0.5 * sin(t * 1.9)
+            let borderAngle = Angle.degrees((t * 36).truncatingRemainder(dividingBy: 360))
 
-                    RadialGradient(
-                        colors: [Theme.prem2.opacity(0.68), .clear],
-                        center: .topTrailing,
-                        startRadius: 10,
-                        endRadius: geo.size.width * 0.85
-                    )
-
-                    RadialGradient(
-                        colors: [Theme.prem3.opacity(0.36), .clear],
-                        center: .bottomLeading,
-                        startRadius: 8,
-                        endRadius: geo.size.width * 0.72
-                    )
-
-                    // Subtle breathing warm orb at top-right (`.prem-hero::after`)
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [Theme.prem3.opacity(glowPulse ? 0.44 : 0.26), .clear],
-                                center: .center,
-                                startRadius: 4,
-                                endRadius: 110
-                            )
-                        )
-                        .frame(width: 220, height: 220)
-                        .position(x: geo.size.width - 26, y: 12)
-
-                    // Diagonal sheen sweep (`.prem-hero-shine`)
-                    if !reduceMotion {
+            ZStack(alignment: .topLeading) {
+                // Deep royal violet -> indigo -> crisp magenta sheen (never muddy)
+                GeometryReader { geo in
+                    ZStack {
                         LinearGradient(
-                            colors: [.clear, .white.opacity(0.18), .clear],
-                            startPoint: .leading,
-                            endPoint: .trailing
+                            stops: [
+                                .init(color: Color(uiColor: UIColor(hex: 0x14072B)), location: 0.0),
+                                .init(color: Color(uiColor: UIColor(hex: 0x3B1378)), location: 0.48),
+                                .init(color: Color(uiColor: UIColor(hex: 0x7C23C9)), location: 0.84),
+                                .init(color: Color(uiColor: UIColor(hex: 0xB824CC)), location: 1.0),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        .frame(width: geo.size.width * 0.46)
-                        .rotationEffect(.degrees(18))
-                        .scaleEffect(y: 1.8)
-                        .offset(x: sheenOffset * geo.size.width)
+
+                        // Luminous magenta halo top-right
+                        RadialGradient(
+                            colors: [Color(uiColor: UIColor(hex: 0xE879F9)).opacity(0.45 + 0.14 * glowBreath), .clear],
+                            center: .topTrailing,
+                            startRadius: 6,
+                            endRadius: geo.size.width * 0.72
+                        )
+
+                        // Warm gold-amber VIP rim glow bottom-right (over magenta = lush rose-gold, never brown)
+                        RadialGradient(
+                            colors: [Theme.prem3.opacity(0.28 + 0.12 * glowBreath), .clear],
+                            center: UnitPoint(x: 0.92, y: 0.95),
+                            startRadius: 4,
+                            endRadius: geo.size.width * 0.52
+                        )
+
+                        // Crisp geometric 4-point starlight sparkles
+                        SparkleField(phase: t, reduceMotion: reduceMotion)
+
+                        // Live glossy specular light beam sweeping across the card
+                        if !reduceMotion && sweepCycle < 0.65 {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0.0),
+                                    .init(color: .white.opacity(0.08), location: 0.32),
+                                    .init(color: .white.opacity(0.28), location: 0.50),
+                                    .init(color: .white.opacity(0.08), location: 0.68),
+                                    .init(color: .clear, location: 1.0),
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .frame(width: geo.size.width * 0.42)
+                            .rotationEffect(.degrees(20))
+                            .scaleEffect(y: 2.0)
+                            .offset(x: sweepX * geo.size.width)
+                            .blendMode(.plusLighter)
+                        }
                     }
                 }
-            }
 
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        // Frosted tag pill (`.prem-tag`)
-                        HStack(spacing: 6) {
-                            Image(systemName: "crown.fill")
-                                .font(.caption2.weight(.bold))
-                            Text("STUDYMODE PREMIUM")
-                                .font(.caption2.weight(.heavy))
-                                .tracking(0.8)
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 6)
-                        .background(.white.opacity(0.15), in: Capsule())
-                        .overlay(Capsule().stroke(.white.opacity(0.28), lineWidth: 1))
-
-                        // Title with signature Fosforlu highlight word
-                        VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            // Metallic gold-accented VIP pill
                             HStack(spacing: 6) {
-                                Text("Notun")
+                                Image(systemName: "crown.fill")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [Color(uiColor: UIColor(hex: 0xFDE68A)), Theme.prem3],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                Text("STUDYMODE PREMIUM")
+                                    .font(.caption2.weight(.heavy))
+                                    .tracking(1.0)
+                                    .foregroundStyle(.white)
+                            }
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 6)
+                            .background(.white.opacity(0.13), in: Capsule())
+                            .overlay(
+                                Capsule().stroke(
+                                    LinearGradient(
+                                        colors: [.white.opacity(0.45), Theme.prem3.opacity(0.55), .white.opacity(0.18)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                            )
+
+                            // Headline with luminous gold-gradient emphasis word
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                    Text("Notun")
+                                        .font(Theme.display(.title))
+                                        .foregroundStyle(.white)
+                                    Text("konuşsun,")
+                                        .font(Theme.display(.title))
+                                        .foregroundStyle(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color(uiColor: UIColor(hex: 0xFEF08A)),
+                                                    Color(uiColor: UIColor(hex: 0xFBBF24)),
+                                                    Color(uiColor: UIColor(hex: 0xF9A8D4)),
+                                                ],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                }
+                                Text("sen dinle.")
                                     .font(Theme.display(.title))
                                     .foregroundStyle(.white)
-                                Highlighted(text: "konuşsun", font: Theme.display(.title))
                             }
-                            Text("sen dinle.")
-                                .font(Theme.display(.title))
-                                .foregroundStyle(.white)
                         }
+
+                        Spacer(minLength: 4)
+
+                        FosforMascotView(size: 56, mood: .cheering, onDark: true)
+                            .shadow(color: Color(uiColor: UIColor(hex: 0xF59E0B)).opacity(0.35), radius: 12, y: 4)
                     }
 
-                    Spacer(minLength: 4)
+                    Text("Sesli not, akıllı arama, yapay zekâ görselleri ve Free+ modeli. Sitede ve uygulamada tek hesapla açık.")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.86))
+                        .fixedSize(horizontal: false, vertical: true)
 
-                    FosforMascotView(size: 58, mood: .cheering, onDark: true)
-                        .padding(.top, 2)
+                    statusBadge
                 }
-
-                Text("Sesli not, akıllı arama, yapay zekâ görselleri ve Free+ modeli. Sitede ve uygulamada aynı hesapla geçerli.")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.88))
-                    .fixedSize(horizontal: false, vertical: true)
-
-                statusBadge
+                .padding(20)
             }
-            .padding(20)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        AngularGradient(
+                            colors: [
+                                .white.opacity(0.35),
+                                Color(uiColor: UIColor(hex: 0xE879F9)).opacity(0.75),
+                                Theme.prem3.opacity(0.80),
+                                Color(uiColor: UIColor(hex: 0xA855F7)).opacity(0.55),
+                                .white.opacity(0.35),
+                            ],
+                            center: .center,
+                            angle: borderAngle
+                        ),
+                        lineWidth: 1.6
+                    )
+            )
+            .shadow(color: Theme.prem1.opacity(0.45), radius: 22, y: 10)
+            .shadow(color: Theme.prem2.opacity(0.22), radius: 8, y: 3)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(.white.opacity(0.22), lineWidth: 1.2)
-        )
-        .shadow(color: Theme.prem1.opacity(0.42), radius: 18, y: 10)
     }
 
     @ViewBuilder
@@ -236,22 +303,29 @@ struct PremiumView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.seal.fill")
-                        .foregroundStyle(Theme.hi)
+                        .foregroundStyle(Color(uiColor: UIColor(hex: 0xFDE047)))
                     Text("Premium açık")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(.white)
                     if premium.role == "vip" || premium.role == "admin" {
                         Text(premium.role == "admin" ? "Yönetici" : "VIP")
                             .font(.caption2.weight(.heavy))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color(uiColor: UIColor(hex: 0x1E0B3A)))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(.white.opacity(0.2), in: Capsule())
+                            .background(
+                                LinearGradient(
+                                    colors: [Color(uiColor: UIColor(hex: 0xFEF08A)), Theme.prem3],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                ),
+                                in: Capsule()
+                            )
                     }
                 }
 
                 if premium.role == "vip" || premium.role == "admin" {
-                    Text("Hesabın tüm Premium özelliklere zaten erişebiliyor.")
+                    Text("Hesabın tüm Premium özelliklere sınırsız erişebiliyor.")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.84))
                 } else if let until = premium.until {
@@ -275,91 +349,100 @@ struct PremiumView: View {
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
                             .background(.white.opacity(0.18), in: Capsule())
-                            .overlay(Capsule().stroke(.white.opacity(0.28), lineWidth: 1))
+                            .overlay(Capsule().stroke(.white.opacity(0.32), lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(13)
-            .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(.white.opacity(0.22), lineWidth: 1))
+            .background(.white.opacity(0.13), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(.white.opacity(0.24), lineWidth: 1))
         } else {
             HStack(spacing: 8) {
                 Image(systemName: "sparkles")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Theme.hi)
+                    .foregroundStyle(Color(uiColor: UIColor(hex: 0xFDE047)))
                 Text("Tek hesap · Web + iPhone + iPad senkron")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.92))
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Theme.premDeep.opacity(0.45), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Color.black.opacity(0.26), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(.white.opacity(0.18), lineWidth: 1))
         }
     }
 
-    // MARK: - Feature Cards (.prem-tool)
+    // MARK: - 2x2 VIP Bento Features (.prem-tool)
 
-    private var featuresSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Premium neler açar?")
-                .font(Theme.display(.headline))
-                .foregroundStyle(Theme.text)
-                .padding(.horizontal, 2)
-
-            VStack(spacing: 10) {
-                ForEach(features) { feature in
-                    HStack(alignment: .top, spacing: 13) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Theme.prem1, Theme.prem2],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 42, height: 42)
-                                .shadow(color: Theme.prem2.opacity(0.36), radius: 8, y: 4)
-
-                            Image(systemName: feature.icon)
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.white)
-                        }
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(feature.title)
-                                .font(Theme.display(.subheadline, weight: .bold))
-                                .foregroundStyle(Theme.text)
-                            Text(feature.detail)
-                                .font(.footnote)
-                                .foregroundStyle(Theme.text2)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        Spacer(minLength: 0)
-                    }
-                    .padding(14)
-                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(
+    private var featuresBento: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+            ForEach(features) { feature in
+                VStack(alignment: .leading, spacing: 10) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(
                                 LinearGradient(
-                                    colors: [Theme.prem1.opacity(0.38), Theme.prem2.opacity(0.32)],
+                                    colors: [Theme.prem1, Theme.prem2],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.3
+                                )
                             )
-                    )
+                            .frame(width: 38, height: 38)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                    .stroke(.white.opacity(0.28), lineWidth: 1)
+                            )
+                            .shadow(color: Theme.prem2.opacity(0.38), radius: 8, y: 4)
+
+                        Image(systemName: feature.icon)
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(feature.title)
+                            .font(Theme.display(.subheadline, weight: .bold))
+                            .foregroundStyle(Theme.text)
+                            .lineLimit(1)
+                        Text(feature.detail)
+                            .font(.caption)
+                            .foregroundStyle(Theme.text2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
                 }
+                .padding(13)
+                .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            Theme.surface,
+                            Theme.premSoft.opacity(scheme == .dark ? 0.85 : 0.72),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Theme.prem1.opacity(0.36), Theme.prem2.opacity(0.28)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.2
+                        )
+                )
             }
         }
     }
 
-    // MARK: - Plans & Purchase CTA
+    // MARK: - Plans & Glowing Purchase CTA
 
     /// The simulator cannot load App Store products; there the plans are drawn from App Store
     /// Connect's names and prices (not tappable for purchase), for layout checks and review screenshots.
@@ -393,13 +476,13 @@ struct PremiumView: View {
 
     @ViewBuilder
     private var plansSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 11) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Paketini seç")
                     .font(Theme.display(.headline))
                     .foregroundStyle(Theme.text)
                 Spacer()
-                Text("App Store güvencesiyle")
+                Label("App Store", systemImage: "checkmark.shield.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Theme.premText)
             }
@@ -409,7 +492,6 @@ struct PremiumView: View {
                 VStack(spacing: 10) {
                     ForEach(previewPlans) { plan in
                         planCard(
-                            id: plan.id,
                             name: plan.name,
                             note: plan.note,
                             price: plan.price,
@@ -447,7 +529,6 @@ struct PremiumView: View {
                         let isActive = premium.activeSubscription == product.id
                         let renews = product.type == .autoRenewable
                         planCard(
-                            id: product.id,
                             name: product.displayName,
                             note: renews ? "Otomatik yenilenir · istediğin an iptal" : "Tek seferlik · 14 gün, yenilenmez",
                             price: product.displayPrice,
@@ -481,7 +562,6 @@ struct PremiumView: View {
     }
 
     private func planCard(
-        id: String,
         name: String,
         note: String,
         price: String,
@@ -492,7 +572,6 @@ struct PremiumView: View {
     ) -> some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
-                // Radio / Active indicator
                 ZStack {
                     if isActive {
                         Circle()
@@ -511,6 +590,7 @@ struct PremiumView: View {
                                 )
                             )
                             .frame(width: 24, height: 24)
+                            .shadow(color: Theme.prem2.opacity(0.45), radius: 5, y: 2)
                         Image(systemName: "checkmark")
                             .font(.caption2.weight(.black))
                             .foregroundStyle(.white)
@@ -531,7 +611,7 @@ struct PremiumView: View {
                         if best {
                             Text("EN AVANTAJLI")
                                 .font(.system(size: 10, weight: .heavy, design: .rounded))
-                                .tracking(0.4)
+                                .tracking(0.5)
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
@@ -572,21 +652,13 @@ struct PremiumView: View {
             )
             .overlay {
                 if isSelected {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Theme.prem1, Theme.prem2, Theme.prem3],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 2.2
-                        )
+                    IridescentBorder(cornerRadius: 18, lineWidth: 2.2, reduceMotion: reduceMotion)
                 } else {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(isActive ? Theme.prem1.opacity(0.6) : Theme.border, lineWidth: isActive ? 1.6 : 1)
                 }
             }
-            .shadow(color: isSelected ? Theme.prem2.opacity(0.22) : .clear, radius: 12, y: 6)
+            .shadow(color: isSelected ? Theme.prem2.opacity(0.28) : .clear, radius: 14, y: 6)
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(TactileCardButtonStyle(scale: 0.985))
@@ -594,38 +666,72 @@ struct PremiumView: View {
     }
 
     private func purchaseCTA(label: String, busy: Bool, disabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                if busy {
-                    ProgressView()
-                        .tint(.white)
-                } else {
-                    Image(systemName: "crown.fill")
-                        .font(.subheadline.weight(.bold))
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { timeline in
+            let t = reduceMotion ? 0.0 : timeline.date.timeIntervalSinceReferenceDate
+            let cycle = (t.truncatingRemainder(dividingBy: 3.6)) / 3.6
+            let sheenX = -0.7 + cycle * 2.4
+
+            Button(action: action) {
+                ZStack {
+                    LinearGradient(
+                        colors: [
+                            Color(uiColor: UIColor(hex: 0x5B21B6)),
+                            Theme.prem1,
+                            Theme.prem2,
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+
+                    if !reduceMotion && cycle < 0.55 {
+                        GeometryReader { geo in
+                            LinearGradient(
+                                colors: [.clear, .white.opacity(0.32), .clear],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .frame(width: geo.size.width * 0.34)
+                            .rotationEffect(.degrees(20))
+                            .scaleEffect(y: 2.0)
+                            .offset(x: sheenX * geo.size.width)
+                        }
+                        .allowsHitTesting(false)
+                    }
+
+                    HStack(spacing: 8) {
+                        if busy {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "crown.fill")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(Color(uiColor: UIColor(hex: 0xFEF08A)))
+                        }
+                        Text(busy ? "İşleniyor…" : label)
+                            .font(Theme.display(.headline, weight: .heavy))
+                            .foregroundStyle(.white)
+                    }
                 }
-                Text(busy ? "İşleniyor…" : label)
-                    .font(Theme.display(.headline, weight: .heavy))
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [.white.opacity(0.45), Theme.prem3.opacity(0.4), .white.opacity(0.18)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.2
+                        )
+                )
+                .shadow(color: Theme.prem2.opacity(0.46), radius: 16, y: 8)
+                .opacity(disabled && !busy ? 0.72 : 1)
             }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, minHeight: 54)
-            .background(
-                LinearGradient(
-                    colors: [Theme.prem1, Theme.prem2],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(.white.opacity(0.22), lineWidth: 1)
-            )
-            .shadow(color: Theme.prem2.opacity(0.42), radius: 14, y: 7)
-            .opacity(disabled && !busy ? 0.65 : 1)
+            .buttonStyle(TactileCardButtonStyle(scale: 0.975))
+            .disabled(disabled)
+            .padding(.top, 4)
         }
-        .buttonStyle(TactileCardButtonStyle(scale: 0.975))
-        .disabled(disabled)
-        .padding(.top, 2)
     }
 
     // MARK: - Restore & Legal
@@ -661,5 +767,61 @@ struct PremiumView: View {
             .font(.caption.weight(.semibold))
             .foregroundStyle(Theme.premText)
         }
+    }
+}
+
+/// Slowly rotating violet → magenta → gold iridescent border (`.prem-tool[aria-pressed='true']`).
+private struct IridescentBorder: View {
+    let cornerRadius: CGFloat
+    let lineWidth: CGFloat
+    let reduceMotion: Bool
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { timeline in
+            let angle = reduceMotion ? 0.0 : (timeline.date.timeIntervalSinceReferenceDate * 48).truncatingRemainder(dividingBy: 360)
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .stroke(
+                    AngularGradient(
+                        colors: [Theme.prem1, Theme.prem2, Theme.prem3, Theme.prem2, Theme.prem1],
+                        center: .center,
+                        angle: .degrees(angle)
+                    ),
+                    lineWidth: lineWidth
+                )
+        }
+    }
+}
+
+/// Crisp 4-point geometric stars twinkling softly inside the VIP hero card.
+private struct SparkleField: View {
+    let phase: Double
+    let reduceMotion: Bool
+
+    private let stars: [(x: CGFloat, y: CGFloat, size: CGFloat, speed: Double, offset: Double)] = [
+        (0.74, 0.16, 11, 2.2, 0.0),
+        (0.91, 0.44, 8, 2.8, 1.4),
+        (0.62, 0.28, 7, 1.9, 2.7),
+        (0.84, 0.72, 10, 2.5, 0.9),
+        (0.14, 0.78, 7, 2.1, 3.3),
+    ]
+
+    var body: some View {
+        Canvas { context, size in
+            for star in stars {
+                let pulse = reduceMotion ? 0.75 : (0.35 + 0.65 * (0.5 + 0.5 * sin(phase * star.speed + star.offset)))
+                let cx = size.width * star.x
+                let cy = size.height * star.y
+                let r = star.size * (0.85 + 0.25 * pulse)
+                var path = Path()
+                path.move(to: CGPoint(x: cx, y: cy - r))
+                path.addQuadCurve(to: CGPoint(x: cx + r, y: cy), control: CGPoint(x: cx + r * 0.15, y: cy - r * 0.15))
+                path.addQuadCurve(to: CGPoint(x: cx, y: cy + r), control: CGPoint(x: cx + r * 0.15, y: cy + r * 0.15))
+                path.addQuadCurve(to: CGPoint(x: cx - r, y: cy), control: CGPoint(x: cx - r * 0.15, y: cy + r * 0.15))
+                path.addQuadCurve(to: CGPoint(x: cx, y: cy - r), control: CGPoint(x: cx - r * 0.15, y: cy - r * 0.15))
+                path.closeSubpath()
+                context.fill(path, with: .color(.white.opacity(0.62 * pulse)))
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
