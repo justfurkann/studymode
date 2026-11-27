@@ -28,7 +28,7 @@ struct ExamsHubTab: View {
                 GridPaper()
                 if store.status != .ready {
                     ScrollView {
-                        StudyLoadingStage(message: "Sınav takvimin yükleniyor…", cardCount: 3)
+                        StudyLoadingStage(message: "Sınav takvimin yükleniyor…", cardCount: 3, fosforScreen: .exam)
                             .padding(.horizontal, 16)
                     }
                 } else {
