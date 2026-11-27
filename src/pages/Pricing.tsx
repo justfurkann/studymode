@@ -3,6 +3,8 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { useStore } from '../lib/store'
+import { AppStoreNote } from '../components/BuyPremium'
+import { useAppStoreSubscription } from '../lib/appStore'
 import { PAYMENT_PROVIDER } from '../lib/config'
 import { buyUrl, DELIVERY, formatPrice, PACKAGES, PRICING_UPDATED, SELLER, type PremiumPackage } from '../lib/pricing'
 
@@ -104,6 +106,7 @@ export function Pricing() {
 
         <section aria-labelledby="paketler">
           <h2 id="paketler">Paketler ve fiyatlar</h2>
+          <AppStoreNotice />
           <div className="price-grid">
             {PACKAGES.map((pkg) => (
               <PackageCard key={pkg.id} pkg={pkg} />
@@ -313,4 +316,9 @@ export function Pricing() {
       </footer>
     </div>
   )
+}
+
+/** An App Store subscriber is told Premium is already on, before the packages. */
+function AppStoreNotice() {
+  return useAppStoreSubscription().state === 'active' ? <AppStoreNote /> : null
 }

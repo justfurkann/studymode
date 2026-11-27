@@ -1,6 +1,8 @@
 import { ArrowRight, AudioLines, Check, Image as ImageIcon, Search, ShoppingBag, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { MANAGE_HINT, useAppStoreSubscription } from '../lib/appStore'
 import { buyUrl, formatPrice, PACKAGES } from '../lib/pricing'
+import { Alert } from './ui'
 
 /** What Premium gives, in four short lines (the full list is on /fiyatlar). */
 export const PREMIUM_PERKS = [
@@ -15,6 +17,9 @@ export const PREMIUM_PERKS = [
  * page and in the Premium pop-up; `onBuy` lets the pop-up remember the tap.
  */
 export function BuyPremium({ onBuy, compact = false }: { onBuy?: () => void; compact?: boolean }) {
+  const appStore = useAppStoreSubscription()
+  // Already paying through the App Store: no second sale here.
+  if (appStore.state === 'active') return <AppStoreNote />
   const buyable = PACKAGES.map((pkg) => ({ pkg, url: buyUrl(pkg) })).filter((x): x is { pkg: (typeof PACKAGES)[number]; url: string } => !!x.url)
   if (!buyable.length) {
     return (
@@ -68,3 +73,12 @@ export function PremiumPerks() {
   )
 }
 
+
+/** Premium runs on an App Store subscription: where to manage it, and nothing to buy here. */
+export function AppStoreNote() {
+  return (
+    <Alert tone="info">
+      Premium’un iPhone’daki App Store aboneliğinle açık; burada ayrıca almana gerek yok. Yönetmek ya da iptal etmek için {MANAGE_HINT}.
+    </Alert>
+  )
+}
