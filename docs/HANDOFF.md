@@ -1150,6 +1150,13 @@ Kalite kontrol buldu: site veriyi sayfa açılışında bir kez okuyor, açık s
 - Dosya yönlendirmesiz 200 + `application/json` sunuluyor (`vercel.json` header'ı; SPA rewrite'ı noktalı yolları atladığı için yutmuyor). `src/lib/aasa.test.ts` ikisini de kontrol eder.
 - Team ID değişirse (ücretli ekip) bu dosyadaki iki `appIDs`/`apps` değeri birlikte güncellenmeli. Apple dosyayı önbelleğe alır; değişiklik telefona uygulama yeniden kurulunca ya da birkaç saat içinde gelir.
 
+### Aşama 73 — CLAUDE.md, ROLES.md, ANDROID_SYNC.md (27 Kasım 2026, `site-claude-md`)
+
+- **Yapılan:** kökte kısa `CLAUDE.md` (proje, ekip düzeni özeti, 4 kontrol, commit/PR kuralları, "rolüne göre `docs/ROLES.md`'yi oku"); `docs/ROLES.md` yöneticinin dosyasından birebir kopya (ortak kurallar + Site / iPhone / Android / Kalite kontrol tarifleri); `docs/ANDROID_SYNC.md` iskeleti (`IOS_SYNC.md` biçiminde: sabit bilgiler — paket `fun.studymode.app`, Google Cloud proje numarası `189951485932`, Android istemci kimliği henüz yok —, boş iş listesi, `study_days` yalnızca `bump_study_day` kuralı). Kod değişmedi; 4 kontrol geçti.
+- **Kararlar:** `CLAUDE.md` HANDOFF'u kopyalamaz, ona yönlendirir. `ROLES.md`'nin içeriği bu dalda değiştirilmedi (başka dalda da aynı dosya var; birleşirken çakışmasın). Android oturumu `ANDROID_SYNC.md`'ye doğrudan yazmaz, yönetici aracılığıyla eklenir.
+- **İşe yaramayan:** depoda `package-lock.json` yok, `npm ci` çalışmıyor; `npm install` gerekti (oluşan kilit dosyası commit'lenmedi).
+- **Sıradaki:** yönetici karar verirse 0. bölümün tablosuna Android satırı eklenmeli (ör. "Android Claude'u · `android/`, `android-taslak` dalı · haberleşme `docs/ANDROID_SYNC.md`"); 0. bölüm şu an üç oturum anlatıyor, `ROLES.md` dört rol. Android istemci kimliği alınınca `ANDROID_SYNC.md` tablosu güncellenmeli.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.
