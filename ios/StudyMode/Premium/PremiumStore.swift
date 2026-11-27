@@ -50,6 +50,14 @@ final class PremiumStore {
     var until: Date? { [storeUntil, serverUntil].compactMap { $0 }.max() }
     var isPremium: Bool { role == "vip" || role == "admin" || (until.map { $0 > .now } ?? false) }
 
+    /// Premium that did not come from this Apple account's purchases (VIP / admin, a site code). Buying
+    /// here would not add anything for them, so the app does not offer it.
+    var isPremiumFromElsewhere: Bool {
+        guard isPremium else { return false }
+        if role == "vip" || role == "admin" { return true }
+        return !((storeUntil ?? .distantPast) > .now)
+    }
+
     // MARK: Start
 
     func start(user: UUID) {

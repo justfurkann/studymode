@@ -20,34 +20,37 @@ struct PremiumView: View {
         let accent: Color
     }
 
+    /// Only what Premium really changes in this app (api/generate.ts: Premium counts as VIP for the
+    /// limits, gets Free+ by default, and page pictures are read without using the allowance).
+    /// Site-only tools are named as such, never as app features.
     private let features: [Feature] = [
-        .init(
-            id: "ses",
-            icon: "headphones",
-            title: "Sesli not",
-            detail: "İki kişilik gerçek insan sesli sohbet",
-            accent: Theme.prem1
-        ),
-        .init(
-            id: "ara",
-            icon: "magnifyingglass",
-            title: "Akıllı arama",
-            detail: "Kelime geçmese de anlamla bul",
-            accent: Theme.prem2
-        ),
-        .init(
-            id: "gorsel",
-            icon: "photo.on.rectangle.angled",
-            title: "AI görseller",
-            detail: "Kavramı şemaya çizdir, karta ekle",
-            accent: Theme.prem1
-        ),
         .init(
             id: "freeplus",
             icon: "sparkles",
-            title: "Free+ · 150 hak",
-            detail: "Daha güçlü yapay zekâ modeli",
+            title: "Free+ yapay zekâ",
+            detail: "Özet, Fosfor ve puanlamada daha güçlü model",
             accent: Theme.prem3
+        ),
+        .init(
+            id: "hak",
+            icon: "bolt.fill",
+            title: "Günde 150 hak",
+            detail: "Ücretsiz hesapta 40",
+            accent: Theme.prem1
+        ),
+        .init(
+            id: "sayfa",
+            icon: "doc.viewfinder",
+            title: "Sayfa okuma",
+            detail: "Fotoğraf ve PDF sayfaları hakkından düşmez",
+            accent: Theme.prem2
+        ),
+        .init(
+            id: "site",
+            icon: "globe",
+            title: "Sitede ayrıca",
+            detail: "Sesli not, akıllı arama ve görseller studymode.fun'da",
+            accent: Theme.prem1
         ),
     ]
 
@@ -236,10 +239,10 @@ struct PremiumView: View {
                             // Headline with luminous gold-gradient emphasis word
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                    Text("Notun")
+                                    Text("Daha")
                                         .font(Theme.display(.title))
                                         .foregroundStyle(.white)
-                                    Text("konuşsun,")
+                                    Text("güçlü")
                                         .font(Theme.display(.title))
                                         .foregroundStyle(
                                             LinearGradient(
@@ -253,7 +256,7 @@ struct PremiumView: View {
                                             )
                                         )
                                 }
-                                Text("sen dinle.")
+                                Text("yapay zekâ.")
                                     .font(Theme.display(.title))
                                     .foregroundStyle(.white)
                             }
@@ -265,7 +268,7 @@ struct PremiumView: View {
                             .shadow(color: Color(uiColor: UIColor(hex: 0xF59E0B)).opacity(0.35), radius: 12, y: 4)
                     }
 
-                    Text("Sesli not, akıllı arama, yapay zekâ görselleri ve Free+ modeli. Sitede ve uygulamada tek hesapla açık.")
+                    Text("Uygulamada daha güçlü yapay zekâ ve günde daha çok hak. Sesli not, akıllı arama ve görseller şimdilik yalnızca sitede. Premium aynı hesapla ikisinde de açık.")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.86))
                         .fixedSize(horizontal: false, vertical: true)
@@ -488,7 +491,14 @@ struct PremiumView: View {
             }
             .padding(.horizontal, 2)
 
-            if showPreview {
+            if premium.isPremiumFromElsewhere {
+                Message(
+                    text: premium.role == "vip" || premium.role == "admin"
+                        ? "Hesabında Premium zaten sınırsız açık; satın alman gerekmiyor."
+                        : "Premium'un hesabında zaten açık. Süre bitince buradan App Store ile devam edebilirsin.",
+                    kind: .info
+                )
+            } else if showPreview {
                 VStack(spacing: 10) {
                     ForEach(previewPlans) { plan in
                         planCard(

@@ -234,6 +234,7 @@ struct AccountView: View {
                 DeleteAccountView()
                     .environment(auth)
                     .environment(store)
+                    .environment(premium)
             }
             .fullScreenCover(isPresented: $replayIntro) {
                 OnboardingView { _ in

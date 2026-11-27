@@ -4,7 +4,9 @@ import SwiftUI
 struct DeleteAccountView: View {
     @Environment(AuthModel.self) private var auth
     @Environment(StudyStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @Environment(\.dismiss) private var dismiss
+    @State private var manage = false
 
     @State private var word = ""
     @State private var busy = false
@@ -50,6 +52,39 @@ struct DeleteAccountView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
                         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 1))
+
+                        // Apple: deleting the account does not stop an App Store subscription; say so and
+                        // give a way to cancel it first.
+                        if premium.activeSubscription != nil {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Label("App Store aboneliğin hesap silinince durmaz", systemImage: "exclamationmark.triangle.fill")
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(Theme.text)
+                                Text(premium.willRenew
+                                     ? "Aboneliğin Apple'da yenilenmeye devam eder ve ücret alınır. Hesabı silmeden önce aboneliği iptal et."
+                                     : "Aboneliğin yenilenmeyecek; yine de hesabı silmeden önce Abonelikler'den kontrol edebilirsin.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(Theme.text2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Button {
+                                    manage = true
+                                } label: {
+                                    Label("Aboneliği yönet / iptal et", systemImage: "slider.horizontal.3")
+                                        .font(.subheadline.weight(.semibold))
+                                        .frame(maxWidth: .infinity, minHeight: 44)
+                                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+                                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(14)
+                            .background(Theme.dangerSoft, in: RoundedRectangle(cornerRadius: 14))
+                        } else {
+                            Text("App Store'dan abone olduysan abonelik hesap silinince durmaz; iPhone Ayarlar → Apple hesabın → Abonelikler'den iptal et.")
+                                .font(.footnote)
+                                .foregroundStyle(Theme.text3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
 
                         if let premiumUntil {
                             VStack(alignment: .leading, spacing: 10) {
@@ -101,6 +136,8 @@ struct DeleteAccountView: View {
                 }
             }
             .interactiveDismissDisabled(busy)
+            .manageSubscriptionsSheet(isPresented: $manage, subscriptionGroupID: PremiumStore.ID.groupID)
+            .task { await premium.refresh() }
         }
     }
 
