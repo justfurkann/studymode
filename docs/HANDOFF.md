@@ -1,4 +1,4 @@
-# StudyMode — Devir Notu (Claude Code oturumları, son güncelleme 26 Kasım 2026)
+# StudyMode — Devir Notu (Claude Code oturumları, son güncelleme 28 Kasım 2026)
 
 Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yeni bir oturuma (Claude Code veya Google AI Studio) bağlam vermek için yazıldı.
 
@@ -6,16 +6,18 @@ Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yen
 
 ## 0. Ekip düzeni (26 Kasım 2026'dan itibaren) — ÖNCE BUNU OKU
 
-Kullanıcının kararı: işi üç Claude oturumu bölüşür.
+Kullanıcının kararı: işi Claude oturumları bölüşür (aşağıdaki tablo). Bir **yönetici oturumu** her turda rolleri alt ajan olarak `docs/ROLES.md`'deki sabit tariflerle başlatır; her alt ajan kendi worktree'sinde ve dalında çalışır, işi bitince yöneticiye rapor verir.
 
 | Oturum | Nerede | Görevi | Dokunduğu yer |
 |---|---|---|---|
 | **Site Claude'u** | Kullanıcının Mac'i (Claude Code, `studymode` klasörü) | Sitede yeni özellik ve düzeltme | `src/`, `api/`, `tests/`, `supabase/`, `public/`, kök ayarlar |
 | **Uygulama Claude'u** | Kullanıcının Mac'i (Claude Code, aynı proje) | iOS uygulaması (Swift / SwiftUI, native) | Sadece `ios/` klasörü, `ios-taslak` dalı |
+| **Android Claude'u** | Kullanıcının Mac'i | Android uygulaması (Kotlin/Compose), şimdilik plan | Sadece `android/`, `android-taslak` dalı |
 | **Kalite kontrol Claude'u** | Bulut (claude.ai/code, `dreamy-sagan` oturumu) | İş yapmaz; incelemeler, canlı testler, analiz. Supabase, Vercel ve GitHub'a doğrudan bağlı, canlı test hesabının anahtarı bu ortamda kayıtlı. | Yalnızca belge, gerektiğinde |
 
 Kurallar:
 - **Aynı dosyaya iki oturum aynı anda dokunmaz.** Site Claude'u `ios/`'a, uygulama Claude'u sitenin koduna dokunmaz. Uygulama sitede bir şeye ihtiyaç duyarsa (ör. hesap silme kapısı, doğrulama dosyası) bunu site Claude'u yapar.
+- Android oturumunun haberleşme defteri `docs/ANDROID_SYNC.md` (site tarafında tutulur).
 - İki Mac oturumu birbiriyle `docs/IOS_SYNC.md` üzerinden haberleşir: "şunu yaptım, senden şunu bekliyorum". Kullanıcı aradaki postacıdır ("dosyaya bak").
 - Her büyük iş bitince kullanıcı kalite kontrol oturumuna "kontrol et" der. O oturum değişikliği okur, canlıda dener (test hesabı `scripts/live-login.cjs`), sunucu kayıtlarına bakar ve dürüst bir analiz yazar.
 - Siteye dokunan her değişiklikte 4 kontrol çalışır (bkz. iş akışı): `npm test`, `npm run build`, `npx tsc -p tsconfig.api.json`, `npm run test:e2e`. Mac'te ilk sefer `npm install` ve `npx playwright install chromium` gerekir.
@@ -1156,6 +1158,19 @@ Kalite kontrol buldu: site veriyi sayfa açılışında bir kez okuyor, açık s
 - **Kararlar:** `CLAUDE.md` HANDOFF'u kopyalamaz, ona yönlendirir. `ROLES.md`'nin içeriği bu dalda değiştirilmedi (başka dalda da aynı dosya var; birleşirken çakışmasın). Android oturumu `ANDROID_SYNC.md`'ye doğrudan yazmaz, yönetici aracılığıyla eklenir.
 - **İşe yaramayan:** depoda `package-lock.json` yok, `npm ci` çalışmıyor; `npm install` gerekti (oluşan kilit dosyası commit'lenmedi).
 - **Sıradaki:** yönetici karar verirse 0. bölümün tablosuna Android satırı eklenmeli (ör. "Android Claude'u · `android/`, `android-taslak` dalı · haberleşme `docs/ANDROID_SYNC.md`"); 0. bölüm şu an üç oturum anlatıyor, `ROLES.md` dört rol. Android istemci kimliği alınınca `ANDROID_SYNC.md` tablosu güncellenmeli.
+
+### Aşama 74 — Uygulama modu (`?app=ios`), App Store koşulları, `/hesap-sil` (28 Kasım 2026, `site-app-mode`)
+
+- **Yapılan:**
+  - **Uygulama modu** (`src/lib/appMode.ts` + `appMode.test.ts`): adreste `app=ios` ya da `app=android` varsa `sessionStorage` `studymode.appMode`'a yazılır ve o sekme boyunca geçerli olur (depolama kapalıysa sessizce atlanır, yalnızca ilk sayfa için geçerli). `main.tsx` ilk çizimden önce `initAppMode()` çağırır; bileşenler `useAppMode()` / `isAppMode()` / `<NotInApp>` kullanır. Bu modda gizlenenler: Layout'taki Premium bağlantısı (masaüstü yan menü ve telefonda `prem-top`), Premium pop-up'ı (`PremiumNudge`), turun Premium adımı, `BuyPremium`'un "Hemen al" düğmeleri (yerine "Premium’u uygulamadan alabilirsin."), `/premium`'da "Premium’u al" düğmesi, satın alma bölümü ve "Premium kodu kullan" maddesi (fiyatlar bağlantıları dahil), `/fiyatlar`'ın tamamı (yerine kısa not; Shopier bağlantısı yok), Ayarlar'daki Premium kutusunun "Kod satın al / Süreyi uzat" ve "Fiyatlar ve satın alma" bağlantıları, Bugün'deki bitiş hatırlatmasının "Yenile" düğmesi, `/rehber`'deki "Premium’a git", Koşullar, Gizlilik ve Tanıtım altbilgisindeki "Fiyatlar", Koşullar metnindeki iki `/fiyatlar` bağlantısı (yazı kalır, bağlantı olmaz). Parametresiz site hiç değişmedi (e2e ile kontrol).
+  - **Kullanım koşulları** (tarih 28 Kasım 2026): yeni madde: iPhone uygulamasında Premium App Store üzerinden alınır; aylık ve 6 aylık abonelik otomatik yenilenir, App Store hesap ayarlarından iptal edilir; tek seferlik paket yenilenmez; iade ve iptal Apple üzerinden; kod ve iade kuralları yalnızca sitedeki satış için. Kodla satış maddeleri aynen duruyor.
+  - **Gizlilik** (tarih 28 Kasım 2026): "Apple (App Store)" işleyen maddesi ve `/hesap-sil` bağlantısı.
+  - **`/hesap-sil`** (`src/pages/DeleteAccountInfo.tsx`, Google Play şartı): girişsiz açılır; telefon uygulamasından (Hesap → Hesabı sil… → SİL) ve siteden (Ayarlar → Hesabı sil) adımlar, silinenler / kalanlar (kullanılmış Premium kodlarının kaydı, 30 günlük sunucu izleri), girişliyse "Ayarlar → Hesabı sil" düğmesi, giriş yapamayan için e-posta (`SELLER.email`, fiyatlar sayfasındaki satıcı adresi). `vercel.json`'daki SPA yönlendirmesi yolu zaten kapsıyor; depoda sitemap yok, eklenmedi.
+  - 0. bölüme Android satırı ve yönetici + alt ajan cümlesi; `ROLES.md`'ye "site ile uygulamalar eşit" ortak kuralı ve B/C'ye `?app=ios` / `?app=android` kuralı; `CLAUDE.md`'de Android cümlesi düzeltildi.
+  - e2e: `tests/appMode.spec.ts` (normal açılışta Premium bağlantısı var; `?app=ios` ile yok ve sonraki sayfalarda da yok; `/fiyatlar` ve `/premium`'da not, Shopier yok; `?app=android`; `/hesap-sil`).
+- **Kararlar:** Mod sekme boyunca sabit (sayfa içinde değişmez), o yüzden `useAppMode` durum tutmayan düz bir okuma. Bilinmeyen değer (`app=web`) modu açmaz; modu kapatmanın yolu yeni sekme. `/premium`'da Premium açıksa araçlar (sesli not, arama, görsel) uygulama modunda da çalışır; yalnızca satış gizlenir. `PremiumLock`'ın "Premium’u gör" bağlantısı kaldı (satış değil, `/premium` zaten not gösteriyor). `IOS_SYNC.md`'ye yazılmadı: `ios-taslak`'taki hali dosyanın en üstüne 6 satır ekliyor, main'de üste giriş eklemek birleşmede çakışırdı.
+- **İşe yaramayan:** yok. `npm install` esbuild'in kurulum betiği için uyarı verdi ama derleme ve testler çalıştı.
+- **Sıradaki:** iPhone oturumu site sayfalarını açarken adrese `?app=ios` eklemeli (bu not IOS_SYNC'e yönetici tarafından taşınmalı: "Site → Uygulama: `?app=ios` modu yayında; Koşullar, Gizlilik, /ogrenci-tipi, /rehber, /hesap-sil linklerine `?app=ios` ekle"). Android de `?app=android`. Google Play Console'da hesap silme adresi `https://studymode.fun/hesap-sil`. Destek e-postası kullanıcıya soruldu (şimdilik `SELLER.email`). Android uygulamasında hesap silme yolu da "Hesap → Hesabı sil…" olmalı ki sayfadaki adımlar doğru kalsın.
 
 ## Tasarım dili ("Fosforlu")
 

@@ -6,7 +6,7 @@
 - **Site:** Vite + React + TypeScript (`src/`). Sunucu uçları Vercel fonksiyonları (`api/`, ör. `/api/generate`, `/api/delete-account`, `/api/apple-*`).
 - **Veri:** Supabase (giriş + Postgres). Şema ve fonksiyonlar `supabase/schema.sql` içinde.
 - **iPhone:** `ios/` klasöründe native SwiftUI uygulaması (`ios-taslak` dalı), aynı Supabase ve `/api/generate`.
-- **Android:** planlanıyor (`android/`, Kotlin + Jetpack Compose, paket `fun.studymode.app`). Henüz klasör yok.
+- **Android:** planlanıyor (Kotlin + Jetpack Compose, paket `fun.studymode.app`). Plan `android/PLAN.md`, `android-taslak` dalında (main'de `android/` yok).
 
 ## Ekip düzeni (kısaca)
 

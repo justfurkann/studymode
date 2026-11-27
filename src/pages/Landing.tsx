@@ -1,6 +1,7 @@
 import { ArrowRight, CalendarClock, Check, FileText, Layers, ListChecks, MessageSquareText, Smartphone, Sparkles } from 'lucide-react'
 import { MadeBy } from '../components/MadeBy'
 import { Link } from 'react-router-dom'
+import { NotInApp } from '../lib/appMode'
 import { Brand } from '../components/Brand'
 import { useStore } from '../lib/store'
 import { useLoadDemo } from '../lib/useDemo'
@@ -240,7 +241,9 @@ export function Landing() {
         <MadeBy />
         <Link to="/gizlilik" className="lp-footer-quiet">Gizlilik</Link>
         <Link to="/kullanim-kosullari" className="lp-footer-quiet">Kullanım koşulları</Link>
-        <Link to="/fiyatlar" className="lp-footer-quiet">Fiyatlar</Link>
+        <NotInApp>
+          <Link to="/fiyatlar" className="lp-footer-quiet">Fiyatlar</Link>
+        </NotInApp>
         <Link to="/giris">Giriş yap</Link>
       </footer>
     </div>

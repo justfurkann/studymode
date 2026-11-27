@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { refreshQuota, useQuota } from '../lib/account'
 import { canBuy } from '../lib/pricing'
+import { isAppMode } from '../lib/appMode'
 import { codeCardPng } from '../lib/codeCard'
 import { downloadBlob, downloadText } from '../lib/noteTools'
 import { usePremium } from '../lib/premium'
@@ -114,14 +115,16 @@ export function PremiumAccessSection() {
       )}
       <RedeemCode />
       <div className="btn-row">
-        {canBuy() && (
+        {canBuy() && !isAppMode() && (
           <Link className="btn btn-sm" to="/fiyatlar#paketler">
             <ShoppingBag size={15} aria-hidden /> {premium.until ? 'Süreyi uzat' : 'Kod satın al'}
           </Link>
         )}
-        <Link to="/fiyatlar" className="btn btn-ghost btn-sm">
-          Fiyatlar ve satın alma
-        </Link>
+        {!isAppMode() && (
+          <Link to="/fiyatlar" className="btn btn-ghost btn-sm">
+            Fiyatlar ve satın alma
+          </Link>
+        )}
         <Link to="/premium" className="btn btn-ghost btn-sm">
           Premium’da neler var?
         </Link>
@@ -152,7 +155,7 @@ export function PremiumReminder() {
       <span className="grow">
         Premium’ın {left <= 0 ? 'bugün' : `${left} gün sonra`} bitiyor ({formatUntil(until)}).
       </span>
-      {canBuy() && (
+      {canBuy() && !isAppMode() && (
         <Link className="btn btn-sm prem-btn" to="/fiyatlar#paketler">
           Yenile
         </Link>

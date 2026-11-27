@@ -11,6 +11,7 @@ import { installPolyfills } from './lib/polyfills'
 import { installSignInWarmup } from './lib/signInWarmup'
 import { applyTheme } from './lib/settings'
 import { applyDecor } from './lib/decor'
+import { initAppMode } from './lib/appMode'
 import './styles/global.css'
 import './styles/extras.css'
 import './styles/achievements.css'
@@ -19,6 +20,8 @@ import './styles/assistant.css'
 import './styles/minigames.css'
 
 installPolyfills()
+// Before the first draw: `?app=ios` / `?app=android` hides sales and Premium links (lib/appMode.ts).
+initAppMode()
 applyTheme()
 applyDecor()
 installErrorReporting()

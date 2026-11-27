@@ -1,5 +1,6 @@
 import { ArrowRight, AudioLines, FileText, Gem, Headphones, Image as ImageIcon, KeyRound, Lock, Search, Sparkles, Ticket } from 'lucide-react'
-import { BuyPremium, PremiumPerks } from '../components/BuyPremium'
+import { AppPremiumNote, BuyPremium, PremiumPerks } from '../components/BuyPremium'
+import { useAppMode } from '../lib/appMode'
 import { RedeemCode } from '../components/PremiumCode'
 import { canBuy, formatPrice, PACKAGES } from '../lib/pricing'
 import { formatUntil } from '../lib/premiumCodes'
@@ -47,6 +48,8 @@ export function Premium() {
   const [params, setParams] = useSearchParams()
   const tool: Tool = isTool(params.get('arac')) ? (params.get('arac') as Tool) : 'ses'
   const open = premium.state === 'open'
+  // Inside the iPhone/Android app: no buy buttons, codes or price links (store rules).
+  const inApp = useAppMode()
 
   function pickTool(next: Tool) {
     const p = new URLSearchParams(params)
@@ -66,7 +69,7 @@ export function Premium() {
         </h1>
         <p className="prem-lead">Sesli not, akıllı arama ve yapay zekâ görselleri. Google'ın en yeni Gemini modelleriyle, Premium üyelere özel.</p>
         <PremiumStatus />
-        {premium.state === 'locked' && canBuy() && (
+        {premium.state === 'locked' && canBuy() && !inApp && (
           <a href="#premium-al" className="btn prem-btn prem-hero-buy">
             <Gem size={18} aria-hidden /> Premium’u al · {formatPrice(Math.min(...PACKAGES.map((p) => p.price)))}’den başlayan
           </a>
@@ -166,8 +169,14 @@ function PremiumStatus() {
 /** For accounts without Premium: a peek at what is inside, and the two ways in. */
 function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
   const instagram = SOCIALS[0]
+  const inApp = useAppMode()
   return (
     <div className="prem-locked">
+      {inApp ? (
+        <section className="panel prem-buy" id="premium-al" aria-label="Premium nasıl alınır">
+          <AppPremiumNote />
+        </section>
+      ) : (
       <section className="panel prem-buy" id="premium-al" aria-labelledby="premium-al-title">
         <div className="prem-buy-head">
           <h2 id="premium-al-title">
@@ -178,6 +187,7 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
         <PremiumPerks />
         <BuyPremium />
       </section>
+      )}
 
       <div className="panel prem-peek" aria-label="Önizleme">
         {tool === 'ses' ? (
@@ -219,7 +229,7 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
       </div>
 
       <div className="panel prem-how">
-        <h2>{canBuy() ? 'Kodun mu var?' : 'Nasıl açılır?'}</h2>
+        <h2>{canBuy() && !inApp ? 'Kodun mu var?' : 'Nasıl açılır?'}</h2>
         {!signedIn ? (
           <>
             <p className="muted">Önce giriş yap. Premium hesabına bağlı çalışır.</p>
@@ -229,6 +239,7 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
           </>
         ) : (
           <ul className="prem-how-list">
+            {!inApp && (
             <li className="prem-how-code">
               <Ticket size={17} aria-hidden />
               <span className="grow">
@@ -243,6 +254,7 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
                 <RedeemCode compact />
               </span>
             </li>
+            )}
             <li>
               <Gem size={17} aria-hidden />
               <span>

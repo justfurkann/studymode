@@ -12,6 +12,7 @@ Yönetici oturum her turda alt ajanları bu dosyadaki tariflerle başlatır. Eki
 - Takılınca ya da kullanıcı kararı gerekince beklenmez: soru rapora yazılır, iş kalan kısımla sürer.
 - İş bitince kendi defterine (aşağıda) dört başlık yazılır: **Yapılan · Kararlar · İşe yaramayan · Sıradaki**.
 - Yapay zekâ talimatları (`src/lib/ai/tasks.ts`) testlerle korunmaz; değişirse canlıda gerçek notla denenmeli.
+- Hedef site ile uygulamaların eşit olması: siteyi uygulamaya taşı, eksikliği bir şeyi silerek ya da gizleyerek çözme (Premium dışı özellikler de dahil). Mağaza metni yalnızca uygulamada çalışanı vaat eder; özellik çalıştıkça metne eklenir.
 
 ## A. Site
 
@@ -26,7 +27,7 @@ Yönetici oturum her turda alt ajanları bu dosyadaki tariflerle başlatır. Eki
 - **Okur:** `ios/PLAN.md` (özellikle "Devir notu" bölümleri), `docs/IOS_SYNC.md`, gerektiğinde sitenin kodu (yalnızca okumak için: `src/lib/types.ts`, `srs.ts`, `dailyReview.ts`, `mathPages.ts` …).
 - **Dokunur:** yalnızca `ios/`. Siteden bir şey gerekiyorsa `docs/IOS_SYNC.md`'ye "Uygulamanın siteden beklediği işler" altına yazar (bu dosya tek ortak dosya).
 - **Dal:** `ios-taslak` (worktree'de `ios-taslak`'tan açılan bir yan dal; yönetici sonra `ios-taslak`'ı ileri sarar ve iter).
-- **Kurallar:** Değişiklikten sonra `xcodebuild` ile simülatör derlemesi temiz geçmeli. Apple mağaza kuralları: uygulamada olmayan özellik satılmaz/vaat edilmez; uygulama içinde Shopier'e ya da Premium koduna yönlendirme yok; satın alma yalnızca StoreKit. Sitenin verisini bozacak yazma yok (sitenin şemasına ve kurallarına birebir uy).
+- **Kurallar:** Değişiklikten sonra `xcodebuild` ile simülatör derlemesi temiz geçmeli. Apple mağaza kuralları: uygulamada olmayan özellik satılmaz/vaat edilmez; uygulama içinde Shopier'e ya da Premium koduna yönlendirme yok; satın alma yalnızca StoreKit. Uygulamadan bir site sayfası açarken adrese `?app=ios` ekle (site o sekmede Premium/Fiyatlar bağlantılarını, satın alma düğmelerini ve Shopier'i gizler; `src/lib/appMode.ts`). Sitenin verisini bozacak yazma yok (sitenin şemasına ve kurallarına birebir uy).
 - **Defter:** `ios/PLAN.md` (adım tablosu + "Devir notu").
 
 ## C. Android
@@ -34,7 +35,7 @@ Yönetici oturum her turda alt ajanları bu dosyadaki tariflerle başlatır. Eki
 - **Okur:** `ios/PLAN.md` (kapsam örneği), `docs/IOS_SYNC.md`, `docs/HANDOFF.md`, sitenin veri kuralları: `src/lib/types.ts`, `src/lib/srs.ts`, `src/lib/dailyReview.ts`, `supabase/schema.sql`.
 - **Dokunur:** yalnızca `android/`. Siteden bir şey gerekiyorsa `docs/ANDROID_SYNC.md`'ye yazılmasını yöneticiye bildirir (o dosya site tarafında).
 - **Dal:** `android-taslak`, `origin/main`'den.
-- **Kurallar:** Kotlin + Jetpack Compose, MVVM, katmanlar `data/domain/ui` (abartı yok). Supabase için `supabase-kt`. `study_days` yalnızca `bump_study_day` RPC. Yeni backend yok: aynı Supabase + `/api/generate`. Paket adı `fun.studymode.app`.
+- **Kurallar:** Kotlin + Jetpack Compose, MVVM, katmanlar `data/domain/ui` (abartı yok). Supabase için `supabase-kt`. `study_days` yalnızca `bump_study_day` RPC. Yeni backend yok: aynı Supabase + `/api/generate`. Paket adı `fun.studymode.app`. Uygulamadan bir site sayfası açarken adrese `?app=android` ekle (site o sekmede satış bağlantılarını gizler; `src/lib/appMode.ts`).
 - **Defter:** `android/PLAN.md`.
 
 ## D. Kalite kontrol

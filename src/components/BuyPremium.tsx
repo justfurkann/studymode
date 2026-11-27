@@ -1,6 +1,7 @@
 import { ArrowRight, AudioLines, Check, Image as ImageIcon, Search, ShoppingBag, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { MANAGE_HINT, useAppStoreSubscription } from '../lib/appStore'
+import { APP_PREMIUM_NOTE, useAppMode } from '../lib/appMode'
 import { buyUrl, formatPrice, PACKAGES } from '../lib/pricing'
 import { Alert } from './ui'
 
@@ -18,6 +19,8 @@ export const PREMIUM_PERKS = [
  */
 export function BuyPremium({ onBuy, compact = false }: { onBuy?: () => void; compact?: boolean }) {
   const appStore = useAppStoreSubscription()
+  // Inside the iPhone/Android app: no outside payment (store rules), only where to buy.
+  if (useAppMode()) return <AppPremiumNote />
   // Already paying through the App Store: no second sale here.
   if (appStore.state === 'active') return <AppStoreNote />
   const buyable = PACKAGES.map((pkg) => ({ pkg, url: buyUrl(pkg) })).filter((x): x is { pkg: (typeof PACKAGES)[number]; url: string } => !!x.url)
@@ -79,6 +82,15 @@ export function AppStoreNote() {
   return (
     <Alert tone="info">
       Premium’un iPhone’daki App Store aboneliğinle açık; burada ayrıca almana gerek yok. Yönetmek ya da iptal etmek için {MANAGE_HINT}.
+    </Alert>
+  )
+}
+
+/** Inside the app (`?app=ios`): instead of prices and buy buttons, one line saying where Premium is bought. */
+export function AppPremiumNote() {
+  return (
+    <Alert tone="info">
+      <span data-testid="app-premium-note">{APP_PREMIUM_NOTE}</span>
     </Alert>
   )
 }
