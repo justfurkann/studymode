@@ -11,6 +11,7 @@ import { PodcastTab, VisualTab } from '../components/note/VisualAndPodcastTabs'
 import { Alert, Empty, Spinner, useToast } from '../components/ui'
 import { ROLE_LABEL } from '../lib/account'
 import { usePremium } from '../lib/premium'
+import { MANAGE_HINT, useAppStoreSubscription } from '../lib/appStore'
 import {
   buildNoteEmbeddingText,
   EMBED_DIMS,
@@ -113,6 +114,7 @@ export function Premium() {
 /** "Premium açık · VIP" and today's Premium allowance, or a lock for everyone else. */
 function PremiumStatus() {
   const premium = usePremium()
+  const appStore = useAppStoreSubscription()
   const [plus, setPlus] = useState<PlusStatus | null>(null)
   const counted = premium.state === 'open' && !premium.viaKey
 
@@ -147,6 +149,11 @@ function PremiumStatus() {
           : premium.role
             ? ` · ${ROLE_LABEL[premium.role]}`
             : ''}
+      {appStore.state === 'active' && (
+        <span className="prem-status-quota">
+          App Store aboneliğinle açık · yönetmek ve iptal için {MANAGE_HINT}
+        </span>
+      )}
       {plus && (
         <span className="prem-status-quota">
           Bugün {plus.used}/{plus.limit} hak · arama sayılmaz
