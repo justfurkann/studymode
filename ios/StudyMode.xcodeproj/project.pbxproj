@@ -295,7 +295,7 @@
 				CODE_SIGN_ENTITLEMENTS = StudyMode.entitlements;
 				INFOPLIST_FILE = "StudyMode-Info.plist";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = Q2VWX7322K;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = StudyMode;
@@ -324,7 +324,7 @@
 				CODE_SIGN_ENTITLEMENTS = StudyMode.entitlements;
 				INFOPLIST_FILE = "StudyMode-Info.plist";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = Q2VWX7322K;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = StudyMode;
@@ -389,7 +389,7 @@
 			buildSettings = {
 			    ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 			    CODE_SIGN_STYLE = Automatic;
-			    CURRENT_PROJECT_VERSION = 3;
+			    CURRENT_PROJECT_VERSION = 4;
 			    DEVELOPMENT_TEAM = Q2VWX7322K;
 			    GENERATE_INFOPLIST_FILE = YES;
 			    INFOPLIST_KEY_CFBundleDisplayName = StudyMode;
@@ -412,7 +412,7 @@
 			buildSettings = {
 			    APPLICATION_EXTENSION_API_ONLY = YES;
 			    CODE_SIGN_STYLE = Automatic;
-			    CURRENT_PROJECT_VERSION = 3;
+			    CURRENT_PROJECT_VERSION = 4;
 			    DEVELOPMENT_TEAM = Q2VWX7322K;
 			    GENERATE_INFOPLIST_FILE = YES;
 			    INFOPLIST_KEY_CFBundleDisplayName = StudyMode;
@@ -435,7 +435,7 @@
 			buildSettings = {
 			    ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 			    CODE_SIGN_STYLE = Automatic;
-			    CURRENT_PROJECT_VERSION = 3;
+			    CURRENT_PROJECT_VERSION = 4;
 			    DEVELOPMENT_TEAM = Q2VWX7322K;
 			    GENERATE_INFOPLIST_FILE = YES;
 			    INFOPLIST_KEY_CFBundleDisplayName = StudyMode;
@@ -458,7 +458,7 @@
 			buildSettings = {
 			    APPLICATION_EXTENSION_API_ONLY = YES;
 			    CODE_SIGN_STYLE = Automatic;
-			    CURRENT_PROJECT_VERSION = 3;
+			    CURRENT_PROJECT_VERSION = 4;
 			    DEVELOPMENT_TEAM = Q2VWX7322K;
 			    GENERATE_INFOPLIST_FILE = YES;
 			    INFOPLIST_KEY_CFBundleDisplayName = StudyMode;
