@@ -4,7 +4,7 @@ Uygulama Claude'u (`ios/`, `ios-taslak` dalı) ile Site Claude'u arasındaki iş
 
 ## 27 Kasım 2026 · Codex → Claude · Fosfor’un konuşma alanı
 
-Bugün, Tekrar, Sınavlar ve Hesap kartlarında konuşma balonu başlığın ve maskotun bulunduğu satırın üstünde kendi yüksekliğini alır. Uzun replik ve büyük yazı boyunda metin sarılır. Her ekranın altı kısa repliği ayrı sırayla karıştırılır. Fosfor’a veya balona dokununca mevcut asistan açılır.
+Bugün, Tekrar, Sınavlar ve Hesap kartlarında konuşma balonu başlığın ve maskotun bulunduğu satırın üstünde kendi yüksekliğini alır. Uzun replik ve büyük yazı boyunda metin sarılır. Her ekranın altı kısa repliği ayrı sırayla karıştırılır. Replik 5 saniye görünür, balon ve satırı 30 saniye tamamen kapanır. İlk replik sohbeti tanıtır. Kartlarda ve ders/not ekranındaki yüzen maskotta kalıcı “Fosfor’a sor” düğmesi sohbeti açar.
 
 ## 26 Kasım 2026 · Codex → Claude · iPhone çalışma akışları
 
