@@ -5,6 +5,7 @@ struct MainTabs: View {
     @Environment(AuthModel.self) private var auth
     @State private var store = StudyStore()
     @State private var place = AssistantPlace()
+    @State private var premium = PremiumStore()
     @State private var keyboardUp = false
 
     private var shareCatalog: PDFInbox.Catalog? {
@@ -51,6 +52,10 @@ struct MainTabs: View {
         .modifier(AchievementWatcher())
         .environment(store)
         .environment(place)
+        .environment(premium)
+        .task(id: auth.session?.user.id) {
+            if let user = auth.session?.user.id { premium.start(user: user) } else { premium.stop() }
+        }
         .onChange(of: shareCatalog, initial: true) { _, catalog in try? PDFInbox.publish(catalog) }
         .task {
             store.audience = Exams.audience(forLevel: auth.educationLevel)
@@ -109,6 +114,14 @@ struct AccountView: View {
                             replayIntro = true
                         } label: {
                             Label("Açılış tanıtımını gör", systemImage: "sparkles.rectangle.stack")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .staggeredAppear(1)
+
+                        NavigationLink {
+                            PremiumView()
+                        } label: {
+                            Label("Premium", systemImage: "sparkles")
                         }
                         .buttonStyle(SecondaryButtonStyle())
                         .staggeredAppear(1)

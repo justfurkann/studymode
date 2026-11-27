@@ -252,7 +252,12 @@ enum Dates {
 
     /// Postgres timestamptz ("2026-11-26T09:00:00.123+00:00") or the site's toISOString().
     static func parse(_ text: String) -> Date? {
-        withFraction.date(from: text) ?? plain.date(from: text)
+        if let date = withFraction.date(from: text) ?? plain.date(from: text) { return date }
+        // Postgres json gives microseconds (".123456"); the formatter takes at most milliseconds.
+        guard let dot = text.firstIndex(of: "."), let end = text[dot...].firstIndex(where: { !$0.isNumber && $0 != "." }) else { return nil }
+        let digits = text[text.index(after: dot)..<end]
+        guard digits.count > 3 else { return nil }
+        return withFraction.date(from: String(text[..<dot]) + "." + digits.prefix(3) + text[end...])
     }
 
     /// A local calendar day "YYYY-MM-DD" at midnight.

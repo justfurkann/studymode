@@ -128,3 +128,26 @@ Kullanıcı Non-interactive'e geçmeyi reddetti ("asla tamamen o dediğin gibi y
 - **Uygulamadan beklenen:** `study_days`'e satır insert/upsert/update etmeyi bırakıp her cevapta, test bitiminde ve "actions"ta bu fonksiyonu çağırmak. Gün = cihazın yerel günü (site ile aynı).
 - **Site tarafı (bilgi):** açık sekme 2 dakikadan uzun kaldıysa geri dönünce hesabı yeniden okur (kart ve not değişiklikleri de gelir). Kart ve not satırları hâlâ bütün yazılır; iki cihazda aynı anda aynı kart düzenlenirse son yazan kazanır.
 - **Uygulama (26 Kasım, `ios-taslak`):** ✅ yapıldı. Kart cevabı (`p_reviews`, yeni kartsa `p_new_cards`), test, sınav provası (`p_quizzes`) ve Anlat cevabı (`p_actions`) yalnızca `bump_study_day` ile yazılıyor; insert/upsert/update kaldırıldı. Dönen satır ekrandaki bugünkü sayıyı güncelliyor (`ios/StudyMode/Data/StudyDays.swift`). Uygulamada henüz geri alma yok; eklenince negatif değer kullanılacak.
+
+## 8. Apple ile Premium (uygulama → site, 27 Kasım 2026)
+
+Uygulama Premium'u App Store'dan StoreKit 2 ile satıyor (ürünler App Store Connect'te hazır, "StudyMode Premium" grubu, Group ID 22628551):
+
+| Ürün | Tür | Fiyat | Süre |
+|---|---|---|---|
+| `fun.studymode.app.premium.monthly` | otomatik yenilenen | ₺99,99 | 1 ay |
+| `fun.studymode.app.premium.sixmonths` | otomatik yenilenen | ₺499,99 | 6 ay |
+| `fun.studymode.app.premium.twoweeks` | yenilenmeyen | ₺49,99 | 14 gün (Apple süre tutmaz) |
+
+Uygulama tarafı yazıldı (`ios/StudyMode/Premium/`): her satın almada `appAccountToken` = Supabase kullanıcı kimliği; işlem sitenin sunucusu kabul edene kadar `finish()` edilmez, sonraki açılışta tekrar gönderilir. Premium durumu `ai_quota().premium_until`'dan okunur (StoreKit'in kendi kaydı da yerelde gösterilir).
+
+**Sitenin yapması gereken:**
+1. **`POST /api/apple-purchase`** (Bearer = Supabase oturumu), gövde `{"transaction": "<JWS>"}` (StoreKit `jwsRepresentation`).
+   - JWS'yi Apple'ın sertifika zinciriyle doğrula (x5c → Apple Root CA G3; Apple'ın `app-store-server-library` ya da elle). `bundleId == fun.studymode.app`, `productId` yukarıdaki üçünden biri, `environment` (Sandbox/Production) kaydedilsin.
+   - `appAccountToken` varsa oturumdaki kullanıcıya eşit olmalı (değilse 403).
+   - Aynı `transactionId` iki kez sayılmasın: yeni tablo öneriyorum `apple_transactions(transaction_id pk, original_transaction_id, user_id, product_id, purchase_date, expires_at, revoked_at, environment)`.
+   - Otomatik yenilenen: `premium_access.until = greatest(until, expiresDate)`.
+   - 2 haftalık: `premium_access.until = greatest(until, now()) + 14 gün` (sitedeki kod mantığıyla aynı), yalnızca ilk kez görülen `transactionId` için.
+   - Cevap `200 {"ok": true, "premium_until": "<ISO>"}`. Hata olursa 4xx/5xx; uygulama sonra yeniden dener.
+2. **`POST /api/apple-notifications`**: App Store Server Notifications V2. `DID_RENEW` → süreyi uzat; `REFUND` / `REVOKE` → o işlemi `revoked_at` ile işaretle ve süreyi geri çek; `EXPIRED` için bir şey gerekmez. URL'yi kullanıcı App Store Connect → App Information → App Store Server Notifications'a girecek (Production ve Sandbox).
+3. Site Premium sayfası: Apple'dan abone olana "Aboneliğin App Store üzerinden; yönetmek için iPhone Ayarlar → Abonelikler" yazsın; sitede ikinci kez satış önermesin.
