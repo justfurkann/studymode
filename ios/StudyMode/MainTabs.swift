@@ -47,6 +47,7 @@ struct MainTabs: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Theme.bg)
         }
+        .modifier(AchievementWatcher())
         .environment(store)
         .environment(place)
         .onChange(of: shareCatalog, initial: true) { _, catalog in try? PDFInbox.publish(catalog) }
@@ -107,6 +108,14 @@ struct AccountView: View {
                             replayIntro = true
                         } label: {
                             Label("Açılış tanıtımını gör", systemImage: "sparkles.rectangle.stack")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .staggeredAppear(1)
+
+                        NavigationLink {
+                            AchievementsView()
+                        } label: {
+                            Label("Başarımlar ve seviye", systemImage: "trophy")
                         }
                         .buttonStyle(SecondaryButtonStyle())
                         .staggeredAppear(1)

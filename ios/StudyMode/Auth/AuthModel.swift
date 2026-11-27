@@ -88,6 +88,9 @@ final class AuthModel {
         }
     }
 
+    /// After a user_metadata update made elsewhere (achievements).
+    func updateSessionUser(_ user: User) { session?.user = user }
+
     /// Ayarlar → Okulun: changes only education.level, keeping the other answers the site stored.
     func setEducationLevel(_ level: StudentLevel) async throws {
         var education: [String: AnyJSON] = [:]
