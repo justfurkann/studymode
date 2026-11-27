@@ -136,7 +136,7 @@ struct ExamsHubTab: View {
 
                 Spacer(minLength: 8)
 
-                FosforMascotView(
+                TalkingFosfor(
                     size: 52,
                     mood: (readiness ?? 0) >= 75 ? .cheering : .marking,
                     onDark: true

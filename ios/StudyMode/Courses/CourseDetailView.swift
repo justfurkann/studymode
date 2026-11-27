@@ -78,7 +78,9 @@ struct CourseDetailView: View {
         } message: {
             Text("Dersin bütün notları, kartları, test sonuçları ve sınavları da silinir. Bu işlem geri alınamaz; site ve uygulama aynı hesabı kullandığı için ikisinden de silinir.")
         }
-        .onAppear { place.courseId = course.id; place.noteId = nil }
+        .onAppear { place.enter("course-\(course.id)", course: course.id, note: nil) }
+        // Back on a main screen the floating Fosfor goes away (the one on the screen stays).
+        .onDisappear { place.leave("course-\(course.id)") }
         .alert("Ders silinemedi", isPresented: $deleteError) { Button("Tamam") {} } message: { Text("Bağlantını kontrol edip tekrar dene.") }
         .sheet(isPresented: $adding) {
             AddNoteView(course: course, onDone: openNote).environment(store)

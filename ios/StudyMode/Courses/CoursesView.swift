@@ -223,7 +223,7 @@ struct CoursesView: View {
 
                 Spacer(minLength: 8)
 
-                FosforMascotView(
+                TalkingFosfor(
                     size: 54,
                     mood: reached ? .cheering : (queue.isEmpty ? .proud : .marking),
                     onDark: true

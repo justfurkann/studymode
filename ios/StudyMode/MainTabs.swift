@@ -26,7 +26,7 @@ struct MainTabs: View {
                 .tabItem { Label("Hesap", systemImage: "person.crop.circle") }
         }
         .overlay(alignment: .bottomTrailing) {
-            if store.status == .ready && !place.open && !keyboardUp {
+            if store.status == .ready && !place.open && !keyboardUp && place.courseId != nil {
                 AssistantButton()
                     .padding(.trailing, 12)
                     .padding(.bottom, 86)
@@ -34,6 +34,7 @@ struct MainTabs: View {
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: place.open)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: place.courseId)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardUp = false }
         .sheet(isPresented: Binding(get: { place.open }, set: { place.open = $0 })) {
@@ -97,7 +98,7 @@ struct AccountView: View {
                                     .padding(.top, 6)
                             }
                             Spacer(minLength: 4)
-                            FosforMascotView(size: 52, mood: .proud)
+                            TalkingFosfor(size: 52, mood: .proud)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .focusCard()

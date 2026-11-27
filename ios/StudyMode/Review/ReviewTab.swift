@@ -67,7 +67,7 @@ struct ReviewTab: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
-                FosforMascotView(
+                TalkingFosfor(
                     size: 46,
                     mood: reached ? .cheering : (nothing ? .proud : .curious)
                 )

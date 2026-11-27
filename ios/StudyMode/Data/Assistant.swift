@@ -19,6 +19,23 @@ final class AssistantPlace {
     /// How tall the sheet is. Questions from inside a note open half height, so the note stays in view.
     var detent: PresentationDetent = .large
 
+    /// Course and note screens currently on screen, in the order they appeared. The floating Fosfor
+    /// shows while one is open; the last one is what Fosfor talks about.
+    private var screens: [(key: String, course: UUID, note: UUID?)] = []
+
+    func enter(_ key: String, course: UUID, note: UUID?) {
+        screens.removeAll { $0.key == key }
+        screens.append((key, course, note))
+        courseId = course
+        noteId = note
+    }
+
+    func leave(_ key: String) {
+        screens.removeAll { $0.key == key }
+        courseId = screens.last?.course
+        noteId = screens.last?.note
+    }
+
     func show(course: UUID?, note: UUID?) {
         courseId = course
         noteId = note

@@ -104,8 +104,8 @@ struct NoteDetailView: View {
             Button("Tamam") {}
         } message: { Text(actionError ?? "") }
         .task { await load() }
-        .onAppear { place.courseId = note.courseId; place.noteId = note.id }
-        .onDisappear { if place.noteId == note.id { place.noteId = nil } }
+        .onAppear { place.enter("note-\(note.id)", course: note.courseId, note: note.id) }
+        .onDisappear { place.leave("note-\(note.id)") }
     }
 
     /// The note as the store knows it now (the title may have been edited).
