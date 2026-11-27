@@ -147,13 +147,20 @@ final class PremiumStore {
             await transaction.finish()
             return
         }
-        if await sendToServer(result.jwsRepresentation) {
+        switch await sendToServer(result.jwsRepresentation) {
+        case .recorded:
             await transaction.finish()
             await refresh()
-        } else {
+        case .rejected:
+            // The server will never take this one (another account's purchase, refunded, not ours):
+            // sending it again at every launch would not help.
+            await transaction.finish()
+        case .later:
             unsynced += 1
         }
     }
+
+    enum ServerOutcome { case recorded, rejected, later }
 
     private struct ServerReply: Decodable {
         let ok: Bool?
@@ -161,8 +168,10 @@ final class PremiumStore {
     }
 
     /// The site verifies Apple's signed transaction and extends premium_access for this account.
-    private func sendToServer(_ jws: String) async -> Bool {
-        guard let token = try? await supabase.auth.session.accessToken else { return false }
+    /// 200: recorded. 400 / 403 / 409 (invalid, another account's, refunded): rejected for good.
+    /// 401, 5xx (503 not configured yet), no network: try again later.
+    private func sendToServer(_ jws: String) async -> ServerOutcome {
+        guard let token = try? await supabase.auth.session.accessToken else { return .later }
         var request = URLRequest(url: Config.siteURL.appending(path: "api/apple-purchase"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -171,12 +180,14 @@ final class PremiumStore {
         request.timeoutInterval = 20
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return false }
+            guard let http = response as? HTTPURLResponse else { return .later }
+            if [400, 403, 409].contains(http.statusCode) { return .rejected }
+            guard (200..<300).contains(http.statusCode) else { return .later }
             let reply = try? JSONDecoder().decode(ServerReply.self, from: data)
             if let until = reply?.premium_until.flatMap(Dates.parse) { serverUntil = until }
-            return reply?.ok ?? true
+            return (reply?.ok ?? true) ? .recorded : .later
         } catch {
-            return false
+            return .later
         }
     }
 
