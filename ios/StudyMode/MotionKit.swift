@@ -51,23 +51,36 @@ extension View {
 struct StudyLoadingStage: View {
     var message: String = "Çalışma masan hazırlanıyor…"
     var cardCount: Int = 3
+    var fosforScreen: FosforScreen?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shimmerPhase: CGFloat = -1.0
 
+    private var loadingLabel: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(message)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Theme.text)
+            Text("Notlar ve ilerleme eşitleniyor")
+                .font(.caption)
+                .foregroundStyle(Theme.text3)
+        }
+    }
+
     var body: some View {
         VStack(spacing: 16) {
-            HStack(spacing: 12) {
-                FosforMascotView(size: 46, mood: .marking)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(message)
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(Theme.text)
-                    Text("Notlar ve ilerleme eşitleniyor")
-                        .font(.caption)
-                        .foregroundStyle(Theme.text3)
+            Group {
+                if let fosforScreen {
+                    TalkingFosfor(screen: fosforScreen, size: 46, mood: .marking) {
+                        loadingLabel
+                    }
+                } else {
+                    HStack(spacing: 12) {
+                        FosforMascotView(size: 46, mood: .marking)
+                        loadingLabel
+                        Spacer()
+                    }
                 }
-                Spacer()
             }
             .padding(.horizontal, 4)
 

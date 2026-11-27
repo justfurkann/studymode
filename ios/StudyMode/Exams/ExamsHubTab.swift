@@ -28,7 +28,7 @@ struct ExamsHubTab: View {
                 GridPaper()
                 if store.status != .ready {
                     ScrollView {
-                        StudyLoadingStage(message: "Sınav takvimin yükleniyor…", cardCount: 3)
+                        StudyLoadingStage(message: "Sınav takvimin yükleniyor…", cardCount: 3, fosforScreen: .exam)
                             .padding(.horizontal, 16)
                     }
                 } else {
@@ -187,7 +187,7 @@ struct ExamsHubTab: View {
 
     private var emptyCalendarHero: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
+            TalkingFosfor(screen: .exam, size: 52, mood: .curious) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Text("Sınav")
@@ -199,8 +199,6 @@ struct ExamsHubTab: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.text2)
                 }
-                Spacer(minLength: 4)
-                FosforMascotView(size: 52, mood: .curious)
             }
 
             Button {
