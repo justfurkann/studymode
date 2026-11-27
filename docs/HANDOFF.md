@@ -1144,6 +1144,12 @@ Kalite kontrol buldu: site veriyi sayfa açılışında bir kez okuyor, açık s
 - Not: kodla verilmiş Premium süresi aboneliğin bitişinden uzunsa abonelik o süreye bir şey eklemez (max).
 - **`GET /api/apple-status`** (Bearer): hesabın süren App Store aboneliği var mı (`src/lib/appStore.ts`, `useAppStoreSubscription`). Varsa: hesap silme penceresi "abonelik hesap silinince durmaz, iPhone Ayarlar → Abonelikler'den iptal et" uyarısı verir (sunucu cevap veremezse de verir); Premium sayfasında "App Store aboneliğinle açık" yazar; `BuyPremium` ve Fiyatlar sayfası ikinci kez satış önermez.
 
+### Aşama 72 — Paylaşılan ders linkleri iPhone'da uygulamayı açar (27 Kasım 2026, `applinks-paylas`)
+
+- `public/.well-known/apple-app-site-association`: `webcredentials` duruyor; yanına `applinks` → yalnızca `/paylas/*` (`Q2VWX7322K.fun.studymode.app`). Sitenin geri kalanı tarayıcıda açılır. Uygulamada `applinks:studymode.fun` ve `onOpenURL` hazır (ios-taslak b6b2b29).
+- Dosya yönlendirmesiz 200 + `application/json` sunuluyor (`vercel.json` header'ı; SPA rewrite'ı noktalı yolları atladığı için yutmuyor). `src/lib/aasa.test.ts` ikisini de kontrol eder.
+- Team ID değişirse (ücretli ekip) bu dosyadaki iki `appIDs`/`apps` değeri birlikte güncellenmeli. Apple dosyayı önbelleğe alır; değişiklik telefona uygulama yeniden kurulunca ya da birkaç saat içinde gelir.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

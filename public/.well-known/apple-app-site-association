@@ -1,4 +1,12 @@
 {
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["Q2VWX7322K.fun.studymode.app"],
+        "components": [{ "/": "/paylas/*", "comment": "Shared course links open in the iOS app; the rest of the site stays in the browser." }]
+      }
+    ]
+  },
   "webcredentials": {
     "apps": ["Q2VWX7322K.fun.studymode.app"]
   }
