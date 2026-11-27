@@ -46,6 +46,7 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var store = store
         Form {
+          Group {
             Section {
                 Stepper(value: $store.dailyGoal, in: 1...500, step: store.dailyGoal < 30 ? 5 : 10) {
                     HStack {
@@ -107,6 +108,8 @@ struct SettingsView: View {
                 Link(destination: Config.siteURL.appending(path: "kullanim-kosullari")) { Label("Kullanım koşulları", systemImage: "doc.text") }
                 Link(destination: Config.siteURL.appending(path: "ayarlar")) { Label("Diğer ayarlar sitede", systemImage: "safari") }
             }
+          }
+          .listRowBackground(Theme.surface)
         }
         .scrollContentBackground(.hidden)
         .background(GridPaper())
