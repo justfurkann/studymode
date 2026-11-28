@@ -40,6 +40,17 @@ struct CoursesView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
+                    // Search every note (the site's Premium → Akıllı arama; word search for everyone).
+                    Button {
+                        OnboardingHaptics.light()
+                        path.append(SmartSearchRoute())
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                    .accessibilityLabel("Notlarında ara")
+                    .disabled(store.status != .ready)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         OnboardingHaptics.light()
                         adding = true
@@ -57,6 +68,7 @@ struct CoursesView: View {
             .navigationDestination(for: Course.self) { CourseDetailView(course: $0) }
             .navigationDestination(for: NoteItem.self) { NoteDetailView(note: $0) }
             .navigationDestination(for: NoteRoute.self) { NoteDetailView(note: $0.note, start: $0.start) }
+            .navigationDestination(for: SmartSearchRoute.self) { _ in SmartSearchView() }
         }
         .fullScreenCover(item: $session) { box in
             ReviewSession(title: "Tekrar", cards: box.cards, mode: .daily).environment(store)

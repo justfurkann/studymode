@@ -157,6 +157,8 @@ struct DeleteAccountView: View {
             switch outcome {
             case .deleted:
                 store.reset()
+                Assistant.clearAll()
+                SmartSearchIndex.clearAll()
                 await auth.signOutLocally()
             case let .premiumActive(until):
                 premiumUntil = until

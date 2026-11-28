@@ -218,11 +218,18 @@ struct LoginView: View {
         .focusCard()
     }
 
+    /// A tappable link inside the sentence; the address comes from Config.sitePage (adds `?app=ios`).
+    private func link(_ text: String, _ url: URL) -> AttributedString {
+        var out = AttributedString(text)
+        out.link = url
+        return out
+    }
+
     private var legal: some View {
         (Text("Devam ederek ")
-         + Text("[kullanım koşullarını](https://studymode.fun/kullanim-kosullari?app=ios)").underline()
+         + Text(link("kullanım koşullarını", Config.sitePage("kullanim-kosullari"))).underline()
          + Text(" kabul etmiş ve ")
-         + Text("[gizlilik politikasını](https://studymode.fun/gizlilik?app=ios)").underline()
+         + Text(link("gizlilik politikasını", Config.sitePage("gizlilik"))).underline()
          + Text(" okumuş olursun."))
             .font(.footnote)
             .foregroundStyle(Theme.text3)

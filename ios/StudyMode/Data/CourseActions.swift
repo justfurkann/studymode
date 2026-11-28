@@ -61,6 +61,7 @@ extension StudyStore {
     /// The database cascades to the course's notes, cards, tests, exams and shares.
     func deleteCourse(_ course: Course) async throws {
         try await supabase.from("courses").delete().eq("id", value: course.id).execute()
+        SmartSearchIndex.shared.courseDeleted(course.id)
         await load()
     }
 

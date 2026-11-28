@@ -24,7 +24,8 @@ struct PremiumView: View {
     /// supabase/schema.sql): Premium counts as VIP for the limits (ai_limit_for: 150 a day instead of 40)
     /// and gets Free+ (plus_limit_for: 30 answers a day on the stronger model, then the normal model).
     /// Reading page pictures is not counted for anyone, so it is not a Premium feature and not listed.
-    /// Site-only tools (podcast, semantic search, images) are not sold here; one small line names them.
+    /// Site-only tools (podcast, images) are not sold here; one small line names them. Semantic search
+    /// works in the app (Search/) and is listed.
     private let features: [Feature] = [
         .init(
             id: "freeplus",
@@ -39,6 +40,14 @@ struct PremiumView: View {
             title: "Günde 150 hak",
             detail: "Ücretsiz hesapta günde 40 yapay zekâ isteği",
             accent: Theme.prem1
+        ),
+        // Works in the app since 28 November (Search/): the server's embed task is Premium-only.
+        .init(
+            id: "arama",
+            icon: "sparkle.magnifyingglass",
+            title: "Akıllı arama",
+            detail: "Notlarında anlamla ara; kelimesi geçmese de bulur",
+            accent: Theme.prem2
         ),
     ]
 
@@ -64,7 +73,7 @@ struct PremiumView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     featuresBento
                     // Not a reason to buy: a plain note that the site has more tools.
-                    Text("Sitede ayrıca: sesli not, akıllı arama ve görseller (uygulamada yok).")
+                    Text("Sitede ayrıca: sesli not ve görseller (uygulamada yok).")
                         .font(.caption2)
                         .foregroundStyle(Theme.text3)
                         .padding(.horizontal, 4)
@@ -572,6 +581,24 @@ struct PremiumView: View {
         }
     }
 
+    /// Apple's subscription sheet: change the plan or cancel.
+    private var manageButton: some View {
+        Button {
+            OnboardingHaptics.light()
+            manage = true
+        } label: {
+            Label("Aboneliği yönet", systemImage: "slider.horizontal.3")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 46)
+                .background(
+                    LinearGradient(colors: [Theme.prem1, Theme.prem2], startPoint: .leading, endPoint: .trailing),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+        }
+        .buttonStyle(TactileCardButtonStyle(scale: 0.985))
+    }
+
     /// Shown instead of the plans when Premium is already on (VIP / admin, a site code, a subscription).
     private var activeCard: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -588,24 +615,19 @@ struct PremiumView: View {
                 Text("Paketini değiştirmek ya da iptal etmek için aboneliğini yönet.")
                     .font(.caption)
                     .foregroundStyle(Theme.text2)
-                Button {
-                    OnboardingHaptics.light()
-                    manage = true
-                } label: {
-                    Label("Aboneliği yönet", systemImage: "slider.horizontal.3")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 46)
-                        .background(
-                            LinearGradient(colors: [Theme.prem1, Theme.prem2], startPoint: .leading, endPoint: .trailing),
-                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        )
-                }
-                .buttonStyle(TactileCardButtonStyle(scale: 0.985))
+                manageButton
             case .account:
                 Text("Premium'un hesabında açık; şu an satın alman gerekmiyor.")
                     .font(.caption)
                     .foregroundStyle(Theme.text2)
+            case .role where premium.activeSubscription != nil:
+                // VIP / admin with a running App Store subscription: Apple keeps charging it, so the way
+                // to cancel stays visible even though the role already gives Premium.
+                Text("Bu Apple hesabında süren bir App Store aboneliğin de var; ücretlendirilmeye devam ediyor. İstersen buradan iptal edebilirsin.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.text2)
+                    .fixedSize(horizontal: false, vertical: true)
+                manageButton
             default:
                 EmptyView()
             }

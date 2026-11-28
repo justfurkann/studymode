@@ -44,7 +44,9 @@ struct MainTabs: View {
         .environment(premium)
         .task(id: auth.session?.user.id) {
             if let user = auth.session?.user.id { premium.start(user: user) } else { premium.stop() }
+            SmartSearchIndex.shared.configure(user: auth.session?.user.id)
         }
+        .onChange(of: premium.isPremium, initial: true) { _, on in SmartSearchIndex.shared.isPremium = on }
         .onChange(of: shareCatalog, initial: true) { _, catalog in try? PDFInbox.publish(catalog) }
         .task {
             store.audience = Exams.audience(forLevel: auth.educationLevel)
@@ -194,6 +196,7 @@ struct AccountView: View {
                                 await auth.signOut()
                                 store.reset()
                                 Assistant.clearAll()
+                                SmartSearchIndex.clearAll()
                             }
                         } label: {
                             Text("Çıkış yap").foregroundStyle(Theme.danger)

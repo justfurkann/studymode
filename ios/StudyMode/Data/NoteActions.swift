@@ -163,6 +163,8 @@ extension StudyStore {
             try await supabase.from("quiz_attempts").update(AttemptMove(course_id: course)).eq("note_id", value: note.id).execute()
         }
         await load()
+        // The meaning-search vector follows the new title / text (and the new course).
+        Task { await SmartSearchIndex.shared.noteChanged(note.id, from: note.courseId, to: course) }
     }
 
     /// "Notu sil": exams that listed this note keep their other notes (so they do not silently start
@@ -175,6 +177,7 @@ extension StudyStore {
             try await supabase.from("course_exams").update(ExamNotes(note_ids: rest, updated_at: stamp)).eq("id", value: exam.id).execute()
         }
         try await supabase.from("notes").delete().eq("id", value: note.id).execute()
+        SmartSearchIndex.shared.noteDeleted(note.id, course: note.courseId)
         await load()
     }
 }

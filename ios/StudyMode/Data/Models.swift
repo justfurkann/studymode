@@ -113,6 +113,9 @@ struct NoteItem: Identifiable, Decodable, Hashable {
     /// every term is checked (computeNoteProgress).
     let checkedTerms: [String]?
     let keyTerms: [TermName]?
+    /// summary->tags (the course page's tag filter).
+    let tagList: LenientStrings?
+    var tags: [String]? { tagList?.values }
 
     struct TermName: Decodable, Hashable { let term: String }
 
@@ -126,9 +129,10 @@ struct NoteItem: Identifiable, Decodable, Hashable {
         case completedSteps = "steps"
         case checkedTerms = "checked"
         case keyTerms = "terms"
+        case tagList = "tags"
     }
 
-    static let columns = "id,course_id,title,generator,created_at,updated_at,overview:summary->>overview,steps:summary->completedSteps,checked:summary->checkedTerms,terms:summary->keyTerms"
+    static let columns = "id,course_id,title,generator,created_at,updated_at,overview:summary->>overview,steps:summary->completedSteps,checked:summary->checkedTerms,terms:summary->keyTerms,tags:summary->tags"
 }
 
 /// One study_days row, only the counts the app needs.
