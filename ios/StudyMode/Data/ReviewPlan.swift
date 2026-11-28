@@ -70,6 +70,28 @@ extension StudyStore {
         }
     }
 
+    /// Reverts `countLocally` when the student taps "Son cevabı geri al".
+    func uncountLocally(wasNew: Bool) {
+        if let index = days.firstIndex(where: { $0.day == today }), days[index].reviews > 0 {
+            days[index].reviews -= 1
+        }
+        if wasNew, let current = serverNewToday, current > 0 {
+            serverNewToday = current - 1
+        }
+    }
+
+    /// Cards the student previously struggled with (`lapses > 0` or answered "Bilemedim" on a new card).
+    func struggledCards(limit: Int = 25) -> [Card] {
+        cards
+            .filter(\.failedBefore)
+            .sorted { a, b in
+                if a.lapses != b.lapses { return a.lapses > b.lapses }
+                return a.dueDate < b.dueDate
+            }
+            .prefix(limit)
+            .map { $0 }
+    }
+
     // MARK: Who may enter
 
     /// A note whose summary was read (Tanış or Anla done) or whose test was solved.

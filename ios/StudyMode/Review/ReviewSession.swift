@@ -1,4 +1,58 @@
+import AVFoundation
 import SwiftUI
+
+/// Lightweight Turkish speech helper for "Sesli oku" on flashcards.
+@MainActor
+@Observable
+private final class CardSpeaker: NSObject, AVSpeechSynthesizerDelegate {
+    private let synth = AVSpeechSynthesizer()
+    private(set) var isSpeaking = false
+
+    override init() {
+        super.init()
+        synth.delegate = self
+    }
+
+    func toggle(_ text: String) {
+        if synth.isSpeaking {
+            stop()
+            return
+        }
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return }
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+        try? session.setActive(true)
+        let u = AVSpeechUtterance(string: clean)
+        u.voice = AVSpeechSynthesisVoice(language: "tr-TR")
+        u.rate = AVSpeechUtteranceDefaultSpeechRate * 0.96
+        isSpeaking = true
+        synth.speak(u)
+    }
+
+    func stop() {
+        if synth.isSpeaking || synth.isPaused {
+            synth.stopSpeaking(at: .immediate)
+        }
+        isSpeaking = false
+    }
+
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        Task { @MainActor in self.isSpeaking = false }
+    }
+
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        Task { @MainActor in self.isSpeaking = false }
+    }
+}
+
+private struct UndoSnapshot {
+    let previousCard: Card
+    let previousQueue: [UUID]
+    let wasNew: Bool
+    let wasMissedBefore: Bool
+    let addedKnownFirstTry: Bool
+}
 
 /// One study round over a fixed queue of cards, like the site's ReviewSession and note card round.
 /// `.grades` (Tekrar tab): Bilemedim / Zor / İyi / Kolay with when each brings the card back.
@@ -36,6 +90,10 @@ struct ReviewSession: View {
     @State private var shuffleTrigger = 0
     @State private var easySparkTrigger = 0
     @State private var showReceipt = false
+    @State private var lastUndo: UndoSnapshot?
+    @State private var speaker = CardSpeaker()
+    @State private var codingCard: Card?
+    @State private var hintRefresh = 0
 
     init(title: String, cards: [Card], mode: Mode, onFinish: (() -> Void)? = nil) {
         self.title = title
@@ -84,6 +142,36 @@ struct ReviewSession: View {
                     }
                     .accessibilityLabel("Kapat")
                 }
+                if !finished, let activeCard = card {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            OnboardingHaptics.light()
+                            codingCard = activeCard
+                        } label: {
+                            Image(systemName: "key.fill")
+                        }
+                        .accessibilityLabel("Bu kartı şifrele")
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            OnboardingHaptics.light()
+                            speaker.toggle(revealed ? activeCard.back : activeCard.front)
+                        } label: {
+                            Image(systemName: speaker.isSpeaking ? "speaker.slash.fill" : "speaker.wave.2")
+                        }
+                        .accessibilityLabel(speaker.isSpeaking ? "Okumayı durdur" : "Sesli oku")
+                    }
+                }
+                if lastUndo != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            undoLastAnswer()
+                        } label: {
+                            Image(systemName: "arrow.uturn.backward")
+                        }
+                        .accessibilityLabel("Son cevabı geri al")
+                    }
+                }
                 if !finished && queue.count > 1 {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
@@ -98,6 +186,14 @@ struct ReviewSession: View {
             .overlay(alignment: .top) { SaveErrorBanner() }
         }
         .onAppear { captureReadiness() }
+        .onDisappear { speaker.stop() }
+        .onChange(of: revealed) { _, _ in speaker.stop() }
+        .sheet(item: $codingCard) { target in
+            CardCodingSheet(card: target) { _ in
+                hintRefresh += 1
+                showHint = true
+            }
+        }
     }
 
     // MARK: - 3D Stacked Deck Stage
@@ -123,10 +219,11 @@ struct ReviewSession: View {
             }
 
             // Active interactive 3D card
+            let customHint = (hintRefresh >= 0) ? CardHintStore.hint(for: currentCard.id) : nil
             FlippableStudyCard(
                 card: currentCard,
                 revealed: revealed,
-                hint: showHint ? CardHint.make(currentCard.back) : nil,
+                hint: showHint ? (customHint ?? CardHint.make(currentCard.back)) : nil,
                 swipeDelta: mode == .simple && revealed ? dragOffset.width : 0,
                 onFlipTap: {
                     guard !revealed, !isTransitioningCard else { return }
@@ -535,11 +632,21 @@ struct ReviewSession: View {
     }
 
     private func applyAnswer(_ card: Card, _ grade: Grade) {
+        speaker.stop()
+        let wasMissedBefore = missed.contains(card.id)
+        let addedKnown = grade != .again && !wasMissedBefore
+        lastUndo = UndoSnapshot(
+            previousCard: card,
+            previousQueue: queue,
+            wasNew: card.isNew,
+            wasMissedBefore: wasMissedBefore,
+            addedKnownFirstTry: addedKnown
+        )
         store.review(card, grade)
         answered += 1
         if grade == .again {
             missed.insert(card.id)
-        } else if !missed.contains(card.id) {
+        } else if !wasMissedBefore {
             knownFirstTry += 1
         }
         revealed = false
@@ -552,6 +659,23 @@ struct ReviewSession: View {
                 finished = true
                 onFinish?()
             }
+        }
+    }
+
+    private func undoLastAnswer() {
+        guard let snap = lastUndo, !isTransitioningCard else { return }
+        speaker.stop()
+        OnboardingHaptics.medium()
+        lastUndo = nil
+        store.undoReview(snap.previousCard, wasNew: snap.wasNew)
+        answered = max(0, answered - 1)
+        if snap.addedKnownFirstTry { knownFirstTry = max(0, knownFirstTry - 1) }
+        if !snap.wasMissedBefore { missed.remove(snap.previousCard.id) }
+        revealed = false
+        showHint = false
+        withAnimation(.spring(response: 0.40, dampingFraction: 0.82)) {
+            finished = false
+            queue = snap.previousQueue
         }
     }
 

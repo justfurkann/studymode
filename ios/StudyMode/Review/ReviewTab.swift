@@ -53,7 +53,7 @@ struct ReviewTab: View {
             .toolbarBackground(.hidden, for: .navigationBar)
         }
         .fullScreenCover(item: $session) { box in
-            ReviewSession(title: "Tekrar", cards: box.cards, mode: .daily)
+            ReviewSession(title: box.title, cards: box.cards, mode: box.mode)
                 .environment(store)
         }
     }
@@ -117,6 +117,20 @@ struct ReviewTab: View {
                     }
                 }
                 .buttonStyle(PrimaryButtonStyle())
+            }
+
+            let struggled = store.struggledCards()
+            if !struggled.isEmpty {
+                Button {
+                    OnboardingHaptics.medium()
+                    session = SessionBox(cards: struggled, title: "Zorlandıklarım", mode: .grades)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "flame")
+                        Text("Yalnızca zorlandıklarım (\(struggled.count) kart)")
+                    }
+                }
+                .buttonStyle(SecondaryButtonStyle())
             }
 
             HStack(spacing: 6) {
@@ -251,5 +265,7 @@ private struct ReadinessRow: View {
 /// fullScreenCover needs an Identifiable item; the queue is fixed when the session starts.
 struct SessionBox: Identifiable {
     let cards: [Card]
+    var title: String = "Tekrar"
+    var mode: ReviewSession.Mode = .daily
     let id = UUID()
 }

@@ -68,4 +68,31 @@ extension StudyStore {
             }
         }
     }
+
+    /// Reverts the last card review locally and on Supabase using negative `bump_study_day` deltas.
+    func undoReview(_ previous: Card, wasNew: Bool, now: Date = .now) {
+        replace(previous)
+        uncountLocally(wasNew: wasNew)
+        let trackNew = serverNewToday != nil
+
+        let restore = CardReviewUpdate(
+            due: previous.due,
+            interval: previous.interval,
+            ease: previous.ease,
+            reps: previous.reps,
+            lapses: previous.lapses,
+            updated_at: previous.updatedAt ?? ISO.string(now)
+        )
+        let day = SRS.dayKey(now)
+        enqueueWrite { [weak self] in
+            do {
+                try await supabase.from("cards").update(restore).eq("id", value: previous.id).execute()
+                try await StudyDays.bump(day: day, reviews: -1, newCards: wasNew && trackNew ? -1 : 0, into: self)
+            } catch {
+                await MainActor.run {
+                    self?.saveError = "Son cevap geri alınamadı. İnternet bağlantını kontrol et."
+                }
+            }
+        }
+    }
 }
