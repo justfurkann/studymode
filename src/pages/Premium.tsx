@@ -118,6 +118,7 @@ export function Premium() {
 function PremiumStatus() {
   const premium = usePremium()
   const appStore = useAppStoreSubscription()
+  const inApp = useAppMode()
   const [plus, setPlus] = useState<PlusStatus | null>(null)
   const counted = premium.state === 'open' && !premium.viaKey
 
@@ -138,7 +139,7 @@ function PremiumStatus() {
   if (premium.state === 'locked') {
     return (
       <p className="prem-status">
-        <Lock size={15} aria-hidden /> Kilitli · Premium kodu ya da VIP hesapla açılır
+        <Lock size={15} aria-hidden /> {inApp ? 'Kilitli' : 'Kilitli · Premium kodu ya da VIP hesapla açılır'}
       </p>
     )
   }
@@ -255,6 +256,7 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
               </span>
             </li>
             )}
+            {!inApp && (
             <li>
               <Gem size={17} aria-hidden />
               <span>
@@ -265,6 +267,7 @@ function Locked({ signedIn, tool }: { signedIn: boolean; tool: Tool }) {
                 .
               </span>
             </li>
+            )}
             <li>
               <KeyRound size={17} aria-hidden />
               <span>

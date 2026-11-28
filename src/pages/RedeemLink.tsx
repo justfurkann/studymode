@@ -6,6 +6,7 @@ import { Celebrate, Spinner } from '../components/ui'
 import { refreshQuota } from '../lib/account'
 import { clearPendingCode, codeFromHash, formatUntil, loadPendingCode, maskCode, REDEEM_MESSAGES, redeemCode, savePendingCode, type RedeemError } from '../lib/premiumCodes'
 import { useStore } from '../lib/store'
+import { isAppMode } from '../lib/appMode'
 
 /*
  * /kod#SM-XXXX-XXXX-XXXX: a Premium code as a link (or a QR code of it). Signed in, the code is
@@ -17,6 +18,27 @@ import { useStore } from '../lib/store'
 type State = { kind: 'none' } | { kind: 'waiting'; code: string } | { kind: 'busy'; code: string } | { kind: 'done'; days: number; until: string } | { kind: 'failed'; code: string; error: RedeemError }
 
 export function RedeemLink() {
+  // Inside the iPhone/Android app's browser view no code is read, kept or used (store rules).
+  if (isAppMode()) return <RedeemOffInApp />
+  return <RedeemLinkOnSite />
+}
+
+/** /kod inside the app: nothing to do here. */
+function RedeemOffInApp() {
+  return (
+    <div className="page page-narrow redeem-link">
+      <div className="panel redeem-link-card" data-testid="redeem-off-in-app">
+        <h1>Premium</h1>
+        <p className="muted">Bu sayfa uygulama içinde kullanılamaz.</p>
+        <Link to="/" className="btn">
+          Ana sayfaya dön
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function RedeemLinkOnSite() {
   const { session } = useStore()
   const { hash } = useLocation()
   const navigate = useNavigate()
@@ -158,6 +180,8 @@ export function PendingCodeReturn() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   useEffect(() => {
+    // Inside the app a waiting code is left alone (no code use there).
+    if (isAppMode()) return
     if (!session || pathname === '/kod' || pathname.startsWith('/giris') || pathname.startsWith('/sifre-yenile')) return
     if (loadPendingCode()) navigate('/kod')
   }, [session, pathname, navigate])

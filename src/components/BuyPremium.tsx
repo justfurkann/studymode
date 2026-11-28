@@ -1,7 +1,7 @@
 import { ArrowRight, AudioLines, Check, Image as ImageIcon, Search, ShoppingBag, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { MANAGE_HINT, useAppStoreSubscription } from '../lib/appStore'
-import { APP_PREMIUM_NOTE, useAppMode } from '../lib/appMode'
+import { appPremiumNote, useAppMode } from '../lib/appMode'
 import { buyUrl, formatPrice, PACKAGES } from '../lib/pricing'
 import { Alert } from './ui'
 
@@ -86,11 +86,11 @@ export function AppStoreNote() {
   )
 }
 
-/** Inside the app (`?app=ios`): instead of prices and buy buttons, one line saying where Premium is bought. */
+/** Inside the app: instead of prices and buy buttons one line (iPhone: buy in the app; Android: not sold here). */
 export function AppPremiumNote() {
   return (
     <Alert tone="info">
-      <span data-testid="app-premium-note">{APP_PREMIUM_NOTE}</span>
+      <span data-testid="app-premium-note">{appPremiumNote()}</span>
     </Alert>
   )
 }

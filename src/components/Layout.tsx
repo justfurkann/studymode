@@ -296,7 +296,7 @@ export function Layout() {
       <EducationPrompt />
       <Tour />
       <Assistant />
-      <PendingCodeReturn />
+      {!inApp && <PendingCodeReturn />}
       {!inApp && <PremiumNudge />}
       <AiChoiceSync />
 

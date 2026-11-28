@@ -9,6 +9,22 @@ function watchErrors(page: Page) {
   return errors
 }
 
+const SUPABASE = 'https://jpcatyopkpnudgdyncas.supabase.co'
+
+/** A signed-in normal account without Premium (same fake as account.spec.ts). */
+async function signedIn(page: Page) {
+  const user = { id: 'aaaaaaaa-0000-0000-0000-0000000000e1', aud: 'authenticated', role: 'authenticated', email: 'ali@example.com', user_metadata: { full_name: 'Ali Veli' }, app_metadata: {}, created_at: '2026-10-01T00:00:00Z' }
+  await page.addInitScript((u) => {
+    localStorage.setItem('sb-jpcatyopkpnudgdyncas-auth-token', JSON.stringify({ access_token: 'fake', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user: u }))
+  }, user)
+  await page.route(`${SUPABASE}/auth/v1/**`, (route) => route.fulfill({ json: user }))
+  await page.route(`${SUPABASE}/rest/v1/**`, (route) => {
+    const req = route.request()
+    if (req.url().includes('/rpc/ai_quota')) return route.fulfill({ json: { role: 'normal', used: 0, limit: 40, allowed: true, premium_until: null } })
+    return route.fulfill({ json: req.method() === 'GET' ? [] : null })
+  })
+}
+
 const premiumNav = (page: Page) => page.locator('aside.sidebar').getByRole('link', { name: 'Premium' })
 
 test('normal site: the Premium link and the price page are there', async ({ page }) => {
@@ -77,5 +93,41 @@ test('/hesap-sil opens without signing in and explains the deletion', async ({ p
   await expect(page.getByRole('heading', { name: 'Neler kalır?' })).toBeVisible()
   await expect(page.getByText('Kullanılmış Premium kodlarının kaydı')).toBeVisible()
   await expect(page.locator('a[href^="mailto:"]')).toHaveCount(1)
+  await expect(page.getByText('App Store satın alma kayıtların')).toBeVisible()
   expect(errors).toEqual([])
+})
+
+test('?app=ios: no Premium code field in Ayarlar or on /kod; the site still has it', async ({ page }) => {
+  const errors = watchErrors(page)
+  await signedIn(page)
+  const redeemCalls: string[] = []
+  await page.route('**/rpc/redeem_code', (route) => {
+    redeemCalls.push(route.request().url())
+    return route.fulfill({ json: null })
+  })
+  await page.goto('/ayarlar')
+  await expect(page.locator('.redeem-input')).toHaveCount(1)
+
+  await page.goto('/ayarlar?app=ios')
+  await expect(page.getByText('Premium durumun: kapalı.')).toBeVisible()
+  await expect(page.locator('.redeem-input')).toHaveCount(0)
+
+  await page.goto('/kod#SM-AAAA-BBBB-CCCC')
+  await expect(page.getByTestId('redeem-off-in-app')).toBeVisible()
+  await expect(page.locator('.redeem-input')).toHaveCount(0)
+  // The code from the link is not kept on the device either.
+  expect(await page.evaluate(() => localStorage.getItem('studymode.pendingCode'))).toBeNull()
+  expect(redeemCalls).toEqual([])
+
+  await page.goto('/premium')
+  await expect(page.getByText('Kilitli', { exact: true })).toBeVisible()
+  await expect(page.getByText('VIP ol.')).toHaveCount(0)
+  expect(errors).toEqual([])
+})
+
+test('?app=android: a neutral line instead of sales, not “buy in the app”', async ({ page }) => {
+  await page.goto('/fiyatlar?app=android')
+  await expect(page.getByTestId('app-premium-note')).toHaveText('Premium bu uygulamada satılmıyor.')
+  await page.goto('/premium')
+  await expect(page.getByTestId('app-premium-note')).toHaveText('Premium bu uygulamada satılmıyor.')
 })

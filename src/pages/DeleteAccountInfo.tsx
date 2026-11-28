@@ -105,6 +105,7 @@ export function DeleteAccountInfo() {
             <li>Seri ve çalışma günleri, okul bilgisi, öğrenci tipi, başarımlar</li>
             <li>Paylaştığın ders bağlantıları (artık açılmaz)</li>
             <li>Gönderdiğin geri bildirimler ve hata kayıtları</li>
+            <li>App Store satın alma kayıtların (iPhone’daki Premium satın almalarının işlem kayıtları)</li>
             <li>Rolün, yapay zekâ kullanım sayıların ve Premium süren (kalan süre iade edilmez)</li>
           </ul>
         </section>

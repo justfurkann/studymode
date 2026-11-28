@@ -90,7 +90,17 @@ export function NotInApp({ children }: { children: ReactNode }): ReactNode {
 }
 
 /** The short line shown instead of sales on /fiyatlar and /premium inside the app. */
-export const APP_PREMIUM_NOTE = 'Premium’u uygulamadan alabilirsin.'
+export const APP_PREMIUM_NOTE: Record<AppPlatform, string> = {
+  // The iPhone app sells Premium through the App Store.
+  ios: 'Premium’u uygulamadan alabilirsin.',
+  // The Android app does not sell it (yet): say nothing about where to buy.
+  android: 'Premium bu uygulamada satılmıyor.',
+}
+
+/** The note for this platform; null on the normal site. */
+export function appPremiumNote(platform: AppPlatform | null = appPlatform()): string | null {
+  return platform ? APP_PREMIUM_NOTE[platform] : null
+}
 
 /** Only for tests: forget what was read so the next call reads again. */
 export function resetAppModeForTests(): void {

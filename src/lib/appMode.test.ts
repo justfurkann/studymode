@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { APP_MODE_KEY, appPlatform, isAppMode, parseAppParam, resetAppModeForTests, resolveAppMode, type ModeStorage } from './appMode'
+import { APP_MODE_KEY, appPlatform, appPremiumNote, isAppMode, parseAppParam, resetAppModeForTests, resolveAppMode, type ModeStorage } from './appMode'
 
 function memory(initial: Record<string, string> = {}): ModeStorage & { data: Record<string, string> } {
   const data = { ...initial }
@@ -75,6 +75,14 @@ describe('resolveAppMode', () => {
     expect(resolveAppMode('', broken)).toBeNull()
     expect(resolveAppMode('?app=ios', null)).toBe('ios')
     expect(resolveAppMode('', null)).toBeNull()
+  })
+})
+
+describe('appPremiumNote', () => {
+  it('points to the app only on iPhone, stays neutral on Android, nothing on the site', () => {
+    expect(appPremiumNote('ios')).toBe('Premium’u uygulamadan alabilirsin.')
+    expect(appPremiumNote('android')).toBe('Premium bu uygulamada satılmıyor.')
+    expect(appPremiumNote(null)).toBeNull()
   })
 })
 
