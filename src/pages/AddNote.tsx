@@ -9,7 +9,7 @@ import { Alert, Spinner, useToast } from '../components/ui'
 import { ACCEPTED_NOTE_EXTENSIONS, extractNoteText, preloadNoteReaders } from '../lib/importNote'
 import { generateLocally } from '../lib/localGenerator'
 import { aiAvailability, updateSettings, useSettings, isServerAi } from '../lib/settings'
-import { useCanPlus } from '../lib/account'
+import { useCanPlus, useQuestionQuality } from '../lib/account'
 import { useStore } from '../lib/store'
 import type { GeneratedSet, Generator } from '../lib/types'
 import { freshImport } from '../lib/version'
@@ -44,6 +44,7 @@ export function AddNote() {
   const courses = store.data.courses
   const ai = aiAvailability(settings, !!store.session)
   const canPlus = useCanPlus(store.session?.user.id ?? null)
+  const questionQuality = useQuestionQuality(store.session?.user.id ?? null)
 
   const [courseId, setCourseId] = useState(params.get('ders') ?? courses[0]?.id ?? NEW_COURSE)
   const [newCourse, setNewCourse] = useState('')
@@ -152,9 +153,16 @@ export function AddNote() {
   async function buildSet(text: string, noteTitle: string, generator: Generator, onChunk?: (status: string) => void): Promise<{ set: GeneratedSet; warning: string }> {
     if (generator === 'local') return { set: generateLocally(text), warning: '' }
     const { generateStudySet, partialChunkMessage } = await freshImport(() => import('../lib/ai'))
-    const set = await generateStudySet(text, noteTitle, settings, (done, total) => {
-      if (total > 1) onChunk?.(`Uzun not ${total} bölüme ayrıldı · ${done}/${total} bölüm işlendi`)
-    })
+    const set = await generateStudySet(
+      text,
+      noteTitle,
+      settings,
+      (done, total) => {
+        if (total > 1) onChunk?.(`Uzun not ${total} bölüme ayrıldı · ${done}/${total} bölüm işlendi`)
+      },
+      undefined,
+      { questionQuality },
+    )
     return { set, warning: partialChunkMessage(set) }
   }
 

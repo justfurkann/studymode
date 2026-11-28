@@ -6,13 +6,15 @@ import { MAKER, SOCIALS } from '../components/MadeBy'
 import { useStore } from '../lib/store'
 import { PAYMENT_PROVIDER } from '../lib/config'
 import { unlock } from '../lib/achievements'
-import { NotInApp } from '../lib/appMode'
+import { NotInApp, appPlatform } from '../lib/appMode'
 
 export const PRIVACY_UPDATED = '28 Kasım 2026'
 
 /** /gizlilik: what StudyMode keeps, why, who processes it, and how to delete it. Plain Turkish. */
 export function Privacy() {
   const { session } = useStore()
+  // Inside the phone app the site's code sale (Shopier) is left out; see Terms.tsx → PremiumSale.
+  const platform = appPlatform()
   useEffect(() => {
     const before = document.title
     document.title = 'Gizlilik politikası · StudyMode'
@@ -112,7 +114,7 @@ export function Privacy() {
               doğrular.
             </li>
             <li>
-              <strong>Google Cloud (Vertex AI) — Free+:</strong> VIP, yönetici ve Premium kodu olan hesaplarda notun metni Google Cloud üzerindeki ücretli Gemini modellerine gider. Bu kullanımda
+              <strong>Google Cloud (Vertex AI) — Free+:</strong> VIP, yönetici ve {platform ? 'Premium’u açık olan' : 'Premium kodu olan'} hesaplarda notun metni Google Cloud üzerindeki ücretli Gemini modellerine gider. Bu kullanımda
               Google içerikleri kendi ürünlerini geliştirmek için kullanmaz. Premium özellikleri (sesli not, görsel, akıllı arama) de aynı yoldan çalışır: seslendirilecek
               metin, çizilecek kavram ya da aranan cümle bu modellere gider.
             </li>
@@ -124,14 +126,18 @@ export function Privacy() {
               <strong>Cloudflare (Turnstile):</strong> giriş, kayıt ve şifre sıfırlama ekranındaki bot doğrulaması. Doğrulama için tarayıcın ve bağlantın hakkında teknik
               bilgiler Cloudflare'e gider; reklam için kullanılmaz.
             </li>
-            <li>
-              <strong>{PAYMENT_PROVIDER}:</strong> Premium kodunu satın alırken ödeme {PAYMENT_PROVIDER} üzerinden alınır. Kart bilgilerin ödeme kuruluşunda kalır, bize gelmez;
-              ödeme sayfasında o kuruluşun kendi koşulları geçerlidir. Kodu gönderebilmemiz için ödeme sırasında yazdığın ad ve e-posta bize iletilir. Biz yalnızca kodun hangi hesapta, ne zaman kullanıldığını ve Premium’un bitiş tarihini saklarız.
-            </li>
-            <li>
-              <strong>Apple (App Store):</strong> iPhone uygulamasında Premium’u App Store’dan alırsan ödemeyi Apple alır; kart bilgilerin Apple’da kalır, bize gelmez. Apple bize
-              yalnızca satın almanın kimliğini, ürünü, tarihlerini ve hangi hesabımıza ait olduğunu bildirir; bunu Premium süreni açmak, yenilemek ya da iadede geri almak için saklarız.
-            </li>
+            {platform === null && (
+              <li>
+                <strong>{PAYMENT_PROVIDER}:</strong> Premium kodunu satın alırken ödeme {PAYMENT_PROVIDER} üzerinden alınır. Kart bilgilerin ödeme kuruluşunda kalır, bize gelmez;
+                ödeme sayfasında o kuruluşun kendi koşulları geçerlidir. Kodu gönderebilmemiz için ödeme sırasında yazdığın ad ve e-posta bize iletilir. Biz yalnızca kodun hangi hesapta, ne zaman kullanıldığını ve Premium’un bitiş tarihini saklarız.
+              </li>
+            )}
+            {platform !== 'android' && (
+              <li>
+                <strong>Apple (App Store):</strong> iPhone uygulamasında Premium’u App Store’dan alırsan ödemeyi Apple alır; kart bilgilerin Apple’da kalır, bize gelmez. Apple bize
+                yalnızca satın almanın kimliğini, ürünü, tarihlerini ve hangi hesabımıza ait olduğunu bildirir; bunu Premium süreni açmak, yenilemek ya da iadede geri almak için saklarız.
+              </li>
+            )}
             <li>
               <strong>Resend:</strong> hesap onayı ve şifre sıfırlama e-postalarının gönderimi.
             </li>
@@ -163,10 +169,14 @@ export function Privacy() {
               kartlar, test ve sınav sonuçları, seri, okul bilgisi, paylaşım bağlantıları, gönderdiğin geri bildirimler ve hata kayıtları, rolün, yapay zekâ kullanım sayıların ve Premium
               süren kalıcı olarak silinir, geri getirilemez. Süresi bitmemiş Premium varsa önce uyarırız; kalan süre iade edilmez.
             </li>
-            <li>
-              Kullanılmış Premium kodlarının kaydı (kodun ne zaman kullanıldığı) satış ve iade kayıtları için saklanır, ama silinen hesapla bağı kopar. Sunucu ve yedek kayıtlarındaki
-              izler en geç 30 gün içinde kendiliğinden silinir.
-            </li>
+            {platform === null ? (
+              <li>
+                Kullanılmış Premium kodlarının kaydı (kodun ne zaman kullanıldığı) satış ve iade kayıtları için saklanır, ama silinen hesapla bağı kopar. Sunucu ve yedek kayıtlarındaki
+                izler en geç 30 gün içinde kendiliğinden silinir.
+              </li>
+            ) : (
+              <li>Satış ve iade kayıtlarından gerekenler saklanır, ama silinen hesapla bağı kopar. Sunucu ve yedek kayıtlarındaki izler en geç 30 gün içinde kendiliğinden silinir.</li>
+            )}
             <li>Uygulamaya erişemiyorsan bize yaz; en geç 30 gün içinde hesabın ve ona bağlı tüm veriler silinir.</li>
             <li>
               Adım adım silme yolu, neyin silinip neyin kaldığı ve iletişim adresi: <Link to="/hesap-sil">hesap silme sayfası</Link>.

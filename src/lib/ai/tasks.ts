@@ -46,6 +46,19 @@ Produce:
 - Every card and question has "source": a short verbatim quote (max ~120 characters) from the notes that supports it.
 - If the title indicates this is one part of a multi-part note (e.g. "(Bölüm 2/6)" or "(Bölüm 1.1)"), keep this part focused and concise so the combined set is balanced: produce 1-2 overview sentences, 3-4 summary.points, 4-6 cards, 3-4 questions, and 1 practice question for this part.`
 
+/**
+ * Extra rule for notes heavy with formulas (src/lib/questionQuality.ts decides), added AFTER the
+ * unchanged STUDY_PROMPT in the separate "studyNumeric" task; the ordinary "study" task never sees
+ * it. Only admins get it for now (config.ts → QUESTION_QUALITY_FOR, checked again in /api/generate).
+ */
+export const NUMERIC_QUESTIONS_RULE = `These notes are mainly formulas and calculations. For questions and practice, these rules take precedence over the ones above:
+- Never start a question with "Notlara göre", "Notlarda", "Metne göre" or similar; ask the question directly, as a real exam would.
+- At most one question in four may ask which formula, rule or definition applies. All other questions are calculation or application problems: they use a formula or method from the notes with NEW numbers that do not appear in the notes (choose simple, realistic values that give a clean result), or apply the method to a new situation. Inventing numbers is allowed only for these questions and practice items; the summary and cards still use only the notes.
+- Work the problem out yourself before writing the options and check the result: the correct option must equal your result exactly. The distractors are results of typical mistakes (wrong sign, a forgotten square or root, a wrong unit, a wrong formula from the same notes).
+- The explanation is a step-by-step solution: the formula used, the values put in, each intermediate result, the final answer; then one line on the mistake behind the most tempting distractor.
+- practice: at least one multi-step calculation problem with new numbers; its answer is the full worked solution.
+- "source" still quotes the formula or rule from the notes that the question uses.`
+
 // ---------- Detailed summary ("Tam özet") of one note ----------
 
 export const DetailSchema = z.object({
@@ -384,8 +397,17 @@ export const EmbedSchema = z.object({
   embeddings: z.array(z.array(z.number())),
 })
 
+/**
+ * What the texts are, so both providers make the same kind of vector. gemini-embedding-001 is
+ * trained for asymmetric search: notes go in as RETRIEVAL_DOCUMENT, the student's search words as
+ * RETRIEVAL_QUERY. Optional: a client that sends no kind (the iPhone app before this field) gets
+ * "document" for everything, which is what the server did on Vertex before.
+ */
+export type EmbedKind = 'query' | 'document'
+
 export interface EmbedInput {
   texts: string[]
+  kind?: EmbedKind
 }
 
 const EMBED_PROMPT = `Generate semantic embedding vectors for the given study texts.`
@@ -482,6 +504,13 @@ export const TASKS = {
   study: {
     schema: StudySetSchema,
     system: `${STUDY_PROMPT}\n\n${MATH_RULE}`,
+    user: (input: StudyInput) => `<note_title>${input.title}</note_title>\n<notes>\n${trimNoteText(input.text)}\n</notes>`,
+  },
+  // The same study set for notes heavy with formulas, with NUMERIC_QUESTIONS_RULE after the
+  // unchanged study prompt. Admin only for now (generate.ts checks the role).
+  studyNumeric: {
+    schema: StudySetSchema,
+    system: `${STUDY_PROMPT}\n\n${MATH_RULE}\n\n${NUMERIC_QUESTIONS_RULE}`,
     user: (input: StudyInput) => `<note_title>${input.title}</note_title>\n<notes>\n${trimNoteText(input.text)}\n</notes>`,
   },
   exam: {
@@ -611,7 +640,9 @@ export const TASKS = {
     system: EMBED_PROMPT,
     user: (input: EmbedInput) => {
       const texts = (Array.isArray(input?.texts) ? input.texts : []).slice(0, 25).map((t) => String(t ?? '').slice(0, 3_500))
-      return `<embed_texts>${JSON.stringify(texts)}</embed_texts>`
+      // Without a kind the tag stays exactly as before (old clients).
+      const kind = input?.kind === 'query' || input?.kind === 'document' ? ` kind="${input.kind}"` : ''
+      return `<embed_texts${kind}>${JSON.stringify(texts)}</embed_texts>`
     },
   },
 }
