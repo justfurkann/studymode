@@ -186,7 +186,7 @@ enum Assistant {
     static func suggestions(note: Bool, course: Bool) -> [(label: String, icon: String)] {
         if note {
             return [("Bu notu 3 maddede özetle", "list.bullet"), ("Karıştırılan kavramları karşılaştır", "arrow.left.arrow.right"),
-                    ("Bu nottan bana soru sor", "questionmark.circle"), ("En zor kısmı basitçe anlat", "lightbulb"), ("Sınavda ne çıkabilir?", "target")]
+                    ("Bu nottan bana soru sor", "questionmark.circle"), ("Sınavda ne çıkabilir?", "target")]
         }
         if course {
             return [("Bu dersin ana konuları ne?", "map"), ("Karıştırılan kavramları karşılaştır", "arrow.left.arrow.right"),

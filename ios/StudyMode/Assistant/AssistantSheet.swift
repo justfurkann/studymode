@@ -17,7 +17,25 @@ struct AssistantSheet: View {
     @State private var busy = false
     @State private var error: String?
     @State private var retry: (() async -> Void)?
+    @State private var showComparePicker = false
     @FocusState private var focused: Bool
+
+    private var availableTerms: [String] {
+        var seen: Set<String> = []
+        var out: [String] = []
+        let sourceNotes: [NoteItem] = if let note { [note] } else if let course { store.notes(in: course) } else { [] }
+        for n in sourceNotes {
+            for t in n.keyTerms ?? [] {
+                let clean = t.term.trimmingCharacters(in: .whitespacesAndNewlines)
+                let key = clean.lowercased(with: Locale(identifier: "tr_TR"))
+                if !clean.isEmpty, seen.insert(key).inserted {
+                    out.append(clean)
+                    if out.count >= 14 { return out }
+                }
+            }
+        }
+        return out
+    }
 
     private var course: Course? { store.courses.first { $0.id == courseId } }
     private var note: NoteItem? {
@@ -67,6 +85,12 @@ struct AssistantSheet: View {
             takePending()
         }
         .onChange(of: place.pending) { if !inTab { takePending() } }
+        .sheet(isPresented: $showComparePicker) {
+            CompareConceptsSheet(terms: availableTerms) { prompt in
+                Task { await send(prompt) }
+            }
+            .presentationDetents([.medium, .large])
+        }
     }
 
     // MARK: Header
@@ -163,31 +187,65 @@ struct AssistantSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                ForEach(Assistant.suggestions(note: note != nil, course: course != nil), id: \.label) { s in
-                    Button {
-                        Task { await send(s.label) }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Image(systemName: s.icon)
-                                .font(.subheadline.weight(.bold))
-                                .foregroundStyle(Theme.onHi)
-                                .frame(width: 30, height: 30)
-                                .background(Theme.hi, in: RoundedRectangle(cornerRadius: 9))
-                            Text(s.label)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Theme.text)
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 0)
+            let items = Assistant.suggestions(note: note != nil, course: course != nil)
+            if inTab {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                    ForEach(items, id: \.label) { s in
+                        Button {
+                            handleSuggestion(s)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Image(systemName: s.icon)
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(Theme.onHi)
+                                    .frame(width: 30, height: 30)
+                                    .background(Theme.hi, in: RoundedRectangle(cornerRadius: 9))
+                                Text(s.label)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.text)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
                         }
-                        .padding(12)
-                        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
-                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
+                        .buttonStyle(TactileCardButtonStyle(scale: 0.97))
+                        .disabled(busy)
                     }
-                    .buttonStyle(TactileCardButtonStyle(scale: 0.97))
-                    .disabled(busy)
+                }
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(items, id: \.label) { s in
+                        Button {
+                            handleSuggestion(s)
+                        } label: {
+                            HStack(spacing: 11) {
+                                Image(systemName: s.icon)
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Theme.onHi)
+                                    .frame(width: 28, height: 28)
+                                    .background(Theme.hi, in: RoundedRectangle(cornerRadius: 8))
+                                Text(s.label)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.text)
+                                    .lineLimit(1)
+                                Spacer(minLength: 6)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(Theme.text3)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 13))
+                            .overlay(RoundedRectangle(cornerRadius: 13).stroke(Theme.border, lineWidth: 1))
+                        }
+                        .buttonStyle(TactileCardButtonStyle(scale: 0.98))
+                        .disabled(busy)
+                    }
                 }
             }
 
@@ -205,6 +263,15 @@ struct AssistantSheet: View {
             .background(Theme.surface2, in: RoundedRectangle(cornerRadius: 14))
         }
         .padding(.top, 4)
+    }
+
+    private func handleSuggestion(_ s: (label: String, icon: String)) {
+        if s.icon == "arrow.left.arrow.right" {
+            OnboardingHaptics.selection()
+            showComparePicker = true
+        } else {
+            Task { await send(s.label) }
+        }
     }
 
     // MARK: Messages
@@ -530,5 +597,125 @@ struct FosforToolbarButton: View {
                 .frame(width: 30, height: 30)
         }
         .accessibilityLabel("Fosfor'a sor")
+    }
+}
+
+/// Quick 2-concept picker for Fosfor's "Karıştırılan kavramları karşılaştır" suggestion.
+private struct CompareConceptsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let terms: [String]
+    let onCompare: (String) -> Void
+
+    @State private var left = ""
+    @State private var right = ""
+
+    private var canCompareSpecific: Bool {
+        !left.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !right.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Karşılaştırmak istediğin iki kavramı aşağıdan seç ya da kendin yaz.")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.text2)
+
+                    HStack(spacing: 10) {
+                        TextField("1. kavram", text: $left)
+                            .font(.subheadline)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 11))
+                            .overlay(RoundedRectangle(cornerRadius: 11).stroke(Theme.border, lineWidth: 1))
+
+                        Text("vs")
+                            .font(.caption.weight(.heavy))
+                            .foregroundStyle(Theme.text3)
+
+                        TextField("2. kavram", text: $right)
+                            .font(.subheadline)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 11))
+                            .overlay(RoundedRectangle(cornerRadius: 11).stroke(Theme.border, lineWidth: 1))
+                    }
+
+                    if !terms.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Nottaki kavramlar")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Theme.text2)
+
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
+                                ForEach(terms, id: \.self) { term in
+                                    let isLeft = left == term
+                                    let isRight = right == term
+                                    let picked = isLeft || isRight
+                                    Button {
+                                        OnboardingHaptics.selection()
+                                        if isLeft {
+                                            left = ""
+                                        } else if isRight {
+                                            right = ""
+                                        } else if left.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                            left = term
+                                        } else if right.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                            right = term
+                                        } else {
+                                            right = term
+                                        }
+                                    } label: {
+                                        Text(term)
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(picked ? Theme.onHi : Theme.text)
+                                            .lineLimit(1)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 7)
+                                            .frame(maxWidth: .infinity)
+                                            .background(picked ? Theme.hi : Theme.surface, in: Capsule())
+                                            .overlay(Capsule().stroke(picked ? Theme.cardLine : Theme.border, lineWidth: 1))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+
+                    VStack(spacing: 10) {
+                        Button {
+                            let l = left.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let r = right.trimmingCharacters(in: .whitespacesAndNewlines)
+                            OnboardingHaptics.medium()
+                            dismiss()
+                            onCompare("“\(l)” ile “\(r)” kavramlarını karşılaştır: temel farkları, ortak yönleri ve sınavda en çok karıştırılan tuzak noktaları kısa maddeler hâlinde özetle.")
+                        } label: {
+                            Label("Seçilenleri karşılaştır", systemImage: "arrow.left.arrow.right")
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
+                        .disabled(!canCompareSpecific)
+
+                        Button {
+                            OnboardingHaptics.light()
+                            dismiss()
+                            onCompare("Bu nottaki en çok karıştırılan iki kavramı seçip farklarını ve sınav tuzaklarını karşılaştır.")
+                        } label: {
+                            Text("Fosfor kendisi seçsin ve karşılaştırsın")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                    }
+                }
+                .padding(16)
+            }
+            .background(Theme.bg)
+            .navigationTitle("Kavramları karşılaştır")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Kapat") { dismiss() }
+                }
+            }
+        }
     }
 }

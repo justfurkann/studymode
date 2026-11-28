@@ -80,6 +80,7 @@ struct GridPaper: View {
 
 /// A word marked with the highlighter, like `<span class="hl">` on the site. At most one per title.
 struct Highlighted: View {
+    @Environment(\.colorScheme) private var scheme
     let text: String
     var font: Font = Theme.display(.largeTitle)
 
@@ -87,11 +88,12 @@ struct Highlighted: View {
         Text(text)
             .font(font)
             .foregroundStyle(Theme.onHi)
-            .padding(.horizontal, 6)
+            .padding(.horizontal, 7)
+            .padding(.vertical, scheme == .dark ? 1 : 0)
             .background(
                 Theme.hi
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .padding(.top, 8)
+                    .clipShape(RoundedRectangle(cornerRadius: 7))
+                    .padding(.top, scheme == .dark ? 0 : 8)
             )
     }
 }

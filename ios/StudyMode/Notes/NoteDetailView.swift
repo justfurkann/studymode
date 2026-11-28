@@ -253,7 +253,7 @@ struct NoteDetailView: View {
                     HStack(spacing: 5) {
                         Image(systemName: "key.fill")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(Theme.onHi)
+                            .foregroundStyle(Theme.accent)
                         Text("Kodla")
                             .font(.caption.weight(.bold))
                             .foregroundStyle(Theme.text)
