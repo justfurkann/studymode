@@ -2135,7 +2135,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
   test('mini games on the break page: VIP perk; daily word and drawer can be played', async ({ page }) => {
     const errors = watchErrors(page)
     let role = 'normal'
-    await signedIn(page, { ai_quota: () => ({ role, used: 0, limit: role === 'vip' ? 150 : 40, allowed: true }) })
+    await signedIn(page, { ai_quota: () => ({ role, used: 0, limit: role === 'vip' ? 160 : 40, allowed: true }) })
     await page.addInitScript((id) => localStorage.setItem('studymode.vipWelcomed.' + id, '1'), me.id)
 
     // A normal account does not see them; neither the address nor a made-up flag opens them.
@@ -2206,7 +2206,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
   test('Premium: VIPs get two-voice audio and smart search; others see what it is and how to get it', async ({ page }) => {
     const errors = watchErrors(page)
     let role = 'normal'
-    await signedIn(page, { ai_quota: () => ({ role, used: 1, limit: role === 'vip' ? 150 : 40, allowed: true }), plus_quota: () => ({ role, eligible: role !== 'normal', used: 2, limit: 30, allowed: true }) }, premiumData)
+    await signedIn(page, { ai_quota: () => ({ role, used: 1, limit: role === 'vip' ? 160 : 40, allowed: true }), plus_quota: () => ({ role, eligible: role !== 'normal', used: 2, limit: 30, allowed: true }) }, premiumData)
     await page.addInitScript((id) => localStorage.setItem('studymode.vipWelcomed.' + id, '1'), me.id)
     const tasks: string[] = []
     // Vectors: the respiration note and the "organel" question point the same way; the other note does not.
@@ -2251,7 +2251,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     role = 'vip'
     await page.reload()
     await expect(page.getByText('Premium açık · VIP')).toBeVisible()
-    await expect(page.getByText('Bugün 2/30 hak · arama sayılmaz')).toBeVisible()
+    await expect(page.getByText('Bugün %7 kullanıldı · arama sayılmaz')).toBeVisible()
     await page.getByRole('button', { name: /Sesli not/ }).click()
     await expect(page.getByLabel('Hangi not?')).toBeVisible()
     // Premium's main button: the AI writes the dialogue, then the two studio voices record it. One tap.
@@ -2276,7 +2276,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
 
   test('Premium fits a phone and is one tap away from the top bar', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 760 })
-    await signedIn(page, { ai_quota: () => ({ role: 'vip', used: 1, limit: 150, allowed: true }), plus_quota: () => ({ used: 0, limit: 30 }) }, premiumData)
+    await signedIn(page, { ai_quota: () => ({ role: 'vip', used: 1, limit: 160, allowed: true }), plus_quota: () => ({ used: 0, limit: 30 }) }, premiumData)
     await page.addInitScript((id) => localStorage.setItem('studymode.vipWelcomed.' + id, '1'), me.id)
     await page.goto('/')
     await page.locator('.mobile-top').getByRole('link', { name: 'Premium' }).click()
@@ -2286,11 +2286,11 @@ test.describe('roles, daily AI allowance and the admin page', () => {
   })
 
   test('Settings shows today’s free AI use and the role', async ({ page }) => {
-    await signedIn(page, { ai_quota: () => ({ role: 'vip', used: 12, limit: 150, allowed: true }) })
+    await signedIn(page, { ai_quota: () => ({ role: 'vip', used: 12, limit: 160, allowed: true }) })
     await page.goto('/ayarlar')
     const quota = page.getByLabel('Günlük ücretsiz yapay zekâ hakkı')
     await expect(quota).toContainText('VIP')
-    await expect(quota).toContainText('Bugün 12/150 istek')
+    await expect(quota).toContainText('%8 kullanıldı')
     // Not an admin: no admin link, and the admin page says so.
     await expect(page.getByRole('link', { name: 'Yönetim paneli', exact: true })).toHaveCount(0)
     await page.goto('/yonetim')
@@ -2304,7 +2304,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
     await pasteNote(page, 'Hücre')
     await page.getByRole('button', { name: /Yapay zekâ/ }).click()
     await page.getByRole('button', { name: 'Kaydet ve hazırla' }).click()
-    await expect(page.getByText(/Bugünkü ücretsiz yapay zekâ hakkın doldu \(40\/40\)/).first()).toBeVisible()
+    await expect(page.getByText(/Bugünkü ücretsiz yapay zekâ hakkın doldu\./).first()).toBeVisible()
   })
 
   test('the admin sees accounts, feedback and errors, and can make someone VIP', async ({ page }) => {
@@ -2326,7 +2326,7 @@ test.describe('roles, daily AI allowance and the admin page', () => {
       },
     })
     await page.goto('/ayarlar')
-    await expect(page.getByLabel('Günlük ücretsiz yapay zekâ hakkı')).toContainText('sınırsız')
+    await expect(page.getByLabel('Günlük ücretsiz yapay zekâ hakkı')).toContainText('Sınırsız')
     await page.getByRole('link', { name: 'Yönetim paneli', exact: true }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Yönetim' })).toBeVisible()
     await expect(page.locator('.admin-stats')).toContainText('2hesap')
@@ -2355,18 +2355,18 @@ test.describe('roles, daily AI allowance and the admin page', () => {
 
   test('a VIP sees a sticker by the logo, a welcome once, and what VIP gives', async ({ page }) => {
     const errors = watchErrors(page)
-    await signedIn(page, { ai_quota: () => ({ role: 'vip', used: 5, limit: 150, allowed: true }) })
+    await signedIn(page, { ai_quota: () => ({ role: 'vip', used: 5, limit: 160, allowed: true }) })
     await page.goto('/')
     const welcome = page.getByRole('dialog', { name: 'Artık VIP’sin!' })
     await expect(welcome).toBeVisible()
-    await expect(welcome).toContainText('Günde 150 ücretsiz yapay zekâ isteği (normalde 40)')
+    await expect(welcome).toContainText('Günde 160 yapay zekâ hakkı, ücretsizin (40) 4 katı')
     await welcome.getByRole('button', { name: 'Harika' }).click()
     // Only once per device.
     await page.reload()
     await expect(page.getByRole('complementary', { name: 'Ana menü' }).getByRole('button', { name: 'VIP: ayrıcalıklarını gör' })).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByRole('complementary', { name: 'Ana menü' }).getByRole('button', { name: 'VIP: ayrıcalıklarını gör' }).click()
-    await expect(page.getByRole('dialog', { name: 'VIP ayrıcalıkların' })).toContainText('Bugün 5 tanesini kullandın')
+    await expect(page.getByRole('dialog', { name: 'VIP ayrıcalıkların' })).toContainText('Bugün %3 kullanıldı')
     await page.getByRole('button', { name: 'Harika' }).click()
     // On a phone the sticker sits by the logo in the top bar.
     await page.setViewportSize({ width: 375, height: 812 })
@@ -2505,7 +2505,7 @@ test('Free+ shows only for VIPs and admins, with today’s use, and sends its re
   await page.route(`${SUPABASE}/auth/v1/**`, (r) => r.fulfill({ json: me }))
   await page.route(`${SUPABASE}/rest/v1/**`, (r) => {
     const path = new URL(r.request().url()).pathname
-    if (path.endsWith('/ai_quota')) return r.fulfill({ json: { role, used: 1, limit: role === 'vip' ? 150 : 40, allowed: true } })
+    if (path.endsWith('/ai_quota')) return r.fulfill({ json: { role, used: 1, limit: role === 'vip' ? 160 : 40, allowed: true } })
     if (path.endsWith('/plus_quota')) return r.fulfill({ json: { role, eligible: role !== 'normal', used: 4, limit: 30, site_used: 9, site_limit: 300, allowed: true } })
     return r.fulfill({ json: r.request().method() === 'GET' ? [] : null, status: r.request().method() === 'GET' ? 200 : 201 })
   })
@@ -2515,7 +2515,7 @@ test('Free+ shows only for VIPs and admins, with today’s use, and sends its re
   role = 'vip'
   await page.reload()
   await page.getByRole('group', { name: 'Yapay zekâ servisi' }).getByRole('button', { name: 'Free+' }).click()
-  await expect(page.getByLabel('Günlük Free+ hakkı')).toContainText('Bugün 4/30 istek')
+  await expect(page.getByLabel('Günlük Free+ hakkı')).toContainText('Bugün %13 kullanıldı')
   await expect(page.getByText(/kendi ürünlerini geliştirmek için kullanmaz/).first()).toBeVisible()
 
   // A note prepared with Free+ asks the server for the Free+ engine.

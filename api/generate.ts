@@ -222,7 +222,7 @@ export async function handleGenerate(
     }
   }
 
-  // Daily allowance per person (normal 40, VIP 150, admin unlimited), checked before calling Gemini.
+  // Daily allowance per person (normal 40, VIP 160, admin unlimited), checked before calling Gemini.
   // Reading page pictures is not counted for anyone: a scanned PDF of 50 pages used to eat a normal
   // account's whole day before a single summary was made.
   if (!fastOnly && before && !before.allowed) return json(429, { error: 'daily_limit', quota: before })

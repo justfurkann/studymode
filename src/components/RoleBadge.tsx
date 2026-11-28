@@ -6,16 +6,16 @@ import { quotaText, useQuota } from '../lib/account'
 import { useStore } from '../lib/store'
 import { Celebrate, Modal } from './ui'
 
-const VIP_LIMIT = 150
+const VIP_LIMIT = 160
 const NORMAL_LIMIT = 40
 const welcomedKey = (userId: string) => `studymode.vipWelcomed.${userId}`
 
 /** What being VIP gives, in one place so the badge and the welcome say the same thing. */
-function VipPerks({ used }: { used: number }) {
+function VipPerks() {
   return (
     <ul className="vip-perks">
       <li>
-        <Sparkles size={16} aria-hidden /> Günde <strong>{VIP_LIMIT}</strong> ücretsiz yapay zekâ isteği (normalde {NORMAL_LIMIT}). Bugün {used} tanesini kullandın.
+        <Sparkles size={16} aria-hidden /> Günde <strong>{VIP_LIMIT}</strong> yapay zekâ hakkı, ücretsizin ({NORMAL_LIMIT}) 4 katı.
       </li>
       <li>
         <Crown size={16} aria-hidden /> Logonun yanında VIP rozeti.
@@ -48,12 +48,12 @@ export function RoleBadge() {
       <button type="button" className="role-pill is-vip" onClick={() => setOpen(true)} aria-label="VIP: ayrıcalıklarını gör">
         <Crown size={13} aria-hidden /> VIP
       </button>
-      {open && <VipDialog title="VIP ayrıcalıkların" used={quota.used} text={quotaText(quota)} onClose={() => setOpen(false)} />}
+      {open && <VipDialog title="VIP ayrıcalıkların" text={quotaText(quota)} onClose={() => setOpen(false)} />}
     </>
   )
 }
 
-function VipDialog({ title, used, text, welcome = false, onClose }: { title: string; used: number; text: string; welcome?: boolean; onClose: () => void }) {
+function VipDialog({ title, text, welcome = false, onClose }: { title: string; text: string; welcome?: boolean; onClose: () => void }) {
   return (
     <Modal title={title} onClose={onClose}>
       <div className="vip-modal">
@@ -62,8 +62,8 @@ function VipDialog({ title, used, text, welcome = false, onClose }: { title: str
             <Celebrate>Tebrikler!</Celebrate> Hesabına VIP verildi. İşte sende olanlar:
           </p>
         )}
-        <VipPerks used={used} />
-        <p className="subtle">{text}. Hak her gece yarısı yenilenir.</p>
+        <VipPerks />
+        <p className="subtle">Bugün {text}. Hak her gece yarısı yenilenir.</p>
         <button className="btn btn-primary" onClick={onClose}>
           Harika
         </button>
@@ -94,5 +94,5 @@ export function VipWelcome() {
 
   // The first-visit tour goes first; the welcome follows when it ends.
   if (!show || !quota || touring) return null
-  return <VipDialog title="Artık VIP’sin!" used={quota.used} text={quotaText(quota)} welcome onClose={() => setShow(false)} />
+  return <VipDialog title="Artık VIP’sin!" text={quotaText(quota)} welcome onClose={() => setShow(false)} />
 }

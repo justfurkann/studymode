@@ -1099,7 +1099,7 @@ test('Premium kodu: her hata kendi mesajıyla; doğru kodda Premium hemen açıl
   await services.getByRole('button', { name: 'Claude' }).click()
   await services.getByRole('button', { name: 'Free+' }).click()
   await expect(services.getByRole('button', { name: 'Free+' })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByText('Bugün 0/30 istek')).toBeVisible()
+  await expect(page.getByText('Bugün %0 kullanıldı')).toBeVisible()
   await expect(page.getByText(/yalnızca VIP/)).toHaveCount(0)
 })
 
@@ -1107,7 +1107,7 @@ test('Premium kodu: bitmesine 3 gün kala Bugün’de kapatılabilir hatırlatma
   await page.clock.install({ time: new Date(2026, 10, 2, 14, 0) })
   const T = '2026-10-01T00:00:00Z'
   await signedInAs(page, 'normal', {}, { courses: [{ id: 'c1', name: 'Biyoloji', color: '#4f46e5', exam_date: null, created_at: T, updated_at: T }] }, {
-    ai_quota: () => ({ role: 'normal', used: 0, limit: 150, allowed: true, premium_until: '2026-11-04T20:00:00Z' }),
+    ai_quota: () => ({ role: 'normal', used: 0, limit: 160, allowed: true, premium_until: '2026-11-04T20:00:00Z' }),
   })
   await page.goto('/')
   const reminder = page.locator('.premium-reminder')
@@ -1281,7 +1281,7 @@ test('Premium pop-up: normal hesaba çıkar, iki paket doğrudan Shopier’e; �
   await page.goto('/dersler')
   const pop = page.getByRole('dialog', { name: 'Premium’u dene' })
   await expect(pop).toBeVisible()
-  await expect(pop).toContainText('Daha güçlü model (Free+), günde 150 istek')
+  await expect(pop).toContainText('Daha güçlü model (Free+), günde 160 yapay zekâ hakkı (ücretsizin 4 katı)')
   await expect(pop.getByRole('link', { name: /1 aylık Premium, 49 TL: hemen al/ })).toHaveAttribute('href', 'https://www.shopier.com/studymode/52567232')
   await expect(pop.getByRole('link', { name: /4 aylık dönem paketi, 149 TL: hemen al/ })).toHaveAttribute('href', 'https://www.shopier.com/studymode/52567292')
   await pop.getByRole('button', { name: 'Şimdi değil' }).click()
