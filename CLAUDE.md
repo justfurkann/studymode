@@ -12,7 +12,7 @@
 
 - İş rollere bölünür: Site, iPhone, Android, Kalite kontrol. Her rol kendi worktree'sinde ve dalında çalışır, başka rolün klasörüne dokunmaz.
 - Site ↔ uygulama haberleşmesi: `docs/IOS_SYNC.md` ve `docs/ANDROID_SYNC.md`.
-- Ayrıntı ve geçmiş: `docs/HANDOFF.md` → **"0. Ekip düzeni"** ve son aşamalar. Bu dosya HANDOFF'un yerine geçmez.
+- Önce `docs/STATE.md`'yi oku (kırmızı çizgiler, güncel durum); arşiv `docs/HANDOFF.md`. Bu dosya STATE.md'nin yerine geçmez.
 - **Rolüne göre `docs/ROLES.md`'yi oku** (ortak kurallar + rolünün bölümü): neyi okursun, neye dokunursun, hangi dalda çalışırsın, defterin nerede.
 
 ## Dört kontrol (siteye dokunan her değişiklikte)
@@ -43,7 +43,7 @@ npm run test:e2e                # playwright test
 
 ## İş bitince
 
-Kendi defterine (Site için `docs/HANDOFF.md`'de yeni "Aşama N") dört başlık: **Yapılan · Kararlar · İşe yaramayan · Sıradaki**.
+Kendi defterine (Site için `docs/HANDOFF.md`'de yeni "Aşama N") dört başlık: **Yapılan · Kararlar · İşe yaramayan · Sıradaki**; `docs/STATE.md`'deki ilgili satır da güncellenir.
 
 ## Görsel / animasyon araçları ve iş bölümü (Rive, Lottie, ShipSwift)
 

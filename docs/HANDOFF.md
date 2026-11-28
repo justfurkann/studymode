@@ -1,5 +1,7 @@
 # StudyMode — Devir Notu (Claude Code oturumları, son güncelleme 28 Kasım 2026)
 
+> Bu dosya arşivdir. Güncel durum ve kırmızı çizgiler: docs/STATE.md. Yeni aşamalar yine buraya eklenir ve STATE.md güncellenir.
+
 Bu dosya, Claude Code ile yapılan uzun bir çalışma oturumunun özetidir. Yeni bir oturuma (Claude Code veya Google AI Studio) bağlam vermek için yazıldı.
 
 ---
@@ -1197,6 +1199,13 @@ Kalite kontrol buldu: site veriyi sayfa açılışında bir kez okuyor, açık s
 - **Kararlar** Web sürümü SVG/CSS kullanıyor. Site fontları ve renk değişkenleriyle açık/koyu tema ve seçili fosfor rengi anında değişiyor. Hareketi azaltma tercihinde tamamlanmış çalışma seti görünüyor.
 - **İşe yaramayan** Rive CLI ile imzalı dışa aktarım mevcut hesap planında Rive açılış ekranı ekledi. Rive taslağı ayrı prototip olarak duruyor.
 - **Sıradaki** PR Vercel önizlemesinde açılış ve tekrar oynatma masaüstünde ve telefonda görülebilir.
+
+### Aşama 77 — STATE.md: güncel durum dosyası, HANDOFF arşiv (28 Kasım 2026, `site-state-md`)
+
+- **Yapılan:** `docs/STATE.md` eklendi (95 satır): kırmızı çizgiler en üstte, ekip ve roller, altyapı, güncel durum, açık işler. `docs/HANDOFF.md` arşiv oldu (en üste not; içerik silinmedi). `docs/ROLES.md`: bütün rollerin "Okur" satırında STATE.md; "İş bitince" kuralına STATE.md satırı; D'ye "yalnızca değişen dosyalar + sözleşmenin karşı tarafı" kuralı; ortak kurallara kredi kuralı (çıktıdan yalnızca hatalar ve son 20 satır, yalnızca gereken dosyalar). `CLAUDE.md` yönlendirmesi STATE.md'ye çevrildi.
+- **Kararlar:** Kırmızı çizgiler HANDOFF ve CLAUDE.md'den derlendi, yeni kural eklenmedi. Fonksiyon sayımı: `api/` altında test dışı 8 `.ts` dosyası var (12 sınırı). Yeni aşamalar yine HANDOFF'a yazılır, STATE.md yalnızca özet satırlarını tutar.
+- **İşe yaramayan:** yok.
+- **Sıradaki:** Bir iş bitince STATE.md'deki ilgili satırı güncelle; STATE.md 150 satırı geçmesin.
 
 ## Tasarım dili ("Fosforlu")
 
