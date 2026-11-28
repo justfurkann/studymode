@@ -18,7 +18,7 @@ export const GOOGLE_CLIENT_ID = '189951485932-ginghsotdhaj3amtm0fek00efbgsi7iu.a
  * next to the iOS app's bundle ID (fun.studymode.app). No secret key is needed: the site and the app
  * both hand Supabase Apple's signed ID token (signInWithIdToken).
  */
-export const APPLE_SERVICES_ID = ''
+export const APPLE_SERVICES_ID = 'fun.studymode.web'
 export const APPLE_REDIRECT_URI = 'https://studymode.fun/giris'
 
 /**
