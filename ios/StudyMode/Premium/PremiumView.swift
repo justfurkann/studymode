@@ -21,7 +21,7 @@ struct PremiumView: View {
     }
 
     /// Only what Premium really changes in this app, checked against the server (api/generate.ts and
-    /// supabase/schema.sql): Premium counts as VIP for the limits (ai_limit_for: 150 a day instead of 40)
+    /// supabase/schema.sql): Premium counts as VIP for the limits (ai_limit_for: 160 a day instead of 40)
     /// and gets Free+ (plus_limit_for: 30 answers a day on the stronger model, then the normal model),
     /// plus semantic search (Search/), AI visuals & concept diagrams (Media/NoteVisualsView),
     /// and studio-voice podcast notes (Media/NotePodcastView).
@@ -29,8 +29,8 @@ struct PremiumView: View {
         .init(
             id: "freeplus",
             icon: "sparkles",
-            title: "Free+ & 150 hak",
-            detail: "Günde 30 cevaba kadar güçlü model, toplam 150 hak (ücretsizde 40)",
+            title: "Free+ & \(Config.premiumDailyLimit) hak",
+            detail: "Günde 30 cevaba kadar güçlü model; günde \(Config.premiumDailyLimit) hak, ücretsizin 4 katı",
             accent: Theme.prem3
         ),
         .init(
