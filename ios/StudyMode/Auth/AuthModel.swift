@@ -40,6 +40,22 @@ final class AuthModel {
         return level
     }
 
+    /// School / department / level line for Çalışma Fişi, mirroring educationSubtitle on the site.
+    var educationSubtitle: String {
+        guard case let .object(education)? = session?.user.userMetadata["education"] else { return "" }
+        func str(_ key: String) -> String {
+            if case let .string(v)? = education[key] { return v.trimmingCharacters(in: .whitespaces) }
+            return ""
+        }
+        let school = str("school")
+        let dept = str("department")
+        let year = str("classYear")
+        let parts = [school, dept, year].filter { !$0.isEmpty }
+        if !parts.isEmpty { return parts.joined(separator: " · ") }
+        let level = str("level")
+        return StudentLevel(rawValue: level)?.label ?? ""
+    }
+
     init() {
         Task { await listen() }
     }
@@ -86,6 +102,21 @@ final class AuthModel {
         } catch {
             // Kept on the phone; tried again at the next sign-in. The site asks for it anyway.
         }
+    }
+
+    /// After a user_metadata update made elsewhere (achievements).
+    func updateSessionUser(_ user: User) { session?.user = user }
+
+    /// Ayarlar → Okulun: changes only education.level, keeping the other answers the site stored.
+    func setEducationLevel(_ level: StudentLevel) async throws {
+        var education: [String: AnyJSON] = [:]
+        if case let .object(existing)? = session?.user.userMetadata["education"] { education = existing }
+        education["level"] = .string(level.rawValue)
+        education["v"] = .integer(2)
+        education["at"] = .string(ISO.string(.now))
+        for key in ["school", "department", "classYear"] where education[key] == nil { education[key] = .string("") }
+        let user = try await supabase.auth.update(user: UserAttributes(data: ["education": .object(education)]))
+        session?.user = user
     }
 
     func signIn(email: String, password: String, captcha: String?) async throws {

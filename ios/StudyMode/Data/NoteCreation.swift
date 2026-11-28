@@ -115,5 +115,7 @@ extension StudyStore {
             try await supabase.from("cards").insert(chunk).execute()
         }
         await load()
+        // Prepared again: the new summary goes into the meaning-search vector too.
+        Task { await SmartSearchIndex.shared.noteChanged(noteId, from: courseId, to: courseId) }
     }
 }

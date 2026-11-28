@@ -113,6 +113,9 @@ struct NoteItem: Identifiable, Decodable, Hashable {
     /// every term is checked (computeNoteProgress).
     let checkedTerms: [String]?
     let keyTerms: [TermName]?
+    /// summary->tags (the course page's tag filter).
+    let tagList: LenientStrings?
+    var tags: [String]? { tagList?.values }
 
     struct TermName: Decodable, Hashable { let term: String }
 
@@ -126,9 +129,10 @@ struct NoteItem: Identifiable, Decodable, Hashable {
         case completedSteps = "steps"
         case checkedTerms = "checked"
         case keyTerms = "terms"
+        case tagList = "tags"
     }
 
-    static let columns = "id,course_id,title,generator,created_at,updated_at,overview:summary->>overview,steps:summary->completedSteps,checked:summary->checkedTerms,terms:summary->keyTerms"
+    static let columns = "id,course_id,title,generator,created_at,updated_at,overview:summary->>overview,steps:summary->completedSteps,checked:summary->checkedTerms,terms:summary->keyTerms,tags:summary->tags"
 }
 
 /// One study_days row, only the counts the app needs.
@@ -229,14 +233,16 @@ struct Card: Identifiable, Decodable, Hashable {
     var ease: Double
     var reps: Int
     var lapses: Int
+    var updatedAt: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, front, back, source, due, interval, ease, reps, lapses
         case courseId = "course_id"
         case noteId = "note_id"
+        case updatedAt = "updated_at"
     }
 
-    static let columns = "id,course_id,note_id,front,back,source,due,interval,ease,reps,lapses"
+    static let columns = "id,course_id,note_id,front,back,source,due,interval,ease,reps,lapses,updated_at"
 
     var dueDate: Date { Dates.parse(due) ?? .distantPast }
     func isDue(_ now: Date = .now) -> Bool { dueDate <= now }
@@ -252,7 +258,12 @@ enum Dates {
 
     /// Postgres timestamptz ("2026-11-26T09:00:00.123+00:00") or the site's toISOString().
     static func parse(_ text: String) -> Date? {
-        withFraction.date(from: text) ?? plain.date(from: text)
+        if let date = withFraction.date(from: text) ?? plain.date(from: text) { return date }
+        // Postgres json gives microseconds (".123456"); the formatter takes at most milliseconds.
+        guard let dot = text.firstIndex(of: "."), let end = text[dot...].firstIndex(where: { !$0.isNumber && $0 != "." }) else { return nil }
+        let digits = text[text.index(after: dot)..<end]
+        guard digits.count > 3 else { return nil }
+        return withFraction.date(from: String(text[..<dot]) + "." + digits.prefix(3) + text[end...])
     }
 
     /// A local calendar day "YYYY-MM-DD" at midnight.

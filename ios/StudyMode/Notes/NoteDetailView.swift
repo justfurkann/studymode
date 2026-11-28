@@ -72,7 +72,10 @@ struct NoteDetailView: View {
         .onChange(of: step) { bookmark() }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { noteMenu } }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { FosforToolbarButton() }
+            ToolbarItem(placement: .topBarTrailing) { noteMenu }
+        }
         .sheet(isPresented: $editing, onDismiss: { Task { await load() } }) { NoteEditSheet(note: currentNote).environment(store) }
         .sheet(isPresented: $showSource) { SourceTextSheet(note: currentNote).environment(store).environment(place) }
         .confirmationDialog("“\(currentNote.title)” notu ve kartları silinsin mi?", isPresented: $askDelete, titleVisibility: .visible) {
@@ -104,8 +107,8 @@ struct NoteDetailView: View {
             Button("Tamam") {}
         } message: { Text(actionError ?? "") }
         .task { await load() }
-        .onAppear { place.courseId = note.courseId; place.noteId = note.id }
-        .onDisappear { if place.noteId == note.id { place.noteId = nil } }
+        .onAppear { place.enter("note-\(note.id)", course: note.courseId, note: note.id) }
+        .onDisappear { place.leave("note-\(note.id)") }
     }
 
     /// The note as the store knows it now (the title may have been edited).
@@ -204,6 +207,64 @@ struct NoteDetailView: View {
         } else if let summary, !summary.overview.isEmpty || !summary.points.isEmpty {
             if summary.sourceChanged {
                 Message(text: "Kaynak metin değişti. Özet, kartlar ve sorular önceki metne ait; güncellemek için sağ üstteki menüden Yeniden hazırla’yı seç.", kind: .warning)
+            }
+            HStack(spacing: 8) {
+                NavigationLink {
+                    NoteVisualsView(note: currentNote, summary: summary)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.prem1)
+                        Text("Görsel")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.text)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+
+                NavigationLink {
+                    NotePodcastView(note: currentNote, summary: summary)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "waveform.circle.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.prem1)
+                        Text("Sesli not")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.text)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+
+                NavigationLink {
+                    NoteCodingView(note: currentNote, summary: summary)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "key.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.accent)
+                        Text("Kodla")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.text)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(Theme.hiSoft.opacity(0.65), in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.cardLine.opacity(0.6), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
             }
             FosforSegmentedBar(
                 segments: [

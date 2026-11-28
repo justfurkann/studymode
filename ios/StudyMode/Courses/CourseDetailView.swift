@@ -15,13 +15,54 @@ struct CourseDetailView: View {
     @State private var deleteError = false
     @Environment(\.dismiss) private var dismissCourse
     @Environment(AssistantPlace.self) private var place
+    @Environment(PremiumStore.self) private var premium
+    // Search (the site's CourseDetail): ordinary search and the tag filter for everyone; meaning
+    // search with vectors only on Premium.
+    @State private var query = ""
+    @State private var tag = ""
+    @State private var docs: [UUID: SearchNote] = [:]
+    @State private var queryVector: QueryVector?
+    @State private var searchError: String?
+    private var index = SmartSearchIndex.shared
+
+    private struct QueryVector { let q: String; let v: [Double] }
 
     /// The course as the store knows it now (name and color may have been edited).
     private var current: Course { store.courses.first { $0.id == course.id } ?? course }
 
+    private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// The course's notes with their text when it has been fetched, otherwise what the list knows.
+    private func searchNotes(_ notes: [NoteItem]) -> [SearchNote] {
+        notes.map { docs[$0.id] ?? SearchNote(item: $0) }
+    }
+
+    private func tags(_ notes: [NoteItem]) -> [String] {
+        var seen = Set<String>()
+        return notes.flatMap { $0.tags ?? [] }.filter { seen.insert($0).inserted }
+    }
+
+    /// The text is fetched when a search or tag is in use, or when the course already has vectors
+    /// (to know which notes changed since).
+    private func docsKey(_ notes: [NoteItem]) -> String {
+        let active = !trimmedQuery.isEmpty || !tag.isEmpty || (premium.isPremium && index.hasVectors(course: course.id))
+        guard active else { return "" }
+        return notes.map { "\($0.id)\($0.updatedAt ?? "")" }.joined(separator: ",")
+    }
+
+    private func loadDocs() async {
+        do {
+            let rows = try await SmartSearchIndex.fetchNotes(course: course.id)
+            docs = Dictionary(rows.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        } catch {
+            // No network: search runs on titles, overviews and tags until the text can be fetched.
+        }
+    }
+
     var body: some View {
         let notes = store.notes(in: course)
         let exams = store.examsFor(course)
+        let showSearch = notes.count >= 3 || !tags(notes).isEmpty
         ZStack {
             GridPaper()
             ScrollView {
@@ -41,7 +82,14 @@ struct CourseDetailView: View {
         // The big header already names the course; an inline title would repeat it.
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .searchable(if: showSearch, text: $query, prompt: "Başlık, içerik veya anlam")
+        .task(id: docsKey(notes)) {
+            guard !docsKey(notes).isEmpty else { return }
+            await loadDocs()
+        }
+        .task(id: query) { await fetchQueryVector() }
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { FosforToolbarButton() }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     OnboardingHaptics.light()
@@ -78,7 +126,9 @@ struct CourseDetailView: View {
         } message: {
             Text("Dersin bütün notları, kartları, test sonuçları ve sınavları da silinir. Bu işlem geri alınamaz; site ve uygulama aynı hesabı kullandığı için ikisinden de silinir.")
         }
-        .onAppear { place.courseId = course.id; place.noteId = nil }
+        .onAppear { place.enter("course-\(course.id)", course: course.id, note: nil) }
+        // Back on a main screen the floating Fosfor goes away (the one on the screen stays).
+        .onDisappear { place.leave("course-\(course.id)") }
         .alert("Ders silinemedi", isPresented: $deleteError) { Button("Tamam") {} } message: { Text("Bağlantını kontrol edip tekrar dene.") }
         .sheet(isPresented: $adding) {
             AddNoteView(course: course, onDone: openNote).environment(store)
@@ -203,10 +253,120 @@ struct CourseDetailView: View {
         }
     }
 
+    /// Query vector after a short pause (site: 380 ms), at least 3 letters, only with vectors in the course.
+    private func fetchQueryVector() async {
+        searchError = nil
+        let text = trimmedQuery
+        guard SemanticSearch.jsLength(text) >= 3, premium.isPremium, index.hasVectors(course: course.id) else {
+            queryVector = nil
+            return
+        }
+        do {
+            try await Task.sleep(for: .milliseconds(380))
+            let v = try await index.queryVector(text)
+            if trimmedQuery == text { queryVector = QueryVector(q: text, v: v) }
+        } catch is CancellationError {
+        } catch {
+            queryVector = nil
+            searchError = SmartSearchIndex.message(error)
+        }
+    }
+
+    private func prepareSearch(_ notes: [NoteItem]) {
+        searchError = nil
+        Task {
+            do {
+                if notes.contains(where: { docs[$0.id] == nil }) {
+                    let rows = try await SmartSearchIndex.fetchNotes(course: course.id)
+                    docs = Dictionary(rows.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+                }
+                try await index.prepare(searchNotes(notes))
+                OnboardingHaptics.success()
+                await fetchQueryVector()
+            } catch {
+                searchError = SmartSearchIndex.message(error)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func searchTools(_ notes: [NoteItem]) -> some View {
+        let tagList = tags(notes)
+        let canPrepare = premium.isPremium && (notes.count >= 3 || !tagList.isEmpty)
+        if !tagList.isEmpty || canPrepare {
+            HStack(spacing: 8) {
+                if !tagList.isEmpty {
+                    Menu {
+                        Picker("Etiket", selection: $tag) {
+                            Text("Tüm etiketler").tag("")
+                            ForEach(tagList, id: \.self) { Text($0).tag($0) }
+                        }
+                    } label: {
+                        Label(tag.isEmpty ? "Tüm etiketler" : tag, systemImage: "tag")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.text)
+                            .lineLimit(1)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(tag.isEmpty ? Theme.surface : Theme.hiSoft, in: Capsule())
+                            .overlay(Capsule().stroke(Theme.border, lineWidth: 1))
+                    }
+                }
+                if canPrepare {
+                    prepareButton(notes)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func prepareButton(_ notes: [NoteItem]) -> some View {
+        let all = searchNotes(notes)
+        let known = notes.allSatisfy { docs[$0.id] != nil }
+        let missing = known ? index.missing(all).count : all.count
+        let ready = known && !all.isEmpty && missing == 0
+        Button {
+            OnboardingHaptics.light()
+            prepareSearch(notes)
+        } label: {
+            HStack(spacing: 5) {
+                if index.progress != nil {
+                    ProgressView().controlSize(.mini).tint(.white)
+                } else {
+                    Image(systemName: "sparkles")
+                }
+                Text(index.progress.map { "Hazırlanıyor \($0.done)/\($0.total)" } ?? (ready ? "Akıllı arama hazır" : "Akıllı aramayı aç"))
+            }
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(LinearGradient(colors: [Theme.prem1, Theme.prem2], startPoint: .leading, endPoint: .trailing), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(index.progress != nil || ready)
+        .accessibilityHint("Notlarını anlamına göre aranabilir yapar")
+        if known, !ready, index.progress == nil, index.hasVectors(course: course.id) {
+            Text("\(all.count - missing)/\(all.count) not hazır")
+                .font(.caption2)
+                .foregroundStyle(Theme.text3)
+        }
+    }
+
     private func notesSection(_ notes: [NoteItem]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionTitle("Notlar")
-            if notes.isEmpty {
+            searchTools(notes)
+            if let searchError {
+                Text(searchError)
+                    .font(.caption)
+                    .foregroundStyle(Theme.text2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !notes.isEmpty, !trimmedQuery.isEmpty || !tag.isEmpty {
+                searchResults(notes)
+            } else if notes.isEmpty {
                 HStack(alignment: .center, spacing: 14) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Bu derste henüz not yok")
@@ -234,6 +394,46 @@ struct CourseDetailView: View {
                 }
             }
         }
+    }
+
+    /// searchNotesSemantic: words first, then notes close in meaning, with the best sentence.
+    @ViewBuilder
+    private func searchResults(_ notes: [NoteItem]) -> some View {
+        let all = searchNotes(notes)
+        let vectors = premium.isPremium ? index.vectors(for: all) : [:]
+        let qv = queryVector.flatMap { $0.q == trimmedQuery ? $0.v : nil }
+        let matches = SemanticSearch.search(all, query: query, tag: tag, vectors: vectors, queryVector: qv)
+        let byId = Dictionary(notes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        if matches.isEmpty {
+            Text("Aramana uygun not bulunamadı.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.text2)
+                .padding(.vertical, 6)
+        } else {
+            LazyVStack(spacing: 10) {
+                ForEach(matches) { match in
+                    if let item = byId[match.note.id] {
+                        NavigationLink(value: item) {
+                            NoteRow(
+                                note: item,
+                                snippet: trimmedQuery.isEmpty ? nil : match.snippet,
+                                matchedTerm: match.matchedTerm,
+                                semantic: !trimmedQuery.isEmpty && match.kind == .semantic
+                            )
+                        }
+                        .buttonStyle(TactileCardButtonStyle())
+                    }
+                }
+            }
+        }
+    }
+}
+
+extension View {
+    /// `.searchable` only when there is something to search (the site shows its box from 3 notes or a tag).
+    @ViewBuilder
+    func searchable(if on: Bool, text: Binding<String>, prompt: String) -> some View {
+        if on { searchable(text: text, prompt: Text(prompt)) } else { self }
     }
 }
 
@@ -304,6 +504,9 @@ private struct ExamRow: View {
 private struct NoteRow: View {
     @Environment(StudyStore.self) private var store
     let note: NoteItem
+    var snippet: String? = nil
+    var matchedTerm: String? = nil
+    var semantic = false
 
     var body: some View {
         let cards = store.cardCount(note: note)
@@ -345,6 +548,22 @@ private struct NoteRow: View {
                             .font(.caption)
                             .foregroundStyle(Theme.text3)
                     }
+                }
+
+                if let snippet {
+                    (Text(matchedTerm.map { "\($0): " } ?? "").bold() + Text(snippet))
+                        .font(.caption)
+                        .foregroundStyle(Theme.text2)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
+                }
+                if semantic {
+                    Label("Anlamsal eşleşme", systemImage: "sparkles")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Theme.premText)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(Theme.premSoft, in: Capsule())
                 }
             }
             Spacer(minLength: 0)

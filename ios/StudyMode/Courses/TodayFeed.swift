@@ -12,6 +12,7 @@ struct TodayFeed: View {
     @State private var session: SessionBox?
     @State private var addingTo: Course?
     @State private var mock: MockBox?
+    @State private var showReceipt = false
 
     /// Which part of the feed this view draws: the top sits above the courses, the lists below the hero.
     enum Part { case greeting, top, lists }
@@ -34,6 +35,11 @@ struct TodayFeed: View {
         .fullScreenCover(item: $mock) { box in
             MockExamView(course: box.course, preselectedExam: box.exam).environment(store)
         }
+        .sheet(isPresented: $showReceipt) {
+            ReceiptStudioSheet()
+                .environment(store)
+                .environment(auth)
+        }
     }
 
     // MARK: - Top
@@ -52,15 +58,37 @@ struct TodayFeed: View {
     private var greeting: some View {
         let date = Date.now.formatted(Date.FormatStyle(locale: Dates.turkish).day().month(.wide).weekday(.wide))
         let name = auth.firstName
-        return VStack(alignment: .leading, spacing: 2) {
-            Text(date.prefix(1).uppercased() + date.dropFirst())
-                .font(.subheadline)
-                .foregroundStyle(Theme.text2)
-            if !name.isEmpty {
-                Text("Merhaba \(name)")
-                    .font(Theme.display(.title2))
-                    .foregroundStyle(Theme.text)
+        return HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(date.prefix(1).uppercased() + date.dropFirst())
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.text2)
+                if !name.isEmpty {
+                    Text("Merhaba \(name)")
+                        .font(Theme.display(.title2))
+                        .foregroundStyle(Theme.text)
+                }
             }
+            Spacer(minLength: 8)
+            Button {
+                OnboardingHaptics.medium()
+                showReceipt = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "receipt")
+                        .font(.subheadline.weight(.bold))
+                    Text("Çalışma fişi")
+                        .font(.subheadline.weight(.bold))
+                }
+                .foregroundStyle(Theme.onHi)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Theme.hi, in: Capsule())
+                .overlay(Capsule().stroke(Theme.cardLine, lineWidth: 1.5))
+                .background(Capsule().fill(Theme.cardDrop).offset(y: 2.5))
+            }
+            .buttonStyle(TactileCardButtonStyle())
+            .accessibilityLabel("Çalışma fişini aç")
         }
     }
 

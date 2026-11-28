@@ -6,15 +6,35 @@ struct StudyModeApp: App {
     /// One bot check for the whole app, started at launch so a token is ready by sign-up.
     @State private var captcha = CaptchaController()
     @Environment(\.colorScheme) private var scheme
+    /// Ayarlar → Görünüm: "system", "light" or "dark" (the site's theme setting).
+    @AppStorage(AppTheme.key) private var theme = AppTheme.system.rawValue
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(auth)
-                .environment(captcha)
-                .tint(Theme.accent)
-                .onAppear { captcha.start(dark: scheme == .dark) }
+            #if DEBUG && targetEnvironment(simulator)
+            // Simulator only, for App Review screenshots: `-premiumPreview` opens the Premium screen
+            // without signing in (plans come from the preview list, nothing can be bought).
+            if ProcessInfo.processInfo.arguments.contains("-premiumPreview") {
+                NavigationStack { PremiumView() }
+                    .environment(PremiumStore())
+            } else {
+                root
+            }
+            #else
+            root
+            #endif
         }
+    }
+
+    private var root: some View {
+        RootView()
+            .environment(auth)
+            .environment(captcha)
+            .tint(Theme.accent)
+            .preferredColorScheme(AppTheme(rawValue: theme)?.scheme)
+            .onAppear { captcha.start(dark: scheme == .dark) }
+            // studymode.fun/paylas/<token>: a friend's shared course opens in the app.
+            .onOpenURL { SharedLinks.shared.open($0) }
     }
 }
 

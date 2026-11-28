@@ -5,7 +5,7 @@ final class ShareController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         guard let context = extensionContext else { return }
-        let host = UIHostingController(rootView: SharePDF(context: context))
+        let host = UIHostingController(rootView: ShareFile(context: context))
         addChild(host)
         host.view.frame = view.bounds
         host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -14,7 +14,7 @@ final class ShareController: UIViewController {
     }
 }
 
-private struct SharePDF: View {
+private struct ShareFile: View {
     let context: NSExtensionContext
     @State private var catalog = PDFInbox.catalog()
     @State private var course: UUID?
@@ -29,35 +29,42 @@ private struct SharePDF: View {
                         Text("Uygulamada seç").tag(nil as UUID?)
                         ForEach(catalog.courses) { Text($0.name).tag(Optional($0.id)) }
                     }
-                    Text("PDF, StudyMode’u açtığında çalışma masanda hazır olacak.")
+                    Text("Dosya, StudyMode’u açtığında çalışma masanda hazır olacak.")
                     Button("StudyMode’a ekle") { save(catalog) }.disabled(saving)
                 } else {
-                    Text("Önce StudyMode’u açıp hesabına giriş yap, ardından PDF’yi yeniden paylaş.")
+                    Text("Önce StudyMode’u açıp hesabına giriş yap, ardından dosyayı yeniden paylaş.")
                 }
                 if saving { ProgressView() }
                 if let message { Text(message) }
             }
-            .navigationTitle("PDF paylaş")
+            .navigationTitle("StudyMode’a ekle")
             .toolbar { Button("Vazgeç") { context.cancelRequest(withError: CocoaError(.userCancelled)) }.disabled(saving) }
         }
     }
 
     private func save(_ catalog: PDFInbox.Catalog) {
-        let pdf = UTType.pdf.identifier
         let providers = (context.inputItems as? [NSExtensionItem] ?? []).flatMap { $0.attachments ?? [] }
-        guard let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(pdf) }) else {
-            message = "Bir PDF dosyası seç."; return
+        // The first attachment of a kind StudyMode reads (PDF, PowerPoint, Word, Excel, text).
+        var found: (NSItemProvider, String, String)?
+        for provider in providers {
+            if let match = PDFInbox.accepted.first(where: { provider.hasItemConformingToTypeIdentifier($0.type) }) {
+                found = (provider, match.type, match.ext)
+                break
+            }
+        }
+        guard let (provider, type, ext) = found else {
+            message = "PDF, PowerPoint, Word, Excel ya da metin dosyası seç."; return
         }
         saving = true
         let selected = course
-        provider.loadFileRepresentation(forTypeIdentifier: pdf) { url, _ in
+        provider.loadFileRepresentation(forTypeIdentifier: type) { url, _ in
             do {
                 guard let url else { throw CocoaError(.fileReadUnknown) }
                 let title = (provider.suggestedName ?? url.lastPathComponent) as NSString
-                try PDFInbox.enqueue(url, title: title.deletingPathExtension, user: catalog.user, course: selected)
+                try PDFInbox.enqueue(url, ext: ext, title: title.deletingPathExtension, user: catalog.user, course: selected)
                 DispatchQueue.main.async { context.completeRequest(returningItems: nil) }
             } catch {
-                DispatchQueue.main.async { saving = false; message = "PDF kaydedilemedi. StudyMode’u açıp tekrar dene." }
+                DispatchQueue.main.async { saving = false; message = "Dosya kaydedilemedi. StudyMode’u açıp tekrar dene." }
             }
         }
     }

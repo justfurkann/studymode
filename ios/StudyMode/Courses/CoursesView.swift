@@ -24,6 +24,11 @@ struct CoursesView: View {
     @State private var showAll = false
     @State private var path = NavigationPath()
     @State private var adding = false
+    @State private var addingShared = false
+    @State private var sharedToken: SharedToken?
+    private var links = SharedLinks.shared
+
+    private struct SharedToken: Identifiable { let id: String }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -34,6 +39,17 @@ struct CoursesView: View {
             .navigationTitle("Çalışma masam")
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    // Search every note (the site's Premium → Akıllı arama; word search for everyone).
+                    Button {
+                        OnboardingHaptics.light()
+                        path.append(SmartSearchRoute())
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                    .accessibilityLabel("Notlarında ara")
+                    .disabled(store.status != .ready)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         OnboardingHaptics.light()
@@ -52,6 +68,7 @@ struct CoursesView: View {
             .navigationDestination(for: Course.self) { CourseDetailView(course: $0) }
             .navigationDestination(for: NoteItem.self) { NoteDetailView(note: $0) }
             .navigationDestination(for: NoteRoute.self) { NoteDetailView(note: $0.note, start: $0.start) }
+            .navigationDestination(for: SmartSearchRoute.self) { _ in SmartSearchView() }
         }
         .fullScreenCover(item: $session) { box in
             ReviewSession(title: "Tekrar", cards: box.cards, mode: .daily).environment(store)
@@ -63,12 +80,36 @@ struct CoursesView: View {
             let course = store.courses.first(where: { $0.id == item.course })
             AddNoteView(course: course, incoming: item, onDone: openNote).environment(store)
         }
-        .alert("PDF kaldırılamadı", isPresented: $inboxError) { Button("Tamam") {} }
+        .alert("Dosya kaldırılamadı", isPresented: $inboxError) { Button("Tamam") {} }
         .onAppear { reloadInbox(); place = ReadingPlace.latest(for: auth.session?.user.id) }
         .onChange(of: path.count) { place = ReadingPlace.latest(for: auth.session?.user.id) }
         .environment(\.openNote, openNote)
         .sheet(isPresented: $adding) {
             AddNoteView(onDone: openNote).environment(store)
+        }
+        .sheet(isPresented: $addingShared) {
+            AddSharedCourseSheet { token in
+                addingShared = false
+                // Let this sheet close before the course sheet opens.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { sharedToken = SharedToken(id: token) }
+            }
+        }
+        .sheet(item: $sharedToken) { item in
+            SharedCourseView(token: item.id) { course in
+                var next = NavigationPath()
+                next.append(course)
+                path = next
+            }
+            .environment(store)
+        }
+        // A studymode.fun/paylas/… link opened on this phone.
+        .onChange(of: links.pending, initial: true) { _, token in
+            guard let token, store.status == .ready else { return }
+            links.pending = nil
+            sharedToken = SharedToken(id: token)
+        }
+        .onChange(of: store.status == .ready) { _, ready in
+            if ready, let token = links.pending { links.pending = nil; sharedToken = SharedToken(id: token) }
         }
     }
 
@@ -102,14 +143,14 @@ struct CoursesView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     if !inbox.isEmpty {
                         VStack(alignment: .leading) {
-                            SectionTitle("Paylaşılan PDF’ler")
+                            SectionTitle("Paylaşılan dosyalar")
                             ForEach(inbox) { item in
                                 HStack {
                                     Button { importing = item } label: {
-                                        Label(item.title, systemImage: "doc.richtext").frame(maxWidth: .infinity, alignment: .leading)
+                                        Label(item.title, systemImage: ["pptx": "rectangle.on.rectangle", "docx": "doc.text", "xlsx": "tablecells"][item.ext ?? ""] ?? "doc.richtext").frame(maxWidth: .infinity, alignment: .leading)
                                     }
                                     Menu {
-                                        Button("Paylaşılan PDF’yi kaldır", role: .destructive) {
+                                        Button("Paylaşılan dosyayı kaldır", role: .destructive) {
                                             do { try item.remove(); reloadInbox() } catch { inboxError = true }
                                         }
                                     } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }
@@ -182,18 +223,26 @@ struct CoursesView: View {
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
+
+            Button {
+                OnboardingHaptics.light()
+                addingShared = true
+            } label: {
+                Label("Arkadaşının dersini ekle", systemImage: "person.2")
+            }
+            .buttonStyle(SecondaryButtonStyle())
         }
         .focusCard()
     }
 
     private var dailyReview: some View {
         let queue = store.todayQueue
-        let done = min(ReviewRules.dailyGoal, store.reviewsToday)
+        let done = min(store.dailyGoal, store.reviewsToday)
         let reached = store.goalLeft == 0
-        let fraction = CGFloat(done) / CGFloat(max(ReviewRules.dailyGoal, 1))
+        let fraction = CGFloat(done) / CGFloat(max(store.dailyGoal, 1))
 
         return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
+            HeaderRow {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Label("Bugünkü tekrar", systemImage: "rectangle.stack.fill")
@@ -216,18 +265,10 @@ struct CoursesView: View {
                         .foregroundStyle(.white)
                         .contentTransition(.numericText(value: Double(queue.count)))
 
-                    Text("Günlük hedef · \(done) / \(ReviewRules.dailyGoal) kart")
+                    Text("Günlük hedef · \(done) / \(store.dailyGoal) kart")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.78))
                 }
-
-                Spacer(minLength: 8)
-
-                FosforMascotView(
-                    size: 54,
-                    mood: reached ? .cheering : (queue.isEmpty ? .proud : .marking),
-                    onDark: true
-                )
             }
 
             // Crisp neon progress bar on dark navy hero surface
@@ -295,6 +336,17 @@ struct CoursesView: View {
                     }
                     .staggeredAppear(idx + 1)
                 }
+
+                Button {
+                    OnboardingHaptics.light()
+                    addingShared = true
+                } label: {
+                    Label("Arkadaşının dersini ekle", systemImage: "person.2")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.text2)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.plain)
 
                 if courses.count > 4 {
                     Button {

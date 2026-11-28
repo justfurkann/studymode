@@ -6,5 +6,9 @@
 	<false/>
 	<key>StudyShareGroup</key>
 	<string>group.$(STUDYMODE_APP_ID).share</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 </dict>
 </plist>

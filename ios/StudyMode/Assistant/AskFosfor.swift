@@ -22,14 +22,11 @@ struct ConceptExplainer: View {
             OnboardingHaptics.light()
             place?.ask(FosforAsk(quote: topic, source: source), course: note.courseId, note: note.id)
         } label: {
-            HStack(spacing: 6) {
-                FosforMascotView(size: compact ? 18 : 22, animated: false, tappable: false)
-                Text("Anlamadım")
-                    .font((compact ? Font.caption : .subheadline).weight(.bold))
-                    .foregroundStyle(Theme.text)
-            }
-            .padding(.leading, 6)
-            .padding(.trailing, 12)
+            // The yellow chip says "Fosfor" on its own; no mascot inside it.
+            Text("Anlamadım")
+                .font((compact ? Font.caption : .subheadline).weight(.bold))
+                .foregroundStyle(Theme.text)
+            .padding(.horizontal, 12)
             .padding(.vertical, compact ? 4 : 6)
             .background(Theme.hiSoft, in: Capsule())
             .overlay(Capsule().stroke(Theme.hi, lineWidth: 1))

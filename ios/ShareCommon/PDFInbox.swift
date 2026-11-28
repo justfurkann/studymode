@@ -15,8 +15,10 @@ enum PDFInbox {
         let course: UUID?
         let title: String
         let date: Date
+        /// File type of the shared file ("pdf", "pptx", "docx", "xlsx", "txt", "md"); older items are PDFs.
+        var ext: String? = nil
         var folder: URL? { PDFInbox.root?.appendingPathComponent(id.uuidString) }
-        var file: URL? { folder?.appendingPathComponent("source.pdf") }
+        var file: URL? { folder?.appendingPathComponent("source." + (ext ?? "pdf")) }
         func remove() throws { if let folder { try FileManager.default.removeItem(at: folder) } }
     }
     private static var root: URL? {
@@ -32,14 +34,24 @@ enum PDFInbox {
         guard let url = root?.appendingPathComponent("courses.json"), let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(Catalog.self, from: data)
     }
-    static func enqueue(_ source: URL, title: String, user: UUID, course: UUID?) throws {
+    /// Files the share sheet takes, by type identifier, with the extension they are stored under.
+    static let accepted: [(type: String, ext: String)] = [
+        ("com.adobe.pdf", "pdf"),
+        ("org.openxmlformats.presentationml.presentation", "pptx"),
+        ("org.openxmlformats.wordprocessingml.document", "docx"),
+        ("org.openxmlformats.spreadsheetml.sheet", "xlsx"),
+        ("net.daringfireball.markdown", "md"),
+        ("public.plain-text", "txt"),
+    ]
+
+    static func enqueue(_ source: URL, ext: String, title: String, user: UUID, course: UUID?) throws {
         guard let root, catalog()?.user == user else { throw CocoaError(.userCancelled) }
-        let item = Item(id: UUID(), user: user, course: course, title: title, date: .now)
+        let item = Item(id: UUID(), user: user, course: course, title: title, date: .now, ext: ext)
         let temp = root.appendingPathComponent(".incoming-" + item.id.uuidString)
         let fm = FileManager.default
         try fm.createDirectory(at: temp, withIntermediateDirectories: false)
         defer { if fm.fileExists(atPath: temp.path) { try? fm.removeItem(at: temp) } }
-        try fm.copyItem(at: source, to: temp.appendingPathComponent("source.pdf"))
+        try fm.copyItem(at: source, to: temp.appendingPathComponent("source." + ext))
         try JSONEncoder().encode(item).write(to: temp.appendingPathComponent("item.json"))
         try fm.moveItem(at: temp, to: root.appendingPathComponent(item.id.uuidString))
     }

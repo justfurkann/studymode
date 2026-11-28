@@ -42,6 +42,11 @@ struct MockExamView: View {
     @State private var convertedCount: Int? = nil
     @State private var confirmEarlySubmit = false
     @State private var confirmExitRunning = false
+    @State private var similarCount: Int = 5
+    @State private var isSimilarRound = false
+    @State private var resultError: String? = nil
+
+    private static let similarOptions = [3, 5, 8, 10]
 
     private static let letters = ["A", "B", "C", "D", "E", "F"]
 
@@ -845,8 +850,62 @@ struct MockExamView: View {
 
                     FosforProgressBar(value: Double(pct), total: 100, height: 10)
 
+                    if let resultError {
+                        Message(text: resultError, kind: .error)
+                    }
+
                     VStack(spacing: 10) {
                         if !mistakeItems.isEmpty {
+                            // Targeted remediation drill: "Benzer N soru çöz"
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "target")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(Theme.onHi)
+                                        .frame(width: 24, height: 24)
+                                        .background(Theme.hi, in: RoundedRectangle(cornerRadius: 7))
+                                    Text("Yanlışlarına benzer sorular çöz")
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(Theme.text)
+                                    Spacer()
+                                    Text("\(mistakeItems.count) eksik")
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(Theme.danger)
+                                }
+
+                                HStack(spacing: 8) {
+                                    ForEach(Self.similarOptions, id: \.self) { n in
+                                        let picked = similarCount == n
+                                        Button {
+                                            OnboardingHaptics.selection()
+                                            similarCount = n
+                                        } label: {
+                                            Text("\(n) soru")
+                                                .font(.caption.weight(.bold))
+                                                .foregroundStyle(picked ? Theme.onHi : Theme.text2)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 7)
+                                                .background(picked ? Theme.hi : Theme.bg, in: RoundedRectangle(cornerRadius: 9))
+                                                .overlay(RoundedRectangle(cornerRadius: 9).stroke(picked ? Theme.cardLine : Theme.border, lineWidth: picked ? 1.4 : 1))
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+
+                                Button {
+                                    startSimilarExam(eval: eval, count: similarCount)
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "sparkles")
+                                        Text("Benzer \(similarCount) soru çöz")
+                                    }
+                                }
+                                .buttonStyle(PrimaryButtonStyle())
+                            }
+                            .padding(12)
+                            .background(Theme.hiSoft.opacity(0.45), in: RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.cardLine.opacity(0.45), lineWidth: 1.2))
+
                             Button {
                                 OnboardingHaptics.success()
                                 let added = store.cardsFromMockExam(courseId: course.id, mistakes: mistakeItems)
@@ -859,7 +918,7 @@ struct MockExamView: View {
                                     Text(convertedCount.map { "\($0) eksik karta çevrildi" } ?? "Eksiklerimi karta çevir (\(mistakeItems.count))")
                                 }
                             }
-                            .buttonStyle(PrimaryButtonStyle())
+                            .buttonStyle(SecondaryButtonStyle())
                             .disabled(convertedCount != nil)
                         }
 
@@ -1006,6 +1065,8 @@ struct MockExamView: View {
 
     private func startExam() {
         error = nil
+        resultError = nil
+        isSimilarRound = false
         let notes = chosenNotes
         guard !notes.isEmpty else { return }
 
@@ -1065,6 +1126,107 @@ struct MockExamView: View {
             } catch {
                 phase = .setup
                 self.error = error.localizedDescription
+            }
+        }
+    }
+
+    /// Generates a laser-focused remediation mini-exam targeting ONLY the concepts the student missed.
+    private func startSimilarExam(eval: MockExamEvaluation, count: Int) {
+        resultError = nil
+        let notes = chosenNotes.isEmpty ? courseNotes : chosenNotes
+        guard !notes.isEmpty else { return }
+
+        // Build rich context of every missed question + the student's wrong answer + the correct answer
+        var mistakeLines: [String] = []
+        var mistakeNum = 0
+        for (idx, q) in questions.enumerated() {
+            let sc = idx < eval.scores.count ? eval.scores[idx] : 0
+            guard sc < 0.7 else { continue }
+            mistakeNum += 1
+            let ans = idx < answers.count ? answers[idx] : .none
+            let studentAnswer: String = switch ans {
+            case .none: "Boş bıraktı"
+            case let .choice(c): q.options.indices.contains(c) ? q.options[c] : "Boş bıraktı"
+            case let .text(t): t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Boş bıraktı" : String(t.prefix(240))
+            }
+            let correctAnswer: String = if q.type == .open {
+                String(q.modelAnswer.prefix(260))
+            } else if q.options.indices.contains(q.answerIndex) {
+                q.options[q.answerIndex]
+            } else {
+                q.modelAnswer
+            }
+            let src = [q.noteTitle, q.source].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+            mistakeLines.append("""
+            [Yanlış #\(mistakeNum)] Soru: \(q.prompt)
+            Öğrencinin yanlış cevabı: \(studentAnswer)
+            Doğru cevap: \(correctAnswer)\(src.isEmpty ? "" : "\nKaynak/Konu: \(src)")
+            """)
+            if mistakeNum >= 8 { break }
+        }
+        guard !mistakeLines.isEmpty else { return }
+
+        let remediationDirective = """
+        HEDEF ODAKLI TELAFİ SINAVI (YANLIŞLARDAN ÖĞRENME):
+        Öğrenci az önceki sınav provasında yukarıda verilen soruları yanlış yaptı veya eksik cevapladı.
+        1. YALNIZCA bu yanlış yapılan kavramlara, alt başlıklara ve öğrencinin düştüğü kavram yanılgılarına odaklan; başka alakasız konulardan soru sorma.
+        2. Yukarıdaki soruları ASLA kelimesi kelimesine kopyalama — aynı bilgiyi FARKLI bir açıdan, yeni bir senaryo, karşılaştırma, ters köşe (hangisi yanlıştır / neden böyledir) veya uygulama sorusu olarak kurgula.
+        3. Öğrencinin seçtiği yanlış çeldirici ile doğru kavram arasındaki ince farkı özellikle yokla ki aynı hatayı gerçek sınavda bir daha yapmasın.
+        4. Her sorunun açıklamasında (explanation) sadece doğru şıkkı söylemekle kalma, öğrencinin sık karıştırdığı noktayı da 1 net cümleyle vurgula.
+        5. Tüm \(count) soru birbirinden farklı ve yüksek öğretici kalitede olsun.
+        """
+
+        var remediationPlan = MockExamPlan()
+        remediationPlan.mcqCount = count
+        remediationPlan.openCount = 0
+        remediationPlan.blankCount = 0
+        remediationPlan.minutes = 0
+        remediationPlan.difficulty = plan.difficulty
+        remediationPlan.pastQuestions = mistakeLines.joined(separator: "\n\n")
+        remediationPlan.info = remediationDirective
+
+        OnboardingHaptics.medium()
+        isSimilarRound = true
+        phase = .preparing
+        UIApplication.shared.isIdleTimerDisabled = true
+
+        Task {
+            defer { UIApplication.shared.isIdleTimerDisabled = false }
+            do {
+                var loadedNotes: [(item: NoteItem, content: String)] = []
+                for n in notes {
+                    let content = try await store.noteContent(n.id)
+                    if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        loadedNotes.append((n, content))
+                    }
+                }
+                guard !loadedNotes.isEmpty else {
+                    phase = .result
+                    resultError = "Notların metni yüklenemedi."
+                    return
+                }
+                let generated = try await ExamMaker.generateAI(
+                    courseName: course.name,
+                    notes: loadedNotes,
+                    plan: remediationPlan
+                )
+                questions = generated
+                answers = Array(repeating: .none, count: generated.count)
+                currentIndex = 0
+                startedAt = .now
+                endsAt = nil
+                evaluation = nil
+                convertedCount = nil
+                mode = .ai
+                OnboardingHaptics.success()
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.82)) {
+                    phase = .running
+                }
+            } catch is CancellationError {
+                phase = .result
+            } catch {
+                phase = .result
+                resultError = error.localizedDescription
             }
         }
     }

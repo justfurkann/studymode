@@ -5,7 +5,7 @@ struct MainTabs: View {
     @Environment(AuthModel.self) private var auth
     @State private var store = StudyStore()
     @State private var place = AssistantPlace()
-    @State private var keyboardUp = false
+    @State private var premium = PremiumStore()
 
     private var shareCatalog: PDFInbox.Catalog? {
         guard store.status == .ready, let user = auth.session?.user.id else { return nil }
@@ -20,22 +20,13 @@ struct MainTabs: View {
             ReviewTab()
                 .tabItem { Label("Tekrar", systemImage: "rectangle.stack") }
                 .badge(store.status == .ready ? min(store.goalLeft, store.todayQueue.count) : 0)
+            AssistantSheet(inTab: true)
+                .tabItem { Label("Fosfor", systemImage: "highlighter") }
             ExamsHubTab()
                 .tabItem { Label("Sınavlar", systemImage: "calendar.badge.clock") }
             AccountView()
                 .tabItem { Label("Hesap", systemImage: "person.crop.circle") }
         }
-        .overlay(alignment: .bottomTrailing) {
-            if store.status == .ready && !place.open && !keyboardUp {
-                AssistantButton()
-                    .padding(.trailing, 12)
-                    .padding(.bottom, 86)
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
-            }
-        }
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: place.open)
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardUp = false }
         .sheet(isPresented: Binding(get: { place.open }, set: { place.open = $0 })) {
             AssistantSheet()
                 .environment(store)
@@ -47,8 +38,15 @@ struct MainTabs: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Theme.bg)
         }
+        .modifier(AchievementWatcher())
         .environment(store)
         .environment(place)
+        .environment(premium)
+        .task(id: auth.session?.user.id) {
+            if let user = auth.session?.user.id { premium.start(user: user) } else { premium.stop() }
+            SmartSearchIndex.shared.configure(user: auth.session?.user.id)
+        }
+        .onChange(of: premium.isPremium, initial: true) { _, on in SmartSearchIndex.shared.isPremium = on }
         .onChange(of: shareCatalog, initial: true) { _, catalog in try? PDFInbox.publish(catalog) }
         .task {
             store.audience = Exams.audience(forLevel: auth.educationLevel)
@@ -62,9 +60,11 @@ struct MainTabs: View {
 struct AccountView: View {
     @Environment(AuthModel.self) private var auth
     @Environment(StudyStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @Environment(CaptchaController.self) private var captcha
     @State private var showDelete = false
     @State private var replayIntro = false
+    @State private var showReceipt = false
 
     var body: some View {
         NavigationStack {
@@ -72,7 +72,7 @@ struct AccountView: View {
                 GridPaper()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        HStack(alignment: .top, spacing: 12) {
+                        HeaderRow {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(auth.displayName.isEmpty ? "Hesabın" : auth.displayName)
                                     .font(Theme.display(.title2))
@@ -95,8 +95,6 @@ struct AccountView: View {
                                     .foregroundStyle(Theme.text3)
                                     .padding(.top, 6)
                             }
-                            Spacer(minLength: 4)
-                            FosforMascotView(size: 52, mood: .proud)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .focusCard()
@@ -111,17 +109,94 @@ struct AccountView: View {
                         .buttonStyle(SecondaryButtonStyle())
                         .staggeredAppear(1)
 
-                        Link(destination: Config.siteURL) {
-                            Label("studymode.fun'u aç", systemImage: "safari")
+                        NavigationLink {
+                            PremiumView()
+                        } label: {
+                            HStack(spacing: 13) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(.white.opacity(0.18))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: premium.isPremium ? "checkmark.seal.fill" : "crown.fill")
+                                        .font(.body.weight(.bold))
+                                        .foregroundStyle(Theme.hi)
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text("StudyMode Premium")
+                                            .font(Theme.display(.headline, weight: .heavy))
+                                            .foregroundStyle(.white)
+                                        if premium.isPremium {
+                                            Text("AÇIK")
+                                                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                                                .foregroundStyle(Theme.onHi)
+                                                .padding(.horizontal, 7)
+                                                .padding(.vertical, 2)
+                                                .background(Theme.hi, in: Capsule())
+                                        }
+                                    }
+                                    Text(premium.isPremium
+                                         ? "Free+ ve günde 150 yapay zekâ hakkı açık"
+                                         : "Daha güçlü yapay zekâ ve günde 150 hak")
+                                        .font(.caption)
+                                        .foregroundStyle(.white.opacity(0.86))
+                                        .lineLimit(1)
+                                }
+                                Spacer(minLength: 4)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.white.opacity(0.75))
+                            }
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                LinearGradient(
+                                    colors: [Theme.premDeep, Theme.prem1, Theme.prem2],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(.white.opacity(0.22), lineWidth: 1)
+                            )
+                            .shadow(color: Theme.prem1.opacity(0.32), radius: 12, y: 6)
+                        }
+                        .buttonStyle(TactileCardButtonStyle(scale: 0.98))
+                        .staggeredAppear(1)
+
+                        NavigationLink {
+                            AchievementsView()
+                        } label: {
+                            Label("Başarımlar ve seviye", systemImage: "trophy")
                         }
                         .buttonStyle(SecondaryButtonStyle())
-                        .staggeredAppear(2)
+                        .staggeredAppear(1)
+
+                        Button {
+                            OnboardingHaptics.medium()
+                            showReceipt = true
+                        } label: {
+                            Label("Çalışma fişi", systemImage: "receipt")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .staggeredAppear(1)
+
+                        NavigationLink {
+                            SettingsView()
+                        } label: {
+                            Label("Ayarlar", systemImage: "gearshape")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .staggeredAppear(1)
 
                         Button(role: .destructive) {
                             Task {
                                 await auth.signOut()
                                 store.reset()
                                 Assistant.clearAll()
+                                SmartSearchIndex.clearAll()
                             }
                         } label: {
                             Text("Çıkış yap").foregroundStyle(Theme.danger)
@@ -155,12 +230,18 @@ struct AccountView: View {
                 DeleteAccountView()
                     .environment(auth)
                     .environment(store)
+                    .environment(premium)
             }
             .fullScreenCover(isPresented: $replayIntro) {
                 OnboardingView { _ in
                     replayIntro = false
                 }
                 .environment(captcha)
+            }
+            .sheet(isPresented: $showReceipt) {
+                ReceiptStudioSheet()
+                    .environment(store)
+                    .environment(auth)
             }
         }
     }

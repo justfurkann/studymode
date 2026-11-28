@@ -2,6 +2,31 @@
 
 Uygulama Claude'u (`ios/`, `ios-taslak` dalı) ile Site Claude'u arasındaki iş listesi. Kurallar `docs/HANDOFF.md` → "0. Ekip düzeni". En yeni giriş en üstte. Bir iş bitince satırına ✅ ve tarih eklenir; silinmez.
 
+## 28 Kasım 2026 · Furkan → Tüm ajanlar (Claude, Codex, Antigravity) · Rive, Lottie, ShipSwift ve araç önerisi kuralı
+
+- **Görsel ve animasyon araçları:** Projede artık **Rive**, **Lottie** ve **ShipSwift** ile çalışıyoruz.
+- **İş bölümü:** Rive, Lottie veya ShipSwift işlerini Furkan bilinçli iş bölümü olarak Codex tarafında yaptırıyor. Claude bir yerde bunlara ihtiyaç görürse *"bunu Codex'te Rive / Lottie / ShipSwift ile yaptıralım"* diye söylemesi yeterli (neden Claude'a yaptırılmadığı iş bölümü tercihidir).
+- **Tüm ajanlar için ortak kural (Claude, Codex, Antigravity):** Bir özellik, ekran veya animasyon yaparken saf kodla çözmek yerine harici bir araç/paket (Rive, Lottie, ShipSwift vb.) belirgin şekilde daha kaliteli sonuç verecekse, kullanıcıya açıkça öner: *"Bunu ben kodla yaparım ama istersen … ekleyip onunla yapayım, çok daha iyi olur."*
+
+## 28 Kasım 2026 · Site → Uygulama: embed `kind` alanı (PR #138)
+
+Site, `embed` görevinin girdisine isteğe bağlı `kind: "query" | "document"` ekledi (PR #138, birleşmedi): not metinleri `RETRIEVAL_DOCUMENT`, arama kutusu `RETRIEVAL_QUERY` vektörü alır; alan yoksa "document" sayılır. Sitedeki vektör deposu `studymode.embeddings.v1.*`'den `v2`'ye geçti.
+- ✅ **Uygulama (28 Kasım, `ios-taslak`):** notları `kind: "document"`, aramayı `kind: "query"` ile gönderiyor (`ios/StudyMode/Search/SmartSearchIndex.swift`). Bugünkü `main` sunucusu alanı yok sayıyor (`userPrompt('embed')` yalnızca `texts`'i okuyor), yani PR birleşmeden de bir şey bozulmuyor; birleşince iki taraf tutarlı olur. Cihazdaki vektörler `Application Support/SmartSearch/v2/<kullanıcı>/<ders>.json`'da; eski düzen ilk açılışta silinir, v1 ile v2 hiç karışmaz.
+
+## 28 Kasım 2026 · iPhone → Site · kullanıcının panel işleri
+
+Kullanıcı 28 Kasım'da aşağıdaki panel işlerinin hepsini yaptığını bildirdi. İlgili maddelere (1, 2, 5, 8) ✅ ve tarih eklendi; neyin uygulama tarafında ya da canlıda doğrulandığı orada yazıyor. Kısaca:
+- ✅ Supabase'de Apple ile giriş: canlıda doğrulandı (`/auth/v1/settings` → `apple: true`, `google: true`).
+- ✅ `APPLE_APP_APPLE_ID` (Vercel): canlıda dolaylı doğrulandı (aşağıda madde 8).
+- ✅ `apple-app-site-association`: canlıda 200, `applinks` (`/paylas/*`) + `webcredentials`, App ID `Q2VWX7322K.fun.studymode.app`.
+- Doğrulanamadı (giriş ya da panel erişimi gerekiyor): Apple Services ID, gizli e-posta alan adı, Vercel'deki Apple `.p8` anahtarları, App Store Connect'teki bildirim adresi, Google marka doğrulaması.
+
+## 27 Kasım 2026 · Codex → Claude · Fosfor’un konuşma alanı
+
+Bugün, Tekrar, Sınavlar ve Hesap kartlarında konuşma balonu başlığın ve maskotun bulunduğu satırın üstünde kendi yüksekliğini alır. Uzun replik ve büyük yazı boyunda metin sarılır. Her ekranın altı kısa repliği ayrı sırayla karıştırılır. Replik 5 saniye görünür, balon ve satırı 30 saniye tamamen kapanır. İlk replik sohbeti tanıtır. Kartlarda ve ders/not ekranındaki yüzen maskotta kalıcı “Fosfor’a sor” düğmesi sohbeti açar.
+
+Sınav takvimi yüklenirken ve boşken de aynı balon ve sohbet düğmesi görünür. İlk sınavı ekleme düğmesi kartın altında kalır.
+
 ## 26 Kasım 2026 · Codex → Claude · iPhone çalışma akışları
 
 - Not ekle → Fotoğraf → Defteri tara, VisionKit ile çok sayfalı belge yakalar. Küçük resimdeki menü sayfayı taşır, çıkarır veya yeniden tarar. Okuma ve not hazırlama mevcut akışı kullanır. Kamera ve perspektif düzeltme için gerçek defterle cihaz testi hâlâ gerekli.
@@ -53,12 +78,16 @@ Apple şartı. Site Claude'unun bildirdiği sözleşme:
 - Apple ile girmiş hesapta silmeden hemen önce Apple isteği yeniden yapılıp taze `authorizationCode` gönderilir; Apple `.p8` anahtarı Vercel'e eklenene kadar `apple_revoked=false` döner, silme yine çalışır.
 - Yayına girince site Claude'u burada "yayında" der; uygulama tarafı sonra yapılır.
 - **Uygulama durumu (26 Kasım):** Hesap → "Hesabı sil…" (SİL onayı, Premium uyarısı ve `premium_ok`, başarıda `signOut(scope: .local)`) yazıldı, derleniyor. Gerçek silme denenmedi (yalnızca atılabilir hesapla denenecek). Apple `authorization_code` gönderimi Apple ile giriş eklenince yapılacak.
+- ✅ **Vercel'e Apple anahtarları (`.p8`, jeton iptali için): kullanıcı 28 Kasım'da yaptığını bildirdi; uygulama tarafında doğrulanması:** yalnızca Apple ile girmiş atılabilir bir hesabı uygulamadan silip cevabın `apple_revoked: true` olduğunu görmekle olur. Denenmedi; şimdilik doğrulanmadı. Uygulama taze `authorizationCode`'u zaten gönderiyor (`Auth/DeleteAccountView.swift`).
 
 ### 2. Apple ile giriş — Supabase'de henüz açık değil (26 Kasım 2026)
 ✅ **Supabase'de açık (26 Kasım 2026)**: `/auth/v1/settings` → `apple: true`, Client IDs `fun.studymode.app`, gizli anahtar yok. Uygulama tarafı yapılabilir. Sitedeki "Apple ile devam et" aynı kimlik belirteci yolunu kullanır (Services ID gelince açılır).
 Uygulama `signInWithIdToken(provider: .apple, idToken:, nonce: rawNonce, captchaToken)` kullanacak; Apple isteğine `SHA-256(rawNonce)` gider. Gereken: Supabase → Authentication → Providers → Apple açık, Client IDs içinde `fun.studymode.app` (gizli anahtar gerekmez). Açılınca buraya "açık" yaz.
 - **Uygulama durumu (26 Kasım):** giriş/kayıt kartında Apple'ın kendi "Apple ile Devam Et" düğmesi; ham nonce + SHA-256, `captchaToken` ile `signInWithIdToken`; ilk girişte ad `auth.update` ile yazılıyor; Apple hesabında silmeden önce Apple'dan taze `authorizationCode` alınıp `apple_authorization_code` olarak gönderiliyor. Gerçek Apple girişi henüz denenmedi (kullanıcının iPhone'unda denenecek).
 Uygulama tarafında anlaşılanlar: Apple adı yalnızca ilk girişte verir; `user_metadata`'da ad yoksa `first_name`, `last_name`, `full_name` yazılır. `…@privaterelay.appleid.com` adresleri "Apple (gizli e-posta)" diye gösterilir.
+- ✅ **Supabase'de Apple ile giriş: kullanıcı 28 Kasım'da yaptığını bildirdi; uygulama tarafında doğrulanması:** canlıda doğrulandı, `GET /auth/v1/settings` → `external.apple: true` (28 Kasım). Uygulamadaki gerçek Apple girişi hâlâ kullanıcının iPhone'unda denenmeli.
+- ✅ **Apple Services ID (sitedeki "Apple ile devam et" için, `fun.studymode.web`): kullanıcı 28 Kasım'da yaptığını bildirdi; uygulama tarafında doğrulanması:** uygulamayı etkilemez (uygulama `fun.studymode.app` ile kimlik belirteci kullanır). Panelde olduğu için buradan doğrulanamadı; sitede Apple ile girişi bir kez denemek yeter.
+- ✅ **Apple'ın gizli e-posta adresleri için alan adı (Apple Developer → Sign in with Apple for Email Communication): kullanıcı 28 Kasım'da yaptığını bildirdi; uygulama tarafında doğrulanması:** doğrulanamadı. Gizli e-postalı (`…@privaterelay.appleid.com`) bir hesaba sitenin bir e-postasının (ör. şifre sıfırlama) gitmesiyle görülür.
 
 ### 3. Doğrulama dosyası — bekliyor, acele değil (26 Kasım 2026)
 ✅ **Yayında (26 Kasım 2026, PR #124).** `https://studymode.fun/.well-known/apple-app-site-association` → 200, `content-type: application/json`, yönlendirme yok, yalnızca `webcredentials` (`Q2VWX7322K.fun.studymode.app`). Associated Domains (`webcredentials:studymode.fun`) uygulamaya eklenebilir.
@@ -78,6 +107,7 @@ Uygulama Google'ın SDK'sı olmadan, Google'ın **iOS türünde** OAuth istemcis
 - Supabase → Authentication → Providers → Google → **Client IDs** listesine bu iOS Client ID'si eklenir (sitenin web Client ID'si yerinde kalır, virgülle ayrılır). "Skip nonce check" kapalı kalır.
 Site Claude'u için not: sitenin Google girişine etkisi olmamalı; bir değişiklik görürsen bana yaz.
 - **Durum (26 Kasım):** iOS Client ID oluşturuldu, sitenin projesinde (`189951485932-3f3jkvijibcnib8ov3opp4gn7h7ln2jl.apps.googleusercontent.com`, gizli değil) ve uygulamaya kondu. Bekleyen: Supabase → Google → Client IDs'e eklenmesi (kullanıcı) ve Google Auth Platform'da branding doldurulup uygulamanın yayınlanması (kullanıcı). Sitenin Google projesinin branding/yayın durumu belirsiz; site Claude'u bakabilirse iyi olur.
+- ✅ **Google marka doğrulaması (Search Console'da `studymode.fun`, Google Auth Platform branding): kullanıcı 28 Kasım'da yaptığını bildirdi; uygulama tarafında doğrulanması:** doğrulanamadı (Google paneli gerekiyor). Canlıda yalnızca `/auth/v1/settings` → `google: true` görüldü. Uygulamada Google ile girişte izin ekranında logonun ve "doğrulanmamış uygulama" uyarısının olmaması kontrol edilmeli.
 
 ## Ortak kural: yeni Tekrar (26 Kasım 2026, kalite kontrolden; önce iOS'ta denenir, sonra site)
 
@@ -128,3 +158,43 @@ Kullanıcı Non-interactive'e geçmeyi reddetti ("asla tamamen o dediğin gibi y
 - **Uygulamadan beklenen:** `study_days`'e satır insert/upsert/update etmeyi bırakıp her cevapta, test bitiminde ve "actions"ta bu fonksiyonu çağırmak. Gün = cihazın yerel günü (site ile aynı).
 - **Site tarafı (bilgi):** açık sekme 2 dakikadan uzun kaldıysa geri dönünce hesabı yeniden okur (kart ve not değişiklikleri de gelir). Kart ve not satırları hâlâ bütün yazılır; iki cihazda aynı anda aynı kart düzenlenirse son yazan kazanır.
 - **Uygulama (26 Kasım, `ios-taslak`):** ✅ yapıldı. Kart cevabı (`p_reviews`, yeni kartsa `p_new_cards`), test, sınav provası (`p_quizzes`) ve Anlat cevabı (`p_actions`) yalnızca `bump_study_day` ile yazılıyor; insert/upsert/update kaldırıldı. Dönen satır ekrandaki bugünkü sayıyı güncelliyor (`ios/StudyMode/Data/StudyDays.swift`). Uygulamada henüz geri alma yok; eklenince negatif değer kullanılacak.
+
+## 8. Apple ile Premium (uygulama → site, 27 Kasım 2026)
+
+Uygulama Premium'u App Store'dan StoreKit 2 ile satıyor (ürünler App Store Connect'te hazır, "StudyMode Premium" grubu, Group ID 22628551):
+
+| Ürün | Tür | Fiyat | Süre |
+|---|---|---|---|
+| `fun.studymode.app.premium.monthly` | otomatik yenilenen | ₺99,99 | 1 ay |
+| `fun.studymode.app.premium.sixmonths` | otomatik yenilenen | ₺499,99 | 6 ay |
+| `fun.studymode.app.premium.twoweeks` | yenilenmeyen | ₺49,99 | 14 gün (Apple süre tutmaz) |
+
+Uygulama tarafı yazıldı (`ios/StudyMode/Premium/`): her satın almada `appAccountToken` = Supabase kullanıcı kimliği; işlem sitenin sunucusu kabul edene kadar `finish()` edilmez, sonraki açılışta tekrar gönderilir. Premium durumu `ai_quota().premium_until`'dan okunur (StoreKit'in kendi kaydı da yerelde gösterilir).
+
+**Sitenin yapması gereken:**
+1. **`POST /api/apple-purchase`** (Bearer = Supabase oturumu), gövde `{"transaction": "<JWS>"}` (StoreKit `jwsRepresentation`).
+   - JWS'yi Apple'ın sertifika zinciriyle doğrula (x5c → Apple Root CA G3; Apple'ın `app-store-server-library` ya da elle). `bundleId == fun.studymode.app`, `productId` yukarıdaki üçünden biri, `environment` (Sandbox/Production) kaydedilsin.
+   - `appAccountToken` varsa oturumdaki kullanıcıya eşit olmalı (değilse 403).
+   - Aynı `transactionId` iki kez sayılmasın: yeni tablo öneriyorum `apple_transactions(transaction_id pk, original_transaction_id, user_id, product_id, purchase_date, expires_at, revoked_at, environment)`.
+   - Otomatik yenilenen: `premium_access.until = greatest(until, expiresDate)`.
+   - 2 haftalık: `premium_access.until = greatest(until, now()) + 14 gün` (sitedeki kod mantığıyla aynı), yalnızca ilk kez görülen `transactionId` için.
+   - Cevap `200 {"ok": true, "premium_until": "<ISO>"}`. Hata olursa 4xx/5xx; uygulama sonra yeniden dener.
+2. **`POST /api/apple-notifications`**: App Store Server Notifications V2. `DID_RENEW` → süreyi uzat; `REFUND` / `REVOKE` → o işlemi `revoked_at` ile işaretle ve süreyi geri çek; `EXPIRED` için bir şey gerekmez. URL'yi kullanıcı App Store Connect → App Information → App Store Server Notifications'a girecek (Production ve Sandbox).
+3. Site Premium sayfası: Apple'dan abone olana "Aboneliğin App Store üzerinden; yönetmek için iPhone Ayarlar → Abonelikler" yazsın; sitede ikinci kez satış önermesin.
+
+**Site durumu (27 Kasım 2026): 1, 2 ve 3 yazıldı, PR #134 açık — birleştirmeyi Furkan yapacak.** Kontrolcünün istekleri de girdi: lockfile PR'dan çıktı (`.gitignore`'da), kütüphane `3.1.0` sabit.
+- **3 (yapıldı):** yeni `GET /api/apple-status` (Bearer) → `{subscription:false}` ya da `{subscription:true, product, expires}` (iptal/iade edilmemiş, süresi geçmemiş aylık/6 aylık). Sitede: Premium sayfası "App Store aboneliğinle açık · yönetmek ve iptal için iPhone'da Ayarlar → Apple hesabın (adın) → Abonelikler"; satış düğmeleri (`BuyPremium`) ve Fiyatlar sayfası aboneye satış yerine bu notu gösterir. Kod girme (RedeemCode) açık kalır.
+- **Hesap silme (site):** abonelik varsa "App Store'dan aldığın Premium aboneliği hesap silinince durmaz; Apple ücret almaya devam eder. Silmeden önce … Abonelikler'den iptal et." Sunucu cevap veremezse "iPhone'dan App Store ile abone olduysan…" diye yine gösterilir. Uygulama da aynı uç noktayı kullanabilir.
+- **Veritabanı (canlı, kullanıcı onayıyla):** `apple_transactions` (transaction_id pk, original_transaction_id, user_id, product_id, environment, purchase_date, expires_date, granted, revoked_at), `apple_grant(...)`, `apple_revoke(transaction_id)`. Yalnızca sunucu (service_role) çalıştırır.
+- **Sözleşme `POST /api/apple-purchase`:** `Authorization: Bearer <oturum>`, gövde `{"transaction":"<JWS>"}`. İmza Apple'ın resmi kütüphanesiyle Apple Root CA - G3'e kadar kontrol edilir; bundle `fun.studymode.app`; ürün yukarıdaki üçü; `appAccountToken` = çağıranın kullanıcı id'si (büyük/küçük harf fark etmez). Aynı `transactionId` ikinci kez süre eklemez, yine 200 döner.
+  - `200 {"ok":true,"premium_until":"<ISO>"}` → finish.
+  - Kalıcı ret (finish): `400 bad_request / invalid_transaction / wrong_app / unknown_product`, `403 wrong_account` (token yok ya da başka hesap), `409 revoked`.
+  - Sonra yeniden dene: `401 not_signed_in`, `503 not_configured` (Production işlemi ama `APPLE_APP_APPLE_ID` henüz yok), `502 grant_failed`.
+- **`POST /api/apple-notifications`** (V2): `DID_RENEW / SUBSCRIBED / ONE_TIME_CHARGE` süreyi uzatır (kullanıcı `appAccountToken`'dan, yoksa ilk satın almanın hesabından); `REFUND / REVOKE` o işlemin eklediği süreyi geri alır; diğerleri 200; veritabanı hatasında 500 (Apple yeniden gönderir).
+- **Furkan'ın adımları:**
+  1. PR #134'ü birleştir.
+  2. App Store Connect → uygulama → App Information → App Store Server Notifications: Production ve Sandbox URL `https://studymode.fun/api/apple-notifications`, **Version 2**.
+  3. Uygulama mağazaya çıkınca Vercel → Environment Variables: `APPLE_APP_APPLE_ID` = App Store Connect'teki sayısal Apple ID (gizli değil). O zamana kadar yalnızca Sandbox satın almaları kabul edilir.
+- Not: koddan gelen Premium süresi aboneliğin bitişinden uzunsa abonelik ona bir şey eklemez (`greatest`).
+- ✅ **Adım 2 (App Store Connect → App Store Server Notifications, V2): kullanıcı 28 Kasım'da yaptığını bildirdi; uygulama tarafında doğrulanması:** adresin uç noktası canlıda ayakta (`POST /api/apple-notifications` boş gövdeye `400 bad_request`, sahte imzaya `400 invalid_notification`). App Store Connect'te adresin girildiği buradan görülemez; ilk sandbox satın almasında ya da App Store Connect'in "Request a Test Notification" düğmesiyle Vercel günlüğünde görülür. Doğrulanmadı.
+- ✅ **Adım 3 (`APPLE_APP_APPLE_ID`, Vercel): kullanıcı 28 Kasım'da yaptığını bildirdi; uygulama tarafında doğrulanması:** canlıda dolaylı doğrulandı (28 Kasım). İmzasız, ortamı `Production` diyen sahte bir bildirim `503 not_configured` yerine `400 invalid_notification` döndü; yani sunucu `APPLE_APP_APPLE_ID`'yi buluyor (`api/appleStore.ts:40`). Gerçek Production satın alması mağazaya çıkınca görülecek.

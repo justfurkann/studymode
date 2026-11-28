@@ -28,7 +28,7 @@ struct ExamsHubTab: View {
                 GridPaper()
                 if store.status != .ready {
                     ScrollView {
-                        StudyLoadingStage(message: "Sınav takvimin yükleniyor…", cardCount: 3)
+                        StudyLoadingStage(message: "Sınav takvimin yükleniyor…", cardCount: 3, fosforScreen: .exam)
                             .padding(.horizontal, 16)
                     }
                 } else {
@@ -55,6 +55,7 @@ struct ExamsHubTab: View {
             .navigationDestination(for: CourseExam.self) { ExamStudyView(exam: $0) }
             .navigationDestination(for: Course.self) { CourseDetailView(course: $0) }
             .navigationDestination(for: NoteItem.self) { NoteDetailView(note: $0) }
+            .navigationDestination(for: ExamResultSummary.self) { ExamHistoryReviewView(summary: $0) }
         }
         .sheet(item: $editorTarget) { target in
             CourseExamEditorSheet(course: target.course, editing: target.exam)
@@ -97,6 +98,11 @@ struct ExamsHubTab: View {
                 mockExamSection(courses: courses)
                     .staggeredAppear(3)
 
+                if !store.examResults.isEmpty {
+                    pastMockExamsSection
+                        .staggeredAppear(4)
+                }
+
                 if !gradedPast.isEmpty {
                     pastExamsDisclosure(gradedPast)
                 }
@@ -114,7 +120,7 @@ struct ExamsHubTab: View {
         let readiness = store.readiness(for: exam)
 
         return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
+            HeaderRow {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Circle().fill(course.tint).frame(width: 8, height: 8)
@@ -133,14 +139,6 @@ struct ExamsHubTab: View {
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.80))
                 }
-
-                Spacer(minLength: 8)
-
-                FosforMascotView(
-                    size: 52,
-                    mood: (readiness ?? 0) >= 75 ? .cheering : .marking,
-                    onDark: true
-                )
             }
 
             if let readiness {
@@ -193,7 +191,7 @@ struct ExamsHubTab: View {
 
     private var emptyCalendarHero: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
+            HeaderRow {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Text("Sınav")
@@ -205,8 +203,6 @@ struct ExamsHubTab: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.text2)
                 }
-                Spacer(minLength: 4)
-                FosforMascotView(size: 52, mood: .curious)
             }
 
             Button {
@@ -431,6 +427,72 @@ struct ExamsHubTab: View {
                 }
             }
         }
+    }
+
+    // MARK: - Past Mock Exam Results
+
+    private var pastMockExamsSection: some View {
+        let recent = Array(store.examResults.sorted { $0.createdAt > $1.createdAt }.prefix(8))
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionTitle("Geçmiş provalar (\(store.examResults.count))")
+            VStack(spacing: 0) {
+                ForEach(Array(recent.enumerated()), id: \.element.id) { idx, result in
+                    if idx > 0 { Divider().overlay(Theme.border) }
+                    let course = store.courses.first { $0.id == result.courseId }
+                    NavigationLink(value: result) {
+                        HStack(spacing: 12) {
+                            Circle()
+                                .fill(course?.tint ?? Theme.hi)
+                                .frame(width: 9, height: 9)
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(course?.name ?? "Ders")
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(Theme.text)
+                                    .lineLimit(1)
+                                Text(mockResultMeta(result))
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.text2)
+                                    .lineLimit(1)
+                            }
+
+                            Spacer(minLength: 8)
+
+                            Text("%\(result.percent)")
+                                .font(.caption.weight(.heavy).monospacedDigit())
+                                .foregroundStyle(result.percent >= 70 ? Theme.success : (result.percent >= 50 ? Theme.onHi : Theme.danger))
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 4)
+                                .background(
+                                    result.percent >= 70 ? Theme.success.opacity(0.14) : (result.percent >= 50 ? Theme.hi : Theme.dangerSoft),
+                                    in: Capsule()
+                                )
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(Theme.text3)
+                        }
+                        .padding(13)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
+        }
+    }
+
+    private func mockResultMeta(_ result: ExamResultSummary) -> String {
+        let fmt: String = switch result.format {
+        case "classic": "Klasik"
+        case "mixed": "Karışık"
+        default: "Test"
+        }
+        let dateStr = Dates.parse(result.createdAt).map {
+            $0.formatted(Date.FormatStyle(locale: Dates.turkish).day().month(.abbreviated))
+        }
+        return [fmt, "\(result.total) soru", dateStr].compactMap { $0 }.joined(separator: " · ")
     }
 
     // MARK: - Graded Past Exams

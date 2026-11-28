@@ -7,7 +7,9 @@ struct AssistantSheet: View {
     @Environment(StudyStore.self) private var store
     @Environment(AssistantPlace.self) private var place
     @Environment(\.dismiss) private var dismiss
-
+    /// Fosfor's own tab: a general chat that starts with no course, a big Fosfor on top, no close
+    /// button, and it never takes the questions sent from a note (the sheet over the note does).
+    var inTab = false
     @State private var courseId: UUID?
     @State private var noteId: UUID?
     @State private var messages: [ChatMessage] = []
@@ -15,7 +17,25 @@ struct AssistantSheet: View {
     @State private var busy = false
     @State private var error: String?
     @State private var retry: (() async -> Void)?
+    @State private var showComparePicker = false
     @FocusState private var focused: Bool
+
+    private var availableTerms: [String] {
+        var seen: Set<String> = []
+        var out: [String] = []
+        let sourceNotes: [NoteItem] = if let note { [note] } else if let course { store.notes(in: course) } else { [] }
+        for n in sourceNotes {
+            for t in n.keyTerms ?? [] {
+                let clean = t.term.trimmingCharacters(in: .whitespacesAndNewlines)
+                let key = clean.lowercased(with: Locale(identifier: "tr_TR"))
+                if !clean.isEmpty, seen.insert(key).inserted {
+                    out.append(clean)
+                    if out.count >= 14 { return out }
+                }
+            }
+        }
+        return out
+    }
 
     private var course: Course? { store.courses.first { $0.id == courseId } }
     private var note: NoteItem? {
@@ -35,7 +55,7 @@ struct AssistantSheet: View {
                         ForEach(messages) { message in
                             row(message).id(message.id)
                         }
-                        if busy { TypingRow().id("busy") }
+                        if busy { TypingRow(readingNotes: courseId != nil).id("busy") }
                         if let error { errorRow(error).id("error") }
                         if !busy, error == nil, messages.last?.role == .assistant, let quote = lastQuote {
                             followUps(for: quote).id("follow")
@@ -54,19 +74,33 @@ struct AssistantSheet: View {
         }
         .background(Theme.bg)
         .onAppear {
+            if inTab {
+                // Keep the course picked here; reload in case the sheet over a note added messages.
+                messages = Assistant.load(course: courseId)
+                return
+            }
             courseId = place.courseId
             noteId = place.noteId
             messages = Assistant.load(course: courseId)
             takePending()
         }
-        .onChange(of: place.pending) { takePending() }
+        .onChange(of: place.pending) { if !inTab { takePending() } }
+        .sheet(isPresented: $showComparePicker) {
+            CompareConceptsSheet(terms: availableTerms) { prompt in
+                Task { await send(prompt) }
+            }
+            .presentationDetents([.medium, .large])
+        }
     }
 
     // MARK: Header
 
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
-            FosforMascotView(size: 40, mood: busy ? .thinking : .curious, tappable: false)
+            // In the tab the big Fosfor below is enough; one Fosfor per screen.
+            if !inTab {
+                FosforMascotView(size: 40, mood: busy ? .thinking : .curious, tappable: false)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Fosfor")
                     .font(Theme.display(.title3))
@@ -82,7 +116,9 @@ struct AssistantSheet: View {
                 }
                 .disabled(busy)
             }
-            iconButton("xmark", label: "Kapat") { dismiss() }
+            if !inTab {
+                iconButton("xmark", label: "Kapat") { dismiss() }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 18)
@@ -111,7 +147,6 @@ struct AssistantSheet: View {
     }
 
     private var contextLine: String {
-        if busy { return "Notlarına bakıyor…" }
         guard let course else { return "Genel soru" }
         if let note { return "\(course.name) · \(note.title)" }
         return course.name
@@ -133,6 +168,7 @@ struct AssistantSheet: View {
 
     private var welcome: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if inTab { FosforHero() }
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Text("Takıldığın yeri")
@@ -150,31 +186,65 @@ struct AssistantSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                ForEach(Assistant.suggestions(note: note != nil, course: course != nil), id: \.label) { s in
-                    Button {
-                        Task { await send(s.label) }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Image(systemName: s.icon)
-                                .font(.subheadline.weight(.bold))
-                                .foregroundStyle(Theme.onHi)
-                                .frame(width: 30, height: 30)
-                                .background(Theme.hi, in: RoundedRectangle(cornerRadius: 9))
-                            Text(s.label)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Theme.text)
-                                .multilineTextAlignment(.leading)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 0)
+            let items = Assistant.suggestions(note: note != nil, course: course != nil)
+            if inTab {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                    ForEach(items, id: \.label) { s in
+                        Button {
+                            handleSuggestion(s)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Image(systemName: s.icon)
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(Theme.onHi)
+                                    .frame(width: 30, height: 30)
+                                    .background(Theme.hi, in: RoundedRectangle(cornerRadius: 9))
+                                Text(s.label)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.text)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
                         }
-                        .padding(12)
-                        .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
-                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
+                        .buttonStyle(TactileCardButtonStyle(scale: 0.97))
+                        .disabled(busy)
                     }
-                    .buttonStyle(TactileCardButtonStyle(scale: 0.97))
-                    .disabled(busy)
+                }
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(items, id: \.label) { s in
+                        Button {
+                            handleSuggestion(s)
+                        } label: {
+                            HStack(spacing: 11) {
+                                Image(systemName: s.icon)
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Theme.onHi)
+                                    .frame(width: 28, height: 28)
+                                    .background(Theme.hi, in: RoundedRectangle(cornerRadius: 8))
+                                Text(s.label)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.text)
+                                    .lineLimit(1)
+                                Spacer(minLength: 6)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(Theme.text3)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 13))
+                            .overlay(RoundedRectangle(cornerRadius: 13).stroke(Theme.border, lineWidth: 1))
+                        }
+                        .buttonStyle(TactileCardButtonStyle(scale: 0.98))
+                        .disabled(busy)
+                    }
                 }
             }
 
@@ -192,6 +262,15 @@ struct AssistantSheet: View {
             .background(Theme.surface2, in: RoundedRectangle(cornerRadius: 14))
         }
         .padding(.top, 4)
+    }
+
+    private func handleSuggestion(_ s: (label: String, icon: String)) {
+        if s.icon == "arrow.left.arrow.right" {
+            OnboardingHaptics.selection()
+            showComparePicker = true
+        } else {
+            Task { await send(s.label) }
+        }
     }
 
     // MARK: Messages
@@ -474,38 +553,87 @@ private struct QuoteBlock: View {
     }
 }
 
-/// Fosfor writing: three dots, like a message being typed.
+/// A waiting message and three dots that bounce in sequence while Fosfor prepares a reply.
 private struct TypingRow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var messageIndex = 0
+    @State private var startedAt = Date.now
+
+    let readingNotes: Bool
+
+    private var messages: [String] {
+        [
+            readingNotes ? "Notlarına bakıyor…" : "Sorunu düşünüyor…",
+            "Cevabı hazırlıyor…",
+            "Yanıtı toparlıyor…"
+        ]
+    }
+
+    private var bubbleShape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 18)
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             FosforMascotView(size: 28, mood: .thinking, animated: false, tappable: false)
-            TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { timeline in
-                let t = timeline.date.timeIntervalSinceReferenceDate
-                HStack(spacing: 5) {
-                    ForEach(0..<3) { i in
-                        Circle()
-                            .fill(Theme.text2)
-                            .frame(width: 7, height: 7)
-                            .opacity(reduceMotion ? 0.6 : 0.35 + 0.65 * max(0, sin(t * 5 - Double(i) * 0.7)))
-                            .offset(y: reduceMotion ? 0 : -2.5 * max(0, sin(t * 5 - Double(i) * 0.7)))
+            HStack(spacing: 10) {
+                ZStack(alignment: .leading) {
+                    ForEach(Array(messages.enumerated()), id: \.offset) { index, message in
+                        Text(message)
+                            .opacity(index == messageIndex ? 1 : 0)
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 14)
-                .background(Theme.surface, in: UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 18))
-                .overlay(UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 18).stroke(Theme.border, lineWidth: 1))
+                .font(.footnote.weight(.semibold))
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: messageIndex)
+
+                if reduceMotion {
+                    dots(lifted: nil)
+                } else {
+                    TimelineView(.periodic(from: startedAt, by: 0.3)) { timeline in
+                        let elapsed = max(0, timeline.date.timeIntervalSince(startedAt))
+                        let phase = Int((elapsed / 0.3).rounded()) % 3
+                        dots(lifted: phase)
+                            .animation(.easeInOut(duration: 0.2), value: phase)
+                    }
+                }
             }
+            .foregroundStyle(Theme.text2)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(minHeight: 39)
+            .background(Theme.surface, in: bubbleShape)
+            .overlay(bubbleShape.strokeBorder(Theme.border, lineWidth: 1))
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Fosfor yazıyor")
+        .accessibilityLabel("Fosfor cevap hazırlıyor")
+        .task {
+            messageIndex = 0
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .seconds(3))
+                } catch {
+                    return
+                }
+                messageIndex = (messageIndex + 1) % messages.count
+            }
+        }
+    }
+
+    private func dots(lifted: Int?) -> some View {
+        HStack(spacing: 3) {
+            ForEach(0..<3) { index in
+                Circle()
+                    .fill(Theme.text2.opacity(lifted == nil ? 0.65 : 1))
+                    .frame(width: 5, height: 5)
+                    .offset(y: index == lifted ? -3 : 0)
+            }
+        }
     }
 }
 
-/// The floating Fosfor button above the tab bar (the site's corner assistant). Just the character,
-/// cut out like a sticker with a soft shadow: no box behind it.
-struct AssistantButton: View {
+/// Fosfor in the top bar of course and note screens: talks about what is open. It sits next to the
+/// menu instead of floating over the content, so it never covers a button in the note.
+struct FosforToolbarButton: View {
     @Environment(AssistantPlace.self) private var place
 
     var body: some View {
@@ -513,11 +641,129 @@ struct AssistantButton: View {
             OnboardingHaptics.light()
             place.show(course: place.courseId, note: place.noteId)
         } label: {
-            FosforMascotView(size: 50, mood: .curious, onDark: true, tappable: false)
-                .shadow(color: Theme.cardDrop.opacity(0.28), radius: 8, y: 4)
-                .contentShape(Circle())
+            FosforMascotView(size: 26, mood: .curious, animated: false, tappable: false)
+                .frame(width: 30, height: 30)
         }
-        .buttonStyle(TactileCardButtonStyle(scale: 0.9))
         .accessibilityLabel("Fosfor'a sor")
+    }
+}
+
+/// Quick 2-concept picker for Fosfor's "Karıştırılan kavramları karşılaştır" suggestion.
+private struct CompareConceptsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let terms: [String]
+    let onCompare: (String) -> Void
+
+    @State private var left = ""
+    @State private var right = ""
+
+    private var canCompareSpecific: Bool {
+        !left.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !right.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Karşılaştırmak istediğin iki kavramı aşağıdan seç ya da kendin yaz.")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.text2)
+
+                    HStack(spacing: 10) {
+                        TextField("1. kavram", text: $left)
+                            .font(.subheadline)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 11))
+                            .overlay(RoundedRectangle(cornerRadius: 11).stroke(Theme.border, lineWidth: 1))
+
+                        Text("vs")
+                            .font(.caption.weight(.heavy))
+                            .foregroundStyle(Theme.text3)
+
+                        TextField("2. kavram", text: $right)
+                            .font(.subheadline)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 11))
+                            .overlay(RoundedRectangle(cornerRadius: 11).stroke(Theme.border, lineWidth: 1))
+                    }
+
+                    if !terms.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Nottaki kavramlar")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(Theme.text2)
+
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
+                                ForEach(terms, id: \.self) { term in
+                                    let isLeft = left == term
+                                    let isRight = right == term
+                                    let picked = isLeft || isRight
+                                    Button {
+                                        OnboardingHaptics.selection()
+                                        if isLeft {
+                                            left = ""
+                                        } else if isRight {
+                                            right = ""
+                                        } else if left.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                            left = term
+                                        } else if right.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                            right = term
+                                        } else {
+                                            right = term
+                                        }
+                                    } label: {
+                                        Text(term)
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(picked ? Theme.onHi : Theme.text)
+                                            .lineLimit(1)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 7)
+                                            .frame(maxWidth: .infinity)
+                                            .background(picked ? Theme.hi : Theme.surface, in: Capsule())
+                                            .overlay(Capsule().stroke(picked ? Theme.cardLine : Theme.border, lineWidth: 1))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+
+                    VStack(spacing: 10) {
+                        Button {
+                            let l = left.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let r = right.trimmingCharacters(in: .whitespacesAndNewlines)
+                            OnboardingHaptics.medium()
+                            dismiss()
+                            onCompare("“\(l)” ile “\(r)” kavramlarını karşılaştır: temel farkları, ortak yönleri ve sınavda en çok karıştırılan tuzak noktaları kısa maddeler hâlinde özetle.")
+                        } label: {
+                            Label("Seçilenleri karşılaştır", systemImage: "arrow.left.arrow.right")
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
+                        .disabled(!canCompareSpecific)
+
+                        Button {
+                            OnboardingHaptics.light()
+                            dismiss()
+                            onCompare("Bu nottaki en çok karıştırılan iki kavramı seçip farklarını ve sınav tuzaklarını karşılaştır.")
+                        } label: {
+                            Text("Fosfor kendisi seçsin ve karşılaştırsın")
+                        }
+                        .buttonStyle(SecondaryButtonStyle())
+                    }
+                }
+                .padding(16)
+            }
+            .background(Theme.bg)
+            .navigationTitle("Kavramları karşılaştır")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Kapat") { dismiss() }
+                }
+            }
+        }
     }
 }

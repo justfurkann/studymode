@@ -661,6 +661,7 @@ struct StudyDeckOrchestraScene: View {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.74)) {
                                 pickedOption = idx
                             }
+                            StudySound.playAnswer(isCorrect: isCorrect)
                             if isCorrect {
                                 OnboardingHaptics.success()
                                 quizBurst += 1

@@ -19,6 +19,23 @@ final class AssistantPlace {
     /// How tall the sheet is. Questions from inside a note open half height, so the note stays in view.
     var detent: PresentationDetent = .large
 
+    /// Course and note screens currently on screen, in the order they appeared. The floating Fosfor
+    /// shows while one is open; the last one is what Fosfor talks about.
+    private var screens: [(key: String, course: UUID, note: UUID?)] = []
+
+    func enter(_ key: String, course: UUID, note: UUID?) {
+        screens.removeAll { $0.key == key }
+        screens.append((key, course, note))
+        courseId = course
+        noteId = note
+    }
+
+    func leave(_ key: String) {
+        screens.removeAll { $0.key == key }
+        courseId = screens.last?.course
+        noteId = screens.last?.note
+    }
+
     func show(course: UUID?, note: UUID?) {
         courseId = course
         noteId = note
@@ -168,14 +185,15 @@ enum Assistant {
     /// Starter questions for where the student is (suggestionsFor).
     static func suggestions(note: Bool, course: Bool) -> [(label: String, icon: String)] {
         if note {
-            return [("Bu notu 3 maddede özetle", "list.bullet"), ("Bu nottan bana soru sor", "questionmark.circle"),
-                    ("En zor kısmı basitçe anlat", "lightbulb"), ("Sınavda ne çıkabilir?", "target")]
+            return [("Bu notu 3 maddede özetle", "list.bullet"), ("Karıştırılan kavramları karşılaştır", "arrow.left.arrow.right"),
+                    ("Bu nottan bana soru sor", "questionmark.circle"), ("Sınavda ne çıkabilir?", "target")]
         }
         if course {
-            return [("Bu dersin ana konuları ne?", "map"), ("Bana bir soru sor", "questionmark.circle"),
-                    ("Sınavda ne çıkabilir?", "target"), ("Nereden başlamalıyım?", "lightbulb")]
+            return [("Bu dersin ana konuları ne?", "map"), ("Karıştırılan kavramları karşılaştır", "arrow.left.arrow.right"),
+                    ("Bana bir soru sor", "questionmark.circle"), ("Sınavda ne çıkabilir?", "target")]
         }
-        return [("Nasıl daha verimli çalışırım?", "lightbulb"), ("Sınava 3 gün kaldı, plan yap", "clock"), ("Aralıklı tekrar nedir?", "list.bullet")]
+        return [("Nasıl daha verimli çalışırım?", "lightbulb"), ("Sınava 3 gün kaldı, plan yap", "clock"), ("Aralıklı tekrar nedir?", "list.bullet"),
+                ("Odaklanamıyorum, ne yapayım?", "scope")]
     }
 
     /// A reply as plain text for a card: no ** marks (plainReply).

@@ -17,6 +17,30 @@ struct ReviewTab: View {
                         } else {
                             goalCard
                                 .staggeredAppear(0)
+                            NavigationLink {
+                                MolaView()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "gamecontroller.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(Theme.onHi)
+                                        .frame(width: 42, height: 42)
+                                        .background(Theme.hi, in: RoundedRectangle(cornerRadius: 12))
+                                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.cardLine, lineWidth: 1.2))
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Kısa bir mola").font(.headline).foregroundStyle(Theme.text)
+                                        Text("Eşleştir, Hızlı tur ve odak sayacı").font(.caption).foregroundStyle(Theme.text2)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.caption.weight(.bold)).foregroundStyle(Theme.text3)
+                                }
+                                .padding(14)
+                                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
+                                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 1))
+                                .contentShape(RoundedRectangle(cornerRadius: 16))
+                            }
+                            .buttonStyle(TactileCardButtonStyle())
+                            .staggeredAppear(1)
                             readinessList
                         }
                     }
@@ -29,7 +53,7 @@ struct ReviewTab: View {
             .toolbarBackground(.hidden, for: .navigationBar)
         }
         .fullScreenCover(item: $session) { box in
-            ReviewSession(title: "Tekrar", cards: box.cards, mode: .daily)
+            ReviewSession(title: box.title, cards: box.cards, mode: box.mode)
                 .environment(store)
         }
     }
@@ -37,14 +61,14 @@ struct ReviewTab: View {
     // MARK: Today's goal
 
     private var goalCard: some View {
-        let goal = ReviewRules.dailyGoal
+        let goal = store.dailyGoal
         let done = min(goal, store.reviewsToday)
         let queue = store.todayQueue
         let reached = store.goalLeft == 0
         let nothing = !reached && queue.isEmpty
 
         return VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 14) {
+            HeaderRow {
                 GoalRing(done: done, goal: goal)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
@@ -66,11 +90,6 @@ struct ReviewTab: View {
                         .foregroundStyle(Theme.text2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Spacer(minLength: 0)
-                FosforMascotView(
-                    size: 46,
-                    mood: reached ? .cheering : (nothing ? .proud : .curious)
-                )
             }
 
             if reached {
@@ -98,6 +117,20 @@ struct ReviewTab: View {
                     }
                 }
                 .buttonStyle(PrimaryButtonStyle())
+            }
+
+            let struggled = store.struggledCards()
+            if !struggled.isEmpty {
+                Button {
+                    OnboardingHaptics.medium()
+                    session = SessionBox(cards: struggled, title: "Zorlandıklarım", mode: .grades)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "flame")
+                        Text("Yalnızca zorlandıklarım (\(struggled.count) kart)")
+                    }
+                }
+                .buttonStyle(SecondaryButtonStyle())
             }
 
             HStack(spacing: 6) {
@@ -232,5 +265,7 @@ private struct ReadinessRow: View {
 /// fullScreenCover needs an Identifiable item; the queue is fixed when the session starts.
 struct SessionBox: Identifiable {
     let cards: [Card]
+    var title: String = "Tekrar"
+    var mode: ReviewSession.Mode = .daily
     let id = UUID()
 }

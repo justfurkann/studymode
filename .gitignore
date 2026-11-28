@@ -11,3 +11,5 @@ playwright-report/
 # Google AI Studio working files
 .aistudio/
 package-lock.json
+
+.DS_Store

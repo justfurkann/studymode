@@ -382,4 +382,111 @@ extension StudyStore {
         }
         return rows.count
     }
+
+    /// Loads the full question-by-question detail of a past mock exam (`public.exam_results`).
+    func fetchExamDetail(id: UUID) async throws -> ExamResultDetail {
+        try await supabase
+            .from("exam_results")
+            .select("id,course_id,format,difficulty,source,note_ids,questions,answers,scores,feedback,score,total,duration_seconds,created_at")
+            .eq("id", value: id)
+            .single()
+            .execute()
+            .value
+    }
+
+    /// Deletes a saved mock exam result locally and on Supabase.
+    func deleteExamResult(id: UUID) {
+        let backup = examResults
+        examResults.removeAll { $0.id == id }
+        enqueueWrite { [weak self] in
+            do {
+                try await supabase.from("exam_results").delete().eq("id", value: id).execute()
+            } catch {
+                await MainActor.run {
+                    self?.examResults = backup
+                    self?.saveError = "Sınav sonucu silinemedi. İnternet bağlantını kontrol et."
+                }
+            }
+        }
+    }
+}
+
+/// Full saved mock exam row (`public.exam_results`), leniently decoded so both web- and iOS-created exams open cleanly.
+struct ExamResultDetail: Identifiable, Decodable {
+    struct StoredQuestion: Identifiable, Decodable, Hashable {
+        let id: String
+        let type: MockQuestionType
+        let prompt: String
+        let options: [String]
+        let answerIndex: Int
+        let explanation: String
+        let modelAnswer: String
+        let source: String?
+        let noteTitle: String?
+        let noteId: String?
+
+        enum CodingKeys: String, CodingKey {
+            case id, type, prompt, options, answerIndex, explanation, modelAnswer, source, noteTitle, noteId
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = (try? c.decode(String.self, forKey: .id)) ?? UUID().uuidString
+            let rawType = (try? c.decode(String.self, forKey: .type)) ?? "mcq"
+            type = MockQuestionType(rawValue: rawType) ?? .mcq
+            prompt = (try? c.decode(String.self, forKey: .prompt)) ?? ""
+            options = (try? c.decode([String].self, forKey: .options)) ?? []
+            answerIndex = (try? c.decode(Int.self, forKey: .answerIndex)) ?? 0
+            explanation = (try? c.decode(String.self, forKey: .explanation)) ?? ""
+            modelAnswer = (try? c.decode(String.self, forKey: .modelAnswer)) ?? ""
+            source = try? c.decodeIfPresent(String.self, forKey: .source)
+            noteTitle = try? c.decodeIfPresent(String.self, forKey: .noteTitle)
+            noteId = try? c.decodeIfPresent(String.self, forKey: .noteId)
+        }
+    }
+
+    let id: UUID
+    let courseId: UUID
+    let format: String
+    let difficulty: String?
+    let source: String
+    let noteIds: [String]
+    let questions: [StoredQuestion]
+    let answers: [MockExamAnswer]
+    let scores: [Double]
+    let feedback: [String]
+    let score: Double
+    let total: Int
+    let durationSeconds: Int?
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, format, difficulty, source, questions, answers, scores, feedback, score, total
+        case courseId = "course_id"
+        case noteIds = "note_ids"
+        case durationSeconds = "duration_seconds"
+        case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        courseId = try c.decode(UUID.self, forKey: .courseId)
+        format = (try? c.decode(String.self, forKey: .format)) ?? "test"
+        difficulty = try? c.decodeIfPresent(String.self, forKey: .difficulty)
+        source = (try? c.decode(String.self, forKey: .source)) ?? "ai"
+        noteIds = (try? c.decode([String].self, forKey: .noteIds)) ?? []
+        questions = (try? c.decode([StoredQuestion].self, forKey: .questions)) ?? []
+        answers = (try? c.decode([MockExamAnswer].self, forKey: .answers)) ?? []
+        scores = (try? c.decode([Double].self, forKey: .scores)) ?? []
+        feedback = (try? c.decode([String].self, forKey: .feedback)) ?? []
+        score = (try? c.decode(Double.self, forKey: .score)) ?? 0
+        total = (try? c.decode(Int.self, forKey: .total)) ?? questions.count
+        durationSeconds = try? c.decodeIfPresent(Int.self, forKey: .durationSeconds)
+        createdAt = (try? c.decode(String.self, forKey: .createdAt)) ?? ""
+    }
+
+    var percent: Int {
+        Int(((score / Double(max(1, total))) * 100.0).rounded())
+    }
 }
