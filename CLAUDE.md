@@ -44,3 +44,9 @@ npm run test:e2e                # playwright test
 ## İş bitince
 
 Kendi defterine (Site için `docs/HANDOFF.md`'de yeni "Aşama N") dört başlık: **Yapılan · Kararlar · İşe yaramayan · Sıradaki**.
+
+## Görsel / animasyon araçları ve iş bölümü (Rive, Lottie, ShipSwift)
+
+- Projede artık **Rive**, **Lottie** ve **ShipSwift** ile çalışıyoruz.
+- Bu araçlarla ilgili işleri kullanıcı bilinçli **iş bölümü** olarak Codex tarafında yaptırıyor; ihtiyaç gördüğünde *"bunu Codex'te Rive / Lottie / ShipSwift ile yaptıralım"* diye söylemen yeterli.
+- **Proaktif öneri kuralı (tüm ajanlar için):** Bir özellik, ekran veya animasyon yaparken saf kodla çözmek yerine bir araç/paket (Rive, Lottie, ShipSwift vb.) belirgin şekilde daha iyi sonuç verecekse, kullanıcıya mutlaka söyle: *"Bunu kodla yaparım ama istersen … ekleyip onunla yapalım, çok daha iyi olur."*
