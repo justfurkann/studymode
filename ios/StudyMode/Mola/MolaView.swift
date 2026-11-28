@@ -4,11 +4,14 @@ import UserNotifications
 /// "Kısa bir mola" (the site's Mola page): games from your own cards and a focus timer.
 struct MolaView: View {
     @Environment(StudyStore.self) private var store
+    @Environment(PremiumStore.self) private var premium
     @AppStorage("studymode.molaScope") private var scopeRaw = ""
     @State private var game: Game?
     @State private var records = MolaRecords.read()
+    @State private var wordSave = WordGame.loadSave()
+    @State private var drawerStars = DrawerLogic.loadStars()
 
-    enum Game: String, Identifiable { case match, quick, focus; var id: String { rawValue } }
+    enum Game: String, Identifiable { case match, quick, focus, dailyWord, drawer, paperToss; var id: String { rawValue } }
 
     private var courseChoices: [(course: Course, count: Int)] {
         store.sortedCourses.map { ($0, Mola.cards(store.cards, course: $0.id).count) }.filter { $0.1 > 0 }
@@ -63,7 +66,7 @@ struct MolaView: View {
                      meta: records.quick[key].map { "Rekor: \($0) puan" } ?? "Henüz rekor yok",
                      locked: cards.count < Mola.quickMinCards ? "En az \(Mola.quickMinCards) kart gerekiyor" : nil) { game = .quick }
                 tile(icon: "timer", title: "Odak sayacı",
-                     text: "Pomodoro: 25 dakika odak, 5 dakika mola. Bitince bildirimle haber verir.",
+                     text: "Pomodoro: 15+5, 25+10 veya 50+15 dk. Bitince bildirimle haber verir.",
                      meta: "Son 7 gün: \(records.focusLastWeek) dk", locked: nil) { game = .focus }
                 Link(destination: Config.sitePage("ogrenci-tipi")) {
                     tileLabel(icon: "sparkles", title: "Hangi öğrenci tipisin?",
@@ -71,6 +74,36 @@ struct MolaView: View {
                               meta: "2 dakika · sitede açılır", locked: nil)
                 }
                 .buttonStyle(TactileCardButtonStyle())
+
+                // MARK: Premium Mini-Games
+                HStack(spacing: 8) {
+                    SectionTitle("Premium mini oyunlar")
+                    Spacer()
+                    if !premium.isPremium {
+                        Text("PREMIUM")
+                            .font(.caption2.weight(.heavy))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Theme.prem1, in: Capsule())
+                    }
+                }
+                .padding(.top, 6)
+
+                premiumGameRow(
+                    icon: "character.textbox",
+                    title: "Günün Kavramı",
+                    text: "Her gün Türkiye genelinde aynı akademik kavramı 6 denemede bul.",
+                    meta: wordSave.streak > 0 ? "Seri: \(wordSave.streak) gün · \(wordSave.wins) galibiyet" : "Günlük kelime bulmacası",
+                    target: .dailyWord
+                )
+                premiumGameRow(
+                    icon: "square.stack.3d.up.fill",
+                    title: "Çekmece",
+                    text: "Aynı kırtasiye eşyalarını birleştir: kurşun kalemden profesörlüğe 10 bölüm.",
+                    meta: "Toplam yıldız: \(drawerStars.reduce(0, +)) / \(DrawerLogic.chapters.count * 3)",
+                    target: .drawer
+                )
 
                 if cards.count < Mola.quickMinCards {
                     Text(store.cards.isEmpty
@@ -93,12 +126,35 @@ struct MolaView: View {
         .background(GridPaper())
         .navigationTitle("Mola")
         .navigationBarTitleDisplayMode(.inline)
-        .fullScreenCover(item: $game, onDismiss: { records = MolaRecords.read() }) { g in
+        .fullScreenCover(item: $game, onDismiss: {
+            records = MolaRecords.read()
+            wordSave = WordGame.loadSave()
+            drawerStars = DrawerLogic.loadStars()
+        }) { g in
             switch g {
             case .match: MatchGameView(cards: cards, courseId: courseId).environment(store)
             case .quick: QuickGameView(cards: cards, courseId: courseId).environment(store)
             case .focus: FocusTimerView().environment(store)
+            case .dailyWord: DailyWordGameView()
+            case .drawer: DrawerGameView()
+            case .paperToss: PaperTossGameView()
             }
+        }
+    }
+
+    @ViewBuilder
+    private func premiumGameRow(icon: String, title: String, text: String, meta: String, target: Game) -> some View {
+        if premium.isPremium {
+            tile(icon: icon, title: title, text: text, meta: meta, locked: nil) {
+                game = target
+            }
+        } else {
+            NavigationLink {
+                PremiumView()
+            } label: {
+                tileLabel(icon: icon, title: title, text: text, meta: "Premium ile açılır", locked: nil)
+            }
+            .buttonStyle(TactileCardButtonStyle())
         }
     }
 

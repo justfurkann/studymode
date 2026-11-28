@@ -169,12 +169,34 @@ struct MolaRecords: Codable {
 /// leaving the screen and relaunching; a new focus round always needs a tap.
 struct PhoneFocusClock: Codable, Equatable {
     enum Plan: String, Codable, CaseIterable {
-        case classic, long
-        var minutes: Int { self == .classic ? 25 : 50 }
-        var label: String { self == .classic ? "25 + 5" : "50 + 10" }
+        case quick, classic, long
+        var minutes: Int {
+            switch self {
+            case .quick: 15
+            case .classic: 25
+            case .long: 50
+            }
+        }
+        var label: String {
+            switch self {
+            case .quick: "15 + 5"
+            case .classic: "25 + 10"
+            case .long: "50 + 15"
+            }
+        }
         func rest(round: Int) -> Int {
-            if round.isMultiple(of: 4) { return self == .classic ? 15 : 20 }
-            return self == .classic ? 5 : 10
+            if round.isMultiple(of: 4) {
+                switch self {
+                case .quick: return 15
+                case .classic: return 20
+                case .long: return 25
+                }
+            }
+            switch self {
+            case .quick: return 5
+            case .classic: return 10
+            case .long: return 15
+            }
         }
     }
 

@@ -3,11 +3,34 @@ import Foundation
 /// Deadlines survive wrist-down, relaunch and long absences. A new focus round always needs a tap.
 struct FocusClock: Codable, Equatable {
     enum Plan: String, Codable, CaseIterable {
-        case classic, long
-        var minutes: Int { self == .classic ? 25 : 50 }
+        case quick, classic, long
+        var minutes: Int {
+            switch self {
+            case .quick: 15
+            case .classic: 25
+            case .long: 50
+            }
+        }
+        var watchLabel: String {
+            switch self {
+            case .quick: "Hızlı · 15 + 5 dk"
+            case .classic: "Klasik · 25 + 10 dk"
+            case .long: "Derin · 50 + 15 dk"
+            }
+        }
         func rest(round: Int) -> Int {
-            if round.isMultiple(of: 4) { return self == .classic ? 15 : 20 }
-            return self == .classic ? 5 : 10
+            if round.isMultiple(of: 4) {
+                switch self {
+                case .quick: return 15
+                case .classic: return 20
+                case .long: return 25
+                }
+            }
+            switch self {
+            case .quick: return 5
+            case .classic: return 10
+            case .long: return 15
+            }
         }
     }
 

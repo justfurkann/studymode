@@ -234,7 +234,7 @@ private struct FocusWatchRootView: View {
                     } label: {
                         HStack(spacing: 8) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(plan == .classic ? "Klasik · 25 + 5 dk" : "Derin · 50 + 10 dk")
+                                Text(plan.watchLabel)
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundStyle(selected ? WatchPalette.onYellow : .white)
                                 Text("Uzun mola: \(plan.rest(round: 4)) dk")
