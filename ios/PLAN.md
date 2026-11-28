@@ -274,6 +274,7 @@ Bilerek yok (karar): kendi yapay zekâ anahtarı, Premium kodu (`/kod`, RedeemLi
 ## Devir notu (28 Kasım) — Çalışma fişi yazıcısı
 
 - **Yapılan** Fiş stüdyosunda kâğıt dört haptik adımda çıkıyor. Fiziksel damga fişe inip kalkıyor ve gerçek derecenin yuvarlak mürekkep izini bırakıyor.
+- **Fiş düzeni** İlk prototipteki kısa kâğıt geri geldi. Logo ve tarihin altında odak süresi, kart tekrarı, test ortalaması ve seri var. Alt bölümde not, kısa barkod ve yuvarlak damga yer alıyor. Aynı düzen Story çıktısında da kullanılıyor.
 - **Kararlar** Yazıcı SwiftUI ile çiziliyor. Uygulamanın kendi Fosfor maskotu ve mevcut fiş verileri kullanılıyor. Hareketi azaltma açıkken fiş tamamlanmış olarak gösteriliyor. Paylaşılan görsel aynı yuvarlak damgayı taşıyor.
 - **İşe yaramayan** Rive taslağındaki ayrı maskot çizimi Fosfor'un oranlarını değiştirdi. Stüdyo doğrudan `FosforMascotView` kullanıyor.
 - **Sıradaki** Simülatörde örnek verilerle yazıcı ve damga görüntülendi. Haptik hissi fiziksel cihazda kontrol edilebilir.
