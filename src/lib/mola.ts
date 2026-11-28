@@ -18,7 +18,7 @@ export const QUICK_MIN_CARDS = 4
 /** Wrong answers allowed in a quick round; the third one ends it. */
 export const QUICK_LIVES = 3
 export const TILE_MAX = 80
-export const FOCUS_CHOICES = [25, 50] as const
+export const FOCUS_CHOICES = [15, 25, 50] as const
 /** One notebook page is one full 25-minute session. */
 export const PAGE_MINUTES = 25
 
@@ -263,12 +263,13 @@ export function focusLastWeek(focus: Record<string, number>, now = new Date()): 
 
 const TIMER_KEY = 'studymode.focus.v1'
 
-export type FocusPlanId = 'klasik' | 'uzun'
+export type FocusPlanId = 'kisa' | 'klasik' | 'uzun'
 export type FocusPhase = 'focus' | 'short' | 'long'
 
 export const FOCUS_PLANS: Record<FocusPlanId, { label: string; focus: number; short: number; long: number }> = {
-  klasik: { label: '25 + 5', focus: 25, short: 5, long: 15 },
-  uzun: { label: '50 + 10', focus: 50, short: 10, long: 20 },
+  kisa: { label: '15 + 5', focus: 15, short: 5, long: 15 },
+  klasik: { label: '25 + 10', focus: 25, short: 10, long: 20 },
+  uzun: { label: '50 + 15', focus: 50, short: 15, long: 25 },
 }
 /** Every fourth focus round is followed by a long break. */
 export const LONG_BREAK_EVERY = 4
