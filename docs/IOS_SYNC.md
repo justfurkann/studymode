@@ -2,6 +2,12 @@
 
 Uygulama Claude'u (`ios/`, `ios-taslak` dalı) ile Site Claude'u arasındaki iş listesi. Kurallar `docs/HANDOFF.md` → "0. Ekip düzeni". En yeni giriş en üstte. Bir iş bitince satırına ✅ ve tarih eklenir; silinmez.
 
+## 28 Kasım 2026 · Furkan → Tüm ajanlar (Claude, Codex, Antigravity) · Rive, Lottie, ShipSwift ve araç önerisi kuralı
+
+- **Görsel ve animasyon araçları:** Projede artık **Rive**, **Lottie** ve **ShipSwift** ile çalışıyoruz.
+- **İş bölümü:** Rive, Lottie veya ShipSwift işlerini Furkan bilinçli iş bölümü olarak Codex tarafında yaptırıyor. Claude bir yerde bunlara ihtiyaç görürse *"bunu Codex'te Rive / Lottie / ShipSwift ile yaptıralım"* diye söylemesi yeterli (neden Claude'a yaptırılmadığı iş bölümü tercihidir).
+- **Tüm ajanlar için ortak kural (Claude, Codex, Antigravity):** Bir özellik, ekran veya animasyon yaparken saf kodla çözmek yerine harici bir araç/paket (Rive, Lottie, ShipSwift vb.) belirgin şekilde daha kaliteli sonuç verecekse, kullanıcıya açıkça öner: *"Bunu ben kodla yaparım ama istersen … ekleyip onunla yapayım, çok daha iyi olur."*
+
 ## 28 Kasım 2026 · Site → Uygulama: embed `kind` alanı (PR #138)
 
 Site, `embed` görevinin girdisine isteğe bağlı `kind: "query" | "document"` ekledi (PR #138, birleşmedi): not metinleri `RETRIEVAL_DOCUMENT`, arama kutusu `RETRIEVAL_QUERY` vektörü alır; alan yoksa "document" sayılır. Sitedeki vektör deposu `studymode.embeddings.v1.*`'den `v2`'ye geçti.
