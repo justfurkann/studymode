@@ -210,6 +210,7 @@ export function suggestionsFor(where: 'note' | 'course' | 'general'): Suggestion
     { label: 'Nasıl daha verimli çalışırım?', icon: 'bulb' },
     { label: 'Sınava 3 gün kaldı, plan yap', icon: 'clock' },
     { label: 'Aralıklı tekrar nedir?', icon: 'list' },
+    { label: 'Odaklanamıyorum, ne yapayım?', icon: 'target' },
   ]
 }
 

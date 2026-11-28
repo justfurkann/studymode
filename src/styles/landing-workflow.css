@@ -1,0 +1,326 @@
+.lp-demo {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  min-width: 0;
+  justify-self: center;
+}
+
+@media (min-width: 860px) {
+  .lp-demo {
+    justify-self: end;
+  }
+}
+
+.lp-workflow {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+  font-family: var(--font-body);
+}
+
+.lp-workflow-panel,
+.lp-workflow-note-backing,
+.lp-workflow-output-tone.is-paper {
+  fill: var(--surface-2);
+}
+
+.lp-workflow-panel,
+.lp-workflow-rule,
+.lp-workflow-status-paper {
+  stroke: var(--border);
+}
+
+.lp-workflow-grid {
+  stroke: color-mix(in srgb, var(--text) 7%, transparent);
+}
+
+.lp-workflow-note-paper,
+.lp-workflow-output-paper,
+.lp-workflow-status-paper {
+  fill: var(--surface);
+}
+
+.lp-workflow-note-paper,
+.lp-workflow-note-backing {
+  stroke: var(--border-strong);
+}
+
+.lp-workflow-note-shadow {
+  fill: color-mix(in srgb, var(--card-drop) 19%, transparent);
+}
+
+.lp-workflow-output-shadow {
+  fill: var(--card-drop);
+}
+
+.lp-workflow-output-paper {
+  stroke: var(--card-line);
+}
+
+.lp-workflow-line {
+  fill: var(--border-strong);
+}
+
+.lp-workflow-line-faint {
+  fill: var(--border);
+}
+
+.lp-workflow-file-icon {
+  fill: var(--danger-soft);
+}
+
+.lp-workflow-file-glyph {
+  stroke: var(--danger);
+}
+
+.lp-workflow-subject {
+  fill: var(--text-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+
+.lp-workflow-note-title,
+.lp-workflow-output-title {
+  fill: var(--text);
+  font-family: var(--font-display);
+  font-weight: 750;
+}
+
+.lp-workflow-note-title {
+  font-size: 27px;
+  letter-spacing: -.02em;
+}
+
+.lp-workflow-line-title {
+  fill: var(--text);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.lp-workflow-on-highlight {
+  fill: var(--on-hi);
+}
+
+.lp-workflow-output-title {
+  font-size: 20px;
+}
+
+.lp-workflow-output-detail,
+.lp-workflow-status-text {
+  fill: var(--text-2);
+}
+
+.lp-workflow-output-detail {
+  font-size: 12px;
+}
+
+.lp-workflow-status-text {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.lp-workflow-highlight {
+  fill: var(--hi);
+}
+
+.lp-workflow-scan-color {
+  stop-color: var(--hi);
+}
+
+.lp-workflow-scan-line {
+  stroke: color-mix(in srgb, var(--hi) 84%, var(--ink-line));
+}
+
+.lp-workflow-output-tone.is-highlight {
+  fill: color-mix(in srgb, var(--surface) 77%, var(--hi));
+}
+
+.lp-workflow-output-tone.is-success {
+  fill: var(--success-soft);
+}
+
+.lp-workflow-output-glyph,
+.lp-workflow-status-spinner {
+  stroke: var(--text);
+}
+
+.lp-workflow-output-glyph.is-success {
+  stroke: var(--success);
+}
+
+.lp-workflow-sparkle-muted {
+  fill: var(--text-3);
+}
+
+.lp-workflow-note {
+  transform-origin: 138px 161px;
+  transform: rotate(-5.7deg);
+}
+
+.lp-workflow-scan,
+.lp-workflow-status-progress {
+  visibility: hidden;
+}
+
+.lp-workflow-replay {
+  display: none;
+  position: absolute;
+  inset: auto 3.5% 2% auto;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.lp-workflow-replay:hover {
+  background: var(--hi-soft);
+}
+
+.lp-workflow-replay:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lp-workflow-replay {
+    display: grid;
+  }
+
+  .lp-workflow-note-shift {
+    transform: translate(46px, 17px);
+  }
+
+  .lp-workflow-note {
+    transform: rotate(-2.6deg);
+  }
+
+  .lp-workflow-mark-clip {
+    transform-box: fill-box;
+    transform-origin: left center;
+    transform: scaleX(0);
+  }
+
+  .lp-workflow-output,
+  .lp-workflow-status-ready,
+  .lp-workflow-marking,
+  .lp-workflow-preparing {
+    opacity: 0;
+  }
+
+  .lp-workflow-status-progress {
+    visibility: visible;
+  }
+
+  .lp-workflow-scan {
+    visibility: visible;
+    opacity: 0;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-note-shift {
+    animation: lp-workflow-enter 3.91s ease both;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-note {
+    animation: lp-workflow-tilt .77s ease 3.14s both;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-mark-clip {
+    animation: lp-workflow-highlight-reveal .43s ease both;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-output {
+    animation: lp-workflow-card-in .72s cubic-bezier(.18, .78, .25, 1.04) both;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-scan {
+    animation: lp-workflow-scan-pass 1.41s ease-in-out .45s both;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-sparkle path {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: lp-workflow-sparkle-in .66s ease 3.82s both;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-status-spinner {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: lp-workflow-spin 4.23s linear;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-scanning {
+    animation: lp-workflow-phase 1.56s forwards;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-marking {
+    animation: lp-workflow-phase 1.38s 1.56s forwards;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-preparing {
+    animation: lp-workflow-phase 1.29s 2.94s forwards;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-status-progress {
+    animation: lp-workflow-out .15s 4.23s forwards;
+  }
+
+  .lp-workflow.is-playing .lp-workflow-status-ready {
+    animation: lp-workflow-in .18s 4.23s forwards;
+  }
+}
+
+@keyframes lp-workflow-enter {
+  0% { transform: translate(46px, 17px); }
+  17%, 80% { transform: translateX(46px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes lp-workflow-tilt {
+  to { transform: rotate(-5.7deg); }
+}
+
+@keyframes lp-workflow-highlight-reveal {
+  to { transform: scaleX(1); }
+}
+
+@keyframes lp-workflow-card-in {
+  from { opacity: 0; transform: translate(-90px, 31px) scale(.52); }
+  48% { opacity: 1; }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes lp-workflow-scan-pass {
+  0% { opacity: 0; transform: translateY(14px); }
+  15%, 83% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(310px); }
+}
+
+@keyframes lp-workflow-sparkle-in {
+  from { transform: scale(.35); }
+  to { transform: scale(1); }
+}
+
+@keyframes lp-workflow-spin {
+  to { transform: rotate(1120deg); }
+}
+
+@keyframes lp-workflow-phase {
+  0%, 94% { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes lp-workflow-out {
+  to { opacity: 0; }
+}
+
+@keyframes lp-workflow-in {
+  to { opacity: 1; }
+}

@@ -18,7 +18,7 @@ export const GOOGLE_CLIENT_ID = '189951485932-ginghsotdhaj3amtm0fek00efbgsi7iu.a
  * next to the iOS app's bundle ID (fun.studymode.app). No secret key is needed: the site and the app
  * both hand Supabase Apple's signed ID token (signInWithIdToken).
  */
-export const APPLE_SERVICES_ID = ''
+export const APPLE_SERVICES_ID = 'fun.studymode.web'
 export const APPLE_REDIRECT_URI = 'https://studymode.fun/giris'
 
 /**
@@ -44,3 +44,16 @@ export const DEFAULT_GEMINI_FALLBACKS = ['gemini-flash-lite-latest', 'gemini-3.1
  * Write sentences around it with "üzerinden" so no Turkish suffix depends on the name.
  */
 export const PAYMENT_PROVIDER = 'Shopier'
+
+/**
+ * Better test questions (HANDOFF Aşama 75): for notes heavy with formulas, calculation and
+ * application questions with new numbers and worked solutions; for every note, no question that
+ * starts with "Notlara göre". Being tried by admins first. This is the one switch: 'everyone'
+ * opens it for all accounts (the site and the /api/generate gate both read it).
+ */
+export const QUESTION_QUALITY_FOR: 'admin' | 'everyone' = 'admin'
+
+/** Whether an account with this role gets the question-quality step. */
+export function questionQualityFor(role: string | null | undefined): boolean {
+  return QUESTION_QUALITY_FOR === 'everyone' || role === 'admin'
+}

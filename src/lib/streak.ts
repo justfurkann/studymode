@@ -61,16 +61,19 @@ export function mergeStudyDays(days: StudyDay[]): StudyDay[] {
   return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day))
 }
 
+/** What one action adds to a day's counters (negative to undo). */
+export type StudyDelta = { reviews?: number; quizzes?: number; actions?: number; newCards?: number }
+
 /**
  * Updates or creates today's `StudyDay` record in local time.
  * Returns both the updated array and the single upserted `StudyDay` row for persistence.
  */
 export function recordStudyActivity(
   studyDays: StudyDay[],
-  delta: { reviews?: number; quizzes?: number; actions?: number; newCards?: number },
+  delta: StudyDelta,
   now: Date = new Date(),
   makeId: () => string = () => crypto.randomUUID(),
-): { studyDays: StudyDay[]; updated: StudyDay } {
+): { studyDays: StudyDay[]; updated: StudyDay; delta: StudyDelta } {
   const today = localDayKey(now)
   const iso = now.toISOString()
   const existing = studyDays.find((d) => d.day === today)
@@ -95,7 +98,7 @@ export function recordStudyActivity(
       }
 
   const next = existing ? studyDays.map((d) => (d.id === existing.id ? updated : d)) : [...studyDays, updated]
-  return { studyDays: next, updated }
+  return { studyDays: next, updated, delta }
 }
 
 export interface StreakSummary {

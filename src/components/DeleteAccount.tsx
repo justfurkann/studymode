@@ -2,6 +2,7 @@ import { Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuota } from '../lib/account'
+import { MANAGE_HINT, useAppStoreSubscription } from '../lib/appStore'
 import { emailLabel } from '../lib/auth'
 import { deleteAccount, deleteMessage, deleteWordOk, DELETE_WORD } from '../lib/deleteAccount'
 import { formatUntil, hasPremiumUntil } from '../lib/premiumCodes'
@@ -34,6 +35,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
   const toast = useToast()
   const navigate = useNavigate()
   const quota = useQuota(store.session?.user.id ?? null)
+  const appStore = useAppStoreSubscription()
   const [typed, setTyped] = useState('')
   const [premiumOk, setPremiumOk] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -81,6 +83,12 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
               <input type="checkbox" checked={premiumOk} onChange={(e) => setPremiumOk(e.target.checked)} />
               <span>Kalan Premium süremin silineceğini anladım</span>
             </label>
+          </Alert>
+        )}
+        {appStore.state !== 'none' && (
+          <Alert tone="warning">
+            {appStore.state === 'active' ? 'App Store’dan aldığın Premium aboneliği' : 'iPhone’dan App Store ile abone olduysan, aboneliğin'} hesap silinince durmaz; Apple
+            ücret almaya devam eder. Silmeden önce {MANAGE_HINT}’den iptal et.
           </Alert>
         )}
         <label className="field">

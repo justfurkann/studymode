@@ -55,7 +55,7 @@ export function CourseDetail() {
     }
     const timer = window.setTimeout(async () => {
       try {
-        const vectors = await (await freshImport(() => import('../lib/ai'))).embedTexts([trimmed], settings)
+        const vectors = await (await freshImport(() => import('../lib/ai'))).embedTexts([trimmed], settings, 'query')
         if (vectors[0]?.length) setQueryVector(vectors[0])
       } catch {
         setQueryVector(undefined)
@@ -99,7 +99,7 @@ export function CourseDetail() {
       setEmbeddings(next)
       saveCourseEmbeddings(course.id, next)
       if (query.trim().length >= 2) {
-        const qVectors = await (await freshImport(() => import('../lib/ai'))).embedTexts([query.trim()], settings)
+        const qVectors = await (await freshImport(() => import('../lib/ai'))).embedTexts([query.trim()], settings, 'query')
         if (qVectors[0]?.length) setQueryVector(qVectors[0])
       }
       toast('Notlar anlamsal arama için indekslendi')

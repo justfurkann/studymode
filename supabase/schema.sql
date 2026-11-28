@@ -655,3 +655,131 @@ revoke all on function public.ai_quota(), public.plus_quota(), public.consume_pl
   public.admin_create_codes(integer, integer, text), public.admin_codes(), public.admin_revoke_code(uuid), public.admin_premium() from public, anon;
 grant execute on function public.ai_quota(), public.plus_quota(), public.consume_plus(), public.redeem_code(text),
   public.admin_create_codes(integer, integer, text), public.admin_codes(), public.admin_revoke_code(uuid), public.admin_premium() to authenticated;
+
+-- study_days: one row per account per day, and an atomic counter (26 Kasım 2026).
+-- Before: each device wrote its whole row back from memory, so a stale tab could overwrite the
+-- phone's counts, and a day could get two rows. After: devices only send "+1 review" style deltas.
+
+-- 1) Merge any duplicate rows of the same day into the oldest one (counts are added up).
+with sums as (
+  select user_id, day, sum(reviews) as reviews, sum(quizzes) as quizzes, sum(actions) as actions,
+         sum(new_cards) as new_cards, max(updated_at) as updated_at
+  from public.study_days group by user_id, day having count(*) > 1
+), keep as (
+  select distinct on (user_id, day) id, user_id, day from public.study_days order by user_id, day, created_at, id
+)
+update public.study_days s
+set reviews = sums.reviews, quizzes = sums.quizzes, actions = sums.actions, new_cards = sums.new_cards, updated_at = sums.updated_at
+from sums join keep using (user_id, day)
+where s.id = keep.id;
+
+delete from public.study_days s
+using (select id, row_number() over (partition by user_id, day order by created_at, id) as n from public.study_days) r
+where s.id = r.id and r.n > 1;
+
+-- 2) From now on a day has a single row per account.
+create unique index if not exists study_days_user_day_key on public.study_days (user_id, day);
+
+-- 3) Add to today's (or any day's) counters in one step; creates the row if it is missing.
+--    Runs as the signed-in user (row level security applies); counters never go below zero.
+create or replace function public.bump_study_day(
+  p_day text,
+  p_reviews integer default 0,
+  p_quizzes integer default 0,
+  p_actions integer default 0,
+  p_new_cards integer default 0
+) returns public.study_days
+language sql
+security invoker
+set search_path = ''
+as $$
+  insert into public.study_days as s (id, user_id, day, reviews, quizzes, actions, new_cards)
+  values (gen_random_uuid(), auth.uid(), p_day, greatest(0, p_reviews), greatest(0, p_quizzes), greatest(0, p_actions), greatest(0, p_new_cards))
+  on conflict (user_id, day) do update set
+    reviews = greatest(0, s.reviews + p_reviews),
+    quizzes = greatest(0, s.quizzes + p_quizzes),
+    actions = greatest(0, s.actions + p_actions),
+    new_cards = greatest(0, s.new_cards + p_new_cards),
+    updated_at = now()
+  returning *;
+$$;
+
+revoke all on function public.bump_study_day(text, integer, integer, integer, integer) from public, anon;
+grant execute on function public.bump_study_day(text, integer, integer, integer, integer) to authenticated;
+
+-- Premium bought in the iOS app (App Store In-App Purchase), 27 Kasım 2026.
+-- Only the server (service key, after checking Apple's signature) writes here; users cannot.
+
+-- Every Apple transaction we have counted, so a retry never grants twice.
+create table if not exists public.apple_transactions (
+  transaction_id text primary key,
+  original_transaction_id text not null,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  product_id text not null,
+  environment text not null check (environment in ('Production', 'Sandbox')),
+  purchase_date timestamptz not null,
+  expires_date timestamptz,
+  -- How much Premium time this transaction added, to take back exactly that on a refund.
+  granted interval not null default interval '0',
+  revoked_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists apple_transactions_original_idx on public.apple_transactions (original_transaction_id);
+create index if not exists apple_transactions_user_idx on public.apple_transactions (user_id);
+alter table public.apple_transactions enable row level security;
+revoke all on public.apple_transactions from anon, authenticated;
+
+-- Count one verified transaction: subscriptions run until their end date, the two-week pass adds 14
+-- days. A transaction already counted changes nothing. Returns the account's Premium end.
+create or replace function public.apple_grant(
+  p_transaction_id text,
+  p_original_transaction_id text,
+  p_user uuid,
+  p_product text,
+  p_environment text,
+  p_purchase timestamptz,
+  p_expires timestamptz
+) returns timestamptz
+language plpgsql volatile security definer set search_path = '' as $$
+declare
+  old_until timestamptz;
+  new_until timestamptz;
+begin
+  if exists (select 1 from public.apple_transactions where transaction_id = p_transaction_id) then
+    return (select until from public.premium_access where user_id = p_user);
+  end if;
+  select until into old_until from public.premium_access where user_id = p_user for update;
+  if p_product = 'fun.studymode.app.premium.twoweeks' then
+    new_until := greatest(coalesce(old_until, now()), now()) + interval '14 days';
+  elsif p_expires is null then
+    raise exception 'subscription without an end date';
+  else
+    new_until := greatest(coalesce(old_until, now()), p_expires);
+  end if;
+  insert into public.apple_transactions (transaction_id, original_transaction_id, user_id, product_id, environment, purchase_date, expires_date, granted)
+  values (p_transaction_id, p_original_transaction_id, p_user, p_product, p_environment, p_purchase, p_expires,
+          greatest(interval '0', new_until - greatest(coalesce(old_until, now()), now())));
+  insert into public.premium_access (user_id, until) values (p_user, new_until)
+  on conflict (user_id) do update set until = new_until, updated_at = now();
+  return new_until;
+end $$;
+
+-- Apple refunded or revoked a transaction: take back the time it added (never before now).
+create or replace function public.apple_revoke(p_transaction_id text) returns timestamptz
+language plpgsql volatile security definer set search_path = '' as $$
+declare
+  t public.apple_transactions;
+  new_until timestamptz;
+begin
+  select * into t from public.apple_transactions where transaction_id = p_transaction_id for update;
+  if not found or t.revoked_at is not null then return null; end if;
+  update public.apple_transactions set revoked_at = now() where transaction_id = p_transaction_id;
+  update public.premium_access set until = greatest(now(), until - t.granted), updated_at = now()
+  where user_id = t.user_id returning until into new_until;
+  return new_until;
+end $$;
+
+revoke all on function public.apple_grant(text, text, uuid, text, text, timestamptz, timestamptz) from public, anon, authenticated;
+revoke all on function public.apple_revoke(text) from public, anon, authenticated;
+grant execute on function public.apple_grant(text, text, uuid, text, text, timestamptz, timestamptz) to service_role;
+grant execute on function public.apple_revoke(text) to service_role;

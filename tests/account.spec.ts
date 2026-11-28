@@ -115,3 +115,39 @@ test('no Apple button while Apple is off in Supabase (or the site has no Service
   await expect(page.getByText('ya da e-postayla')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Apple ile devam et' })).toHaveCount(0)
 })
+
+test('App Store abonesi: silmeden önce iptal uyarısı; Premium ve Fiyatlar sayfası ikinci kez satış önermez', async ({ page }) => {
+  const until = new Date(Date.now() + 25 * 86_400_000).toISOString()
+  const user = { id: 'aaaaaaaa-0000-0000-0000-0000000000e1', aud: 'authenticated', role: 'authenticated', email: 'e@example.com', user_metadata: {}, app_metadata: {}, created_at: '2026-10-01T00:00:00Z' }
+  await signedIn(page, user, until)
+  const asked: Array<string | null> = []
+  await page.route('**/api/apple-status', (route) => {
+    asked.push(route.request().headers().authorization ?? null)
+    return route.fulfill({ json: { subscription: true, product: 'fun.studymode.app.premium.monthly', expires: until } })
+  })
+
+  await page.goto('/ayarlar')
+  await page.getByRole('button', { name: 'Hesabımı sil' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Hesabı sil' })
+  await expect(dialog.getByText(/App Store’dan aldığın Premium aboneliği hesap silinince durmaz/)).toBeVisible()
+  await expect(dialog.getByText(/Ayarlar → Apple hesabın \(adın\) → Abonelikler/)).toBeVisible()
+  expect(asked[0]).toBe('Bearer fake')
+
+  await page.goto('/premium')
+  await expect(page.getByText(/App Store aboneliğinle açık/)).toBeVisible()
+  await page.goto('/fiyatlar')
+  await expect(page.getByText(/Premium’un iPhone’daki App Store aboneliğinle açık/)).toBeVisible()
+})
+
+test('App Store aboneliği olmayana uyarı ve not çıkmaz', async ({ page }) => {
+  const user = { id: 'aaaaaaaa-0000-0000-0000-0000000000e2', aud: 'authenticated', role: 'authenticated', email: 'f@example.com', user_metadata: {}, app_metadata: {}, created_at: '2026-10-01T00:00:00Z' }
+  await signedIn(page, user)
+  await page.route('**/api/apple-status', (route) => route.fulfill({ json: { subscription: false } }))
+  await page.goto('/ayarlar')
+  await page.getByRole('button', { name: 'Hesabımı sil' }).click()
+  await expect(page.getByRole('dialog', { name: 'Hesabı sil' }).getByText('Bu geri alınamaz.')).toBeVisible()
+  await expect(page.getByText(/hesap silinince durmaz/)).toHaveCount(0)
+  await page.goto('/fiyatlar')
+  await expect(page.getByRole('heading', { name: 'Paketler ve fiyatlar' })).toBeVisible()
+  await expect(page.getByText(/App Store aboneliğinle açık/)).toHaveCount(0)
+})

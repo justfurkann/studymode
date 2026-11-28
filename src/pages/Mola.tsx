@@ -157,7 +157,7 @@ export function Mola() {
         <MolaTile
           icon={<Timer size={22} />}
           title="Odak sayacı"
-          text="Pomodoro: 25 dakika odak, 5 dakika mola. Bitince haber verir, molada oyun önerir."
+          text="Pomodoro: 15+5, 25+10 veya 50+15 dk. Bitince haber verir, molada oyun önerir."
           meta={
             timer
               ? isWaiting(timer)

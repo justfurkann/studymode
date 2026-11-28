@@ -29,10 +29,12 @@ import {
   type TranscribeImage,
   type TranscribeInput,
   type EmbedInput,
+  type EmbedKind,
 } from './tasks'
 import { setQuota } from '../account'
 import { concatenateWavBase64, splitScriptForTts, type PodcastLine, type PodcastScript } from '../podcastTools'
 import { compactVector } from '../semanticSearch'
+import { cleanNotesPreambles, formulaHeavyNote } from '../questionQuality'
 
 export { contextAround, MAX_PROMPT_NOTE_CHARS, splitNoteIntoChunks } from './tasks'
 export type {
@@ -40,6 +42,7 @@ export type {
   ChatTurn,
   DetailInput,
   EmbedInput,
+  EmbedKind,
   ExamDifficulty,
   ExamFormat,
   ExamInput,
@@ -228,6 +231,7 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
       too_slow: 'Yapay zekâ bu notu zamanında bitiremedi. Bir kez daha dene; yine olursa notu ikiye bölüp ayrı ayrı yükle.',
       too_large: 'İçerik çok uzun. Daha az not seçerek ya da notu bölerek dene.',
       premium_only: 'Bu özellik Premium (VIP) üyelere özel.',
+      admin_only: 'Bu deneme özelliği şimdilik yalnızca yöneticilere açık.',
       blocked:
         'Google’ın yapay zekâsı bu içeriği kendi güvenlik filtresine taktı (StudyMode’un ayarlayabildiği bir şey değil). Tekrar denemek işe yaramaz. Ders materyaliyse takılan bölümü çıkarıp ya da metni “Metin yapıştır” ile ekleyip dene; Basit mod da kullanılabilir.',
       bad_output: FORMAT_ERROR,
@@ -302,6 +306,11 @@ function splitTimedOutChunk(text: string): string[] {
   return left && right ? [left, right] : []
 }
 
+export interface StudySetOptions {
+  /** The question-quality step (config.ts → questionQualityFor). Off by default. */
+  questionQuality?: boolean
+}
+
 /**
  * Long notes are split into chunks, each sent as its own request so none hits the server's time or
  * size limits. A chunk that fails is retried once; if it still fails the others are kept, and the
@@ -313,7 +322,12 @@ export async function generateStudySet(
   settings: Settings,
   onProgress?: (done: number, total: number) => void,
   sleep: (ms: number) => Promise<unknown> = (ms) => new Promise((r) => setTimeout(r, ms)),
+  options: StudySetOptions = {},
 ): Promise<ChunkedStudySet> {
+  // Question quality (admins for now, see questionQuality.ts): formula-heavy notes get the numeric
+  // task, every note loses "Notlara göre" openings. Without the option nothing here changes.
+  const quality = !!options.questionQuality
+  const task = quality && formulaHeavyNote(text) ? 'studyNumeric' : 'study'
   // Our server has to answer within 60 s, so its parts are smaller than with the student's own key.
   const server = isServerAi(settings.provider)
   const first = splitNoteIntoChunks(text, server ? SERVER_CHUNK_CHARS : 20_000)
@@ -336,7 +350,8 @@ export async function generateStudySet(
     const maxAttempts = part.wasSplit ? 1 : 2
     for (let attempt = 0; attempt < maxAttempts && !raw; attempt += 1) {
       try {
-        raw = await runTask('study', input, settings)
+        raw = await runTask(task, input, settings)
+        if (raw && quality) raw = cleanNotesPreambles(raw)
       } catch (error) {
         lastError = error
         if (isTimeout(error)) {
@@ -828,13 +843,16 @@ export async function generateConceptImage(
   }
 }
 
-/** Embedding vectors (gemini-embedding-001), shortened to 768 numbers for storage. */
-export async function embedTexts(texts: string[], settings: Settings): Promise<number[][]> {
+/**
+ * Embedding vectors (gemini-embedding-001), shortened to 768 numbers for storage. `kind` is
+ * "document" for notes (kept in storage) and "query" for what the student types in the search box.
+ */
+export async function embedTexts(texts: string[], settings: Settings, kind: EmbedKind = 'document'): Promise<number[][]> {
   if (!texts.length) return []
   const out: number[][] = []
   // The server takes 25 texts a request.
   for (let i = 0; i < texts.length; i += 25) {
-    const res = await runTask('embed', { texts: texts.slice(i, i + 25) }, settings)
+    const res = await runTask('embed', { texts: texts.slice(i, i + 25), kind }, settings)
     out.push(...res.embeddings.map(compactVector))
   }
   return out

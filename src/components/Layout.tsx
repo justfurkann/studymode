@@ -26,6 +26,7 @@ import { AiChoiceSync } from './AiChoiceSync'
 import { pageTitle } from '../lib/pageTitle'
 import { audienceForLevel, setExamAudience } from '../lib/courseExams'
 import { useEducation } from '../lib/education'
+import { useAppMode } from '../lib/appMode'
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -47,6 +48,8 @@ export function Layout() {
   const { pathname, search } = useLocation()
   // Exam words follow the student: "1. Yazılı" for ortaokul and lise, "Vize" otherwise. Set before the pages draw.
   const education = useEducation()
+  // Inside the iPhone/Android app's browser view: no Premium links, no Premium pop-up (store rules).
+  const inApp = useAppMode()
   setExamAudience(audienceForLevel(education?.level))
   // Each tab says where it is ("Biyoloji · Hücre zarı"), so several open tabs can be told apart.
   useEffect(() => {
@@ -143,11 +146,13 @@ export function Layout() {
             {!!badge && <span className="nav-badge">{badge}</span>}
           </NavLink>
         ))}
-        <NavLink to="/premium" className={({ isActive }) => `nav-link prem-nav${isActive ? ' active' : ''}`} data-tour="premium">
-          <Gem size={18} />
-          Premium
-          <span className="prem-nav-shine" aria-hidden />
-        </NavLink>
+        {!inApp && (
+          <NavLink to="/premium" className={({ isActive }) => `nav-link prem-nav${isActive ? ' active' : ''}`} data-tour="premium">
+            <Gem size={18} />
+            Premium
+            <span className="prem-nav-shine" aria-hidden />
+          </NavLink>
+        )}
         <button
           type="button"
           className={`nav-link nav-more${showMore ? ' is-open' : ''}`}
@@ -206,7 +211,7 @@ export function Layout() {
           <div className="mobile-top-actions">
           <AmbientPlayer inHeader />
           {/* Signed-out phones already carry settings and "Giriş yap" here; Premium needs an account anyway. */}
-          {session && (
+          {session && !inApp && (
             <NavLink to="/premium" className="prem-top" aria-label="Premium" data-tour="premium">
               <Gem size={18} aria-hidden />
             </NavLink>
@@ -291,8 +296,8 @@ export function Layout() {
       <EducationPrompt />
       <Tour />
       <Assistant />
-      <PendingCodeReturn />
-      <PremiumNudge />
+      {!inApp && <PendingCodeReturn />}
+      {!inApp && <PremiumNudge />}
       <AiChoiceSync />
 
       <nav className="mobile-bar" aria-label="Alt menü">

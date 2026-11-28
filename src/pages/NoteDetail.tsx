@@ -12,6 +12,7 @@ import { readingMinutes, relativeDate, wordCount } from '../lib/format'
 import { downloadText, findSourceMatch, summaryMarkdown } from '../lib/noteTools'
 import { computeNoteProgress, computeTopicMastery } from '../lib/learningPath'
 import { generateLocally } from '../lib/localGenerator'
+import { useQuestionQuality } from '../lib/account'
 import { aiAvailability, useSettings } from '../lib/settings'
 import { useStore } from '../lib/store'
 import type { Generator, LearningStepId, Note, SummarySubTab } from '../lib/types'
@@ -79,6 +80,7 @@ function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => v
   const toast = useToast()
   const settings = useSettings()
   const ai = aiAvailability(settings, !!store.session)
+  const questionQuality = useQuestionQuality(store.session?.user.id ?? null)
   const [busy, setBusy] = useState<Generator | null>(null)
   const [chunkStatus, setChunkStatus] = useState('')
   const [error, setError] = useState('')
@@ -92,9 +94,16 @@ function GenerateChoice({ note, onDone, onClose }: { note: Note; onDone: () => v
       let set
       if (generator === 'ai') {
         const { generateStudySet, partialChunkMessage } = await freshImport(() => import('../lib/ai'))
-        const result = await generateStudySet(note.content, note.title, settings, (done, total) => {
-          if (total > 1) setChunkStatus(`Uzun not ${total} bölüme ayrıldı · ${done}/${total} bölüm işlendi`)
-        })
+        const result = await generateStudySet(
+          note.content,
+          note.title,
+          settings,
+          (done, total) => {
+            if (total > 1) setChunkStatus(`Uzun not ${total} bölüme ayrıldı · ${done}/${total} bölüm işlendi`)
+          },
+          undefined,
+          { questionQuality },
+        )
         set = result
         warning = partialChunkMessage(result)
       } else {

@@ -46,6 +46,26 @@ export function buildUserParts(user: string): GeminiUserPart[] {
   return parts.length ? parts : [{ text: user }]
 }
 
+/** `<embed_texts>` or `<embed_texts kind="query">` at the start of an embed task's user message. */
+const EMBED_TAG = /^<embed_texts(?:\s+kind="(query|document)")?>/
+
+export type EmbedTaskType = 'RETRIEVAL_QUERY' | 'RETRIEVAL_DOCUMENT'
+
+/**
+ * gemini-embedding-001 makes different vectors per task type; Google's guide: RETRIEVAL_QUERY for
+ * search queries, RETRIEVAL_DOCUMENT for the texts searched. No kind (old clients) → document, as
+ * the Vertex path always sent.
+ */
+export function embedTaskType(kind: string | undefined): EmbedTaskType {
+  return kind === 'query' ? 'RETRIEVAL_QUERY' : 'RETRIEVAL_DOCUMENT'
+}
+
+/** Request body for one text: Vertex :predict takes `instances[].task_type`, the public :embedContent takes `taskType`. */
+export function embedBody(text: string, taskType: EmbedTaskType, vertex: boolean): unknown {
+  const content = text || ' '
+  return vertex ? { instances: [{ content, task_type: taskType }] } : { content: { parts: [{ text: content }] }, taskType }
+}
+
 /** Where to send a request instead of the public Gemini API (e.g. Vertex AI with a bearer token). */
 export interface GeminiTarget {
   url(model: string): string
@@ -65,10 +85,13 @@ export async function callGemini(options: {
   const baseUrl = target ? target.url(model) : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
   const headers: Record<string, string> = target ? { 'content-type': 'application/json', ...target.headers } : { 'content-type': 'application/json', 'x-goog-api-key': apiKey ?? '' }
 
-  // 1. Semantic embeddings. The public API takes :embedContent; Vertex AI takes :predict.
-  if (user.startsWith('<embed_texts>')) {
-    const rawJson = user.replace(/^<embed_texts>/, '').replace(/<\/embed_texts>$/, '').trim()
+  // 1. Semantic embeddings. The public API takes :embedContent; Vertex AI takes :predict. Both get the
+  // same task type, so a vector made on one path can be compared with one made on the other.
+  const embedTag = EMBED_TAG.exec(user)
+  if (embedTag) {
+    const rawJson = user.slice(embedTag[0].length).replace(/<\/embed_texts>$/, '').trim()
     const texts = JSON.parse(rawJson) as string[]
+    const taskType = embedTaskType(embedTag[1])
     const embedUrl = baseUrl.replace(':generateContent', target ? ':predict' : ':embedContent')
     const vectors: number[][] = []
     for (const itemText of texts) {
@@ -77,7 +100,7 @@ export async function callGemini(options: {
         response = await fetchImpl(embedUrl, {
           method: 'POST',
           headers,
-          body: JSON.stringify(target ? { instances: [{ content: itemText || ' ', task_type: 'RETRIEVAL_DOCUMENT' }] } : { content: { parts: [{ text: itemText || ' ' }] } }),
+          body: JSON.stringify(embedBody(itemText, taskType, !!target)),
           signal: AbortSignal.timeout(timeoutMs),
         })
       } catch (error) {
@@ -109,9 +132,8 @@ export async function callGemini(options: {
           role: 'user',
           parts: [
             {
-              text: useMultiSpeaker
-                ? `Read this study podcast aloud in natural Turkish. Deniz is a warm, clear teaching assistant; Mert is a curious student.\n${dialogue}`
-                : `Read this aloud in natural Turkish:\n${dialogue}`,
+              // Gemini 3.8 TTS treats input strictly as a verbatim transcript; never prepend English directions.
+              text: useMultiSpeaker ? dialogue : turns.map((t) => t.text).join('\n'),
             },
           ],
         },
@@ -298,7 +320,7 @@ export async function callGeminiWithFallback(options: {
     models = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts']
   } else if (call.user.startsWith('<image_prompt') && !models.some((m) => m.includes('image') || m.includes('banana'))) {
     models = ['gemini-3.1-flash-lite-image', 'gemini-nano-banana-2.1']
-  } else if (call.user.startsWith('<embed_texts>') && !models.some((m) => m.includes('embedding'))) {
+  } else if (EMBED_TAG.test(call.user) && !models.some((m) => m.includes('embedding'))) {
     models = ['gemini-embedding-001']
   }
 
