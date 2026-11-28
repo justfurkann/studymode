@@ -1191,6 +1191,13 @@ Kalite kontrol buldu: site veriyi sayfa açılışında bir kez okuyor, açık s
   - **iOS (IOS_SYNC'e yönetici taşısın):** "Site → Uygulama: `embed` girdisine isteğe bağlı `kind: "query" | "document"` geldi. Arama kutusundaki metin için `kind: "query"`, notlar için `"document"` (ya da hiç) gönder; sorguları `query`'ye geçirince yerel vektör önbelleğinin sürümünü artır. Göndermezsen bugünkü davranış aynen sürer."
   - Herkese açma kararı canlı denemeden sonra: `QUESTION_QUALITY_FOR = 'everyone'`.
 
+### Aşama 76 — Ana sayfada nottan çalışma setine animasyon (28 Kasım 2026, `site-rive-giris`)
+
+- **Yapılan** Ana sayfa ve `/tanitim` örneği, psikoloji notundan özet, kartlar ve testin nasıl çıktığını gösteriyor. Görsel ekrana girince bir kez oynuyor ve sağ alttaki düğme tekrar başlatıyor.
+- **Kararlar** Web sürümü SVG/CSS kullanıyor. Site fontları ve renk değişkenleriyle açık/koyu tema ve seçili fosfor rengi anında değişiyor. Hareketi azaltma tercihinde tamamlanmış çalışma seti görünüyor.
+- **İşe yaramayan** Rive CLI ile imzalı dışa aktarım mevcut hesap planında Rive açılış ekranı ekledi. Rive taslağı ayrı prototip olarak duruyor.
+- **Sıradaki** PR Vercel önizlemesinde açılış ve tekrar oynatma masaüstünde ve telefonda görülebilir.
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

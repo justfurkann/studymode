@@ -1,8 +1,9 @@
-import { ArrowRight, CalendarClock, Check, FileText, Layers, ListChecks, MessageSquareText, Smartphone, Sparkles } from 'lucide-react'
+import { ArrowRight, CalendarClock, Layers, ListChecks, MessageSquareText, Smartphone, Sparkles } from 'lucide-react'
 import { MadeBy } from '../components/MadeBy'
 import { Link } from 'react-router-dom'
 import { NotInApp } from '../lib/appMode'
 import { Brand } from '../components/Brand'
+import { LandingWorkflow } from '../components/LandingWorkflow'
 import { useStore } from '../lib/store'
 import { useLoadDemo } from '../lib/useDemo'
 
@@ -98,46 +99,7 @@ export function Landing() {
             </Link>
           </div>
 
-          <div className="lp-demo" aria-label="Örnek çalışma seti">
-            <div className="lp-sheet">
-              <div className="lp-file">
-                <span className="lp-file-icon">
-                  <FileText size={18} />
-                </span>
-                <div className="grow">
-                  <b>Öğrenme ve bellek.pdf</b>
-                  <small>Psikolojiye Giriş · Vizeye 7 gün</small>
-                </div>
-                <span className="chip chip-success">
-                  <Check size={14} /> Hazır
-                </span>
-              </div>
-              <div className="lp-outs">
-                <span>
-                  <b>Özet</b>6 kavram
-                </span>
-                <span>
-                  <b>Test</b>5 soru
-                </span>
-                <span>
-                  <b>Kartlar</b>aralıklı tekrar
-                </span>
-              </div>
-            </div>
-            <div className="lp-quiz">
-              <span className="lp-kicker">Test · Soru 1 / 5</span>
-              <p className="lp-q">Hangisi aktif hatırlamaya örnektir?</p>
-              <span className="lp-opt">Notların altını tekrar çizmek</span>
-              <span className="lp-opt correct">
-                <Check size={16} /> Notu kapatıp konuyu kendi sözlerinle anlatmak
-              </span>
-            </div>
-            <div className="lp-flash" aria-hidden="true">
-              <span className="lp-kicker">Kart</span>
-              <p>Aralıklı tekrar nedir?</p>
-              <span className="lp-hint">İpucu: Çalışma oturumlarını…</span>
-            </div>
-          </div>
+          <LandingWorkflow />
         </section>
 
         <section className="lp-band" id="nasil" aria-labelledby="nasil-baslik">
