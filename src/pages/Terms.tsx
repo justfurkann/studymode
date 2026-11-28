@@ -1,12 +1,19 @@
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { FeedbackLink } from '../components/Feedback'
 import { MAKER, SOCIALS } from '../components/MadeBy'
 import { useStore } from '../lib/store'
 import { PAYMENT_PROVIDER } from '../lib/config'
+import { MANAGE_HINT } from '../lib/appStore'
+import { NotInApp, useAppMode } from '../lib/appMode'
 
-export const TERMS_UPDATED = '2 Kasım 2026'
+export const TERMS_UPDATED = '28 Kasım 2026'
+
+/** A link to /fiyatlar on the site; inside the app (`?app=ios`) the same words as plain text, no link. */
+function PricesLink({ to, children }: { to: string; children: ReactNode }) {
+  return useAppMode() ? <>{children}</> : <Link to={to}>{children}</Link>
+}
 
 /** /kullanim-kosullari: the rules for using StudyMode, in plain Turkish, next to the privacy policy. */
 export function Terms() {
@@ -92,7 +99,7 @@ export function Terms() {
           <ul>
             <li>StudyMode’un temel özellikleri ücretsizdir. Yapay zekânın adil paylaşılması için günlük kullanım hakları vardır; bu sınırları gerektiğinde değiştirebiliriz.</li>
             <li>
-              <strong>Ücretli Premium kodla satılır.</strong> Paketler, fiyatlar, teslimat ve mesafeli satış sözleşmesi <Link to="/fiyatlar">fiyatlar sayfasında</Link>. Kodu {PAYMENT_PROVIDER}
+              <strong>Ücretli Premium kodla satılır.</strong> Paketler, fiyatlar, teslimat ve mesafeli satış sözleşmesi <PricesLink to="/fiyatlar">fiyatlar sayfasında</PricesLink>. Kodu {PAYMENT_PROVIDER}
               üzerinden satın alırsın; kart bilgilerin bize hiç gelmez. Kod en geç 24 saat içinde e-postayla gönderilir; Ayarlar’da ya da Premium sayfasında
               girdiğinde Premium hesabında açılır.
             </li>
@@ -103,7 +110,15 @@ export function Terms() {
             <li>
               <strong>İade:</strong> Henüz kullanılmamış bir kod için 14 gün içinde iade isteyebilirsin; kod iptal edilir ve ücreti geri ödenir. Kod kullanıldığında hizmet hemen
               başladığı için kullanılmış kodlar iade edilmez (Mesafeli Sözleşmeler Yönetmeliği 15/1-ğ); yasadan doğan hakların saklıdır. Ayrıntılar ve iletişim{' '}
-              <Link to="/fiyatlar#iade">fiyatlar sayfasında</Link>.
+              <PricesLink to="/fiyatlar#iade">fiyatlar sayfasında</PricesLink>.
+            </li>
+            <li>
+              <strong>iPhone uygulamasında Premium App Store üzerinden alınır.</strong> Ödemeyi Apple, Apple hesabından alır; kart bilgilerin bize gelmez. Yukarıdaki kod ve iade
+              kuralları yalnızca sitedeki kodlu satış içindir. Uygulamadaki aylık ve 6 aylık Premium <strong>abonelikleri, dönem bitmeden en az 24 saat önce iptal edilmezse
+              otomatik olarak yenilenir</strong>; yenileme ücreti Apple hesabından alınır. Aboneliği App Store hesap ayarlarından ({MANAGE_HINT}) istediğin zaman iptal
+              edebilirsin; iptal o dönemin sonunda geçerli olur, Premium dönem bitene kadar açık kalır. Tek seferlik paketler (ör. 2 haftalık) yenilenmez. App Store’dan yapılan
+              satın almaların <strong>iade ve iptal istekleri Apple üzerinden</strong> yapılır (reportaproblem.apple.com); bu ödemeleri biz iade edemeyiz. Apple iade ederse o
+              satın almanın verdiği Premium süresi geri alınır.
             </li>
             <li>Premium’un içeriği (sesli not, akıllı arama, görsel) ve günlük hakları adil kullanım için değişebilir; satın aldığın süre boyunca özellikleri kaldırmayız.</li>
             <li>VIP, davetle verilen ücretsiz bir ayrıcalıktır; kapsamı ve kimlere verildiği değişebilir, gerektiğinde geri alınabilir.</li>
@@ -159,9 +174,11 @@ export function Terms() {
         <Link to="/gizlilik" className="lp-footer-quiet">
           Gizlilik
         </Link>
-        <Link to="/fiyatlar" className="lp-footer-quiet">
-          Fiyatlar
-        </Link>
+        <NotInApp>
+          <Link to="/fiyatlar" className="lp-footer-quiet">
+            Fiyatlar
+          </Link>
+        </NotInApp>
         <Link to="/hakkinda">Hakkında</Link>
       </footer>
     </div>

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { NotInApp } from '../lib/appMode'
 import { ZoomableImage } from '../components/ImageViewer'
 import { requestTour } from '../lib/tour'
 
@@ -173,9 +174,12 @@ export function Guide() {
             </article>
           ))}
         </div>
-        <Link to="/premium" className="btn prem-btn" style={{ alignSelf: 'flex-start' }}>
-          <Gem size={16} aria-hidden /> Premium’a git
-        </Link>
+        {/* Inside the app's browser view the Premium link stays hidden (store rules). */}
+        <NotInApp>
+          <Link to="/premium" className="btn prem-btn" style={{ alignSelf: 'flex-start' }}>
+            <Gem size={16} aria-hidden /> Premium’a git
+          </Link>
+        </NotInApp>
       </section>
 
       <p className="subtle guide-foot">

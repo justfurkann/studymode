@@ -27,6 +27,7 @@ import { Premium } from './pages/Premium'
 import { RedeemLink } from './pages/RedeemLink'
 import { Privacy } from './pages/Privacy'
 import { Terms } from './pages/Terms'
+import { DeleteAccountInfo } from './pages/DeleteAccountInfo'
 import { Pricing } from './pages/Pricing'
 import { Settings } from './pages/Settings'
 import { SharedCourse } from './pages/SharedCourse'
@@ -95,6 +96,7 @@ function Routed() {
       <Route path="gizlilik" element={<Privacy />} />
       <Route path="kullanim-kosullari" element={<Terms />} />
       <Route path="fiyatlar" element={<Pricing />} />
+      <Route path="hesap-sil" element={<DeleteAccountInfo />} />
       <Route
         path="ogrenci-tipi"
         element={

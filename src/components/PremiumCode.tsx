@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { refreshQuota, useQuota } from '../lib/account'
 import { canBuy } from '../lib/pricing'
+import { isAppMode } from '../lib/appMode'
 import { codeCardPng } from '../lib/codeCard'
 import { downloadBlob, downloadText } from '../lib/noteTools'
 import { usePremium } from '../lib/premium'
@@ -96,6 +97,8 @@ export function RedeemCode({ compact = false }: { compact?: boolean }) {
 /** Settings: Premium status, end date, the code field and where to buy. */
 export function PremiumAccessSection() {
   const premium = usePremium()
+  // Inside the app (`?app=ios`): status only; no code field, no buying (store rules).
+  const inApp = isAppMode()
   return (
     <div className="panel premium-access">
       {premium.until ? (
@@ -107,21 +110,25 @@ export function PremiumAccessSection() {
         <p className="premium-access-line">
           <Gem size={17} aria-hidden /> Premium hesabında zaten açık.
         </p>
+      ) : inApp ? (
+        <p className="subtle">Premium durumun: kapalı.</p>
       ) : (
         <p className="subtle">
           Premium; iki kişilik sesli not, akıllı arama ve yapay zekâ görselleri. Satın aldığın kodu buraya gir; süre bitince kendiliğinden kapanır, otomatik yenilenmez.
         </p>
       )}
-      <RedeemCode />
+      {!inApp && <RedeemCode />}
       <div className="btn-row">
-        {canBuy() && (
+        {canBuy() && !inApp && (
           <Link className="btn btn-sm" to="/fiyatlar#paketler">
             <ShoppingBag size={15} aria-hidden /> {premium.until ? 'Süreyi uzat' : 'Kod satın al'}
           </Link>
         )}
-        <Link to="/fiyatlar" className="btn btn-ghost btn-sm">
-          Fiyatlar ve satın alma
-        </Link>
+        {!isAppMode() && (
+          <Link to="/fiyatlar" className="btn btn-ghost btn-sm">
+            Fiyatlar ve satın alma
+          </Link>
+        )}
         <Link to="/premium" className="btn btn-ghost btn-sm">
           Premium’da neler var?
         </Link>
@@ -152,7 +159,7 @@ export function PremiumReminder() {
       <span className="grow">
         Premium’ın {left <= 0 ? 'bugün' : `${left} gün sonra`} bitiyor ({formatUntil(until)}).
       </span>
-      {canBuy() && (
+      {canBuy() && !isAppMode() && (
         <Link className="btn btn-sm prem-btn" to="/fiyatlar#paketler">
           Yenile
         </Link>

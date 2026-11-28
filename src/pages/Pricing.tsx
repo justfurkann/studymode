@@ -3,7 +3,8 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { useStore } from '../lib/store'
-import { AppStoreNote } from '../components/BuyPremium'
+import { AppPremiumNote, AppStoreNote } from '../components/BuyPremium'
+import { useAppMode } from '../lib/appMode'
 import { useAppStoreSubscription } from '../lib/appStore'
 import { PAYMENT_PROVIDER } from '../lib/config'
 import { buyUrl, DELIVERY, formatPrice, PACKAGES, PRICING_UPDATED, SELLER, type PremiumPackage } from '../lib/pricing'
@@ -80,6 +81,8 @@ export function Pricing() {
   const { session } = useStore()
   usePageMeta('Fiyatlar · StudyMode', DESCRIPTION)
   const [monthly, term] = PACKAGES
+  // Opened inside the iPhone/Android app: no prices or payment links there (store rules), one line instead.
+  if (useAppMode()) return <InAppPricing signedIn={!!session} />
 
   return (
     <div className="landing legal-page pricing-page">
@@ -321,4 +324,26 @@ export function Pricing() {
 /** An App Store subscriber is told Premium is already on, before the packages. */
 function AppStoreNotice() {
   return useAppStoreSubscription().state === 'active' ? <AppStoreNote /> : null
+}
+
+/** /fiyatlar inside the app (`?app=ios`): where Premium is bought, nothing else to sell. */
+function InAppPricing({ signedIn }: { signedIn: boolean }) {
+  return (
+    <div className="landing legal-page pricing-page">
+      <header className="lp-nav">
+        <div className="lp-wrap lp-nav-inner">
+          <Link to="/" className="brand-link" aria-label="StudyMode ana sayfa">
+            <Brand size={30} />
+          </Link>
+          <Link to="/" className="btn btn-sm">
+            {signedIn ? 'Uygulamaya dön' : 'Uygulamaya git'}
+          </Link>
+        </div>
+      </header>
+      <main className="lp-wrap legal">
+        <h1>Premium</h1>
+        <AppPremiumNote />
+      </main>
+    </div>
+  )
 }

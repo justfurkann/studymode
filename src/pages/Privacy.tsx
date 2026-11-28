@@ -6,8 +6,9 @@ import { MAKER, SOCIALS } from '../components/MadeBy'
 import { useStore } from '../lib/store'
 import { PAYMENT_PROVIDER } from '../lib/config'
 import { unlock } from '../lib/achievements'
+import { NotInApp } from '../lib/appMode'
 
-export const PRIVACY_UPDATED = '26 Kasım 2026'
+export const PRIVACY_UPDATED = '28 Kasım 2026'
 
 /** /gizlilik: what StudyMode keeps, why, who processes it, and how to delete it. Plain Turkish. */
 export function Privacy() {
@@ -128,6 +129,10 @@ export function Privacy() {
               ödeme sayfasında o kuruluşun kendi koşulları geçerlidir. Kodu gönderebilmemiz için ödeme sırasında yazdığın ad ve e-posta bize iletilir. Biz yalnızca kodun hangi hesapta, ne zaman kullanıldığını ve Premium’un bitiş tarihini saklarız.
             </li>
             <li>
+              <strong>Apple (App Store):</strong> iPhone uygulamasında Premium’u App Store’dan alırsan ödemeyi Apple alır; kart bilgilerin Apple’da kalır, bize gelmez. Apple bize
+              yalnızca satın almanın kimliğini, ürünü, tarihlerini ve hangi hesabımıza ait olduğunu bildirir; bunu Premium süreni açmak, yenilemek ya da iadede geri almak için saklarız.
+            </li>
+            <li>
               <strong>Resend:</strong> hesap onayı ve şifre sıfırlama e-postalarının gönderimi.
             </li>
             <li>
@@ -163,6 +168,9 @@ export function Privacy() {
               izler en geç 30 gün içinde kendiliğinden silinir.
             </li>
             <li>Uygulamaya erişemiyorsan bize yaz; en geç 30 gün içinde hesabın ve ona bağlı tüm veriler silinir.</li>
+            <li>
+              Adım adım silme yolu, neyin silinip neyin kaldığı ve iletişim adresi: <Link to="/hesap-sil">hesap silme sayfası</Link>.
+            </li>
             <li>Hata kayıtları ve istatistikler yalnızca toplu olarak, uygulamayı iyileştirmek için kullanılır.</li>
           </ul>
         </section>
@@ -201,9 +209,11 @@ export function Privacy() {
         <Link to="/kullanim-kosullari" className="lp-footer-quiet">
           Kullanım koşulları
         </Link>
-        <Link to="/fiyatlar" className="lp-footer-quiet">
-          Fiyatlar
-        </Link>
+        <NotInApp>
+          <Link to="/fiyatlar" className="lp-footer-quiet">
+            Fiyatlar
+          </Link>
+        </NotInApp>
         <Link to="/hakkinda">Hakkında</Link>
       </footer>
     </div>

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { useStore } from '../lib/store'
 import { usePremium } from '../lib/premium'
+import { isAppMode } from '../lib/appMode'
 import { markTourSeen, setTourActive, shouldAutoStart, useTourRequests } from '../lib/tour'
 
 /*
@@ -61,7 +62,8 @@ export function Tour() {
   // Someone who is in the app: signed in, or a guest already trying it with a course. Not someone on
   // their way to the sign-up form (the tour used to cover it).
   const inApp = (!!session || data.courses.length > 0) && tourFits(pathname)
-  const steps = STEPS.filter((s) => !s.premiumOnly || premium)
+  // Inside the app the Premium link is hidden, so its step would point at nothing.
+  const steps = STEPS.filter((s) => !s.premiumOnly || (premium && !isAppMode()))
 
   const start = useCallback(() => {
     setIndex(0)
