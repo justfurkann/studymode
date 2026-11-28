@@ -208,6 +208,43 @@ struct NoteDetailView: View {
             if summary.sourceChanged {
                 Message(text: "Kaynak metin değişti. Özet, kartlar ve sorular önceki metne ait; güncellemek için sağ üstteki menüden Yeniden hazırla’yı seç.", kind: .warning)
             }
+            HStack(spacing: 10) {
+                NavigationLink {
+                    NoteVisualsView(note: currentNote, summary: summary)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.prem1)
+                        Text("Görsel & Şema")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.text)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+
+                NavigationLink {
+                    NotePodcastView(note: currentNote, summary: summary)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "waveform.circle.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.prem1)
+                        Text("Sesli not")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Theme.text)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+            }
             FosforSegmentedBar(
                 segments: [
                     .init(

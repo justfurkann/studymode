@@ -22,24 +22,30 @@ struct PremiumView: View {
 
     /// Only what Premium really changes in this app, checked against the server (api/generate.ts and
     /// supabase/schema.sql): Premium counts as VIP for the limits (ai_limit_for: 150 a day instead of 40)
-    /// and gets Free+ (plus_limit_for: 30 answers a day on the stronger model, then the normal model).
-    /// Reading page pictures is not counted for anyone, so it is not a Premium feature and not listed.
-    /// Site-only tools (podcast, images) are not sold here; one small line names them. Semantic search
-    /// works in the app (Search/) and is listed.
+    /// and gets Free+ (plus_limit_for: 30 answers a day on the stronger model, then the normal model),
+    /// plus semantic search (Search/), AI visuals & concept diagrams (Media/NoteVisualsView),
+    /// and studio-voice podcast notes (Media/NotePodcastView).
     private let features: [Feature] = [
         .init(
             id: "freeplus",
             icon: "sparkles",
-            title: "Free+ yapay zekâ",
-            detail: "Özet, kart, test, Fosfor ve puanlamada daha güçlü model (günde 30 cevaba kadar)",
+            title: "Free+ & 150 hak",
+            detail: "Günde 30 cevaba kadar güçlü model, toplam 150 hak (ücretsizde 40)",
             accent: Theme.prem3
         ),
         .init(
-            id: "hak",
-            icon: "bolt.fill",
-            title: "Günde 150 hak",
-            detail: "Ücretsiz hesapta günde 40 yapay zekâ isteği",
+            id: "podcast",
+            icon: "waveform",
+            title: "Sesli not",
+            detail: "Deniz ve Mert’in stüdyo sesiyle dinle; kilit ekranda çalar",
             accent: Theme.prem1
+        ),
+        .init(
+            id: "visuals",
+            icon: "photo.on.rectangle.angled",
+            title: "AI görselleri",
+            detail: "Kavramları ders kitabı şemasına çevir, kaydet ve karta ekle",
+            accent: Theme.prem3
         ),
         // Works in the app since 28 November (Search/): the server's embed task is Premium-only.
         .init(
@@ -70,15 +76,8 @@ struct PremiumView: View {
                     )
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    featuresBento
-                    // Not a reason to buy: a plain note that the site has more tools.
-                    Text("Sitede ayrıca: sesli not ve görseller (uygulamada yok).")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.text3)
-                        .padding(.horizontal, 4)
-                }
-                .staggeredAppear(1)
+                featuresBento
+                    .staggeredAppear(1)
 
                 plansSection
                     .staggeredAppear(2)
