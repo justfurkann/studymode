@@ -72,7 +72,7 @@ enum ReceiptThemeId: String, Codable, CaseIterable, Identifiable {
                 lineHex: 0xDDD9CB,
                 hiHex: 0xFFE14D,
                 onHiHex: 0x1B2250,
-                stampHex: 0xC82838,
+                stampHex: 0x253DA1,
                 auraHex: 0xFFE14D,
                 tapeHex: 0xFFE875,
                 isDarkPaper: false
@@ -229,7 +229,6 @@ struct ReceiptPrefs: Codable, Equatable {
         return ReceiptPrefs(
             studentName: defaultName,
             studentTag: defaultTag,
-            motto: moodPresets[0],
             theme: .klasik,
             showIdentity: true
         )

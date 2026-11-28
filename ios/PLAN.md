@@ -308,3 +308,17 @@ Kapsam: `ba793d6`, `b081971`, `2850c31`, `a9c9a0c`, `95745d2` (Codex / Antigravi
 - Gerçek Premium hesapta: stüdyo sesi 16 repliğe yakın bir notla, AI görsel filigranı, kilit ekranı kontrolü.
 - Ana klasörde `AssistantSheet.swift` başka oturumun commit'lenmemiş değişikliğini taşıyor; bu denetim ona dokunmadı.
 
+
+## Devir notu (28 Kasım) — Çalışma fişi yazıcısı
+
+- **Yapılan** Fiş stüdyosunda kâğıt dört haptik adımda çıkıyor. Fiziksel damga fişe inip kalkıyor ve gerçek derecenin yuvarlak mürekkep izini bırakıyor.
+- **Fiş düzeni** İlk prototipteki kısa kâğıt geri geldi. Logo ve tarihin altında odak süresi, kart tekrarı, test ortalaması ve seri var. Alt bölümde not, kısa barkod ve yuvarlak damga yer alıyor. Aynı düzen Story çıktısında da kullanılıyor.
+- **Kararlar** Yazıcı SwiftUI ile çiziliyor. Uygulamanın kendi Fosfor maskotu ve mevcut fiş verileri kullanılıyor. Hareketi azaltma açıkken fiş tamamlanmış olarak gösteriliyor. Paylaşılan görsel aynı yuvarlak damgayı taşıyor.
+- **İşe yaramayan** Rive taslağındaki ayrı maskot çizimi Fosfor'un oranlarını değiştirdi. Stüdyo doğrudan `FosforMascotView` kullanıyor.
+- **Sıradaki** Simülatörde örnek verilerle yazıcı ve damga görüntülendi. Haptik hissi fiziksel cihazda kontrol edilebilir.
+
+## Devir notu (Claude, iPhone rolü — 28 Kasım): Toparlama
+- **Yapılan** Bekleyen Fosfor sohbet değişikliği (`AssistantSheet.swift`: dönen bekleme mesajı ve zıplayan noktalar) uygulanıp derlendi, ayrı commit. Kök `.DS_Store` izlenmiyor (`.gitignore`), kökteki `AppIcon-1024.png` silindi (iki Assets kopyasıyla birebir aynıydı). PR #141 (`codex/ios-calisma-fisi`) `ios-taslak`'a birleştirildi.
+- **Kararlar** #141'de tek çakışma `ios/PLAN.md`'ydi; iki tarafın devir notları da tutuldu. `Receipt/*.swift` kendiliğinden birleşti, Codex'in sadeleştirmesi ve yazıcı animasyonu olduğu gibi duruyor, `ReceiptModel` verisi ve gizlilik kuralları değişmedi.
+- **İşe yaramayan** Yok; derleme (iOS Simulator, genel hedef) temiz geçti. Cihazda ve simülatörde elle deneme yapılmadı.
+- **Sıradaki** Denetim notundaki liste (`memory` karşılaştırma, Öğrenci tipi testi, Rehber, Not birleştirme, Dönem planlayıcı); fişte haptik ve Fosfor bekleme balonu gerçek cihazda kontrol.

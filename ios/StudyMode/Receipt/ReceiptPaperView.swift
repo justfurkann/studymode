@@ -51,6 +51,7 @@ struct ReceiptPaperView: View {
     var stampSlammed: Bool = true
     var stampPulse: CGFloat = 0
     var glintOffset: CGFloat = 2.0 // -1.2 ... 1.2 sweeps diagonal glossy sheen across paper
+    var stampMotion: ReceiptStampMotion = .hidden
 
     private var palette: ReceiptPalette { prefs.theme.palette }
     private func s(_ v: CGFloat) -> CGFloat { v * scale }
@@ -75,25 +76,17 @@ struct ReceiptPaperView: View {
         )
 
         VStack(alignment: .leading, spacing: s(12)) {
-            headerSection
-            perforatedTearLine
-            metaLedgerSection
+            brandRow
             dashedRule
-            heroMetricsSection
+            heading
+            highlights
+            results
             dashedRule
-            coursesLedgerSection
-            dashedRule
-            weekRhythmSection
-            dashedRule
-            totalsAndStampSection
-            if !cleanMotto.isEmpty {
-                mottoBanner
-            }
-            barcodeFooterSection
+            closing
         }
-        .padding(.horizontal, s(20))
-        .padding(.top, flatTopEdge ? s(16) : s(22))
-        .padding(.bottom, s(22))
+        .padding(.horizontal, s(25))
+        .padding(.top, flatTopEdge ? s(24) : s(26))
+        .padding(.bottom, s(23))
         .frame(width: s(336))
         .background {
             ZStack {
@@ -104,8 +97,8 @@ struct ReceiptPaperView: View {
                         LinearGradient(
                             stops: [
                                 .init(color: .clear, location: 0.0),
-                                .init(color: .white.opacity(palette.isDarkPaper ? 0.07 : 0.34), location: 0.45),
-                                .init(color: palette.hi.opacity(palette.isDarkPaper ? 0.14 : 0.22), location: 0.52),
+                                .init(color: .white.opacity(palette.isDarkPaper ? 0.05 : 0.14), location: 0.45),
+                                .init(color: palette.hi.opacity(palette.isDarkPaper ? 0.06 : 0.09), location: 0.52),
                                 .init(color: .clear, location: 1.0),
                             ],
                             startPoint: .topLeading,
@@ -128,338 +121,155 @@ struct ReceiptPaperView: View {
         )
     }
 
-    // MARK: - 1. Brand Header
-
-    private var headerSection: some View {
-        VStack(spacing: s(5)) {
+    private var brandRow: some View {
+        HStack(spacing: s(12)) {
             Image("Logo")
                 .resizable()
                 .scaledToFit()
-                .frame(height: s(26))
+                .frame(width: s(124))
                 .environment(\.colorScheme, palette.isDarkPaper ? .dark : .light)
                 .accessibilityHidden(true)
 
-            HStack(spacing: s(6)) {
-                Text("ÇALIŞMA FİŞİ")
-                    .font(.system(size: s(9.5), weight: .heavy, design: .monospaced))
-                    .tracking(s(1.4))
-                Text("·")
-                    .font(.system(size: s(9.5), weight: .bold, design: .monospaced))
-                Text(stats.registerTag)
-                    .font(.system(size: s(9.5), weight: .bold, design: .monospaced))
-            }
+            Spacer(minLength: 0)
+
+            Text(stats.generatedAt.formatted(
+                .dateTime.day(.twoDigits).month(.twoDigits).year().locale(Dates.turkish)
+            ))
+            .font(.system(size: s(11), weight: .medium, design: .monospaced))
             .foregroundStyle(palette.inkSoft)
         }
-        .frame(maxWidth: .infinity)
     }
 
-    // MARK: - 2. Perforated Tear Line
-
-    private var perforatedTearLine: some View {
-        HStack(spacing: s(6)) {
-            Image(systemName: "scissors")
-                .font(.system(size: s(9), weight: .bold))
-                .foregroundStyle(palette.inkSoft.opacity(0.75))
-            GeometryReader { geo in
-                Path { p in
-                    p.move(to: CGPoint(x: 0, y: geo.size.height / 2))
-                    p.addLine(to: CGPoint(x: geo.size.width, y: geo.size.height / 2))
-                }
-                .stroke(
-                    palette.line,
-                    style: StrokeStyle(lineWidth: max(1, s(1.1)), dash: [s(4.5), s(3.5)])
-                )
-            }
-            .frame(height: s(10))
-        }
-    }
-
-    // MARK: - 3. Meta Ledger
-
-    private var metaLedgerSection: some View {
-        VStack(spacing: s(4)) {
-            ledgerMetaRow(left: "FİŞ NO", right: stats.receiptNo)
-            ledgerMetaRow(left: "TARİH", right: "\(stats.dateLabel) · \(stats.timeLabel)")
-            ledgerMetaRow(left: "DÖNEM", right: stats.period.ledgerTitle)
-            if !cleanName.isEmpty {
-                ledgerMetaRow(left: "ÖĞRENCİ", right: cleanName.uppercased(with: Dates.turkish))
-            }
-            if !cleanTag.isEmpty {
-                ledgerMetaRow(left: "BÖLÜM", right: cleanTag)
-            }
-        }
-    }
-
-    private func ledgerMetaRow(left: String, right: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: s(8)) {
-            Text(left)
-                .font(.system(size: s(9.5), weight: .semibold, design: .monospaced))
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: s(3)) {
+            Text(stats.period == .gun ? "GÜNLÜK DÖKÜM" : "HAFTALIK DÖKÜM")
+                .font(.system(size: s(10), weight: .medium, design: .monospaced))
+                .tracking(s(0.5))
                 .foregroundStyle(palette.inkSoft)
-            Spacer(minLength: s(6))
-            Text(right)
-                .font(.system(size: s(10), weight: .bold, design: .monospaced))
+
+            Text("ÇALIŞMA FİŞİ")
+                .font(.system(size: s(31), weight: .black, design: .rounded))
                 .foregroundStyle(palette.ink)
-                .lineLimit(1)
-                .truncationMode(.tail)
+                .accessibilityAddTraits(.isHeader)
+
+            let identity = [cleanName, cleanTag].filter { !$0.isEmpty }.joined(separator: " · ")
+            if !identity.isEmpty {
+                Text(identity)
+                    .font(.system(size: s(11), weight: .semibold))
+                    .foregroundStyle(palette.inkSoft)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
-    // MARK: - 4. Hero Metric Boxes
-
-    private var heroMetricsSection: some View {
-        HStack(spacing: s(8)) {
-            heroMetricBox(
-                kicker: "ODAK SÜRESİ",
-                value: stats.focusFormatted,
-                sub: stats.focusSubtext,
-                emphasize: stats.focusMinutes > 0
+    private var highlights: some View {
+        HStack(spacing: s(11)) {
+            highlight(
+                value: stats.focusMinutes.formatted(.number.locale(Dates.turkish)),
+                unit: "dk",
+                label: "ODAK SÜRESİ"
             )
-            heroMetricBox(
-                kicker: "KART TEKRARI",
-                value: "\(stats.reviews)",
-                sub: stats.reviewSubtext,
-                emphasize: stats.reviews > 0
+
+            Rectangle()
+                .fill(palette.onHi.opacity(0.18))
+                .frame(width: max(1, s(1)), height: s(50))
+                .accessibilityHidden(true)
+
+            highlight(
+                value: stats.reviews.formatted(.number.locale(Dates.turkish)),
+                unit: "kart",
+                label: "KART TEKRARI"
             )
         }
-    }
-
-    private func heroMetricBox(kicker: String, value: String, sub: String, emphasize: Bool) -> some View {
-        VStack(alignment: .leading, spacing: s(4)) {
-            Text(kicker)
-                .font(.system(size: s(8.5), weight: .heavy, design: .monospaced))
-                .tracking(s(0.7))
-                .foregroundStyle(palette.inkSoft)
-
-            Text(value)
-                .font(.system(size: s(22), weight: .heavy, design: .rounded).monospacedDigit())
-                .foregroundStyle(palette.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .padding(.horizontal, s(2))
-                .background(alignment: .bottom) {
-                    if emphasize {
-                        RoundedRectangle(cornerRadius: s(3))
-                            .fill(palette.hi.opacity(palette.isDarkPaper ? 0.34 : 0.88))
-                            .frame(height: s(8.5))
-                            .offset(y: -s(1.5))
-                    }
-                }
-
-            Text(sub)
-                .font(.system(size: s(9), weight: .semibold, design: .monospaced))
-                .foregroundStyle(palette.inkSoft)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, s(10))
+        .padding(.horizontal, s(12))
         .padding(.vertical, s(9))
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: s(8))
-                .stroke(palette.line, lineWidth: max(1, s(1.1)))
+            palette.hi.opacity(palette.isDarkPaper ? 0.95 : 0.54),
+            in: RoundedRectangle(cornerRadius: s(9))
         )
     }
 
-    // MARK: - 5. Itemized Courses Ledger (Privacy-safe: course names & counts only)
-
-    private var coursesLedgerSection: some View {
-        let shown = Array(stats.byCourse.prefix(4))
-        let overflow = max(0, stats.byCourse.count - shown.count)
-
-        return VStack(alignment: .leading, spacing: s(6)) {
-            HStack {
-                Text("KALEMLER · ÇALIŞILAN DERSLER")
-                    .font(.system(size: s(8.5), weight: .heavy, design: .monospaced))
-                    .tracking(s(0.8))
-                    .foregroundStyle(palette.inkSoft)
-                Spacer()
-                Text("TUTAR")
-                    .font(.system(size: s(8.5), weight: .heavy, design: .monospaced))
-                    .foregroundStyle(palette.inkSoft)
+    private func highlight(value: String, unit: String, label: String) -> some View {
+        VStack(alignment: .leading, spacing: s(1)) {
+            HStack(alignment: .firstTextBaseline, spacing: s(4)) {
+                ViewThatFits(in: .horizontal) {
+                    Text(value).fixedSize()
+                    Text(value)
+                        .minimumScaleFactor(0.45)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .font(.system(size: s(39), weight: .black, design: .rounded))
+                .monospacedDigit()
+                Text(unit)
+                    .font(.system(size: s(14), weight: .semibold))
+                    .fixedSize()
             }
 
-            if shown.isEmpty {
-                HStack(spacing: s(6)) {
-                    Text("01")
-                        .font(.system(size: s(9.5), weight: .bold, design: .monospaced))
-                        .foregroundStyle(palette.inkSoft)
-                    Text("SESSİZ MASA AÇILIŞI")
-                        .font(.system(size: s(10.5), weight: .semibold, design: .monospaced))
-                        .foregroundStyle(palette.inkSoft)
-                        .lineLimit(1)
-                    Spacer(minLength: s(4))
-                    Text("0 KART")
-                        .font(.system(size: s(9.5), weight: .bold, design: .monospaced))
-                        .foregroundStyle(palette.inkSoft)
-                }
-            } else {
-                ForEach(Array(shown.enumerated()), id: \.element.id) { idx, item in
-                    HStack(spacing: s(6)) {
-                        Text(String(format: "%02d", idx + 1))
-                            .font(.system(size: s(9), weight: .bold, design: .monospaced))
-                            .foregroundStyle(palette.inkSoft)
+            Text(label)
+                .font(.system(size: s(9), weight: .medium, design: .monospaced))
+                .foregroundStyle(palette.onHi.opacity(0.75))
+        }
+        .foregroundStyle(palette.onHi)
+        .lineLimit(1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
 
-                        Circle()
-                            .fill(item.tint)
-                            .frame(width: s(6.5), height: s(6.5))
-
-                        Text(item.name.uppercased(with: Dates.turkish))
-                            .font(.system(size: s(10.5), weight: .bold, design: .rounded))
-                            .foregroundStyle(palette.ink)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-
-                        Spacer(minLength: s(4))
-
-                        Text(item.activitySummary)
-                            .font(.system(size: s(9.5), weight: .bold, design: .monospaced))
-                            .foregroundStyle(palette.ink)
-                            .fixedSize()
-                    }
-                }
-
-                if overflow > 0 {
-                    Text("+ \(overflow) DERS DAHA İŞLENDİ")
-                        .font(.system(size: s(9), weight: .semibold, design: .monospaced))
-                        .foregroundStyle(palette.inkSoft)
-                }
-            }
+    private var results: some View {
+        VStack(spacing: s(9)) {
+            resultRow("TEST ORTALAMASI", value: stats.avgQuizScore.map { "%\($0)" } ?? "—")
+            resultRow("ÇALIŞMA SERİSİ", value: "\(stats.streak) GÜN")
         }
     }
 
-    // MARK: - 6. 7-Day Thermal Rhythm Matrix
-
-    private var weekRhythmSection: some View {
-        VStack(alignment: .leading, spacing: s(5)) {
-            HStack {
-                Text("HAFTALIK RİTİM")
-                    .font(.system(size: s(8.5), weight: .heavy, design: .monospaced))
-                    .tracking(s(0.8))
-                    .foregroundStyle(palette.inkSoft)
-                Spacer()
-                Text(stats.streak > 0 ? "SERİ: \(stats.streak) GÜN" : "AKTİF: \(stats.activeDays)/7 GÜN")
-                    .font(.system(size: s(8.5), weight: .heavy, design: .monospaced))
-                    .foregroundStyle(palette.ink)
-            }
-
-            HStack(spacing: s(5)) {
-                ForEach(stats.weekDots) { dot in
-                    VStack(spacing: s(3)) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: s(3.5))
-                                .fill(dot.studied ? palette.hi : palette.line.opacity(0.32))
-                                .frame(height: s(15))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: s(3.5))
-                                        .stroke(
-                                            dot.studied ? palette.ink.opacity(0.65) : (dot.isToday ? palette.inkSoft : palette.line),
-                                            lineWidth: max(0.8, s(dot.isToday ? 1.3 : 0.9))
-                                        )
-                                )
-                            if dot.studied {
-                                HStack(spacing: s(1.5)) {
-                                    ForEach(0..<dot.level, id: \.self) { _ in
-                                        Circle()
-                                            .fill(palette.onHi)
-                                            .frame(width: s(3.2), height: s(3.2))
-                                    }
-                                }
-                            }
-                        }
-                        Text(dot.shortLabel)
-                            .font(.system(size: s(8), weight: dot.isToday ? .heavy : .semibold, design: .monospaced))
-                            .foregroundStyle(dot.isToday ? palette.ink : palette.inkSoft)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
+    private func resultRow(_ label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .foregroundStyle(palette.inkSoft)
+            Spacer(minLength: s(8))
+            Text(value)
+                .fontWeight(.semibold)
+                .foregroundStyle(palette.ink)
         }
+        .font(.system(size: s(11), weight: .medium, design: .monospaced))
+        .accessibilityElement(children: .combine)
     }
 
-    // MARK: - 7. Totals, Verdict & Rubber Stamp
-
-    private var totalsAndStampSection: some View {
-        HStack(alignment: .center, spacing: s(10)) {
-            VStack(alignment: .leading, spacing: s(6)) {
-                HStack(spacing: s(5)) {
-                    Text("\(stats.effortPoints) PUAN")
-                        .font(.system(size: s(9.5), weight: .heavy, design: .monospaced))
-                        .foregroundStyle(palette.onHi)
-                        .fixedSize()
-                        .padding(.horizontal, s(6.5))
-                        .padding(.vertical, s(3))
-                        .background(palette.hi, in: RoundedRectangle(cornerRadius: s(4)))
-
-                    if let avg = stats.avgQuizScore {
-                        Text("ORT. %\(avg)")
-                            .font(.system(size: s(9), weight: .bold, design: .monospaced))
-                            .foregroundStyle(palette.ink)
-                            .fixedSize()
-                            .padding(.horizontal, s(6))
-                            .padding(.vertical, s(2.5))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: s(4))
-                                    .stroke(palette.line, lineWidth: max(1, s(1)))
-                            )
-                    }
-                }
-
-                Text(stats.verdict)
-                    .font(.system(size: s(10.5), weight: .semibold, design: .rounded))
+    private var closing: some View {
+        HStack(alignment: .center, spacing: s(15)) {
+            VStack(alignment: .leading, spacing: s(7)) {
+                Text(closingNote)
+                    .font(.system(size: s(14), weight: .semibold))
                     .foregroundStyle(palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
+
+                ReceiptBarcodeCanvas(seed: stats.barcodeSeed, ink: palette.ink, scale: scale)
+                    .frame(width: s(133), height: s(17))
+                    .accessibilityHidden(true)
+
+                Text("studymode.fun")
+                    .font(.system(size: s(9), weight: .medium, design: .monospaced))
+                    .foregroundStyle(palette.inkSoft)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            ReceiptRubberStampView(
-                rank: stats.rank,
-                ink: palette.stamp,
-                scale: scale
-            )
-            .scaleEffect(stampSlammed ? (1.0 + stampPulse * 0.06) : 2.15)
-            .opacity(stampSlammed ? 1.0 : 0.0)
-            .rotationEffect(.degrees(stampSlammed ? -9.5 : -24))
-            .padding(.trailing, s(2))
+            let stampScale = scale * 1.40
+            ReceiptRubberStampView(rank: stats.rank, ink: palette.stamp, scale: stampScale)
+                .scaleEffect(1 + stampPulse * 0.06)
+                .opacity(stampSlammed ? 1 : 0)
+                .rotationEffect(.degrees(-11.5))
+                .overlay {
+                    ReceiptStampPress(scale: stampScale, motion: stampMotion)
+                }
+                .padding(.trailing, s(2))
         }
-        .padding(.vertical, s(2))
     }
 
-    // MARK: - 8. Personal Motto Strip
-
-    private var mottoBanner: some View {
-        HStack(spacing: s(6)) {
-            Rectangle()
-                .fill(palette.hi)
-                .frame(width: s(3.5))
-            Text("“\(cleanMotto)”")
-                .font(.system(size: s(10), weight: .semibold, design: .rounded).italic())
-                .foregroundStyle(palette.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.vertical, s(3))
-    }
-
-    // MARK: - 9. Deterministic Barcode & Footer
-
-    private var barcodeFooterSection: some View {
-        VStack(spacing: s(5)) {
-            ReceiptBarcodeCanvas(seed: stats.barcodeSeed, ink: palette.ink, scale: scale)
-                .frame(height: s(32))
-                .padding(.horizontal, s(8))
-
-            Text(stats.serialCode)
-                .font(.system(size: s(8), weight: .semibold, design: .monospaced))
-                .foregroundStyle(palette.inkSoft)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-
-            Text("studymode.fun · İYİ ÇALIŞMALAR DİLERİZ")
-                .font(.system(size: s(8.5), weight: .heavy, design: .monospaced))
-                .tracking(s(0.6))
-                .foregroundStyle(palette.ink)
-                .padding(.top, s(1))
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, s(2))
+    private var closingNote: String {
+        if !cleanMotto.isEmpty { return cleanMotto }
+        if stats.effortPoints == 0 { return stats.verdict }
+        return stats.period == .gun ? "Bugün de\nmasadaydık." : "Bu hafta da\nmasadaydık."
     }
 
     private var dashedRule: some View {
@@ -484,30 +294,26 @@ struct ReceiptRubberStampView: View {
     let ink: Color
     var scale: CGFloat = 1.0
 
-    private func s(_ v: CGFloat) -> CGFloat { v * scale }
-
     var body: some View {
-        VStack(spacing: s(1)) {
-            Text("DERECE · \(rank.grade)")
-                .font(.system(size: s(11.5), weight: .black, design: .rounded))
-                .tracking(s(0.6))
+        VStack(spacing: 0) {
+            Text(rank.grade)
+                .font(.system(size: 27 * scale, weight: .black, design: .rounded))
             Text(rank.label)
-                .font(.system(size: s(7.5), weight: .heavy, design: .monospaced))
-                .tracking(s(0.5))
+                .font(.system(size: 6.3 * scale, weight: .heavy, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .padding(.horizontal, 6 * scale)
         }
         .foregroundStyle(ink)
-        .padding(.horizontal, s(8))
-        .padding(.vertical, s(5))
-        .overlay(
-            RoundedRectangle(cornerRadius: s(6))
-                .stroke(ink, lineWidth: max(1.5, s(2.0)))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: s(4))
-                .inset(by: s(2.8))
-                .stroke(ink.opacity(0.55), style: StrokeStyle(lineWidth: max(0.8, s(0.9)), dash: [s(5), s(2)]))
-        )
+        .frame(width: 62 * scale, height: 62 * scale)
+        .background {
+            Circle().strokeBorder(ink, lineWidth: 1.8 * scale)
+            Circle()
+                .inset(by: 3.6 * scale)
+                .stroke(ink.opacity(0.65), style: StrokeStyle(lineWidth: 0.8 * scale, dash: [5 * scale, 2 * scale]))
+        }
         .opacity(0.92)
+        .accessibilityElement(children: .combine)
     }
 }
 

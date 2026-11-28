@@ -20,6 +20,8 @@ struct ReceiptStudioSheet: View {
     @State private var isPrinting = false
     @State private var stampSlammed = false
     @State private var stampPulse: CGFloat = 0
+    @State private var stampMotion: ReceiptStampMotion = .hidden
+    @State private var studioWidth: CGFloat = 390
     @State private var printTask: Task<Void, Never>?
 
     // Interactive 3D tilt, specular glint & tear-to-share gesture
@@ -66,6 +68,11 @@ struct ReceiptStudioSheet: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
                     .padding(.bottom, 28)
+                }
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.width
+                } action: { width in
+                    studioWidth = width
                 }
             }
             .navigationTitle("Çalışma fişi")
@@ -116,6 +123,9 @@ struct ReceiptStudioSheet: View {
             guard loadedPrefs else { return }
             updated.save()
         }
+        .onChange(of: reduceMotion) { _, enabled in
+            if enabled && isPrinting { triggerPrintSequence() }
+        }
         .onDisappear {
             printTask?.cancel()
         }
@@ -147,62 +157,16 @@ struct ReceiptStudioSheet: View {
 
     private var printerAndPaperStage: some View {
         let tearProgress = min(1.0, max(0, tearOffset / tearThreshold))
+        let stageWidth = min(408, max(1, studioWidth - 32))
+        let printerWidth = stageWidth - min(20, stageWidth * 0.06)
+        let paperWidth = min(336, printerWidth * 0.96)
+        let paperScale = paperWidth / 336
+        let printerStatus: ReceiptPrinterView.Status = !isPrinting ? .ready
+            : feedProgress < 1 ? .feeding : .stamping
 
         return VStack(spacing: 0) {
-            // Physical Thermal Printer Bezel
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(isPrinting ? Theme.hi : Theme.success)
-                    .frame(width: 8, height: 8)
-                    .overlay(Circle().stroke(Color.black.opacity(0.35), lineWidth: 1))
-
-                Text(isPrinting ? "TERMAL KASA · YAZDIRILIYOR…" : "TERMAL KASA · \(stats.receiptNo)")
-                    .font(.system(size: 10.5, weight: .heavy, design: .monospaced))
-                    .tracking(0.8)
-                    .foregroundStyle(.white.opacity(0.9))
-
-                Spacer()
-
-                Text(tearProgress > 0.15 ? "KOPARMAK İÇİN ÇEK" : "EĞ · AŞAĞI ÇEK PAYLAŞ")
-                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
-                    .foregroundStyle(tearProgress > 0.85 ? Theme.hi : .white.opacity(0.62))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color(uiColor: UIColor(hex: 0x22295A)),
-                        Color(uiColor: UIColor(hex: 0x151A3B)),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ),
-                in: UnevenRoundedRectangle(
-                    topLeadingRadius: 18,
-                    bottomLeadingRadius: 6,
-                    bottomTrailingRadius: 6,
-                    topTrailingRadius: 18
-                )
-            )
-            .overlay(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 18,
-                    bottomLeadingRadius: 6,
-                    bottomTrailingRadius: 6,
-                    topTrailingRadius: 18
-                )
-                .stroke(Theme.cardLine, lineWidth: 2)
-            )
-            .overlay(alignment: .bottom) {
-                // Dark recessed paper exit slot
-                Capsule()
-                    .fill(Color.black.opacity(0.72))
-                    .frame(height: 6)
-                    .padding(.horizontal, 12)
-                    .offset(y: 2)
-            }
-            .zIndex(3)
+            ReceiptPrinterView(width: printerWidth, status: printerStatus)
+                .zIndex(3)
 
             // Tear tension indicator pill when pulling down
             if tearProgress > 0.12 {
@@ -227,14 +191,27 @@ struct ReceiptStudioSheet: View {
                 ReceiptPaperView(
                     stats: stats,
                     prefs: prefs,
-                    scale: 1.0,
+                    scale: paperScale,
                     flatTopEdge: tearProgress < 0.85,
                     stampSlammed: stampSlammed,
                     stampPulse: stampPulse,
-                    glintOffset: glintOffset
+                    glintOffset: glintOffset,
+                    stampMotion: stampMotion
                 )
-                .clipShape(ReceiptFeedClipShape(progress: feedProgress))
-                .offset(y: (1.0 - feedProgress) * -64 + tearOffset)
+                .overlay(alignment: .top) {
+                    if tearOffset < 10 {
+                        LinearGradient(
+                            colors: [Color.black.opacity(0.27), .clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(height: 15)
+                        .allowsHitTesting(false)
+                    }
+                }
+                .clipShape(ReceiptFeedClipShape(progress: feedProgress, scale: paperScale))
+                .offset(y: tearOffset + stampPulse * 2)
+                .accessibilityHidden(feedProgress < 1)
                 .rotation3DEffect(
                     .degrees(tiltPitch),
                     axis: (x: 1, y: 0, z: 0),
@@ -252,18 +229,6 @@ struct ReceiptStudioSheet: View {
                     x: CGFloat(-tiltRoll * 0.8),
                     y: 12 + tearOffset * 0.2
                 )
-                // Top printer lip contact shadow
-                .overlay(alignment: .top) {
-                    if tearOffset < 10 {
-                        LinearGradient(
-                            colors: [Color.black.opacity(0.20), .clear],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .frame(width: 336, height: 12)
-                        .allowsHitTesting(false)
-                    }
-                }
                 .gesture(receiptInteractionGesture)
                 .onTapGesture(count: 2) {
                     // Double-tap receipt to re-slam the ink stamp with a satisfying thud
@@ -271,14 +236,24 @@ struct ReceiptStudioSheet: View {
                 }
             }
             .padding(.top, -2)
-            .padding(.bottom, 6)
+
+            Text("Fişi aşağı çekerek paylaş")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.78))
+                .padding(.top, 12)
+                .opacity(isPrinting || reduceMotion ? 0 : 1)
+                .accessibilityHidden(isPrinting || reduceMotion)
         }
+        .padding(.top, 6)
+        .padding(.bottom, 12)
+        .frame(width: stageWidth)
+        .background { ReceiptPrinterDesk() }
     }
 
     private var receiptInteractionGesture: some Gesture {
         DragGesture(minimumDistance: 8)
             .onChanged { value in
-                guard !reduceMotion else { return }
+                guard !reduceMotion, !isPrinting else { return }
                 let dx = value.translation.width
                 let dy = value.translation.height
 
@@ -305,6 +280,7 @@ struct ReceiptStudioSheet: View {
                 }
             }
             .onEnded { _ in
+                guard !reduceMotion, !isPrinting else { return }
                 let shouldTearShare = tearOffset >= tearThreshold
                 lastTearTickBucket = 0
                 withAnimation(.spring(response: 0.42, dampingFraction: 0.74)) {
@@ -526,69 +502,77 @@ struct ReceiptStudioSheet: View {
 
     private func triggerPrintSequence() {
         printTask?.cancel()
+        printTask = nil
+        tiltPitch = 0
+        tiltRoll = 0
+        tearOffset = 0
+        lastTearTickBucket = 0
+        stampPulse = 0
+        stampMotion = .hidden
+
         if reduceMotion {
-            feedProgress = 1.0
+            feedProgress = 1
             stampSlammed = true
             isPrinting = false
             glintOffset = 0.2
             return
         }
 
-        isPrinting = true
-        feedProgress = 0.08
+        feedProgress = 0
         stampSlammed = false
-        stampPulse = 0
         glintOffset = -1.1
-
+        isPrinting = true
         printTask = Task { @MainActor in
-            OnboardingHaptics.light()
-            withAnimation(.timingCurve(0.18, 0.86, 0.30, 1.0, duration: 0.52)) {
-                feedProgress = 1.0
-            }
-
-            try? await Task.sleep(for: .milliseconds(130))
-            guard !Task.isCancelled else { return }
-            OnboardingHaptics.selection()
-
-            try? await Task.sleep(for: .milliseconds(140))
-            guard !Task.isCancelled else { return }
-            OnboardingHaptics.selection()
-
-            try? await Task.sleep(for: .milliseconds(210))
-            guard !Task.isCancelled else { return }
-
-            // Rubber stamp slam!
-            OnboardingHaptics.medium()
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.62)) {
-                stampSlammed = true
-                stampPulse = 1.0
-            }
-            withAnimation(.easeOut(duration: 0.65)) {
-                glintOffset = 0.28
-            }
-
-            try? await Task.sleep(for: .milliseconds(220))
-            guard !Task.isCancelled else { return }
-            withAnimation(.spring(response: 0.30, dampingFraction: 0.75)) {
-                stampPulse = 0
+            do {
+                OnboardingHaptics.light()
+                for progress in [0.23, 0.48, 0.74, 1.0] {
+                    try await Task.sleep(for: .milliseconds(35))
+                    withAnimation(.easeOut(duration: 0.16)) { feedProgress = progress }
+                    OnboardingHaptics.selection()
+                    try await Task.sleep(for: .milliseconds(155))
+                }
+                try await animateStamp()
                 isPrinting = false
+                printTask = nil
+            } catch {
+                // A new print, Reduce Motion or closing the studio cancels this sequence.
             }
         }
     }
 
+    private func animateStamp() async throws {
+        withAnimation(.easeOut(duration: 0.24)) { stampMotion = .hovering }
+        try await Task.sleep(for: .milliseconds(240))
+
+        withAnimation(.easeIn(duration: 0.13)) { stampMotion = .contact }
+        try await Task.sleep(for: .milliseconds(130))
+
+        OnboardingHaptics.medium()
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.68)) {
+            stampSlammed = true
+            stampPulse = 1
+        }
+        withAnimation(.easeOut(duration: 0.55)) { glintOffset = 0.28 }
+        try await Task.sleep(for: .milliseconds(80))
+
+        withAnimation(.easeOut(duration: 0.27)) { stampMotion = .retreating }
+        withAnimation(.spring(response: 0.26, dampingFraction: 0.76)) { stampPulse = 0 }
+        try await Task.sleep(for: .milliseconds(270))
+        stampMotion = .hidden
+    }
+
     private func slamStampAgain() {
-        guard !reduceMotion else { return }
+        guard !reduceMotion, !isPrinting else { return }
         stampSlammed = false
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(40))
-            OnboardingHaptics.medium()
-            withAnimation(.spring(response: 0.26, dampingFraction: 0.58)) {
-                stampSlammed = true
-                stampPulse = 1.0
-            }
-            try? await Task.sleep(for: .milliseconds(200))
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) {
-                stampPulse = 0
+        stampPulse = 0
+        isPrinting = true
+        printTask = Task { @MainActor in
+            do {
+                try await animateStamp()
+                isPrinting = false
+                printTask = nil
+            } catch {
+                // A restarted print or closing the studio owns the next state.
             }
         }
     }
@@ -729,6 +713,7 @@ private struct StudioBanner: Equatable {
 
 private struct ReceiptFeedClipShape: Shape {
     var progress: CGFloat
+    let scale: CGFloat
 
     var animatableData: CGFloat {
         get { progress }
@@ -736,8 +721,15 @@ private struct ReceiptFeedClipShape: Shape {
     }
 
     func path(in rect: CGRect) -> Path {
-        let clamped = min(max(progress, 0.02), 1.0)
-        return Path(CGRect(x: 0, y: 0, width: rect.width, height: rect.height * clamped))
+        if progress >= 1 { return Path(rect) }
+        guard progress > 0 else { return Path() }
+
+        let height = rect.height * progress
+        return SerratedReceiptShape(
+            toothWidth: 10.5 * scale,
+            toothHeight: min(6.5 * scale, height * 0.4),
+            flatTop: true
+        ).path(in: CGRect(origin: rect.origin, size: CGSize(width: rect.width, height: height)))
     }
 }
 
