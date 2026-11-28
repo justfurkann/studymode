@@ -1,7 +1,7 @@
 // Shared free AI for signed-in users. Runs as a Vercel Function; the Gemini key lives only in
 // the GEMINI_API_KEY environment variable and never reaches the browser.
 // Prompts are fixed per task here, so this endpoint cannot be used as a general-purpose proxy.
-import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '../src/lib/config.js'
+import { DEFAULT_GEMINI_FALLBACKS, DEFAULT_GEMINI_MODEL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL, questionQualityFor } from '../src/lib/config.js'
 import { callGeminiWithFallback, GeminiError, isBlockedByFilter } from '../src/lib/ai/gemini.js'
 import { isTaskName, jsonModeSystem, parseTaskOutput, userPrompt } from '../src/lib/ai/tasks.js'
 import { vertexAccessToken, vertexConfigured, vertexModels, vertexTarget } from './vertex.js'
@@ -10,6 +10,9 @@ export const MAX_BODY_CHARS = 1_500_000
 
 /** Only VIPs and admins may run these (podcast, audio, images, semantic search). */
 const PREMIUM_TASKS = new Set(['podcast', 'tts', 'image', 'embed'])
+
+/** Tried by admins first (config.ts → QUESTION_QUALITY_FOR): the study set for formula-heavy notes. */
+const QUALITY_TASKS = new Set(['studyNumeric'])
 
 /** Gives Vercel Hobby functions the full 60s ceiling while our internal deadline finishes well before it. */
 export const maxDuration = 60
@@ -156,6 +159,8 @@ export async function handleGenerate(
 
   // The caller's role and free allowance; read once, used for both paths below.
   const before = await quotaCall('ai_quota', auth, fetchImpl)
+  // Unknown role (quota not readable) counts as not allowed: the site then asks for "study" instead.
+  if (QUALITY_TASKS.has(task) && !questionQualityFor(before?.role)) return json(403, { error: 'admin_only' })
 
   // Free+ (VIP/admin): Gemini on Vertex AI, within its own daily caps. VIPs and admins get it by default,
   // without choosing it in Settings; only an explicit engine "free" skips it. Any problem (not set up,

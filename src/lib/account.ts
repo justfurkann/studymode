@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { supabase } from './supabase'
+import { questionQualityFor } from './config'
 
 /*
  * The signed-in person's role and today's free-AI allowance, as the database sees them
@@ -103,6 +104,11 @@ export function useCanPlus(userId: string | null): boolean | null {
   const settled = useQuotaSettled(userId)
   if (!userId || !settled || !quota) return null
   return isPremiumRole(quota.role) || (!!quota.premiumUntil && new Date(quota.premiumUntil).getTime() > Date.now())
+}
+
+/** Whether new study sets of this account get the question-quality step (config.ts → QUESTION_QUALITY_FOR). */
+export function useQuestionQuality(userId: string | null): boolean {
+  return questionQualityFor(useQuota(userId)?.role)
 }
 
 export const ROLE_LABEL: Record<Role, string> = { normal: 'Normal', vip: 'VIP', admin: 'Yönetici' }

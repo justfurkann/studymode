@@ -383,7 +383,7 @@ function SmartSearch() {
       setSearching(true)
       try {
         const { embedTexts } = await freshImport(() => import('../lib/ai'))
-        const [v] = await embedTexts([trimmed], settings)
+        const [v] = await embedTexts([trimmed], settings, 'query')
         if (v?.length) {
           cache.current.set(trimmed, v)
           if (alive) setQueryVector({ q: trimmed, v })

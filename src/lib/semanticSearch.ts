@@ -293,7 +293,13 @@ export interface EmbeddingMap {
   queries?: Record<string, number[]>
 }
 
-const EMBED_STORAGE_PREFIX = 'studymode.embeddings.v1.'
+/**
+ * v2 (28 Nov 2026): notes are embedded as RETRIEVAL_DOCUMENT and searches as RETRIEVAL_QUERY on both
+ * paths. v1 vectors may come from the public API with no task type, which do not match v2 queries,
+ * so they are dropped (the student presses "hazırla" once more) instead of being compared.
+ */
+export const EMBED_STORAGE_PREFIX = 'studymode.embeddings.v2.'
+const OLD_EMBED_STORAGE_PREFIXES = ['studymode.embeddings.v1.']
 
 /**
  * Vectors are kept at 768 numbers (the model ranks by the first ones, so shortening keeps the
@@ -315,6 +321,12 @@ export function vectorMatchScore(sim: number): number {
 }
 
 export function readCourseEmbeddings(courseId: string): Record<string, number[]> {
+  try {
+    // Free the space old vectors took; they cannot be used with v2 search words.
+    for (const prefix of OLD_EMBED_STORAGE_PREFIXES) localStorage.removeItem(`${prefix}${courseId}`)
+  } catch {
+    // Storage blocked: nothing to clean.
+  }
   try {
     const raw = localStorage.getItem(`${EMBED_STORAGE_PREFIX}${courseId}`)
     if (!raw) return {}
