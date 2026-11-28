@@ -212,11 +212,13 @@ struct QuizSection: View {
     }
 
     private func checkCurrentAnswer(correct: Int) {
-        guard let selected else { return }
+        guard let selected, !checked else { return }
+        let isCorrect = selected == correct
         withAnimation(.spring(response: 0.36, dampingFraction: 0.78)) {
             checked = true
         }
-        if selected == correct {
+        StudySound.playAnswer(isCorrect: isCorrect)
+        if isCorrect {
             OnboardingHaptics.success()
             correctBurstTrigger += 1
         } else {

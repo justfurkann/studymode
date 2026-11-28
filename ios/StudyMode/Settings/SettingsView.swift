@@ -35,6 +35,7 @@ struct SettingsView: View {
     @Environment(StudyStore.self) private var store
     @Environment(AuthModel.self) private var auth
     @AppStorage(AppTheme.key) private var theme = AppTheme.system.rawValue
+    @AppStorage(StudySound.preferenceKey) private var soundEffectsEnabled = StudySound.enabledByDefault
 
     @State private var goalText = ""
     @State private var levelError: String?
@@ -88,6 +89,10 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+            }
+
+            Section {
+                Toggle("Ses efektleri", isOn: $soundEffectsEnabled)
             }
 
             Section {

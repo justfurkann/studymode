@@ -127,6 +127,7 @@ struct PaperTossGameView: View {
                 }
             }
             .onAppear { randomizeWind() }
+            .onChange(of: sparkTrigger) { _, _ in StudySound.paperBasket.play() }
         }
     }
 

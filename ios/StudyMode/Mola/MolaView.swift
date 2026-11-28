@@ -311,7 +311,9 @@ struct MatchGameView: View {
             selected = tile
             return
         }
-        if current.cardId == tile.cardId {
+        let isMatch = current.cardId == tile.cardId
+        StudySound.playAnswer(isCorrect: isMatch)
+        if isMatch {
             OnboardingHaptics.success()
             withAnimation { _ = matched.insert(tile.cardId) }
             selected = nil
@@ -434,6 +436,7 @@ struct QuickGameView: View {
     private func answer(_ sayTrue: Bool) {
         guard let item, result == nil, Date.now < endsAt else { return }
         let ok = sayTrue == item.correct
+        StudySound.playAnswer(isCorrect: ok)
         answered += 1
         if ok {
             score += Mola.quickPoints(streakBefore: streak)

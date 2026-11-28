@@ -186,6 +186,9 @@ struct ReviewSession: View {
             .overlay(alignment: .top) { SaveErrorBanner() }
         }
         .onAppear { captureReadiness() }
+        .onChange(of: finished) { _, completed in
+            if completed { StudySound.reviewComplete.play() }
+        }
         .onDisappear { speaker.stop() }
         .onChange(of: revealed) { _, _ in speaker.stop() }
         .sheet(item: $codingCard) { target in

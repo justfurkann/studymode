@@ -221,7 +221,9 @@ private struct ExamQuickTest: View {
                                         guard selected == nil else { return }
                                         OnboardingHaptics.selection()
                                         selected = option
-                                        if option == question.answerIndex { score += 1 }
+                                        let isCorrect = option == question.answerIndex
+                                        if isCorrect { score += 1 }
+                                        StudySound.playAnswer(isCorrect: isCorrect)
                                     } label: {
                                         HStack {
                                             MathText(question.options[option])
