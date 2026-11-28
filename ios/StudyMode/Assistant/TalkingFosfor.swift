@@ -88,8 +88,9 @@ struct FosforHero: View {
             }
             .frame(minHeight: 52, alignment: .bottom)
 
-            FosforMascotView(size: 112, mood: mood)
-                .simultaneousGesture(TapGesture().onEnded { say() })
+            // The only 3D Fosfor in the app; it handles its own tap (hop + haptic) and drag.
+            Fosfor3DView(mood: mood, onTap: { say() })
+                .frame(width: 180, height: 160)
                 .accessibilityLabel("Fosfor")
                 .accessibilityHint("Dokununca bir şey söyler")
         }
