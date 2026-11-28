@@ -10,3 +10,5 @@ playwright-report/
 
 # Google AI Studio working files
 .aistudio/
+
+.DS_Store
