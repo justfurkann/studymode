@@ -64,8 +64,7 @@ enum AIClient {
     private static func message(for code: String?, status: Int, quota: QuotaInfo?) -> String {
         switch code {
         case "daily_limit":
-            let q = quota.flatMap { q in q.limit.map { " (\(q.used ?? $0)/\($0))" } } ?? ""
-            return "Bugünkü ücretsiz yapay zekâ hakkın doldu\(q). Gece yarısı yenilenir."
+            return "Bugünkü ücretsiz yapay zekâ hakkın doldu. Gece yarısı yenilenir."
         case "not_configured": return "Ücretsiz yapay zekâ henüz kurulmadı."
         case "unauthorized": return "Oturumun sona ermiş. Çıkış yapıp tekrar giriş yap."
         case "quota": return "Ücretsiz yapay zekânın kotası şu an dolu. Biraz sonra tekrar dene."

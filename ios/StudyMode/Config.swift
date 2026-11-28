@@ -23,7 +23,4 @@ enum Config {
     /// Public by design; Supabase must list it under Google → Client IDs. Empty = button hidden.
     static let googleIOSClientID = "189951485932-3f3jkvijibcnib8ov3opp4gn7h7ln2jl.apps.googleusercontent.com"
 
-    /// Daily AI requests per account (server: ai_limit_for in supabase/schema.sql). Premium/VIP = 4x free.
-    static let freeDailyLimit = 40
-    static let premiumDailyLimit = 160
 }

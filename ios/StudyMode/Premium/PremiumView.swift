@@ -29,8 +29,8 @@ struct PremiumView: View {
         .init(
             id: "freeplus",
             icon: "sparkles",
-            title: "Free+ & \(Config.premiumDailyLimit) hak",
-            detail: "Günde 30 cevaba kadar güçlü model; günde \(Config.premiumDailyLimit) hak, ücretsizin 4 katı",
+            title: "Free+ & 4 kat hak",
+            detail: "Daha güçlü yapay zekâ; günlük hakkın ücretsizin 4 katı",
             accent: Theme.prem3
         ),
         .init(

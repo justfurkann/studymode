@@ -136,8 +136,8 @@ struct AccountView: View {
                                         }
                                     }
                                     Text(premium.isPremium
-                                         ? "Free+ ve günde \(Config.premiumDailyLimit) yapay zekâ hakkı açık"
-                                         : "Daha güçlü yapay zekâ ve günde \(Config.premiumDailyLimit) hak")
+                                         ? "Free+ ve 4 kat yapay zekâ hakkı açık"
+                                         : "Daha güçlü yapay zekâ ve 4 kat hak")
                                         .font(.caption)
                                         .foregroundStyle(.white.opacity(0.86))
                                         .lineLimit(1)
