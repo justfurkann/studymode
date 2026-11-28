@@ -103,7 +103,8 @@ enum PodcastLogic {
 
         for line in lines {
             let lineLen = line.speaker.rawValue.count + 2 + line.text.count
-            if !current.isEmpty && currentLen + lineLen > maxChars {
+            // The server reads at most 16 lines per request (api/generate tts), so a chunk never has more.
+            if !current.isEmpty && (currentLen + lineLen > maxChars || current.count >= 16) {
                 chunks.append(current)
                 current = [line]
                 currentLen = lineLen
@@ -288,7 +289,10 @@ enum PodcastStorage {
     }
 
     static func clearCachedAudio(user: UUID?, note: UUID) {
-        try? FileManager.default.removeItem(at: audioCacheURL(user: user, note: note))
+        let url = audioCacheURL(user: user, note: note)
+        try? FileManager.default.removeItem(at: url)
+        // The WAV kept when the M4A export fails (NotePodcastView) goes with it.
+        try? FileManager.default.removeItem(at: url.deletingPathExtension().appendingPathExtension("wav"))
     }
 }
 
