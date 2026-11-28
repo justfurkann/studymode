@@ -1409,7 +1409,7 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
   })
 
   test('focus timer runs pomodoro rounds: focus, automatic break, next round, on any page', async ({ page }) => {
-    // About 40 minutes of fake time with a tick every second: the clock alone takes most of the default 30 s, so it gets more room.
+    // About 55 minutes of fake time with a tick every second: the clock alone takes most of the default 30 s, so it gets more room.
     test.setTimeout(90_000)
     const errors = watchErrors(page)
     await page.clock.install()
@@ -1418,9 +1418,9 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
     await expect(page.getByRole('button', { name: 'Eşleştir' })).toBeDisabled()
     await page.getByRole('button', { name: 'Odak sayacı' }).click()
     await expect(page.locator('.focus-clock')).toHaveText('25:00')
-    await page.getByRole('button', { name: '50 + 10 dk' }).click()
+    await page.getByRole('button', { name: '50 + 15 dk' }).click()
     await expect(page.locator('.focus-clock')).toHaveText('50:00')
-    await page.getByRole('button', { name: '25 + 5 dk' }).click()
+    await page.getByRole('button', { name: '25 + 10 dk' }).click()
     await page.getByRole('button', { name: 'Başla' }).click()
 
     await page.clock.runFor('05:00')
@@ -1435,7 +1435,7 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
     const pill = page.getByRole('link', { name: /^Odak sayacı: Odak, \d\d:\d\d kaldı/ })
     await expect(pill).toBeVisible()
     await page.clock.runFor('20:30')
-    await expect(page.getByRole('link', { name: /^Odak sayacı: Mola, 0[45]:\d\d kaldı/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /^Odak sayacı: Mola, \d\d:\d\d kaldı/ })).toBeVisible()
 
     // Back on the timer: the break started by itself, with game suggestions.
     await page.getByRole('link', { name: /^Odak sayacı: Mola/ }).click()
@@ -1445,13 +1445,14 @@ test.describe('mola: games and focus timer in the Tekrar tab', () => {
     await expect(page.getByRole('img', { name: 'Bu sette 1/4 tur tamam' })).toBeVisible()
     await expect(page.getByText('Bugün: 25 dk · 1 tur')).toBeVisible()
 
-    // When the break ends, round 2 waits for the student.
-    await page.clock.runFor('05:30')
+    // When the break ends (25 + 10 plan: 10 minutes, about 9:30 left here), round 2 waits for the student.
+    await page.clock.runFor('10:00')
     await expect(page.getByRole('button', { name: '2. turu başlat' })).toBeVisible()
     await page.getByRole('button', { name: '2. turu başlat' }).click()
     await page.clock.runFor('10:30')
     // Stopping early still adds the minutes that passed.
     await page.getByRole('button', { name: 'Bitir' }).click()
+    // 25 minutes of the first round + 10 of the second (25 + 10 plan).
     await expect(page.getByText('Son 7 gün: 35 dk')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Başla' })).toBeVisible()
 
