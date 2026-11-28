@@ -7,6 +7,7 @@ import {
   clip,
   distinctCards,
   elapsedMinutes,
+  FOCUS_PLANS,
   focusLastWeek,
   formatClock,
   formatSeconds,
@@ -243,18 +244,21 @@ describe('pomodoro phases', () => {
   const t0 = 5_000_000
 
   it('goes focus → short break → waiting round, with a long break every fourth round', () => {
+    // Lengths come from the plan table (klasik 25+10, uzun 50+15 since the 2b81900 change), not from hard-coded numbers.
+    const klasik = FOCUS_PLANS.klasik
+    const min = (n: number) => n * 60_000
     let t = startFocus('klasik', 1, 'c1', t0)
-    expect([t.phase, t.minutes, t.round]).toEqual(['focus', 25, 1])
-    t = nextPhase(t, t0 + 25 * 60_000)
-    expect([t.phase, t.minutes, t.round, t.endsAt]).toEqual(['short', 5, 1, t0 + 30 * 60_000])
-    t = nextPhase(t, t0 + 30 * 60_000)
-    expect([t.phase, t.minutes, t.round, t.endsAt]).toEqual(['focus', 25, 2, null])
+    expect([t.phase, t.minutes, t.round]).toEqual(['focus', klasik.focus, 1])
+    t = nextPhase(t, t0 + min(klasik.focus))
+    expect([t.phase, t.minutes, t.round, t.endsAt]).toEqual(['short', klasik.short, 1, t0 + min(klasik.focus + klasik.short)])
+    t = nextPhase(t, t0 + min(klasik.focus + klasik.short))
+    expect([t.phase, t.minutes, t.round, t.endsAt]).toEqual(['focus', klasik.focus, 2, null])
     expect(isWaiting(t)).toBe(true)
     expect(t.courseId).toBe('c1')
     const fourth = nextPhase({ ...startFocus('klasik', 4, null, t0) }, t0)
-    expect([fourth.phase, fourth.minutes]).toEqual(['long', 15])
+    expect([fourth.phase, fourth.minutes]).toEqual(['long', klasik.long])
     const long = nextPhase(startFocus('uzun', 1, null, t0), t0)
-    expect([long.phase, long.minutes]).toEqual(['short', 10])
+    expect([long.phase, long.minutes]).toEqual(['short', FOCUS_PLANS.uzun.short])
   })
 })
 
