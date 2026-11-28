@@ -51,6 +51,7 @@ struct ReceiptPaperView: View {
     var stampSlammed: Bool = true
     var stampPulse: CGFloat = 0
     var glintOffset: CGFloat = 2.0 // -1.2 ... 1.2 sweeps diagonal glossy sheen across paper
+    var stampMotion: ReceiptStampMotion = .hidden
 
     private var palette: ReceiptPalette { prefs.theme.palette }
     private func s(_ v: CGFloat) -> CGFloat { v * scale }
@@ -415,9 +416,12 @@ struct ReceiptPaperView: View {
                 ink: palette.stamp,
                 scale: scale
             )
-            .scaleEffect(stampSlammed ? (1.0 + stampPulse * 0.06) : 2.15)
-            .opacity(stampSlammed ? 1.0 : 0.0)
-            .rotationEffect(.degrees(stampSlammed ? -9.5 : -24))
+            .scaleEffect(1 + stampPulse * 0.06)
+            .opacity(stampSlammed ? 1 : 0)
+            .rotationEffect(.degrees(-11.5))
+            .overlay {
+                ReceiptStampPress(scale: scale, motion: stampMotion)
+            }
             .padding(.trailing, s(2))
         }
         .padding(.vertical, s(2))
@@ -484,30 +488,26 @@ struct ReceiptRubberStampView: View {
     let ink: Color
     var scale: CGFloat = 1.0
 
-    private func s(_ v: CGFloat) -> CGFloat { v * scale }
-
     var body: some View {
-        VStack(spacing: s(1)) {
-            Text("DERECE · \(rank.grade)")
-                .font(.system(size: s(11.5), weight: .black, design: .rounded))
-                .tracking(s(0.6))
+        VStack(spacing: 0) {
+            Text(rank.grade)
+                .font(.system(size: 27 * scale, weight: .black, design: .rounded))
             Text(rank.label)
-                .font(.system(size: s(7.5), weight: .heavy, design: .monospaced))
-                .tracking(s(0.5))
+                .font(.system(size: 6.3 * scale, weight: .heavy, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .padding(.horizontal, 6 * scale)
         }
         .foregroundStyle(ink)
-        .padding(.horizontal, s(8))
-        .padding(.vertical, s(5))
-        .overlay(
-            RoundedRectangle(cornerRadius: s(6))
-                .stroke(ink, lineWidth: max(1.5, s(2.0)))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: s(4))
-                .inset(by: s(2.8))
-                .stroke(ink.opacity(0.55), style: StrokeStyle(lineWidth: max(0.8, s(0.9)), dash: [s(5), s(2)]))
-        )
+        .frame(width: 62 * scale, height: 62 * scale)
+        .background {
+            Circle().strokeBorder(ink, lineWidth: 1.8 * scale)
+            Circle()
+                .inset(by: 3.6 * scale)
+                .stroke(ink.opacity(0.65), style: StrokeStyle(lineWidth: 0.8 * scale, dash: [5 * scale, 2 * scale]))
+        }
         .opacity(0.92)
+        .accessibilityElement(children: .combine)
     }
 }
 
