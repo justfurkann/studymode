@@ -55,7 +55,7 @@ struct AssistantSheet: View {
                         ForEach(messages) { message in
                             row(message).id(message.id)
                         }
-                        if busy { TypingRow().id("busy") }
+                        if busy { TypingRow(readingNotes: courseId != nil).id("busy") }
                         if let error { errorRow(error).id("error") }
                         if !busy, error == nil, messages.last?.role == .assistant, let quote = lastQuote {
                             followUps(for: quote).id("follow")
@@ -147,7 +147,6 @@ struct AssistantSheet: View {
     }
 
     private var contextLine: String {
-        if busy { return "Notlarına bakıyor…" }
         guard let course else { return "Genel soru" }
         if let note { return "\(course.name) · \(note.title)" }
         return course.name
@@ -554,32 +553,81 @@ private struct QuoteBlock: View {
     }
 }
 
-/// Fosfor writing: three dots, like a message being typed.
+/// A waiting message and three dots that bounce in sequence while Fosfor prepares a reply.
 private struct TypingRow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var messageIndex = 0
+    @State private var startedAt = Date.now
+
+    let readingNotes: Bool
+
+    private var messages: [String] {
+        [
+            readingNotes ? "Notlarına bakıyor…" : "Sorunu düşünüyor…",
+            "Cevabı hazırlıyor…",
+            "Yanıtı toparlıyor…"
+        ]
+    }
+
+    private var bubbleShape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 18)
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             FosforMascotView(size: 28, mood: .thinking, animated: false, tappable: false)
-            TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { timeline in
-                let t = timeline.date.timeIntervalSinceReferenceDate
-                HStack(spacing: 5) {
-                    ForEach(0..<3) { i in
-                        Circle()
-                            .fill(Theme.text2)
-                            .frame(width: 7, height: 7)
-                            .opacity(reduceMotion ? 0.6 : 0.35 + 0.65 * max(0, sin(t * 5 - Double(i) * 0.7)))
-                            .offset(y: reduceMotion ? 0 : -2.5 * max(0, sin(t * 5 - Double(i) * 0.7)))
+            HStack(spacing: 10) {
+                ZStack(alignment: .leading) {
+                    ForEach(Array(messages.enumerated()), id: \.offset) { index, message in
+                        Text(message)
+                            .opacity(index == messageIndex ? 1 : 0)
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 14)
-                .background(Theme.surface, in: UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 18))
-                .overlay(UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 18, bottomTrailingRadius: 18, topTrailingRadius: 18).stroke(Theme.border, lineWidth: 1))
+                .font(.footnote.weight(.semibold))
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: messageIndex)
+
+                if reduceMotion {
+                    dots(lifted: nil)
+                } else {
+                    TimelineView(.periodic(from: startedAt, by: 0.3)) { timeline in
+                        let elapsed = max(0, timeline.date.timeIntervalSince(startedAt))
+                        let phase = Int((elapsed / 0.3).rounded()) % 3
+                        dots(lifted: phase)
+                            .animation(.easeInOut(duration: 0.2), value: phase)
+                    }
+                }
             }
+            .foregroundStyle(Theme.text2)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(minHeight: 39)
+            .background(Theme.surface, in: bubbleShape)
+            .overlay(bubbleShape.strokeBorder(Theme.border, lineWidth: 1))
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Fosfor yazıyor")
+        .accessibilityLabel("Fosfor cevap hazırlıyor")
+        .task {
+            messageIndex = 0
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .seconds(3))
+                } catch {
+                    return
+                }
+                messageIndex = (messageIndex + 1) % messages.count
+            }
+        }
+    }
+
+    private func dots(lifted: Int?) -> some View {
+        HStack(spacing: 3) {
+            ForEach(0..<3) { index in
+                Circle()
+                    .fill(Theme.text2.opacity(lifted == nil ? 0.65 : 1))
+                    .frame(width: 5, height: 5)
+                    .offset(y: index == lifted ? -3 : 0)
+            }
+        }
     }
 }
 
