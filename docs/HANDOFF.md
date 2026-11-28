@@ -1207,6 +1207,13 @@ Kalite kontrol buldu: site veriyi sayfa açılışında bir kez okuyor, açık s
 - **İşe yaramayan:** yok.
 - **Sıradaki:** Bir iş bitince STATE.md'deki ilgili satırı güncelle; STATE.md 150 satırı geçmesin.
 
+### Aşama 78 — Premium/VIP günlük hak 160, kullanım yüzde (28 Kasım 2026, `site-premium-160`)
+
+- **Yapılan:** `ai_limit_for` VIP için 150'den 160'a çıkarıldı (`supabase/schema.sql`); Premium, Fiyatlar, Rehber, Yönetim ve VIP penceresi metinleri "günde 160 yapay zekâ hakkı, ücretsizin 4 katı" oldu. Kullanım artık yüzde: Ayarlar kota kutusu, Free+ kutusu, Premium sayfası ve VIP penceresi "%58 kullanıldı" gösterir; sınırsız hesap "Sınırsız" yazar (`quotaText`, `usagePercent` in `src/lib/account.ts`). "Hakkın doldu" uyarısından sayı kalktı. Testler yeni değerlere göre güncellendi.
+- **Kararlar:** Yüzde en yakın tam sayıya yuvarlanır, 0-100 arasında kalır. Çubuk aynen duruyor.
+- **İşe yaramayan:** yok.
+- **Sıradaki:** Kullanıcı SQL'i Supabase SQL Editor'de çalıştırmadan PR birleştirilmesin (sunucu 150'de kalır). iPhone tarafı `docs/IOS_SYNC.md` üzerinden ayrıca bilgilendirilmeli (dokunulmadı).
+
 ## Tasarım dili ("Fosforlu")
 
 Fikir: "Notunu yükle, önemlisini biz işaretleyelim." Kareli defter zemini, lacivert mürekkep, tek parlak renk olarak fosforlu sarı.

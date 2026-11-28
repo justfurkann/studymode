@@ -10,7 +10,7 @@ import { BrandIcon } from '../components/BrandIcon'
 import { SOCIALS } from '../components/MadeBy'
 import { PodcastTab, VisualTab } from '../components/note/VisualAndPodcastTabs'
 import { Alert, Empty, Spinner, useToast } from '../components/ui'
-import { ROLE_LABEL } from '../lib/account'
+import { ROLE_LABEL, usagePercent } from '../lib/account'
 import { usePremium } from '../lib/premium'
 import { MANAGE_HINT, useAppStoreSubscription } from '../lib/appStore'
 import {
@@ -160,7 +160,7 @@ function PremiumStatus() {
       )}
       {plus && (
         <span className="prem-status-quota">
-          Bugün {plus.used}/{plus.limit} hak · arama sayılmaz
+          Bugün %{usagePercent(plus.used, plus.limit)} kullanıldı · arama sayılmaz
         </span>
       )}
     </p>

@@ -10,7 +10,7 @@ export const PREMIUM_PERKS = [
   { icon: AudioLines, text: 'Notun iki kişilik sesli sohbete dönüşür' },
   { icon: Search, text: 'Notlarında anlamla arama' },
   { icon: ImageIcon, text: 'Konuyu anlatan yapay zekâ görselleri' },
-  { icon: Sparkles, text: 'Daha güçlü model (Free+), günde 150 istek' },
+  { icon: Sparkles, text: 'Daha güçlü model (Free+), günde 160 yapay zekâ hakkı (ücretsizin 4 katı)' },
 ] as const
 
 /**

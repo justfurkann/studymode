@@ -218,9 +218,8 @@ async function viaShared<T extends TaskName>(task: T, input: TaskInput<T>, engin
   if (body.quota) setQuota(body.quota)
   if (!response.ok) {
     if (body.error === 'daily_limit') {
-      const q = body.quota as { used?: number; limit?: number } | undefined
       throw new AiError(
-        `Bugünkü ücretsiz yapay zekâ hakkın doldu${q?.limit ? ` (${q.used}/${q.limit})` : ''}. Gece yarısı yenilenir. Acelen varsa Ayarlar'dan kendi anahtarını bağlayabilirsin.`,
+        `Bugünkü ücretsiz yapay zekâ hakkın doldu. Gece yarısı yenilenir. Acelen varsa Ayarlar'dan kendi anahtarını bağlayabilirsin.`,
       )
     }
     const messages: Record<string, string> = {

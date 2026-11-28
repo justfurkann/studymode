@@ -33,13 +33,13 @@ describe('Premium codes', () => {
   })
 
   it('the allowance carries the Premium end date, and an answer without it does not drop it', () => {
-    expect(parseQuota({ role: 'normal', used: 1, limit: 150, allowed: true, premium_until: '2026-12-01T00:00:00Z' })?.premiumUntil).toBe('2026-12-01T00:00:00Z')
+    expect(parseQuota({ role: 'normal', used: 1, limit: 160, allowed: true, premium_until: '2026-12-01T00:00:00Z' })?.premiumUntil).toBe('2026-12-01T00:00:00Z')
     expect(parseQuota({ role: 'normal', used: 1, limit: 40, allowed: true })?.premiumUntil).toBeNull()
   })
 
   it('setQuota keeps the date when the server answer has no date field', () => {
-    setQuota({ role: 'normal', used: 1, limit: 150, allowed: true, premium_until: '2026-12-01T00:00:00Z' })
-    setQuota({ role: 'normal', used: 2, limit: 150, allowed: true })
+    setQuota({ role: 'normal', used: 1, limit: 160, allowed: true, premium_until: '2026-12-01T00:00:00Z' })
+    setQuota({ role: 'normal', used: 2, limit: 160, allowed: true })
     expect(currentQuota()).toMatchObject({ used: 2, premiumUntil: '2026-12-01T00:00:00Z' })
     // An answer that says "no Premium" (the field present, null) does close it.
     setQuota({ role: 'normal', used: 3, limit: 40, allowed: true, premium_until: null })

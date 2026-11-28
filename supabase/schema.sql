@@ -239,7 +239,7 @@ language sql stable set search_path = '' as $$ select (now() at time zone 'Europ
 -- Daily limits per role; null = no limit. Change the numbers here to adjust.
 create or replace function public.ai_limit_for(r text) returns integer
 language sql immutable set search_path = '' as $$
-  select case r when 'admin' then null when 'vip' then 150 else 40 end
+  select case r when 'admin' then null when 'vip' then 160 else 40 end
 $$;
 
 -- The caller's quota status: role, used today, limit, allowed.

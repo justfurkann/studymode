@@ -5,7 +5,7 @@ import { questionQualityFor } from './config'
 /*
  * The signed-in person's role and today's free-AI allowance, as the database sees them
  * (functions ai_quota / consume_ai; roles can only be given by an admin). Normal: 40 requests a
- * day, VIP: 150, admin: no limit. Null while unknown, signed out, or before the SQL exists.
+ * day, VIP: 160, admin: no limit. Null while unknown, signed out, or before the SQL exists.
  */
 
 export type Role = 'normal' | 'vip' | 'admin'
@@ -113,6 +113,12 @@ export function useQuestionQuality(userId: string | null): boolean {
 
 export const ROLE_LABEL: Record<Role, string> = { normal: 'Normal', vip: 'VIP', admin: 'Yönetici' }
 
+/** Share of today's allowance used, 0-100 (whole percent); 0 when there is no limit. */
+export function usagePercent(used: number, limit: number | null | undefined): number {
+  if (!limit || limit <= 0) return 0
+  return Math.max(0, Math.min(100, Math.round((used / limit) * 100)))
+}
+
 export function quotaText(q: Quota): string {
-  return q.limit === null ? `Bugün ${q.used} istek · sınırsız` : `Bugün ${q.used}/${q.limit} istek`
+  return q.limit === null ? 'Sınırsız' : `%${usagePercent(q.used, q.limit)} kullanıldı`
 }

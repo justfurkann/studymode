@@ -13,7 +13,7 @@ import { authErrorMessage, emailLabel, MIN_PASSWORD, nameMetadata, passwordProbl
 import { hasLocalData, parseData } from '../lib/backend'
 import { PROVIDERS, updateSettings, useSettings, type AiProvider, type KeyProvider, type Theme } from '../lib/settings'
 import { migrateLocalToCloud, useStore } from '../lib/store'
-import { isPremiumRole, quotaText, ROLE_LABEL, useQuota } from '../lib/account'
+import { isPremiumRole, quotaText, ROLE_LABEL, usagePercent, useQuota } from '../lib/account'
 import { hasPremiumUntil } from '../lib/premiumCodes'
 import { clampDailyGoal } from '../lib/streak'
 import { supabase } from '../lib/supabase'
@@ -564,7 +564,7 @@ function ModelPicker({ models, value, onChange }: { models: Array<{ id: string; 
   )
 }
 
-/** "Bugün 12/40 istek" with the role, for the free AI. */
+/** "Bugün %30 kullanıldı" with the role, for the free AI. */
 function QuotaLine() {
   const store = useStore()
   const quota = useQuota(store.session?.user.id ?? null)
@@ -639,7 +639,7 @@ function PlusPanel({ eligible }: { eligible: boolean }) {
           <div className="quota-head">
             <span className="chip role-chip is-vip">Free+</span>
             <strong>
-              Bugün {status.used}/{status.limit} istek
+              Bugün %{usagePercent(status.used, status.limit)} kullanıldı
             </strong>
           </div>
           <div className="progress" role="progressbar" aria-valuenow={status.used} aria-valuemin={0} aria-valuemax={status.limit}>

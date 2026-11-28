@@ -144,7 +144,7 @@ export function Pricing() {
             <li>
               <Sparkles size={17} aria-hidden />
               <span>
-                <strong>Free+:</strong> notların Google’ın daha güçlü Gemini modeliyle hazırlanır; günde 30 Free+ isteği, ayrıca günde 150 yapay zekâ isteği (ücretsiz hesapta 40).
+                <strong>Free+:</strong> notların Google’ın daha güçlü Gemini modeliyle hazırlanır; günde 30 Free+ isteği, ayrıca günde 160 yapay zekâ hakkı (ücretsiz hesaptaki 40’ın 4 katı).
               </span>
             </li>
           </ul>

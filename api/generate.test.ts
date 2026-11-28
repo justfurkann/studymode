@@ -181,10 +181,10 @@ describe('daily allowance', () => {
   })
 
   it('counts a successful answer and returns the new count', async () => {
-    const fetchImpl = fakeFetch({ quota: { role: 'vip', used: 3, limit: 150, allowed: true }, consumed: { role: 'vip', used: 4, limit: 150, allowed: true }, gemini: [gemini(JSON.stringify(studySet))] })
+    const fetchImpl = fakeFetch({ quota: { role: 'vip', used: 3, limit: 160, allowed: true }, consumed: { role: 'vip', used: 4, limit: 160, allowed: true }, gemini: [gemini(JSON.stringify(studySet))] })
     const res = await handleGenerate(request(body), env, fetchImpl)
     expect(res.status).toBe(200)
-    expect((await res.json()).quota).toEqual({ role: 'vip', used: 4, limit: 150, allowed: true })
+    expect((await res.json()).quota).toEqual({ role: 'vip', used: 4, limit: 160, allowed: true })
   })
 
   it('does not count a failed answer', async () => {
@@ -224,8 +224,8 @@ describe('Free+ on Vertex AI', () => {
       if (href.includes('/auth/v1/user')) return new Response('{}')
       if (href.includes('/rpc/plus_quota')) return new Response(JSON.stringify(opts.plus))
       if (href.includes('/rpc/consume_plus')) return new Response(JSON.stringify({ ...opts.plus, used: 1 }))
-      if (href.includes('/rpc/ai_quota')) return new Response(JSON.stringify({ role: 'vip', used: 0, limit: 150, allowed: true }))
-      if (href.includes('/rpc/consume_ai')) return new Response(JSON.stringify({ role: 'vip', used: 1, limit: 150, allowed: true }))
+      if (href.includes('/rpc/ai_quota')) return new Response(JSON.stringify({ role: 'vip', used: 0, limit: 160, allowed: true }))
+      if (href.includes('/rpc/consume_ai')) return new Response(JSON.stringify({ role: 'vip', used: 1, limit: 160, allowed: true }))
       if (href.includes('sts.googleapis.com')) {
         const form = new URLSearchParams(String(init?.body))
         expect(form.get('subject_token')).toBe('vercel-oidc')
@@ -293,7 +293,7 @@ describe('Free+ on Vertex AI', () => {
     resetVertexToken()
     const f = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       const href = String(url)
-      if (href.includes('/rpc/ai_quota')) return new Response(JSON.stringify({ role: 'normal', used: 0, limit: 150, allowed: true, premium_until: '2027-01-01T00:00:00Z' }))
+      if (href.includes('/rpc/ai_quota')) return new Response(JSON.stringify({ role: 'normal', used: 0, limit: 160, allowed: true, premium_until: '2027-01-01T00:00:00Z' }))
       return (plusFetch({ plus: { eligible: true, allowed: true, used: 0, limit: 30, site_used: 0, site_limit: 300 } }) as unknown as (u: string | URL | Request, i?: RequestInit) => Promise<Response>)(url, init)
     }) as unknown as typeof fetch
     const req = new Request('https://studymode.fun/api/generate', {

@@ -387,7 +387,7 @@ export function Admin() {
                     <span className="sr-only">{u.name || emailLabel(u.email)} rolü</span>
                     <select className="select" value={u.role} disabled={busy === u.id || u.id === store.session!.user.id} onChange={(e) => void setRole(u, e.target.value as Role)}>
                       <option value="normal">Normal (40/gün)</option>
-                      <option value="vip">VIP (150/gün)</option>
+                      <option value="vip">VIP (160/gün)</option>
                       <option value="admin">Yönetici (sınırsız)</option>
                     </select>
                   </label>
