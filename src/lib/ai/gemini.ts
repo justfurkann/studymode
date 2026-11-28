@@ -132,9 +132,8 @@ export async function callGemini(options: {
           role: 'user',
           parts: [
             {
-              text: useMultiSpeaker
-                ? `Read this study podcast aloud in natural Turkish. Deniz is a warm, clear teaching assistant; Mert is a curious student.\n${dialogue}`
-                : `Read this aloud in natural Turkish:\n${dialogue}`,
+              // Gemini 3.8 TTS treats input strictly as a verbatim transcript; never prepend English directions.
+              text: useMultiSpeaker ? dialogue : turns.map((t) => t.text).join('\n'),
             },
           ],
         },
